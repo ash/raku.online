@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>raku.online — Raku playground in the browser</title>
+<meta name="description" content="Run Raku code in your browser — no server, no signup. Powered by Raku++ compiled to WebAssembly. Share code as links or open it from GitHub.">
+<script>
+/* Theme switcher: 'system' | 'light' | 'dark'. Runs in <head> so the resolved
+   theme is applied before first paint (no flash). Mirrors — and shares the
+   localStorage key with — the Raku course's switcher, so on course.raku.org the
+   playground follows the same choice. */
+(function () {
+  var KEY = 'raku-theme';
+  var mql = window.matchMedia('(prefers-color-scheme: dark)');
+  var ICON = { system: '◐', light: '☀', dark: '☾' };
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function effective(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', effective(s));
+    var btn = document.querySelector('.theme-btn');
+    if (btn) btn.textContent = ICON[s] || ICON.system;
+    document.querySelectorAll('.theme-menu [data-theme-set]').forEach(function (el) {
+      el.setAttribute('aria-checked', el.getAttribute('data-theme-set') === s ? 'true' : 'false');
+    });
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__setTheme = function (s) { try { localStorage.setItem(KEY, s); } catch (e) {} apply(s); };
+  document.addEventListener('DOMContentLoaded', function () {
+    apply(stored());
+    var sw = document.querySelector('.theme-switch');
+    if (!sw) return;
+    var btn = sw.querySelector('.theme-btn'), menu = sw.querySelector('.theme-menu');
+    function open(o) { menu.hidden = !o; btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); open(menu.hidden); });
+    menu.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-theme-set]');
+      if (b) { window.__setTheme(b.getAttribute('data-theme-set')); open(false); btn.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!sw.contains(e.target)) open(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); open(false); btn.focus(); } });
+  });
+})();
+</script>
+<style>
+  :root {   /* light (default) */
+    --bg:#f6f7f9; --panel:#fff; --panel2:#eef0f3; --ink:#1b1d23;
+    --muted:#5b616e; --accent:#d33682; --accent2:#268bd2; --ok:#859900;
+    --border:#dcdfe5; --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  html[data-theme-active="dark"] {   /* dark */
+    --bg:#1b1d23; --panel:#24262e; --panel2:#2b2e37; --ink:#e6e6e6;
+    --muted:#9aa0ab; --border:#363a45;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         height: 100vh; display: flex; flex-direction: column; }
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+           padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; }
+  header .tag { color: var(--muted); font-size: 12px; }
+  header a { color: var(--accent2); text-decoration: none; }
+  .spacer { flex: 1; }
+  /* Theme switcher — an icon button that opens a System/Light/Dark menu
+     (same mechanism as the Raku course). */
+  .theme-switch { position: relative; display: inline-flex; }
+  .theme-btn { display: inline-flex; align-items: center; justify-content: center;
+               width: 30px; height: 30px; padding: 0; font-size: 15px; line-height: 1;
+               cursor: pointer; border: 1px solid var(--border); border-radius: 8px;
+               background: var(--panel2); color: var(--muted); }
+  .theme-btn:hover { color: var(--ink); }
+  .theme-menu { position: absolute; top: calc(100% + 6px); right: 0; margin: 0; padding: 4px;
+               list-style: none; min-width: 132px; background: var(--panel);
+               border: 1px solid var(--border); border-radius: 10px;
+               box-shadow: 0 8px 30px rgba(0,0,0,.28); z-index: 20; }
+  .theme-menu li { margin: 0; }
+  .theme-menu button { display: flex; align-items: center; gap: 8px; width: 100%;
+               padding: 6px 9px; font-size: 13px; text-align: left; cursor: pointer;
+               border: 0; border-radius: 7px; background: transparent; color: var(--ink); }
+  .theme-menu button .ti { width: 1.1em; text-align: center; }
+  .theme-menu button:hover { background: var(--panel2); }
+  .theme-menu button[aria-checked="true"] { color: var(--accent2); font-weight: 600; }
+  .theme-menu button[aria-checked="true"]::after { content: '✓'; margin-left: auto; }
+  select, button { font: inherit; color: var(--ink); background: var(--panel2);
+                   border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; }
+  #shareBtn, #openBtn, #openGo { cursor: pointer; }
+  #shareBtn:hover, #openBtn:hover { color: var(--accent2); }
+  /* Popover panels under the Open/Share buttons (same idiom as the theme menu). */
+  .dropdown { position: relative; display: inline-flex; }
+  .popover { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
+             width: min(360px, calc(100vw - 28px)); padding: 12px;
+             background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+             box-shadow: 0 8px 30px rgba(0,0,0,.28); }
+  .popover .pop-title { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
+  .popover input { width: 100%; font: 12px/1.4 var(--font-mono); padding: 6px 8px;
+                   color: var(--ink); background: var(--panel2);
+                   border: 1px solid var(--border); border-radius: 6px; }
+  .popover .pop-row { display: flex; gap: 8px; }
+  .popover .pop-note { color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+  .popover .pop-err { color: var(--accent); font-size: 12px; margin-top: 8px; }
+  /* One button for both Run and Stop. Fixed min-width fits "▶ Run", "■ Stop" and
+     "⟳ Stop", so it never changes size and nothing to its left shifts. */
+  button.run { background: var(--accent); color: #fff; border-color: transparent;
+               font-weight: 600; cursor: pointer; padding: 6px 16px; min-width: 98px;
+               display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  button.run:disabled { opacity: .5; cursor: default; }
+  button.run.running { background: transparent; color: var(--accent); border-color: var(--accent); }
+  .spinner { width: 12px; height: 12px; border-radius: 50%;
+             border: 2px solid var(--border); border-top-color: var(--accent);
+             animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  [hidden] { display: none !important; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+         background: var(--border); flex: 1; min-height: 0; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
+  .pane { background: var(--bg); display: flex; flex-direction: column; min-height: 0; }
+  .pane > .label { padding: 6px 14px; font-size: 11px; letter-spacing: .08em;
+                   text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+  /* Editor: a transparent textarea sits exactly over a highlighted <pre>. Both
+     must share identical metrics or the caret drifts from the coloured text. */
+  .editor { position: relative; flex: 1; min-height: 0; }
+  #hl, textarea#code {
+    position: absolute; inset: 0; margin: 0; padding: 14px; border: 0;
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.55;
+    letter-spacing: normal; tab-size: 4; white-space: pre; overflow: auto; }
+  #hl { color: var(--ink); pointer-events: none; overflow: hidden; }
+  textarea#code { resize: none; outline: 0; background: transparent;
+                  color: transparent; caret-color: var(--ink); }
+  textarea#code::selection { background: rgba(120,140,170,.35); }
+  /* Token colours — the Visual Studio scheme (VS Code Light+ by default,
+     Dark+ under the dark theme). */
+  .t-k  { color: #0000ff; }   /* keyword */
+  .t-nb { color: #267f99; }   /* builtin / type */
+  .t-v  { color: #001080; }   /* variable */
+  .t-s  { color: #a31515; }   /* string */
+  .t-m  { color: #098658; }   /* number */
+  .t-c  { color: #008000; }   /* comment */
+  html[data-theme-active="dark"] .t-k  { color: #569cd6; }
+  html[data-theme-active="dark"] .t-nb { color: #4ec9b0; }
+  html[data-theme-active="dark"] .t-v  { color: #9cdcfe; }
+  html[data-theme-active="dark"] .t-s  { color: #ce9178; }
+  html[data-theme-active="dark"] .t-m  { color: #b5cea8; }
+  html[data-theme-active="dark"] .t-c  { color: #6a9955; }
+  #out { flex: 1; margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap;
+         font-family: var(--font-mono); font-size: 13px; }
+  #out .err { color: var(--accent); }
+  #out .meta { color: var(--muted); }
+  .status { padding: 4px 14px; font-size: 12px; color: var(--muted);
+            border-top: 1px solid var(--border); }
+  footer { display: flex; flex-wrap: wrap; gap: 18px; padding: 9px 18px;
+           border-top: 1px solid var(--border); background: var(--panel); font-size: 12px; }
+  footer a { color: var(--accent2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  footer .credit { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Raku<span style="color:var(--accent)">.js</span> Playground</h1>
+  <span class="tag" id="ver">loading WebAssembly…</span>
+  <div class="spacer"></div>
+  <span class="theme-switch">
+    <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+    <ul class="theme-menu" hidden>
+      <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+      <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+      <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+    </ul>
+  </span>
+  <label class="tag" for="examples">example:</label>
+  <select id="examples"></select>
+  <span class="dropdown">
+    <button id="openBtn" title="Load code from GitHub or another URL">📂 Open…</button>
+    <div class="popover" id="openPop" hidden>
+      <div class="pop-title">Open code from a URL</div>
+      <div class="pop-row">
+        <input type="text" id="openUrl" spellcheck="false" autocomplete="off"
+               placeholder="https://github.com/… · gist · raw URL">
+        <button id="openGo">Load</button>
+      </div>
+      <div class="pop-err" id="openErr" hidden></div>
+      <div class="pop-note">A file in a GitHub repo, a gist, or any https URL whose host
+        allows cross-site (CORS) fetches. The address bar becomes a shareable link.</div>
+    </div>
+  </span>
+  <span class="dropdown">
+    <button id="shareBtn" title="Copy a link that opens the playground with this code">🔗 Share</button>
+    <div class="popover" id="sharePop" hidden>
+      <div class="pop-title" id="shareTitle">Link copied to clipboard ✓</div>
+      <input type="text" id="shareUrl" readonly>
+      <div class="pop-note">The program travels inside the link itself —
+        nothing is stored on this server.</div>
+    </div>
+  </span>
+  <button class="run" id="runBtn" disabled>▶ Run</button>
+</header>
+<main>
+  <section class="pane">
+    <div class="label">Raku source</div>
+    <div class="editor">
+      <pre id="hl" aria-hidden="true"></pre>
+      <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
+    </div>
+  </section>
+  <section class="pane">
+    <div class="label">Output</div>
+    <pre id="out"><span class="meta">Press ▶ Run (or ⌘/Ctrl-Enter).</span></pre>
+    <div class="status" id="status"></div>
+  </section>
+</main>
+<footer>
+  <span class="credit">Made by <a href="https://andrewshitov.com" target="_blank" rel="noopener">Andrew Shitov</a>
+    (<a href="https://github.com/ash" target="_blank" rel="noopener">@ash</a>),
+    author of the <a href="https://course.raku.org" target="_blank" rel="noopener">Raku Course</a></span>
+  <span class="spacer"></span>
+  <span class="credit">Powered by
+    <a href="https://github.com/ash/rakupp" target="_blank" rel="noopener">Raku++</a> compiled to WebAssembly
+    (<a href="https://github.com/ash/rakupp/blob/main/rakujs/README.md" target="_blank" rel="noopener">Raku.js</a>)
+    — your code never leaves the browser</span>
+  <a href="https://raku.org" target="_blank" rel="noopener">Raku</a>
+  <a href="https://github.com/ash/raku.online" target="_blank" rel="noopener">Site source</a>
+</footer>
+
+<script src="examples.js"></script>
+<script>
+// The WebAssembly module runs in a Web Worker (worker.js) so the main thread
+// stays free to animate the spinner and stream output live. See worker.js.
+//
+// Examples come from examples.js (generated from ../examples/*.raku by
+// gen-examples.raku). Fallback keeps the page usable if that file is missing.
+const EXAMPLES = (window.RAKU_EXAMPLES && window.RAKU_EXAMPLES.length)
+  ? window.RAKU_EXAMPLES
+  : [{ name: "Hello, world", category: "Basics", code: 'say "Hello, Raku from the browser!";' }];
+
+const codeEl = document.getElementById('code');
+const hlEl   = document.getElementById('hl');
+const outEl  = document.getElementById('out');
+const statusEl = document.getElementById('status');
+const verEl  = document.getElementById('ver');
+const runBtn = document.getElementById('runBtn');
+const sel = document.getElementById('examples');
+
+// HTML-escape, shared by the highlighter and the output pane.
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ---- editor syntax highlighting (transparent textarea over a coloured <pre>) ----
+// A lightweight regex tokenizer, not a full Raku parser — instant per keystroke,
+// but it can mis-colour the genuinely ambiguous bits (regex-vs-division, exotic
+// quotes/heredocs). Good enough to give the editor structure.
+const RAKU_KEYWORDS = new Set('my our has state let temp constant sub method submethod multi proto only if elsif else unless with without orwith while until for loop given when default repeat return return-rw make take take-rw gather do class role grammar token rule regex enum subset package module unit use need require does but is where returns handles will start react whenever supply emit done last next redo succeed proceed try and or not so xor andthen orelse lazy eager sink hyper race quietly BEGIN END ENTER LEAVE FIRST LAST NEXT KEEP UNDO PRE POST CATCH CONTROL INIT CHECK self'.split(' '));
+const RAKU_BUILTINS = new Set('Int UInt Str Num Rat FatRat Complex Bool Array Hash List Seq Map Bag Set Pair Range Junction Any Mu Cool Nil Whatever Callable Sub Method Signature Capture IO Date DateTime Version Order Numeric Real Stringy Buf Blob say print put note printf sprintf warn die fail map grep sort reverse join split first head tail elems end keys values pairs kv push pop shift unshift splice append prepend classify sum min max sqrt abs floor ceiling round sign exp log rand roll pick chars codes lc uc tc fc flip trans index substr comb match subst ord chr defined so chomp chop trim lines words slurp spurt open close get prompt exit sleep run shell zip cross flat reduce unique squish rotor True False Inf NaN pi tau e now time'.split(' '));
+const RAKU_RE = new RegExp([
+  /(#[^\n]*)/.source,                                              // comment
+  /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/.source,                 // string
+  /(\b0[xob][0-9a-fA-F_]+|\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)/.source, // number
+  /([$@%&][.!^*?=:~<]?(?:[A-Za-z_][\w'-]*|\d+|[/!_]))/.source,     // variable
+  /([A-Za-z_][\w'-]*)/.source,                                     // word
+].join('|'), 'g');
+function rakuHighlight(code) {
+  let out = '', last = 0, m; RAKU_RE.lastIndex = 0;
+  while ((m = RAKU_RE.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const t = m[0];
+    const cls = m[1] !== undefined ? 'c' : m[2] !== undefined ? 's' : m[3] !== undefined ? 'm'
+              : m[4] !== undefined ? 'v' : RAKU_KEYWORDS.has(t) ? 'k' : RAKU_BUILTINS.has(t) ? 'nb' : '';
+    out += cls ? `<span class="t-${cls}">${esc(t)}</span>` : esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+function syncScroll() { hlEl.scrollTop = codeEl.scrollTop; hlEl.scrollLeft = codeEl.scrollLeft; }
+function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); }
+codeEl.addEventListener('scroll', syncScroll);
+
+// Build the dropdown as <optgroup>s in first-seen category order. Each <option>
+// value is its index into EXAMPLES, so we can recover the full example object.
+const groups = {};
+EXAMPLES.forEach((ex, i) => {
+  const cat = ex.category || "Examples";
+  const g = groups[cat] || (groups[cat] = document.createElement('optgroup'), groups[cat].label = cat, groups[cat]);
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = ex.name;
+  if (ex.desc) o.title = ex.desc;
+  g.appendChild(o);
+});
+for (const cat of Object.keys(groups)) sel.appendChild(groups[cat]);
+
+function currentExample() { return EXAMPLES[+sel.value] || EXAMPLES[0]; }
+sel.onchange = () => { codeEl.value = currentExample().code; paintHL(); };
+codeEl.value = EXAMPLES[0].code;
+paintHL();
+
+// ---- shareable links (no server storage) ----
+// Three URL forms open the playground pre-filled:
+//   #code=<base64url(deflate-raw(source))>   self-contained link, made by Share
+//   ?gist=<id>[&file=<name>]                 a GitHub gist, fetched client-side
+//   ?gh=<owner>/<repo>/<branch>/<path>       a file in a GitHub repo (raw)
+// Append &run=1 (or #…&run for the hash form) to run the code on load.
+// The code always travels in the URL or comes from GitHub — this site stores
+// nothing, so there is nothing to spam.
+const SHARE_CAP = 200000;   // refuse to load shared programs beyond ~200 KB
+
+const b64u = {
+  enc(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  },
+  dec(str) {
+    const s = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+    const b = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+    return b;
+  },
+};
+async function deflate(bytes, Ctor) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new Ctor('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+const encodeShare = async code =>
+  b64u.enc(await deflate(new TextEncoder().encode(code), CompressionStream));
+const decodeShare = async s =>
+  new TextDecoder().decode(await deflate(b64u.dec(s), DecompressionStream));
+
+let autoRun = false;   // consumed by the worker's first 'ready' (see below)
+
+// Fetch the program named by ?gist= / ?gh= / ?url= query params. Returns
+// { code, from } when one matched, null when none did; throws on any failure.
+async function fetchShared(q) {
+  if (q.has('gist')) {
+    const id = q.get('gist');
+    if (!/^[0-9a-f]+$/i.test(id)) throw new Error('not a gist id: ' + id);
+    const r = await fetch('https://api.github.com/gists/' + id);
+    if (!r.ok) throw new Error('gist fetch failed: HTTP ' + r.status);
+    const files = Object.values((await r.json()).files || {});
+    const want = q.get('file');
+    const f = want ? files.find(f => f.filename === want)
+                   : files.find(f => /\.(raku|rakumod|p6|pl6)$/i.test(f.filename)) || files[0];
+    if (!f) throw new Error(want ? 'no file "' + want + '" in that gist' : 'empty gist');
+    const code = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+    return { code, from: 'gist ' + id + ' · ' + f.filename };
+  }
+  if (q.has('gh')) {
+    const spec = q.get('gh');
+    if (!/^[\w.-]+\/[\w.-]+\/[^\/]+\/.+/.test(spec) || spec.includes('..'))
+      throw new Error('expected gh=owner/repo/branch/path/to/file');
+    const r = await fetch('https://raw.githubusercontent.com/'
+      + spec.split('/').map(encodeURIComponent).join('/'));
+    if (!r.ok) throw new Error('GitHub fetch failed: HTTP ' + r.status);
+    return { code: await r.text(), from: 'github ' + spec };
+  }
+  if (q.has('url')) {
+    const u = q.get('url');
+    if (!/^https?:\/\//i.test(u)) throw new Error('only http(s) URLs can be opened');
+    const r = await fetch(u);
+    if (!r.ok) throw new Error('fetch failed: HTTP ' + r.status);
+    return { code: await r.text(), from: new URL(u).hostname };
+  }
+  return null;
+}
+
+// Put fetched/decoded code into the editor (both URL loading and the Open panel).
+function applyShared(code, from) {
+  if (code.length > SHARE_CAP)
+    throw new Error('shared program is too large ('
+      + (code.length / 1000 | 0) + ' KB > ' + (SHARE_CAP / 1000 | 0) + ' KB cap)');
+  codeEl.value = code.replace(/\r\n?/g, '\n');
+  paintHL();
+  statusEl.textContent = 'loaded from ' + from;
+}
+
+async function loadSharedCode() {
+  const q = new URLSearchParams(location.search);
+  // The hash form keeps everything client-side: fragments never reach the server.
+  const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  try {
+    let r = await fetchShared(q);
+    if (!r && h.has('code')) r = { code: await decodeShare(h.get('code')), from: 'shared link' };
+    if (!r) return;
+    applyShared(r.code, r.from);
+  } catch (err) {
+    clearScreen();
+    pushText('Could not load the shared code — ' + (err && err.message || err) + '\n', 'err');
+    statusEl.textContent = 'shared code failed to load';
+    return;
+  }
+  if (q.has('run') || h.has('run')) {
+    autoRun = true;
+    if (ready && !running) { autoRun = false; startRun(); }
+  }
+}
+loadSharedCode();
+
+// A button with a .popover panel: click toggles, outside click / Escape closes,
+// opening one closes the others. Returns the open/close function.
+const allPops = [];
+function popover(btn, pop, onOpen) {
+  function open(o) {
+    if (o) allPops.forEach(p => { if (p !== pop) p.hidden = true; });
+    pop.hidden = !o;
+    if (o && onOpen) onOpen();
+  }
+  allPops.push(pop);
+  btn.addEventListener('click', e => { e.stopPropagation(); open(pop.hidden); });
+  pop.addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => open(false));
+  pop.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); open(false); btn.focus(); }
+  });
+  return open;
+}
+
+// Share: compress the current source into a #code= link, copy it, and show it
+// in a popover so it's clear what just happened.
+const shareUrlEl = document.getElementById('shareUrl');
+const shareTitle = document.getElementById('shareTitle');
+popover(document.getElementById('shareBtn'), document.getElementById('sharePop'), async () => {
+  shareTitle.textContent = 'Making the link…';
+  shareUrlEl.value = '';
+  const tag = await encodeShare(codeEl.value);
+  const url = location.origin + location.pathname + '#code=' + tag;
+  // Keep the address bar in sync so plain copy-from-URL-bar also works.
+  history.replaceState(null, '', location.pathname + '#code=' + tag);
+  shareUrlEl.value = url;
+  try {
+    await navigator.clipboard.writeText(url);
+    shareTitle.textContent = 'Link copied to clipboard ✓';
+  } catch (e) {
+    shareTitle.textContent = 'Copy this link:';   // clipboard denied — select it instead
+  }
+  shareUrlEl.focus();
+  shareUrlEl.select();
+});
+shareUrlEl.addEventListener('click', () => shareUrlEl.select());
+
+// Open: paste a GitHub / gist / raw / plain https URL, load it into the editor.
+function parseExternalURL(s) {
+  s = s.trim();
+  if (/^[0-9a-f]{16,}$/i.test(s)) return { q: 'gist=' + s };           // bare gist id
+  if (/^[\w.-]+\/[\w.-]+\/[^\/]+\/.+/.test(s) && !/^https?:/i.test(s))
+    return { q: 'gh=' + s };                                           // bare owner/repo/branch/path
+  let u;
+  try { u = new URL(s); } catch (e) { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const parts = u.pathname.split('/').filter(Boolean);
+  if (u.hostname === 'gist.github.com' && parts.length) {
+    const id = parts[parts.length - 1];
+    if (/^[0-9a-f]+$/i.test(id)) return { q: 'gist=' + id };
+  }
+  if (u.hostname === 'github.com' && parts.length >= 5 && (parts[2] === 'blob' || parts[2] === 'raw'))
+    return { q: 'gh=' + [parts[0], parts[1]].concat(parts.slice(3)).join('/') };
+  if (u.hostname === 'raw.githubusercontent.com' && parts.length >= 4)
+    return { q: 'gh=' + parts.join('/') };
+  return { q: 'url=' + encodeURIComponent(s) };
+}
+const openUrlEl = document.getElementById('openUrl');
+const openGo = document.getElementById('openGo');
+const openErr = document.getElementById('openErr');
+const setOpenPop = popover(document.getElementById('openBtn'), document.getElementById('openPop'),
+  () => { openErr.hidden = true; openUrlEl.focus(); openUrlEl.select(); });
+async function doOpen() {
+  const spec = parseExternalURL(openUrlEl.value);
+  if (!spec) {
+    openErr.textContent = 'That doesn’t look like an https URL.';
+    openErr.hidden = false;
+    return;
+  }
+  openGo.disabled = true; openGo.textContent = '…';
+  try {
+    const r = await fetchShared(new URLSearchParams(spec.q));
+    applyShared(r.code, r.from);
+    // The address bar now IS the persistent link to this code.
+    history.replaceState(null, '', location.pathname + '?' + spec.q);
+    setOpenPop(false);
+  } catch (err) {
+    const msg = String(err && err.message || err);
+    openErr.textContent = msg + (/failed to fetch/i.test(msg)
+      ? ' — that host probably doesn’t allow cross-site (CORS) fetches.' : '');
+    openErr.hidden = false;
+  } finally {
+    openGo.disabled = false; openGo.textContent = 'Load';
+  }
+}
+openGo.addEventListener('click', doOpen);
+openUrlEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); doOpen(); }
+});
+
+// ---- output screen, with minimal ANSI handling for in-place redraws ----
+const OUT_CAP = 400000; // render at most ~400 KB of output
+let screen = [];        // [ [text, cls], … ]
+let screenChars = 0, truncated = false, renderPending = false;
+
+function renderScreen() {
+  renderPending = false;
+  outEl.innerHTML = screen.map(([s, cls]) => `<span class="${cls}">${esc(s)}</span>`).join('');
+  outEl.scrollTop = outEl.scrollHeight;
+}
+// Coalesce with a short timer, not requestAnimationFrame: rAF is paused in
+// background / non-visible tabs, which would silently drop all output there.
+function scheduleRender() { if (!renderPending) { renderPending = true; setTimeout(renderScreen, 16); } }
+function clearScreen() { screen = []; screenChars = 0; truncated = false; scheduleRender(); }
+function pushText(text, cls) {
+  if (truncated || !text) return;
+  if (screenChars + text.length > OUT_CAP) {
+    screen.push(["\n…output truncated at " + (OUT_CAP/1000|0) + " KB…\n", "meta"]);
+    truncated = true; scheduleRender(); return;
+  }
+  screenChars += text.length; screen.push([text, cls]); scheduleRender();
+}
+// Strip ANSI escapes, but treat screen-clear (\e[2J) and cursor-home (\e[H) as a
+// pane reset, so in-place animations (e.g. Game of Life) render frame by frame.
+const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+function feed(text, cls) {
+  ANSI.lastIndex = 0;
+  let last = 0, m;
+  while ((m = ANSI.exec(text))) {
+    pushText(text.slice(last, m.index), cls);
+    const f = m[0][m[0].length - 1];            // final byte of the escape
+    if (m[0] === '\x1b[2J' || m[0] === '\x1b[3J' || f === 'H' || f === 'f') clearScreen();
+    last = ANSI.lastIndex;                       // other escapes are dropped
+  }
+  pushText(text.slice(last), cls);
+}
+
+// ---- worker lifecycle ----
+let worker = null, ready = false, running = false, pendingRun = false, spinTimer = null;
+let loadTimer = null, loadTries = 0;
+const LOAD_TIMEOUT = 12000, MAX_LOAD_TRIES = 2;
+const RECURSION_MSG = "Recursion too deep for the browser (a few hundred levels). This is a"
+  + " WebAssembly stack limit, not a Raku one — the same code runs natively."
+  + " Rewrite it iteratively, or run it with native rakupp.";
+
+// The single Run button doubles as Stop while a program runs. After 300 ms a
+// spinner joins the "Stop" label so long runs visibly show progress (quick runs
+// don't flash it). The button's min-width fits every label so it never resizes.
+function setRunning(on) {
+  running = on;
+  runBtn.classList.toggle('running', on);
+  clearTimeout(spinTimer);
+  if (on) {
+    runBtn.textContent = '■ Stop';
+    spinTimer = setTimeout(() => {
+      if (running) runBtn.innerHTML = '<span class="spinner"></span> Stop';
+    }, 300);
+  } else {
+    runBtn.textContent = '▶ Run';
+  }
+}
+
+// If a worker never signals 'ready' (the WASM instantiate hung — usually memory
+// pressure after heavy use), don't leave the user stuck at "loading…" with only a
+// manual page reload to recover. Terminating the worker frees its memory, so a
+// fresh one usually loads; retry a couple of times, then fall back to a clear note.
+function onLoadStuck() {
+  if (loadTries < MAX_LOAD_TRIES) {
+    loadTries++;
+    verEl.textContent = "loading WebAssembly… (retry " + loadTries + ")";
+    worker.terminate();
+    createWorker();
+  } else {
+    verEl.textContent = "⚠ WebAssembly didn't load";
+    statusEl.textContent = "load stuck";
+    clearScreen();
+    pushText("The interpreter didn't finish loading — this can happen after heavy use\n"
+      + "(the browser tab running low on memory). Reloading the page fixes it.\n", "err");
+  }
+}
+
+function createWorker() {
+  worker = new Worker('worker.js');
+  clearTimeout(loadTimer);
+  loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
+  worker.onmessage = ({ data: m }) => {
+    if (m.type === 'ready' || m.type === 'loaderror') clearTimeout(loadTimer);
+    switch (m.type) {
+      case 'ready':
+        ready = true; runBtn.disabled = false; loadTries = 0;
+        verEl.textContent = "Raku++ " + m.version + " · compiled to WebAssembly · no server";
+        if (pendingRun) { pendingRun = false; startRun(); }   // a restart was queued
+        else if (autoRun) { autoRun = false; startRun(); }    // a shared link asked to run
+        else if (!running) statusEl.textContent = "ready";
+        break;
+      case 'out':
+        feed(m.text, m.cls);
+        break;
+      case 'done':
+        if (!screen.length) pushText(" (no output)\n", "meta");
+        pushText(`\n— exit ${m.rc} · ${m.ms} ms —`, "meta");
+        statusEl.textContent = `exit code ${m.rc} · ${m.ms} ms`;
+        setRunning(false);
+        break;
+      case 'runerror':
+        pushText("\n" + (m.deep ? RECURSION_MSG : "[host error] " + m.message) + "\n", "err");
+        statusEl.textContent = m.deep ? "recursion limit" : "host error";
+        setRunning(false);
+        break;
+      case 'loaderror':
+        verEl.textContent = "⚠ failed to load WebAssembly";
+        statusEl.textContent = "load failed";
+        clearScreen();
+        pushText("Could not load rakujs.wasm — " + m.message + "\n\n"
+          + "The playground must be served over HTTP, not opened as a file://.\n"
+          + "  cd rakujs/playground && python3 -m http.server 8000\n", "err");
+        setRunning(false);
+        break;
+    }
+  };
+  worker.onerror = e => {
+    clearTimeout(loadTimer);
+    verEl.textContent = "⚠ worker error";
+    statusEl.textContent = "worker error";
+    pushText("\n[worker error] " + (e.message || e) + "\n", "err");
+    setRunning(false);
+  };
+}
+createWorker();
+
+// A running program lives in a synchronous ccall, so the only way to interrupt
+// it is to terminate the worker. Kill it and spin up a fresh one (which re-posts
+// 'ready', re-enabling Run — and running any queued restart).
+function killAndRecreate() {
+  worker.terminate();
+  ready = false;
+  runBtn.disabled = true;
+  createWorker();
+}
+function startRun() {
+  clearScreen();
+  statusEl.textContent = "running…";
+  setRunning(true);
+  worker.postMessage({ type: 'run', src: codeEl.value });
+}
+
+function run() {
+  if (running) {                 // Run during a run = restart with the current source
+    pendingRun = true;
+    killAndRecreate();
+    setRunning(false);
+    statusEl.textContent = "restarting…";
+    return;
+  }
+  if (!ready) return;
+  startRun();
+}
+
+// Stop a runaway (or just long) program: kill the worker, don't re-run.
+function stop() {
+  if (!running) return;
+  pendingRun = false;
+  killAndRecreate();
+  setRunning(false);
+  pushText("\n— stopped —", "meta");
+  statusEl.textContent = "stopped";
+}
+
+// Click the button to run; while running it shows Stop and clicking halts.
+runBtn.onclick = () => running ? stop() : run();
+document.addEventListener('keydown', e => {
+  // ⌘/Ctrl-Enter always runs the current source (restarts if one is running);
+  // Escape stops.
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); run(); }
+  else if (e.key === "Escape" && running) { e.preventDefault(); stop(); }
+});
+// Safety net: editing the source frees the Run button if it ever got stuck
+// disabled while idle. Never touches the mid-run state.
+codeEl.addEventListener('input', () => { paintHL(); if (!running && ready) runBtn.disabled = false; });
+
+// Editor keys: Enter keeps the current line's indentation; Tab indents (Shift-Tab
+// outdents), and a selection spanning lines indents/outdents every line it touches.
+const INDENT = '    ';   // 4 spaces
+codeEl.addEventListener('keydown', e => {
+  // Enter → newline + the leading whitespace of the current line.
+  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+    const v = codeEl.value, s = codeEl.selectionStart;
+    const from = v.lastIndexOf('\n', s - 1) + 1;
+    const indent = (v.slice(from, s).match(/^[ \t]*/) || [''])[0];
+    e.preventDefault();
+    document.execCommand('insertText', false, '\n' + indent);   // fires input → paintHL
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  e.preventDefault();
+  const el = codeEl, v = el.value, s = el.selectionStart, en = el.selectionEnd;
+  const hasSel = s !== en;
+
+  // Plain Tab with no selection: just insert an indent at the caret (keeps undo).
+  if (!e.shiftKey && !hasSel) { document.execCommand('insertText', false, INDENT); return; }
+
+  // Otherwise operate on the whole lines the selection touches.
+  const from = v.lastIndexOf('\n', s - 1) + 1;
+  let end = en;
+  if (hasSel && end > from && v[end - 1] === '\n') end--;   // selection ending at a line start doesn't grab that line
+  let to = v.indexOf('\n', end); if (to === -1) to = v.length;
+  const lines = v.slice(from, to).split('\n');
+
+  let firstCut = 0, region;
+  if (e.shiftKey) {
+    region = lines.map((l, i) => {
+      const cut = (l.match(/^( {1,4}|\t)/) || [''])[0].length;
+      if (i === 0) firstCut = cut;
+      return l.slice(cut);
+    }).join('\n');
+  } else {
+    region = lines.map(l => INDENT + l).join('\n');
+  }
+
+  el.value = v.slice(0, from) + region + v.slice(to);
+  if (hasSel) { el.selectionStart = from; el.selectionEnd = from + region.length; }
+  else { el.selectionStart = el.selectionEnd = Math.max(from, s - firstCut); }
+  paintHL();
+});
+</script>
+</body>
+</html>
