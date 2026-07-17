@@ -100,8 +100,11 @@
                    color: var(--ink); background: var(--panel2);
                    border: 1px solid var(--border); border-radius: 6px; }
   .popover .pop-row { display: flex; gap: 8px; }
-  .popover .pop-note { color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+  .popover .pop-sub { color: var(--muted); font-size: 11.5px; margin: 10px 0 4px; }
+  .popover .pop-sub:first-of-type { margin-top: 0; }
+  .popover .pop-note { color: var(--muted); font-size: 11.5px; margin-top: 10px; }
   .popover .pop-err { color: var(--accent); font-size: 12px; margin-top: 8px; }
+  .popover button[data-copy] { cursor: pointer; white-space: nowrap; }
   /* One button for both Run and Stop. Fixed min-width fits "▶ Run", "■ Stop" and
      "⟳ Stop", so it never changes size and nothing to its left shifts. */
   button.run { background: var(--accent); color: #fff; border-color: transparent;
@@ -118,8 +121,12 @@
          background: var(--border); flex: 1; min-height: 0; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
   .pane { background: var(--bg); display: flex; flex-direction: column; min-height: 0; }
-  .pane > .label { padding: 6px 14px; font-size: 11px; letter-spacing: .08em;
-                   text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .pane > .label { display: flex; align-items: center; padding: 4px 14px; font-size: 11px;
+                   letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+                   border-bottom: 1px solid var(--border); min-height: 29px; }
+  .copy-btn { margin-left: auto; font-size: 11px; letter-spacing: normal; text-transform: none;
+              padding: 2px 9px; border-radius: 6px; cursor: pointer; color: var(--muted); }
+  .copy-btn:hover { color: var(--ink); }
   /* Editor: a transparent textarea sits exactly over a highlighted <pre>. Both
      must share identical metrics or the caret drifts from the coloured text. */
   .editor { position: relative; flex: 1; min-height: 0; }
@@ -188,11 +195,20 @@
     </div>
   </span>
   <span class="dropdown">
-    <button id="shareBtn" title="Copy a link that opens the playground with this code">🔗 Share</button>
+    <button id="shareBtn" title="Get a link that opens the playground with this code">🔗 Share</button>
     <div class="popover" id="sharePop" hidden>
-      <div class="pop-title" id="shareTitle">Link copied to clipboard ✓</div>
-      <input type="text" id="shareUrl" readonly>
-      <div class="pop-note">The program travels inside the link itself —
+      <div class="pop-title">Share this program</div>
+      <div class="pop-sub" id="shareSrcLabel" hidden>Link to the original source:</div>
+      <div class="pop-row" id="shareSrcRow" hidden>
+        <input type="text" id="shareUrlSrc" readonly>
+        <button data-copy="shareUrlSrc">Copy</button>
+      </div>
+      <div class="pop-sub">Link with the code embedded:</div>
+      <div class="pop-row">
+        <input type="text" id="shareUrlCode" readonly>
+        <button data-copy="shareUrlCode">Copy</button>
+      </div>
+      <div class="pop-note">The embedded link carries the program inside the URL itself —
         nothing is stored on this server.</div>
     </div>
   </span>
@@ -200,14 +216,14 @@
 </header>
 <main>
   <section class="pane">
-    <div class="label">Raku source</div>
+    <div class="label">Raku source <button class="copy-btn" id="copyCodeBtn" title="Copy the source code">Copy</button></div>
     <div class="editor">
       <pre id="hl" aria-hidden="true"></pre>
       <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
     </div>
   </section>
   <section class="pane">
-    <div class="label">Output</div>
+    <div class="label">Output <button class="copy-btn" id="copyOutBtn" title="Copy the program output">Copy</button></div>
     <pre id="out"><span class="meta">Press ▶ Run (or ⌘/Ctrl-Enter).</span></pre>
     <div class="status" id="status"></div>
   </section>
@@ -365,14 +381,31 @@ async function fetchShared(q) {
   return null;
 }
 
+// When code came from an external URL, remember the canonical query ('gh=…',
+// 'gist=…', 'url=…') and the exact loaded text. If the user hasn't edited the
+// code, Share can then offer the original-source link, not just an embedded one.
+let sharedSource = null;
+let sharedPristine = null;
+
+// The canonical share query for the given params, or null if none apply.
+function canonicalQuery(q) {
+  if (q.has('gist')) return 'gist=' + q.get('gist')
+    + (q.has('file') ? '&file=' + encodeURIComponent(q.get('file')) : '');
+  if (q.has('gh'))  return 'gh=' + q.get('gh');
+  if (q.has('url')) return 'url=' + encodeURIComponent(q.get('url'));
+  return null;
+}
+
 // Put fetched/decoded code into the editor (both URL loading and the Open panel).
-function applyShared(code, from) {
+function applyShared(code, from, srcQuery) {
   if (code.length > SHARE_CAP)
     throw new Error('shared program is too large ('
       + (code.length / 1000 | 0) + ' KB > ' + (SHARE_CAP / 1000 | 0) + ' KB cap)');
   codeEl.value = code.replace(/\r\n?/g, '\n');
   paintHL();
   statusEl.textContent = 'loaded from ' + from;
+  sharedSource = srcQuery || null;
+  sharedPristine = sharedSource ? codeEl.value : null;
 }
 
 async function loadSharedCode() {
@@ -383,7 +416,7 @@ async function loadSharedCode() {
     let r = await fetchShared(q);
     if (!r && h.has('code')) r = { code: await decodeShare(h.get('code')), from: 'shared link' };
     if (!r) return;
-    applyShared(r.code, r.from);
+    applyShared(r.code, r.from, canonicalQuery(q));
   } catch (err) {
     clearScreen();
     pushText('Could not load the shared code — ' + (err && err.message || err) + '\n', 'err');
@@ -416,28 +449,60 @@ function popover(btn, pop, onOpen) {
   return open;
 }
 
-// Share: compress the current source into a #code= link, copy it, and show it
-// in a popover so it's clear what just happened.
-const shareUrlEl = document.getElementById('shareUrl');
-const shareTitle = document.getElementById('shareTitle');
+// Click-to-copy with a brief "Copied ✓" flash on the button that was clicked.
+function flashBtn(btn, msg) {
+  if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+  btn.textContent = msg;
+  clearTimeout(btn._flashT);
+  btn._flashT = setTimeout(() => { btn.textContent = btn.dataset.orig; }, 1300);
+}
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  return ok;
+}
+function copyText(text, btn) {
+  const done = ok => flashBtn(btn, ok ? 'Copied ✓' : 'Copy failed');
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(() => done(true), () => done(legacyCopy(text)));
+  else done(legacyCopy(text));
+}
+
+// Share: a popover with the link(s) to this program, each with a Copy button.
+// If the code was loaded from GitHub/a URL and hasn't been edited, the link to
+// that original source comes first; the compressed #code= form is always there.
+const shareSrcLabel = document.getElementById('shareSrcLabel');
+const shareSrcRow   = document.getElementById('shareSrcRow');
+const shareUrlSrc   = document.getElementById('shareUrlSrc');
+const shareUrlCode  = document.getElementById('shareUrlCode');
 popover(document.getElementById('shareBtn'), document.getElementById('sharePop'), async () => {
-  shareTitle.textContent = 'Making the link…';
-  shareUrlEl.value = '';
+  const pristine = sharedSource !== null && codeEl.value === sharedPristine;
+  shareSrcLabel.hidden = shareSrcRow.hidden = !pristine;
+  if (pristine) shareUrlSrc.value = location.origin + location.pathname + '?' + sharedSource;
+  shareUrlCode.value = '…';
   const tag = await encodeShare(codeEl.value);
-  const url = location.origin + location.pathname + '#code=' + tag;
-  // Keep the address bar in sync so plain copy-from-URL-bar also works.
-  history.replaceState(null, '', location.pathname + '#code=' + tag);
-  shareUrlEl.value = url;
-  try {
-    await navigator.clipboard.writeText(url);
-    shareTitle.textContent = 'Link copied to clipboard ✓';
-  } catch (e) {
-    shareTitle.textContent = 'Copy this link:';   // clipboard denied — select it instead
-  }
-  shareUrlEl.focus();
-  shareUrlEl.select();
+  shareUrlCode.value = location.origin + location.pathname + '#code=' + tag;
+  // Keep the address bar in sync with the best link for this state.
+  history.replaceState(null, '', pristine
+    ? location.pathname + '?' + sharedSource
+    : location.pathname + '#code=' + tag);
 });
-shareUrlEl.addEventListener('click', () => shareUrlEl.select());
+document.querySelectorAll('#sharePop button[data-copy]').forEach(btn => {
+  btn.addEventListener('click', () =>
+    copyText(document.getElementById(btn.dataset.copy).value, btn));
+});
+[shareUrlSrc, shareUrlCode].forEach(el => el.addEventListener('click', () => el.select()));
+
+// Copy buttons in the pane headers: the source code, and the program's output
+// (the actual stdout/stderr text — status notes like "— exit 0 —" are skipped).
+document.getElementById('copyCodeBtn').addEventListener('click', e =>
+  copyText(codeEl.value, e.currentTarget));
+document.getElementById('copyOutBtn').addEventListener('click', e =>
+  copyText(screen.filter(([, cls]) => cls !== 'meta').map(([t]) => t).join(''), e.currentTarget));
 
 // Open: paste a GitHub / gist / raw / plain https URL, load it into the editor.
 function parseExternalURL(s) {
@@ -474,7 +539,7 @@ async function doOpen() {
   openGo.disabled = true; openGo.textContent = '…';
   try {
     const r = await fetchShared(new URLSearchParams(spec.q));
-    applyShared(r.code, r.from);
+    applyShared(r.code, r.from, spec.q);
     // The address bar now IS the persistent link to this code.
     history.replaceState(null, '', location.pathname + '?' + spec.q);
     setOpenPop(false);
