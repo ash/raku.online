@@ -147,6 +147,8 @@
     'button:hover{border-color:var(--muted);}',
     'button.run{background:var(--accent);color:#fff;border-color:transparent;font-weight:600;min-width:74px;}',
     'button.run.on{background:var(--bg);color:var(--accent);border-color:var(--accent);}',
+    'button.copy-code{font-size:11px;padding:2px 8px;color:var(--muted);}',
+    'button.copy-code:hover{color:var(--ink);}',
     '.ed{position:relative;}',
     'pre.hl,textarea{margin:0;padding:10px 12px;border:0;font-family:var(--mono);font-size:13px;',
     '  line-height:1.5;tab-size:4;white-space:pre;overflow:auto;}',
@@ -216,7 +218,8 @@
 
     var wrap = document.createElement('div'); wrap.className = 'wrap'; root.appendChild(wrap);
     wrap.innerHTML =
-      '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span><span class="st"></span></div>'
+      '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span>'
+      + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button></div>'
       + '<div class="ed"><pre class="hl"></pre><textarea spellcheck="false" autocomplete="off" '
       + 'autocapitalize="off" wrap="off"></textarea></div>'
       + '<div class="io in-wrap" hidden><div class="lbl">Standard input</div>'
@@ -233,6 +236,7 @@
     var outWrap = wrap.querySelector('.out-wrap');
     var outEl = wrap.querySelector('.out');
     var copyBtn = wrap.querySelector('.copy');
+    var copyCodeBtn = wrap.querySelector('.copy-code');
 
     var self = this;
     ta.value = code;
@@ -251,12 +255,16 @@
     if (opts.stdin != null) { inTa.value = opts.stdin; inWrap.hidden = false; }
     else if (readsStdin(code)) inWrap.hidden = false;
 
-    runBtn.addEventListener('click', function () { requestRun(self); });
-    copyBtn.addEventListener('click', function () {
-      var text = (self._screen || []).filter(function (p) { return p[1] !== 'meta'; })
-        .map(function (p) { return p[0]; }).join('');
+    // Copy `text` to the clipboard and briefly flash the button that was clicked.
+    function copyTo(btn, text) {
+      function flash() { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1200); }
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash, flash); else flash();
-      function flash() { copyBtn.textContent = 'Copied'; setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1200); }
+    }
+    runBtn.addEventListener('click', function () { requestRun(self); });
+    copyCodeBtn.addEventListener('click', function () { copyTo(copyCodeBtn, ta.value); });
+    copyBtn.addEventListener('click', function () {
+      copyTo(copyBtn, (self._screen || []).filter(function (p) { return p[1] !== 'meta'; })
+        .map(function (p) { return p[0]; }).join(''));
     });
 
     // ---- output screen (coalesced render, minimal ANSI screen-clear) ----
