@@ -207,6 +207,8 @@
   </span>
   <label class="tag" for="examples">example:</label>
   <select id="examples"></select>
+  <label class="tag" id="sampleLabel" for="samples" hidden>program:</label>
+  <select id="samples" hidden title="Pick a sample program for this interpreter to run"></select>
   <span class="dropdown">
     <button id="openBtn" title="Load code from GitHub or another URL">📂 Open…</button>
     <div class="popover" id="openPop" hidden>
@@ -279,7 +281,7 @@
 
 <!-- The ?v= tag busts caches on new releases: deploy.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
-<script src="examples.js?v=d9d62337"></script>
+<script src="examples.js?v=e2e50afa"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
 // stays free to animate the spinner and stream output live. See worker.js.
@@ -297,6 +299,8 @@ const statusEl = document.getElementById('status');
 const verEl  = document.getElementById('ver');
 const runBtn = document.getElementById('runBtn');
 const sel = document.getElementById('examples');
+const sampleSel = document.getElementById('samples');
+const sampleLabel = document.getElementById('sampleLabel');
 
 // Stdin strip: collapsed by default, toggled by its bar; anything typed here is
 // what the program reads from standard input on the next Run.
@@ -441,11 +445,35 @@ function currentExample() { return EXAMPLES[+sel.value] || EXAMPLES[0]; }
 // so fill + reveal it, or clear + hide it when the example has none.
 function loadExample(ex) {
   codeEl.value = ex.code;
-  stdinEl.value = ex.stdin || '';
-  showStdin(!!ex.stdin);
+  // A language interpreter offers several sample programs to run (its stdin box
+  // is the editable "source file"); a picker beside the example dropdown chooses
+  // among them. Plain examples have none, so the picker hides.
+  if (ex.samples && ex.samples.length) {
+    sampleSel.innerHTML = '';
+    ex.samples.forEach((s, i) => {
+      const o = document.createElement('option');
+      o.value = i; o.textContent = s.name;
+      sampleSel.appendChild(o);
+    });
+    sampleSel.value = '0';
+    sampleLabel.hidden = sampleSel.hidden = false;
+    stdinEl.value = ex.samples[0].code;
+    showStdin(true);
+  } else {
+    sampleLabel.hidden = sampleSel.hidden = true;
+    stdinEl.value = ex.stdin || '';
+    showStdin(!!ex.stdin);
+  }
   paintHL();
 }
 sel.onchange = () => loadExample(currentExample());
+sampleSel.onchange = () => {
+  const ex = currentExample();
+  if (ex.samples && ex.samples[+sampleSel.value]) {
+    stdinEl.value = ex.samples[+sampleSel.value].code;
+    showStdin(true);
+  }
+};
 loadExample(EXAMPLES[0]);
 
 // ---- shareable links (no server storage) ----
@@ -797,7 +825,7 @@ function onLoadStuck() {
 }
 
 function createWorker() {
-  worker = new Worker('worker.js?v=d9d62337');   // tag kept in sync by deploy.sh
+  worker = new Worker('worker.js?v=e2e50afa');   // tag kept in sync by deploy.sh
   clearTimeout(loadTimer);
   loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
   worker.onmessage = ({ data: m }) => {
