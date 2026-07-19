@@ -130,18 +130,26 @@
   var STYLE = [
     ':host{all:initial;display:block;margin:1em 0;}',
     '*{box-sizing:border-box;}',
+    // The palette (bg/panel/text AND the VS Code token colours) lives in CSS
+    // variables so it switches as one unit — Light+ by default, Dark+ under
+    // system dark OR a forced data-theme. Same scheme as course.raku.org.
     '.wrap{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;--accent:#d33682;',
     '  --accent2:#268bd2;--border:#d7dae0;',
+    '  --tk:#0000ff;--tnb:#267f99;--tv:#001080;--ts:#a31515;--tm:#098658;--tc:#008000;',
     '  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;',
     '  border:1px solid var(--border);border-radius:8px;overflow:hidden;',
     '  background:var(--bg);color:var(--ink);',
     '  font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}',
-    '@media (prefers-color-scheme:dark){.wrap{--bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;',
-    '  --muted:#9aa0ab;--border:#3a3f4b;}}',
-    // data-theme="light|dark" forces a theme (attribute selectors beat the
-    // media query, whatever the OS says); no attribute = follow the OS.
-    '.wrap[data-theme="light"]{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;--border:#d7dae0;}',
-    '.wrap[data-theme="dark"]{--bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;--muted:#9aa0ab;--border:#3a3f4b;}',
+    // Dark+ when forced dark…
+    '.wrap[data-theme="dark"]{--bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;--muted:#9aa0ab;--border:#3a3f4b;',
+    ' --tk:#569cd6;--tnb:#4ec9b0;--tv:#9cdcfe;--ts:#ce9178;--tm:#b5cea8;--tc:#6a9955;}',
+    // …or when the OS is dark and nothing forces light.
+    '@media (prefers-color-scheme:dark){.wrap:not([data-theme="light"]){',
+    ' --bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;--muted:#9aa0ab;--border:#3a3f4b;',
+    ' --tk:#569cd6;--tnb:#4ec9b0;--tv:#9cdcfe;--ts:#ce9178;--tm:#b5cea8;--tc:#6a9955;}}',
+    // Forced light must win even when the OS is dark (already light by default).
+    '.wrap[data-theme="light"]{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;--border:#d7dae0;',
+    ' --tk:#0000ff;--tnb:#267f99;--tv:#001080;--ts:#a31515;--tm:#098658;--tc:#008000;}',
     '.bar{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel);',
     '  border-bottom:1px solid var(--border);}',
     '.bar .sp{flex:1;}',
@@ -169,10 +177,10 @@
     '  max-height:60vh;overflow:auto;}',
     'pre.out .err{color:var(--accent);}',
     'pre.out .meta{color:var(--muted);}',
-    '.t-k{color:#0000ff;}.t-nb{color:#267f99;}.t-v{color:#001080;}.t-s{color:#a31515;}',
-    '.t-m{color:#098658;}.t-c{color:#008000;}',
-    '@media (prefers-color-scheme:dark){.t-k{color:#569cd6;}.t-nb{color:#4ec9b0;}.t-v{color:#9cdcfe;}',
-    '  .t-s{color:#ce9178;}.t-m{color:#b5cea8;}.t-c{color:#6a9955;}}'
+    // VS Code token colours, driven by the palette variables above so they
+    // track the theme (system or forced) exactly like the background does.
+    '.t-k{color:var(--tk);}.t-nb{color:var(--tnb);}.t-v{color:var(--tv);}',
+    '.t-s{color:var(--ts);}.t-m{color:var(--tm);}.t-c{color:var(--tc);}'
   ].join('');
 
   var esc = function (s) { return s.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
