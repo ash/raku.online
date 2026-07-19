@@ -244,7 +244,14 @@
     var st = document.createElement('style'); st.textContent = STYLE; root.appendChild(st);
 
     var wrap = document.createElement('div'); wrap.className = 'wrap'; root.appendChild(wrap);
-    if (opts.theme === 'light' || opts.theme === 'dark') wrap.setAttribute('data-theme', opts.theme);
+    if (opts.theme === 'light' || opts.theme === 'dark') {
+      wrap.setAttribute('data-theme', opts.theme);
+    } else {
+      // No forced theme: follow the host page's active theme, now and on change.
+      var ht0 = hostTheme();
+      if (ht0) wrap.setAttribute('data-theme', ht0);
+      FOLLOWERS.push(wrap);
+    }
     wrap.innerHTML =
       '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span>'
       + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button>'
@@ -350,6 +357,25 @@
   // ---- boot -------------------------------------------------------------
   // A page-wide theme default from the script tag: <script … data-theme="dark">.
   var DEFAULT_THEME = script.getAttribute('data-theme') || '';
+
+  // Follow the host page's active theme when a block doesn't force its own. A host
+  // that themes itself can expose the resolved theme as
+  // <html data-theme-active="dark|light">; editors then track it, live.
+  var FOLLOWERS = [];
+  function hostTheme() {
+    var t = document.documentElement.getAttribute('data-theme-active');
+    return (t === 'dark' || t === 'light') ? t : '';
+  }
+  function syncFollowers() {
+    var ht = hostTheme();
+    FOLLOWERS.forEach(function (w) {
+      if (ht) w.setAttribute('data-theme', ht); else w.removeAttribute('data-theme');
+    });
+  }
+  try {
+    new MutationObserver(syncFollowers).observe(
+      document.documentElement, { attributes: true, attributeFilter: ['data-theme-active'] });
+  } catch (e) {}
 
   function enhance(el, extra) {
     if (el.__rakupp) return; el.__rakupp = true;
