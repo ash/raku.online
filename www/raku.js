@@ -1,5 +1,4 @@
 // raku.js — drop the raku.online playground into any web page.
-// (Served as raku.js; embed.js is a backward-compatible alias.)
 //
 //   <script src="https://raku.online/raku.js"></script>
 //
