@@ -12,14 +12,15 @@ visitor's machine, and the site itself is five static files.
 
 ```
 www/
-  index.html      the playground page (editor, output pane, share/open UI)
-  worker.js       runs the WASM interpreter off the main thread
-  embed.js           drop-in widget for embedding editors on other pages
-  embed-demo.html    live guide + examples for embed.js
-  embed-builder.html paste code → copy a ready embed snippet (live preview)
-  rakujs.js       Emscripten-generated loader        (built artifact)
-  rakujs.wasm     the Raku++ interpreter, ~4.6 MB    (built artifact)
-  examples.js     the example dropdown data          (built artifact)
+  index.html          the playground page (editor, output pane, share/open UI)
+  worker.js           runs the WASM interpreter off the main thread
+  raku.js             drop-in widget for embedding editors on other pages
+  embed.js            backward-compatible alias of raku.js (synced by deploy.sh)
+  embed-demo.html     live guide + examples for raku.js
+  embed-builder.html  paste code → copy a ready embed snippet (live preview)
+  rakujs.js           Emscripten-generated loader        (built artifact)
+  rakujs.wasm         the Raku++ interpreter, ~4.6 MB    (built artifact)
+  examples.js         the example dropdown data          (built artifact)
 ```
 
 The three built artifacts are committed so the repo is deployable as-is.
@@ -55,13 +56,13 @@ Example:
 https://raku.online/?gh=ash/rakupp/main/examples/anagrams.raku&run=1
 ```
 
-## Embedding on other pages (`embed.js`)
+## Embedding on other pages (`raku.js`)
 
-`www/embed.js` turns the playground into a widget any site can drop in. One
+`www/raku.js` turns the playground into a widget any site can drop in. One
 script tag, then any element with `data-raku` becomes a runnable editor:
 
 ```html
-<script src="https://raku.online/embed.js"></script>
+<script src="https://raku.online/raku.js"></script>
 
 <!-- shows the code, and makes it runnable -->
 <pre data-raku>say "Hello from an embedded editor!";</pre>
@@ -81,13 +82,14 @@ Prism / highlight.js emit) become runnable with no `data-raku`, so authors add
 the script once and change nothing else:
 
 ```html
-<script src="https://raku.online/embed.js" data-auto></script>
+<script src="https://raku.online/raku.js" data-auto></script>
 ```
 
 `data-auto` matches `language-raku` on the `<code>` (highlighters) **or** a
 bare `raku`/`language-raku` class on the `<pre>` itself.
 
 Attach programmatically with `RakuEmbed.enhance(el, opts)` / `RakuEmbed.enhanceAll()`.
+(The older URL `https://raku.online/embed.js` still works — it's a byte-identical alias.)
 
 **No hand-written HTML?** The **[embed builder](https://raku.online/embed-builder.html)**
 (`www/embed-builder.html`) lets you paste code, tick options, and copy a
@@ -99,7 +101,7 @@ Gutenberg rejects a bare boolean attribute, so `<pre data-raku>` in a Custom
 HTML block fails validation — write `data-raku=""` (explicit empty value) and
 it passes. Better, skip Custom HTML entirely:
 
-1. Load `embed.js` **with `data-auto`** once (theme/footer, gated by category —
+1. Load `raku.js` **with `data-auto`** once (theme/footer, gated by category —
    see the WordPress note below).
 2. Use the normal **Code block**, and in its **Advanced → Additional CSS
    class(es)** field add `raku`.

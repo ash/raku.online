@@ -13,13 +13,17 @@ SRC="$(dirname "$0")/www"
 # of them changes (examples can change without a new interpreter build).
 # Edits www/index.html in place — commit it so the repo mirrors the live site.
 TAG=$(cat "$SRC"/rakujs.wasm "$SRC"/rakujs.js "$SRC"/examples.js "$SRC"/worker.js | md5 -q | cut -c1-8)
-# index.html loads worker/examples with the tag; embed.js passes it to the
+# index.html loads worker/examples with the tag; raku.js passes it to the
 # engine it importScripts, so embedded editors also refetch on a new release.
-sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$TAG/g" "$SRC"/index.html "$SRC"/embed.js
+sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$TAG/g" "$SRC"/index.html "$SRC"/raku.js
 echo "cache tag: ?v=$TAG"
 
+# embed.js is a backward-compatible alias of raku.js (old embeds / the spec
+# site still reference it). Keep it byte-identical, regenerated from raku.js.
+cp "$SRC"/raku.js "$SRC"/embed.js
+
 cp "$SRC"/index.html "$SRC"/worker.js "$SRC"/examples.js \
-   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/embed.js \
+   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/raku.js "$SRC"/embed.js \
    "$SRC"/embed-demo.html "$SRC"/embed-builder.html "$DEST"/
 
 # macOS cp over sshfs leaves AppleDouble files, which the server would serve.
