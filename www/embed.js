@@ -138,6 +138,10 @@
     '  font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}',
     '@media (prefers-color-scheme:dark){.wrap{--bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;',
     '  --muted:#9aa0ab;--border:#3a3f4b;}}',
+    // data-theme="light|dark" forces a theme (attribute selectors beat the
+    // media query, whatever the OS says); no attribute = follow the OS.
+    '.wrap[data-theme="light"]{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;--border:#d7dae0;}',
+    '.wrap[data-theme="dark"]{--bg:#1f2127;--panel:#2b2e37;--ink:#e6e6e6;--muted:#9aa0ab;--border:#3a3f4b;}',
     '.bar{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel);',
     '  border-bottom:1px solid var(--border);}',
     '.bar .sp{flex:1;}',
@@ -217,6 +221,7 @@
     var st = document.createElement('style'); st.textContent = STYLE; root.appendChild(st);
 
     var wrap = document.createElement('div'); wrap.className = 'wrap'; root.appendChild(wrap);
+    if (opts.theme === 'light' || opts.theme === 'dark') wrap.setAttribute('data-theme', opts.theme);
     wrap.innerHTML =
       '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span>'
       + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button></div>'
@@ -301,18 +306,39 @@
   }
 
   // ---- boot -------------------------------------------------------------
-  function enhance(el) {
+  // A page-wide theme default from the script tag: <script … data-theme="dark">.
+  var DEFAULT_THEME = script.getAttribute('data-theme') || '';
+
+  function enhance(el, extra) {
     if (el.__rakupp) return; el.__rakupp = true;
-    var opts = {};
-    if (el.hasAttribute('data-stdin')) opts.stdin = el.getAttribute('data-stdin');
-    if (el.hasAttribute('data-rows')) opts.rows = parseInt(el.getAttribute('data-rows'), 10) || 0;
-    var autorun = el.hasAttribute('data-run');
+    var opts = extra || {};
+    if (el.hasAttribute && el.hasAttribute('data-stdin')) opts.stdin = el.getAttribute('data-stdin');
+    if (el.hasAttribute && el.hasAttribute('data-rows')) opts.rows = parseInt(el.getAttribute('data-rows'), 10) || 0;
+    if (opts.theme == null) opts.theme = (el.getAttribute && el.getAttribute('data-theme')) || DEFAULT_THEME;
+    var autorun = opts.run || (el.hasAttribute && el.hasAttribute('data-run'));
     var block = new Block(el, opts);
     if (autorun) requestRun(block);
     return block;
   }
+
+  // Add `data-auto` to the script tag to also turn existing Raku code blocks
+  // into runnable editors — the standard markdown / Prism / highlight.js shape
+  // `<pre><code class="language-raku">…` — so authors change nothing but add the
+  // script once. `data-auto="LANG"` overrides the recognised language classes.
+  var AUTO = script.hasAttribute('data-auto');
+  var AUTO_LANGS = (script.getAttribute('data-auto') || 'raku perl6 raku6').split(/[\s,]+/).filter(Boolean);
+  var AUTO_RE = new RegExp('\\blanguage-(?:' + AUTO_LANGS.join('|') + ')\\b');
+  function autoTargets(root) {
+    var out = [];
+    (root || document).querySelectorAll('pre > code[class]').forEach(function (code) {
+      if (AUTO_RE.test(code.className) && code.parentNode) out.push(code.parentNode);
+    });
+    return out;
+  }
+
   function enhanceAll(root) {
-    (root || document).querySelectorAll(SELECTOR).forEach(enhance);
+    (root || document).querySelectorAll(SELECTOR).forEach(function (el) { enhance(el); });
+    if (AUTO) autoTargets(root).forEach(function (el) { enhance(el); });
   }
 
   // Programmatic API for pages that build editors dynamically.

@@ -14,8 +14,9 @@ visitor's machine, and the site itself is five static files.
 www/
   index.html      the playground page (editor, output pane, share/open UI)
   worker.js       runs the WASM interpreter off the main thread
-  embed.js        drop-in widget for embedding editors on other pages
-  embed-demo.html live guide + examples for embed.js
+  embed.js           drop-in widget for embedding editors on other pages
+  embed-demo.html    live guide + examples for embed.js
+  embed-builder.html paste code → copy a ready embed snippet (live preview)
   rakujs.js       Emscripten-generated loader        (built artifact)
   rakujs.wasm     the Raku++ interpreter, ~4.6 MB    (built artifact)
   examples.js     the example dropdown data          (built artifact)
@@ -69,10 +70,25 @@ script tag, then any element with `data-raku` becomes a runnable editor:
 <div data-raku data-rows="6"></div>
 ```
 
-Attributes: `data-run` (run once on load), `data-stdin="…"` (preset standard
-input and reveal the input box), `data-rows="N"` (initial height). Change the
-selector with `<script src="…/embed.js" data-selector="pre.raku">`, or attach
-programmatically with `RakuEmbed.enhance(el)` / `RakuEmbed.enhanceAll()`.
+Per-element attributes: `data-run` (run once on load), `data-stdin="…"` (preset
+standard input and reveal the input box), `data-rows="N"` (initial height),
+`data-theme="light|dark"` (force a theme; default follows the OS).
+
+Script-tag options: `data-theme="…"` (page-wide theme default), `data-selector`
+(what to enhance, default `[data-raku]`), and `data-auto` — with it, ordinary
+highlighter code blocks (`<pre><code class="language-raku">`, what markdown /
+Prism / highlight.js emit) become runnable with no `data-raku`, so authors add
+the script once and change nothing else:
+
+```html
+<script src="https://raku.online/embed.js" data-auto></script>
+```
+
+Attach programmatically with `RakuEmbed.enhance(el, opts)` / `RakuEmbed.enhanceAll()`.
+
+**No hand-written HTML?** The **[embed builder](https://raku.online/embed-builder.html)**
+(`www/embed-builder.html`) lets you paste code, tick options, and copy a
+ready snippet with a live preview.
 
 Design points that make it embed-safe:
 

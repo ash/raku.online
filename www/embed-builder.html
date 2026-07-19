@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embed builder — raku.online</title>
+<style>
+  :root { --bg:#f6f7f9; --panel:#fff; --panel2:#eef0f3; --ink:#1b1d23; --muted:#5b616e;
+          --accent:#d33682; --accent2:#268bd2; --border:#dcdfe5;
+          --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1b1d23; --panel:#24262e; --panel2:#2b2e37; --ink:#e6e6e6; --muted:#9aa0ab; --border:#363a45; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .page { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .2rem; }
+  h1 .dot { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  a { color: var(--accent2); }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+          color: var(--muted); margin: 1rem 0 .35rem; }
+  textarea, input, select { font: inherit; color: var(--ink); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  textarea { font-family: var(--mono); font-size: 13px; resize: vertical; }
+  #code { min-height: 8em; }
+  #stdin { min-height: 3em; }
+  .opts { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; margin-top: 1rem; }
+  .opts > div { flex: 0 0 auto; }
+  .opts label { margin: 0 0 .3rem; }
+  .opts select, .opts input[type=number] { width: auto; }
+  .check { display: flex; align-items: center; gap: 7px; }
+  .check input { width: auto; }
+  .check label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
+  #preview { border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px;
+             background: var(--panel2); }
+  .snippet-row { position: relative; }
+  #snippet { min-height: 6em; background: var(--panel2); }
+  #copyBtn { position: absolute; top: 8px; right: 8px; cursor: pointer; padding: 4px 12px;
+             background: var(--accent); color: #fff; border-color: transparent; border-radius: 7px;
+             font-weight: 600; }
+  .note { color: var(--muted); font-size: 13px; margin-top: .6rem; }
+  code { font-family: var(--mono); background: var(--panel2); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Embed builder <span class="dot">·</span> raku<span class="dot">.</span>online</h1>
+  <p class="sub">Paste Raku code, choose options, copy the snippet into your page. The preview below is live.
+     <a href="embed-demo.html">Full embedding guide →</a></p>
+
+  <label for="code">Raku code</label>
+  <textarea id="code" spellcheck="false">my @squares = (1..10).map(* ** 2);
+say @squares.join(", ");
+say "sum = ", @squares.sum;</textarea>
+
+  <div class="opts">
+    <div class="check"><input type="checkbox" id="run"><label for="run">Run on load</label></div>
+    <div>
+      <label for="theme">Theme</label>
+      <select id="theme">
+        <option value="">Follow the site</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+    <div>
+      <label for="rows">Rows</label>
+      <input type="number" id="rows" min="1" max="40" placeholder="auto" style="width:5em">
+    </div>
+    <div class="check"><input type="checkbox" id="useStdin"><label for="useStdin">Standard input</label></div>
+  </div>
+  <div id="stdinWrap" hidden>
+    <label for="stdin">Standard input (fed to get / lines / prompt)</label>
+    <textarea id="stdin" spellcheck="false"></textarea>
+  </div>
+
+  <h2>Live preview</h2>
+  <div id="preview"></div>
+
+  <h2>Copy this into your page</h2>
+  <div class="snippet-row">
+    <textarea id="snippet" readonly spellcheck="false"></textarea>
+    <button id="copyBtn">Copy</button>
+  </div>
+  <p class="note">Include the <code>&lt;script&gt;</code> line once per page; repeat only the
+     <code>&lt;pre&gt;</code> block for more editors. On WordPress, add the script to your theme/footer
+     and put the <code>&lt;pre&gt;</code> block in the post.</p>
+</div>
+
+<script src="embed.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var codeEl = $('code'), runEl = $('run'), themeEl = $('theme'), rowsEl = $('rows'),
+      useStdinEl = $('useStdin'), stdinWrap = $('stdinWrap'), stdinEl = $('stdin'),
+      previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
+
+  var htmlEsc = function (s) { return s.replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  function opts() {
+    return {
+      code: codeEl.value,
+      run: runEl.checked,
+      theme: themeEl.value,
+      rows: rowsEl.value ? parseInt(rowsEl.value, 10) : 0,
+      stdin: useStdinEl.checked ? stdinEl.value : null
+    };
+  }
+
+  function buildSnippet(o) {
+    var attrs = '';
+    if (o.run) attrs += ' data-run';
+    if (o.theme) attrs += ' data-theme="' + o.theme + '"';
+    if (o.rows) attrs += ' data-rows="' + o.rows + '"';
+    if (o.stdin != null) attrs += ' data-stdin="' + htmlEsc(o.stdin) + '"';
+    return '<script src="' + location.origin + '/embed.js"><\/script>\n'
+         + '<pre data-raku' + attrs + '>' + htmlEsc(o.code) + '</pre>';
+  }
+
+  // Rebuild the live preview from scratch each change (enhance replaces the
+  // element with a shadow host, so we start from a fresh <pre> every time).
+  function rebuild() {
+    var o = opts();
+    snippetEl.value = buildSnippet(o);
+    previewEl.innerHTML = '';
+    var pre = document.createElement('pre');
+    pre.textContent = o.code;
+    previewEl.appendChild(pre);
+    // Don't auto-run the preview on every keystroke — only when "Run on load" is on.
+    window.RakuEmbed.enhance(pre, { run: o.run, theme: o.theme, rows: o.rows, stdin: o.stdin == null ? undefined : o.stdin });
+  }
+
+  var timer = null;
+  function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 350); }
+
+  [codeEl, stdinEl].forEach(function (el) { el.addEventListener('input', schedule); });
+  [runEl, themeEl, rowsEl].forEach(function (el) { el.addEventListener('change', rebuild); });
+  useStdinEl.addEventListener('change', function () { stdinWrap.hidden = !useStdinEl.checked; rebuild(); });
+
+  copyBtn.addEventListener('click', function () {
+    function flash() { copyBtn.textContent = 'Copied ✓'; setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1300); }
+    if (navigator.clipboard) navigator.clipboard.writeText(snippetEl.value).then(flash, flash); else flash();
+  });
+
+  rebuild();
+</script>
+</body>
+</html>

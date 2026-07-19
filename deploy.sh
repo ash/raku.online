@@ -19,7 +19,8 @@ sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$TAG/g" "$SRC"/index.html "$SRC"/embed.js
 echo "cache tag: ?v=$TAG"
 
 cp "$SRC"/index.html "$SRC"/worker.js "$SRC"/examples.js \
-   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/embed.js "$SRC"/embed-demo.html "$DEST"/
+   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/embed.js \
+   "$SRC"/embed-demo.html "$SRC"/embed-builder.html "$DEST"/
 
 # macOS cp over sshfs leaves AppleDouble files, which the server would serve.
 rm -f "$DEST"/._*
