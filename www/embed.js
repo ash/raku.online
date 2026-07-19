@@ -161,6 +161,9 @@
     'button.run.on{background:var(--bg);color:var(--accent);border-color:var(--accent);}',
     'button.copy-code{font-size:11px;padding:2px 8px;color:var(--muted);}',
     'button.copy-code:hover{color:var(--ink);}',
+    'button.open-ext{padding:3px 6px;color:var(--muted);display:inline-flex;align-items:center;}',
+    'button.open-ext:hover{color:var(--accent2);}',
+    'button.open-ext svg{display:block;}',
     '.ed{position:relative;}',
     'pre.hl,textarea{margin:0;padding:10px 12px;border:0;font-family:var(--mono);font-size:13px;',
     '  line-height:1.5;tab-size:4;white-space:pre;overflow:auto;}',
@@ -217,6 +220,18 @@
   // Does the program read standard input? Then reveal the input box up front.
   function readsStdin(code) { return /\$\*IN\b|(?:^|[^.\w])(?:get|prompt|lines)\b/.test(code); }
 
+  // Compress text the way the playground's #code= links do (deflate-raw,
+  // base64url) so the ↗ button can hand the current program to raku.online.
+  function b64uEnc(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function encodeShare(text) {
+    var stream = new Blob([new TextEncoder().encode(text)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Response(stream).arrayBuffer().then(function (buf) { return b64uEnc(new Uint8Array(buf)); });
+  }
+
   var ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 
   function Block(srcEl, opts) {
@@ -232,7 +247,11 @@
     if (opts.theme === 'light' || opts.theme === 'dark') wrap.setAttribute('data-theme', opts.theme);
     wrap.innerHTML =
       '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span>'
-      + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button></div>'
+      + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button>'
+      + '<button class="open-ext" title="Open in the raku.online playground" aria-label="Open in the raku.online playground">'
+      + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" '
+      + 'stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>'
+      + '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></button></div>'
       + '<div class="ed"><pre class="hl"></pre><textarea spellcheck="false" autocomplete="off" '
       + 'autocapitalize="off" wrap="off"></textarea></div>'
       + '<div class="io in-wrap" hidden><div class="lbl">Standard input</div>'
@@ -250,6 +269,7 @@
     var outEl = wrap.querySelector('.out');
     var copyBtn = wrap.querySelector('.copy');
     var copyCodeBtn = wrap.querySelector('.copy-code');
+    var openExtBtn = wrap.querySelector('.open-ext');
 
     var self = this;
     ta.value = code;
@@ -275,6 +295,20 @@
     }
     runBtn.addEventListener('click', function () { requestRun(self); });
     copyCodeBtn.addEventListener('click', function () { copyTo(copyCodeBtn, ta.value); });
+    // Open the current program in the full raku.online playground, in a new tab.
+    // The tab is opened synchronously (so pop-up blockers allow it) and its URL
+    // filled in once the code is compressed into a #code= link.
+    openExtBtn.addEventListener('click', function () {
+      var w = window.open('about:blank', '_blank');
+      var stdinText = inWrap.hidden ? '' : inTa.value;
+      if (!window.CompressionStream) { if (w) w.location = BASE; return; }
+      Promise.all([encodeShare(ta.value), stdinText ? encodeShare(stdinText) : Promise.resolve('')])
+        .then(function (r) {
+          var url = BASE + '#code=' + r[0] + (r[1] ? '&stdin=' + r[1] : '');
+          if (w) w.location = url; else window.open(url, '_blank');
+        })
+        .catch(function () { if (w) w.location = BASE; });
+    });
     copyBtn.addEventListener('click', function () {
       copyTo(copyBtn, (self._screen || []).filter(function (p) { return p[1] !== 'meta'; })
         .map(function (p) { return p[0]; }).join(''));
