@@ -12,11 +12,13 @@ visitor's machine, and the site itself is five static files.
 
 ```
 www/
-  index.html    the playground page (editor, output pane, share/open UI)
-  worker.js     runs the WASM interpreter off the main thread
-  rakujs.js     Emscripten-generated loader        (built artifact)
-  rakujs.wasm   the Raku++ interpreter, ~4.4 MB    (built artifact)
-  examples.js   the example dropdown data          (built artifact)
+  index.html      the playground page (editor, output pane, share/open UI)
+  worker.js       runs the WASM interpreter off the main thread
+  embed.js        drop-in widget for embedding editors on other pages
+  embed-demo.html live guide + examples for embed.js
+  rakujs.js       Emscripten-generated loader        (built artifact)
+  rakujs.wasm     the Raku++ interpreter, ~4.6 MB    (built artifact)
+  examples.js     the example dropdown data          (built artifact)
 ```
 
 The three built artifacts are committed so the repo is deployable as-is.
@@ -51,6 +53,57 @@ Example:
 ```
 https://raku.online/?gh=ash/rakupp/main/examples/anagrams.raku&run=1
 ```
+
+## Embedding on other pages (`embed.js`)
+
+`www/embed.js` turns the playground into a widget any site can drop in. One
+script tag, then any element with `data-raku` becomes a runnable editor:
+
+```html
+<script src="https://raku.online/embed.js"></script>
+
+<!-- shows the code, and makes it runnable -->
+<pre data-raku>say "Hello from an embedded editor!";</pre>
+
+<!-- an empty editor to type into -->
+<div data-raku data-rows="6"></div>
+```
+
+Attributes: `data-run` (run once on load), `data-stdin="…"` (preset standard
+input and reveal the input box), `data-rows="N"` (initial height). Change the
+selector with `<script src="…/embed.js" data-selector="pre.raku">`, or attach
+programmatically with `RakuEmbed.enhance(el)` / `RakuEmbed.enhanceAll()`.
+
+Design points that make it embed-safe:
+
+- **Each editor is in its own Shadow DOM** — the host page's CSS can't reach in
+  and the widget's styles can't leak out, so it looks identical on any site.
+- **All blocks on a page share one Web Worker / one WASM instance** (built from
+  a Blob so it works cross-origin), so ten code blocks still download the
+  interpreter once. Programs run one at a time.
+- The **input box appears only when the code reads stdin** (`get`/`lines`/
+  `prompt`/`$*IN`); the **output box appears on the first run**.
+
+The **🔗 Share** popover in the full playground generates a ready-to-paste
+snippet for the current program. A live guide lives at
+[`/embed-demo.html`](www/embed-demo.html).
+
+**WordPress note:** post content often strips `<script>`, so add the one script
+line to the theme/footer (or via a plugin) and use `<pre data-raku>` blocks in
+posts — those are plain content and survive sanitizing.
+
+**Server requirement — CORS.** Cross-origin embeds fetch the engine from
+raku.online, so the static assets must send `Access-Control-Allow-Origin`.
+Add to the nginx server block:
+
+```nginx
+location ~* \.(wasm|js)$ {
+    add_header Access-Control-Allow-Origin *;
+}
+```
+
+Without it, embeds on other domains fail to load the WASM (same-origin pages,
+i.e. raku.online itself, are unaffected).
 
 ## Deploy
 

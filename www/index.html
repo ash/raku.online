@@ -96,9 +96,12 @@
              background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
              box-shadow: 0 8px 30px rgba(0,0,0,.28); }
   .popover .pop-title { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
-  .popover input { width: 100%; font: 12px/1.4 var(--font-mono); padding: 6px 8px;
+  .popover input, .popover textarea { width: 100%; font: 12px/1.4 var(--font-mono); padding: 6px 8px;
                    color: var(--ink); background: var(--panel2);
                    border: 1px solid var(--border); border-radius: 6px; }
+  .popover textarea { resize: vertical; white-space: pre; overflow: auto; }
+  .popover .pop-note code { font-family: var(--font-mono); font-size: .95em; }
+  .popover .pop-note a { color: var(--accent2); text-decoration: none; }
   .popover .pop-row { display: flex; gap: 8px; }
   .popover .pop-sub { color: var(--muted); font-size: 11.5px; margin: 10px 0 4px; }
   .popover .pop-sub:first-of-type { margin-top: 0; }
@@ -239,6 +242,14 @@
       </div>
       <div class="pop-note">The embedded link carries the program inside the URL itself —
         nothing is stored on this server.</div>
+      <div class="pop-sub">Embed a runnable editor on your own page:</div>
+      <div class="pop-row">
+        <textarea id="embedSnippet" readonly rows="3"></textarea>
+        <button data-copy="embedSnippet">Copy</button>
+      </div>
+      <div class="pop-note">Paste this where you want the editor. Include the
+        <code>&lt;script&gt;</code> line once per page. <a href="embed-demo.html"
+        target="_blank" rel="noopener">See the guide →</a></div>
     </div>
   </span>
   <button class="run" id="runBtn" disabled>▶ Run</button>
@@ -663,6 +674,8 @@ const shareSrcLabel = document.getElementById('shareSrcLabel');
 const shareSrcRow   = document.getElementById('shareSrcRow');
 const shareUrlSrc   = document.getElementById('shareUrlSrc');
 const shareUrlCode  = document.getElementById('shareUrlCode');
+const embedSnippet  = document.getElementById('embedSnippet');
+const htmlEsc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 popover(document.getElementById('shareBtn'), document.getElementById('sharePop'), async () => {
   const pristine = sharedSource !== null && codeEl.value === sharedPristine;
   shareSrcLabel.hidden = shareSrcRow.hidden = !pristine;
@@ -672,6 +685,12 @@ popover(document.getElementById('shareBtn'), document.getElementById('sharePop')
   if (pristine) shareUrlSrc.value = location.origin + location.pathname + '?' + sharedSource + sTag;
   const tag = await encodeShare(codeEl.value);
   shareUrlCode.value = location.origin + location.pathname + '#code=' + tag + sTag;
+  // A ready-to-paste embed: the current code in a <pre data-raku>, plus stdin as
+  // a data-stdin attribute, and the one script line.
+  const stdinAttr = stdinEl.value ? ' data-stdin="' + htmlEsc(stdinEl.value) + '"' : '';
+  embedSnippet.value =
+    '<script src="' + location.origin + '/embed.js"><\/script>\n'
+    + '<pre data-raku' + stdinAttr + '>' + htmlEsc(codeEl.value) + '</pre>';
   // Keep the address bar in sync with the best link for this state.
   history.replaceState(null, '', pristine
     ? location.pathname + '?' + sharedSource + sTag
@@ -681,7 +700,7 @@ document.querySelectorAll('#sharePop button[data-copy]').forEach(btn => {
   btn.addEventListener('click', () =>
     copyText(document.getElementById(btn.dataset.copy).value, btn));
 });
-[shareUrlSrc, shareUrlCode].forEach(el => el.addEventListener('click', () => el.select()));
+[shareUrlSrc, shareUrlCode, embedSnippet].forEach(el => el.addEventListener('click', () => el.select()));
 
 // Copy buttons in the pane headers: the source code, and the program's output
 // (the actual stdout/stderr text — status notes like "— exit 0 —" are skipped).
