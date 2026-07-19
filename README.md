@@ -84,11 +84,28 @@ the script once and change nothing else:
 <script src="https://raku.online/embed.js" data-auto></script>
 ```
 
+`data-auto` matches `language-raku` on the `<code>` (highlighters) **or** a
+bare `raku`/`language-raku` class on the `<pre>` itself.
+
 Attach programmatically with `RakuEmbed.enhance(el, opts)` / `RakuEmbed.enhanceAll()`.
 
 **No hand-written HTML?** The **[embed builder](https://raku.online/embed-builder.html)**
 (`www/embed-builder.html`) lets you paste code, tick options, and copy a
 ready snippet with a live preview.
+
+### WordPress block editor
+
+Gutenberg rejects a bare boolean attribute, so `<pre data-raku>` in a Custom
+HTML block fails validation — write `data-raku=""` (explicit empty value) and
+it passes. Better, skip Custom HTML entirely:
+
+1. Load `embed.js` **with `data-auto`** once (theme/footer, gated by category —
+   see the WordPress note below).
+2. Use the normal **Code block**, and in its **Advanced → Additional CSS
+   class(es)** field add `raku`.
+
+That Code block becomes a runnable editor — native editor UI, only the blocks
+you tag, no plugin, no Custom HTML.
 
 Design points that make it embed-safe:
 

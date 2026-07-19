@@ -369,11 +369,21 @@
   // script once. `data-auto="LANG"` overrides the recognised language classes.
   var AUTO = script.hasAttribute('data-auto');
   var AUTO_LANGS = (script.getAttribute('data-auto') || 'raku perl6 raku6').split(/[\s,]+/).filter(Boolean);
-  var AUTO_RE = new RegExp('\\blanguage-(?:' + AUTO_LANGS.join('|') + ')\\b');
+  // Match `language-raku` (markdown/Prism/highlight.js) OR a bare `raku` class —
+  // the latter is what WordPress's core Code block emits when you add "raku" (or
+  // "language-raku") in its Advanced → Additional CSS class(es) field.
+  var AUTO_RE = new RegExp('\\b(?:language-)?(?:' + AUTO_LANGS.join('|') + ')\\b');
   function autoTargets(root) {
-    var out = [];
-    (root || document).querySelectorAll('pre > code[class]').forEach(function (code) {
-      if (AUTO_RE.test(code.className) && code.parentNode) out.push(code.parentNode);
+    var out = [], seen = [];
+    function add(pre) { if (pre && seen.indexOf(pre) < 0) { seen.push(pre); out.push(pre); } }
+    var r = root || document;
+    // The class can sit on the inner <code> (highlighters) or on the <pre>
+    // itself (WordPress Code block, plain markup).
+    r.querySelectorAll('pre > code[class]').forEach(function (code) {
+      if (AUTO_RE.test(code.className)) add(code.parentNode);
+    });
+    r.querySelectorAll('pre[class]').forEach(function (pre) {
+      if (AUTO_RE.test(pre.className)) add(pre);
     });
     return out;
   }
