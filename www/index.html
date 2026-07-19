@@ -488,6 +488,37 @@ sampleSel.onchange = () => {
 };
 loadExample(EXAMPLES[0]);
 
+// A predefined example can be shared with a short, stable link — its name as a
+// slug — instead of the long #code= blob: ?ex=fizzbuzz, and for an interpreter
+// showcase the chosen sample program as ?ex=perl-interpreter&in=quicksort.
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+function exampleBySlug(sl) { return EXAMPLES.find(e => slug(e.name) === sl); }
+// Select + load the example named by ?ex=; honour ?in= to pick its sample.
+function loadExampleFromQuery(q) {
+  const ex = exampleBySlug(q.get('ex'));
+  if (!ex) throw new Error('unknown example: ' + q.get('ex'));
+  sel.value = String(EXAMPLES.indexOf(ex));
+  loadExample(ex);
+  if (q.has('in') && ex.samples) {
+    const i = ex.samples.findIndex(s => slug(s.name) === q.get('in'));
+    if (i >= 0) { sampleSel.value = String(i); stdinEl.value = ex.samples[i].code; showStdin(true); }
+  }
+  return ex;
+}
+// The short ?ex=…[&in=…] query for the current editor+stdin, or null when they
+// don't exactly match a predefined example (and one of its samples / its stdin).
+function matchExampleQuery() {
+  for (const ex of EXAMPLES) {
+    if (ex.code !== codeEl.value) continue;
+    if (ex.samples && ex.samples.length) {
+      const s = ex.samples.find(s => s.code === stdinEl.value);
+      return s ? 'ex=' + slug(ex.name) + '&in=' + slug(s.name) : null;
+    }
+    return stdinEl.value === (ex.stdin || '') ? 'ex=' + slug(ex.name) : null;
+  }
+  return null;
+}
+
 // ---- shareable links (no server storage) ----
 // Three URL forms open the playground pre-filled:
 //   #code=<base64url(deflate-raw(source))>   self-contained link, made by Share
@@ -602,16 +633,26 @@ async function loadSharedCode() {
   const q = new URLSearchParams(location.search);
   // The hash form keeps everything client-side: fragments never reach the server.
   const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  // Yield once so the rest of this script finishes first: we're called during
+  // top-level execution, but the output helpers (clearScreen/pushText) and their
+  // `let` state are declared further down. Resuming as a microtask guarantees
+  // they exist even on the synchronous ?ex= path.
+  await Promise.resolve();
   try {
-    let r = await fetchShared(q);
-    if (!r && h.has('code')) r = { code: await decodeShare(h.get('code')), from: 'shared link' };
-    if (!r) return;
-    applyShared(r.code, r.from, canonicalQuery(q));
-    // A shared link can carry the program's input too (same encoding as #code=).
-    const sIn = q.get('stdin') || h.get('stdin');
-    if (sIn) {
-      stdinEl.value = await decodeShare(sIn);
-      showStdin(true);
+    if (q.has('ex')) {
+      const ex = loadExampleFromQuery(q);
+      statusEl.textContent = 'example: ' + ex.name;
+    } else {
+      let r = await fetchShared(q);
+      if (!r && h.has('code')) r = { code: await decodeShare(h.get('code')), from: 'shared link' };
+      if (!r) return;
+      applyShared(r.code, r.from, canonicalQuery(q));
+      // A shared link can carry the program's input too (same encoding as #code=).
+      const sIn = q.get('stdin') || h.get('stdin');
+      if (sIn) {
+        stdinEl.value = await decodeShare(sIn);
+        showStdin(true);
+      }
     }
   } catch (err) {
     clearScreen();
@@ -678,12 +719,20 @@ const shareUrlCode  = document.getElementById('shareUrlCode');
 const embedSnippet  = document.getElementById('embedSnippet');
 const htmlEsc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 popover(document.getElementById('shareBtn'), document.getElementById('sharePop'), async () => {
-  const pristine = sharedSource !== null && codeEl.value === sharedPristine;
-  shareSrcLabel.hidden = shareSrcRow.hidden = !pristine;
-  shareUrlCode.value = '…';
-  // Non-empty stdin travels with both link forms (same encoding as #code=).
+  // Non-empty stdin travels with the #code= and gh/gist forms (same encoding).
   const sTag = stdinEl.value ? '&stdin=' + await encodeShare(stdinEl.value) : '';
-  if (pristine) shareUrlSrc.value = location.origin + location.pathname + '?' + sharedSource + sTag;
+  // Prefer a short link: a predefined example is ?ex=slug[&in=sample] and needs
+  // no stdin tag (its sample IS the input); otherwise a pristine gh/gist/url
+  // source keeps its own stdin tag.
+  const exQuery = matchExampleQuery();
+  const pristineSrc = !exQuery && sharedSource !== null && codeEl.value === sharedPristine;
+  const srcQuery = exQuery ? exQuery : pristineSrc ? sharedSource + sTag : null;
+  shareSrcLabel.hidden = shareSrcRow.hidden = !srcQuery;
+  if (srcQuery) {
+    shareSrcLabel.textContent = exQuery ? 'Short link to this example:' : 'Link to the original source:';
+    shareUrlSrc.value = location.origin + location.pathname + '?' + srcQuery;
+  }
+  shareUrlCode.value = '…';
   const tag = await encodeShare(codeEl.value);
   shareUrlCode.value = location.origin + location.pathname + '#code=' + tag + sTag;
   // A ready-to-paste embed: the current code in a <pre data-raku>, plus stdin as
@@ -693,8 +742,8 @@ popover(document.getElementById('shareBtn'), document.getElementById('sharePop')
     '<script src="' + location.origin + '/embed.js"><\/script>\n'
     + '<pre data-raku' + stdinAttr + '>' + htmlEsc(codeEl.value) + '</pre>';
   // Keep the address bar in sync with the best link for this state.
-  history.replaceState(null, '', pristine
-    ? location.pathname + '?' + sharedSource + sTag
+  history.replaceState(null, '', srcQuery
+    ? location.pathname + '?' + srcQuery
     : location.pathname + '#code=' + tag + sTag);
 });
 document.querySelectorAll('#sharePop button[data-copy]').forEach(btn => {
