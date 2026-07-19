@@ -279,7 +279,7 @@
 
 <!-- The ?v= tag busts caches on new releases: deploy.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
-<script src="examples.js?v=5e57deab"></script>
+<script src="examples.js?v=d9d62337"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
 // stays free to animate the spinner and stream output live. See worker.js.
@@ -436,9 +436,17 @@ EXAMPLES.forEach((ex, i) => {
 for (const cat of Object.keys(groups)) sel.appendChild(groups[cat]);
 
 function currentExample() { return EXAMPLES[+sel.value] || EXAMPLES[0]; }
-sel.onchange = () => { codeEl.value = currentExample().code; paintHL(); };
-codeEl.value = EXAMPLES[0].code;
-paintHL();
+// Load an example into the editor. An example may also preset the stdin box —
+// the language interpreters use it as the editable "source file" they run —
+// so fill + reveal it, or clear + hide it when the example has none.
+function loadExample(ex) {
+  codeEl.value = ex.code;
+  stdinEl.value = ex.stdin || '';
+  showStdin(!!ex.stdin);
+  paintHL();
+}
+sel.onchange = () => loadExample(currentExample());
+loadExample(EXAMPLES[0]);
 
 // ---- shareable links (no server storage) ----
 // Three URL forms open the playground pre-filled:
@@ -789,7 +797,7 @@ function onLoadStuck() {
 }
 
 function createWorker() {
-  worker = new Worker('worker.js?v=5e57deab');   // tag kept in sync by deploy.sh
+  worker = new Worker('worker.js?v=d9d62337');   // tag kept in sync by deploy.sh
   clearTimeout(loadTimer);
   loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
   worker.onmessage = ({ data: m }) => {
