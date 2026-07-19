@@ -15,7 +15,6 @@ www/
   index.html          the playground page (editor, output pane, share/open UI)
   worker.js           runs the WASM interpreter off the main thread
   raku.js             drop-in widget for embedding editors on other pages
-  embed.js            backward-compatible alias of raku.js (synced by deploy.sh)
   embed-demo.html     live guide + examples for raku.js
   embed-builder.html  paste code → copy a ready embed snippet (live preview)
   rakujs.js           Emscripten-generated loader        (built artifact)
@@ -89,7 +88,6 @@ the script once and change nothing else:
 bare `raku`/`language-raku` class on the `<pre>` itself.
 
 Attach programmatically with `RakuEmbed.enhance(el, opts)` / `RakuEmbed.enhanceAll()`.
-(The older URL `https://raku.online/embed.js` still works — it's a byte-identical alias.)
 
 **No hand-written HTML?** The **[embed builder](https://raku.online/embed-builder.html)**
 (`www/embed-builder.html`) lets you paste code, tick options, and copy a

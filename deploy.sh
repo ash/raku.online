@@ -18,16 +18,13 @@ TAG=$(cat "$SRC"/rakujs.wasm "$SRC"/rakujs.js "$SRC"/examples.js "$SRC"/worker.j
 sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$TAG/g" "$SRC"/index.html "$SRC"/raku.js
 echo "cache tag: ?v=$TAG"
 
-# embed.js is a backward-compatible alias of raku.js (old embeds / the spec
-# site still reference it). Keep it byte-identical, regenerated from raku.js.
-cp "$SRC"/raku.js "$SRC"/embed.js
-
 cp "$SRC"/index.html "$SRC"/worker.js "$SRC"/examples.js \
-   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/raku.js "$SRC"/embed.js \
+   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/raku.js \
    "$SRC"/embed-demo.html "$SRC"/embed-builder.html "$DEST"/
 
 # macOS cp over sshfs leaves AppleDouble files, which the server would serve.
-rm -f "$DEST"/._*
+# Also drop the retired embed.js alias if it lingers on the server.
+rm -f "$DEST"/._* "$DEST"/embed.js
 
 echo "deployed to $DEST:"
 ls -l "$DEST"
