@@ -41,6 +41,11 @@ Append `&run=1` to run the code on load. The **🔗 Share** button builds the
 `#code=` form and copies it; the **📂 Open…** button accepts a pasted GitHub /
 gist / raw URL and rewrites the address bar to the matching persistent link.
 
+A collapsible **Stdin** strip under the editor feeds the program's standard
+input (`get`, `lines`, `prompt`, `$*IN` — EOF after the last line, fresh per
+run). Non-empty input travels with share links as `&stdin=<data>`, encoded the
+same way as `#code=`.
+
 Example:
 
 ```

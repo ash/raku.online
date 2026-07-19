@@ -127,6 +127,16 @@
   .copy-btn { margin-left: auto; font-size: 11px; letter-spacing: normal; text-transform: none;
               padding: 2px 9px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .copy-btn:hover { color: var(--ink); }
+  /* Stdin: a collapsible strip under the editor. The bar toggles the textarea. */
+  .stdin-bar { border-bottom: 0; border-top: 1px solid var(--border);
+               cursor: pointer; user-select: none; }
+  .stdin-bar:hover { color: var(--ink); }
+  .stdin-bar .stdin-hint { margin-left: 6px; text-transform: none; letter-spacing: normal;
+                           opacity: .8; }
+  textarea#stdin { flex: 0 0 auto; height: 96px; margin: 0; padding: 10px 14px; border: 0;
+                   outline: 0; resize: none; background: transparent; color: var(--ink);
+                   font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
+                   white-space: pre; overflow: auto; }
   /* Editor: a transparent textarea sits exactly over a highlighted <pre>. Both
      must share identical metrics or the caret drifts from the coloured text. */
   .editor { position: relative; flex: 1; min-height: 0; }
@@ -221,6 +231,13 @@
       <pre id="hl" aria-hidden="true"></pre>
       <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
     </div>
+    <div class="label stdin-bar" id="stdinBar" role="button" aria-expanded="false"
+         title="Text the program reads from standard input (get, lines, prompt, $*IN)">
+      <span id="stdinChev">▸</span>&nbsp;Stdin
+      <span class="stdin-hint">— input for get / lines / prompt</span>
+    </div>
+    <textarea id="stdin" spellcheck="false" autocomplete="off" autocapitalize="off"
+              wrap="off" hidden placeholder="One line per get; the program sees EOF after the last line."></textarea>
   </section>
   <section class="pane">
     <div class="label">Output <button class="copy-btn" id="copyOutBtn" title="Copy the program output">Copy</button></div>
@@ -243,7 +260,7 @@
 
 <!-- The ?v= tag busts caches on new releases: deploy.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
-<script src="examples.js?v=b07e3aae"></script>
+<script src="examples.js?v=33502cc8"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
 // stays free to animate the spinner and stream output live. See worker.js.
@@ -261,6 +278,18 @@ const statusEl = document.getElementById('status');
 const verEl  = document.getElementById('ver');
 const runBtn = document.getElementById('runBtn');
 const sel = document.getElementById('examples');
+
+// Stdin strip: collapsed by default, toggled by its bar; anything typed here is
+// what the program reads from standard input on the next Run.
+const stdinEl = document.getElementById('stdin');
+const stdinBar = document.getElementById('stdinBar');
+const stdinChev = document.getElementById('stdinChev');
+function showStdin(on) {
+  stdinEl.hidden = !on;
+  stdinChev.textContent = on ? '▾' : '▸';
+  stdinBar.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+stdinBar.addEventListener('click', () => showStdin(stdinEl.hidden));
 
 // HTML-escape, shared by the highlighter and the output pane.
 const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -432,6 +461,12 @@ async function loadSharedCode() {
     if (!r && h.has('code')) r = { code: await decodeShare(h.get('code')), from: 'shared link' };
     if (!r) return;
     applyShared(r.code, r.from, canonicalQuery(q));
+    // A shared link can carry the program's input too (same encoding as #code=).
+    const sIn = q.get('stdin') || h.get('stdin');
+    if (sIn) {
+      stdinEl.value = await decodeShare(sIn);
+      showStdin(true);
+    }
   } catch (err) {
     clearScreen();
     pushText('Could not load the shared code — ' + (err && err.message || err) + '\n', 'err');
@@ -497,14 +532,16 @@ const shareUrlCode  = document.getElementById('shareUrlCode');
 popover(document.getElementById('shareBtn'), document.getElementById('sharePop'), async () => {
   const pristine = sharedSource !== null && codeEl.value === sharedPristine;
   shareSrcLabel.hidden = shareSrcRow.hidden = !pristine;
-  if (pristine) shareUrlSrc.value = location.origin + location.pathname + '?' + sharedSource;
   shareUrlCode.value = '…';
+  // Non-empty stdin travels with both link forms (same encoding as #code=).
+  const sTag = stdinEl.value ? '&stdin=' + await encodeShare(stdinEl.value) : '';
+  if (pristine) shareUrlSrc.value = location.origin + location.pathname + '?' + sharedSource + sTag;
   const tag = await encodeShare(codeEl.value);
-  shareUrlCode.value = location.origin + location.pathname + '#code=' + tag;
+  shareUrlCode.value = location.origin + location.pathname + '#code=' + tag + sTag;
   // Keep the address bar in sync with the best link for this state.
   history.replaceState(null, '', pristine
-    ? location.pathname + '?' + sharedSource
-    : location.pathname + '#code=' + tag);
+    ? location.pathname + '?' + sharedSource + sTag
+    : location.pathname + '#code=' + tag + sTag);
 });
 document.querySelectorAll('#sharePop button[data-copy]').forEach(btn => {
   btn.addEventListener('click', () =>
@@ -654,7 +691,7 @@ function onLoadStuck() {
 }
 
 function createWorker() {
-  worker = new Worker('worker.js?v=b07e3aae');   // tag kept in sync by deploy.sh
+  worker = new Worker('worker.js?v=33502cc8');   // tag kept in sync by deploy.sh
   clearTimeout(loadTimer);
   loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
   worker.onmessage = ({ data: m }) => {
@@ -715,7 +752,7 @@ function startRun() {
   clearScreen();
   statusEl.textContent = "running…";
   setRunning(true);
-  worker.postMessage({ type: 'run', src: codeEl.value });
+  worker.postMessage({ type: 'run', src: codeEl.value, stdin: stdinEl.value });
 }
 
 function run() {
