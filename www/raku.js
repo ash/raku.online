@@ -177,7 +177,7 @@
     '.io .lbl button{margin-left:auto;font-size:11px;padding:1px 8px;}',
     'textarea.in{color:var(--ink);min-height:2em;height:4em;}',
     'pre.out{margin:0;padding:10px 12px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;',
-    '  max-height:60vh;overflow:auto;}',
+    '  max-height:60vh;min-height:2.6em;overflow:auto;}',
     'pre.out .err{color:var(--accent);}',
     'pre.out .meta{color:var(--muted);}',
     // VS Code token colours, driven by the palette variables above so they
@@ -322,11 +322,14 @@
     });
 
     // ---- output screen (coalesced render, minimal ANSI screen-clear) ----
-    this._screen = []; var chars = 0, pending = false, CAP = 200000;
+    this._screen = []; this._clearNext = false; var chars = 0, pending = false, CAP = 200000;
     function render() { pending = false; outEl.innerHTML = self._screen.map(function (p) { return '<span class="' + p[1] + '">' + esc(p[0]) + '</span>'; }).join(''); outEl.scrollTop = outEl.scrollHeight; }
     function sched() { if (!pending) { pending = true; setTimeout(render, 16); } }
-    function clear() { self._screen = []; chars = 0; sched(); }
+    function clear() { self._screen = []; chars = 0; self._clearNext = false; sched(); }
     function push(text, cls) {
+      // Deferred clear: keep the previous run's output on screen until the new run
+      // actually produces something, so re-running never collapses the block.
+      if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; sched(); }
       if (!text || chars > CAP) return;
       chars += text.length; self._screen.push([text, cls || '']); sched();
     }
@@ -348,9 +351,26 @@
     this.getCode = function () { return ta.value; };
     this.getStdin = function () { return inWrap.hidden ? '' : inTa.value; };
     this.setStatus = function (s) { stEl.textContent = s; };
-    this.starting = function () { outWrap.hidden = false; clear(); setRun(true); stEl.textContent = 'running…'; };
-    this.finish = function (rc, ms) { setRun(false); if (!self._screen.length) push('(no output)', 'meta'); push('\n— exit ' + rc + ' · ' + ms + ' ms —', 'meta'); stEl.textContent = 'exit ' + rc + ' · ' + ms + ' ms'; };
-    this.stopped = function () { setRun(false); push('\n— stopped —', 'meta'); stEl.textContent = 'stopped'; };
+    this.starting = function () {
+      // First reveal only: smoothly grow the output pane from 0 to its natural
+      // height (measured), then release the inline height so output can stream in.
+      // On a re-run the pane is already open — the deferred clear keeps it from
+      // collapsing, so nothing jumps.
+      if (outWrap.hidden) {
+        outWrap.hidden = false;
+        var target = outWrap.scrollHeight;
+        outWrap.style.height = '0px'; outWrap.style.overflow = 'hidden';
+        void outWrap.offsetHeight;                       // force reflow
+        outWrap.style.transition = 'height .2s ease';
+        outWrap.style.height = target + 'px';
+        setTimeout(function () {
+          outWrap.style.height = ''; outWrap.style.overflow = ''; outWrap.style.transition = '';
+        }, 230);
+      }
+      self._clearNext = true; setRun(true); stEl.textContent = 'running…';
+    };
+    this.finish = function (rc, ms) { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } if (!self._screen.length) push('(no output)', 'meta'); push('\n— exit ' + rc + ' · ' + ms + ' ms —', 'meta'); stEl.textContent = 'exit ' + rc + ' · ' + ms + ' ms'; };
+    this.stopped = function () { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } push('\n— stopped —', 'meta'); stEl.textContent = 'stopped'; };
     this.reset = function () { setRun(false); stEl.textContent = ''; };
   }
 
