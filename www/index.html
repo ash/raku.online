@@ -121,13 +121,19 @@
      invisible 9px-wide grab area (::before), so it's easy to catch and drag. */
   main { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0;
          flex: 1; min-height: 0; }
-  #splitter { background: var(--border); position: relative; touch-action: none; }
+  #splitter { background: var(--border); position: relative; touch-action: none;
+              transition: background .15s; }
   #splitter::before { content: ''; position: absolute; inset: 0 -4px;
                       cursor: col-resize; z-index: 5; }
+  #splitter:hover, #splitter.dragging { background: var(--accent2); }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; grid-template-rows: 1fr 1px 1fr; }
     #splitter::before { inset: -4px 0; cursor: row-resize; }
   }
+  /* While a divider is being dragged, the resize cursor must not flicker as the
+     pointer crosses other elements, and no text may get selected. */
+  body.dragging-col, body.dragging-col * { cursor: col-resize !important; user-select: none; }
+  body.dragging-row, body.dragging-row * { cursor: row-resize !important; user-select: none; }
   .pane { background: var(--bg); display: flex; flex-direction: column; min-height: 0; }
   .pane > .label { display: flex; align-items: center; padding: 4px 14px; font-size: 11px;
                    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
@@ -135,15 +141,17 @@
   .copy-btn { margin-left: auto; font-size: 11px; letter-spacing: normal; text-transform: none;
               padding: 2px 9px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .copy-btn:hover { color: var(--ink); }
-  /* Stdin: a collapsible strip under the editor. The bar toggles the textarea. */
+  /* Stdin: a collapsible strip under the editor. Click the bar to toggle it;
+     drag the bar up/down to resize the field (up = larger). */
   .stdin-bar { border-bottom: 0; border-top: 1px solid var(--border);
-               cursor: pointer; user-select: none; }
-  .stdin-bar:hover { color: var(--ink); }
+               cursor: pointer; user-select: none; touch-action: none; }
+  .stdin-bar.open { cursor: row-resize; }
+  .stdin-bar:hover { color: var(--ink); border-top-color: var(--accent2); }
   .stdin-bar .stdin-hint { margin-left: 6px; text-transform: none; letter-spacing: normal;
                            opacity: .8; }
   textarea#stdin { flex: 0 0 auto; height: 96px; min-height: 40px; max-height: 60vh;
                    margin: 0; padding: 10px 14px; border: 0;
-                   outline: 0; resize: vertical; background: transparent; color: var(--ink);
+                   outline: 0; resize: none; background: transparent; color: var(--ink);
                    font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
                    white-space: pre; overflow: auto; }
   /* Editor: a transparent textarea sits exactly over a highlighted <pre>. Both
@@ -298,9 +306,35 @@ const stdinChev = document.getElementById('stdinChev');
 function showStdin(on) {
   stdinEl.hidden = !on;
   stdinChev.textContent = on ? '▾' : '▸';
+  stdinBar.classList.toggle('open', on);
   stdinBar.setAttribute('aria-expanded', on ? 'true' : 'false');
 }
-stdinBar.addEventListener('click', () => showStdin(stdinEl.hidden));
+// The bar is both toggle and resize handle: a plain click (< 4px of movement)
+// toggles the field, dragging moves its top edge — up makes it taller.
+let stdinDrag = null;
+stdinBar.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  stdinDrag = { y: e.clientY, h: stdinEl.hidden ? 0 : stdinEl.offsetHeight, moved: false };
+  stdinBar.setPointerCapture(e.pointerId);
+});
+stdinBar.addEventListener('pointermove', e => {
+  if (!stdinDrag) return;
+  const dy = stdinDrag.y - e.clientY;          // pointer up = positive = taller
+  if (!stdinDrag.moved) {
+    if (Math.abs(dy) < 4) return;              // ignore jitter within a click
+    stdinDrag.moved = true;
+    document.body.classList.add('dragging-row');
+    if (stdinEl.hidden) showStdin(true);
+  }
+  stdinEl.style.height = Math.max(40, stdinDrag.h + dy) + 'px';   // CSS max-height caps it
+});
+stdinBar.addEventListener('pointerup', () => {
+  if (!stdinDrag) return;
+  document.body.classList.remove('dragging-row');
+  if (!stdinDrag.moved) showStdin(stdinEl.hidden);   // it was a click: toggle
+  stdinDrag = null;
+});
 
 // Draggable divider between the panes: horizontal split on wide screens,
 // vertical in the stacked (narrow) layout. Double-click resets to 50/50;
@@ -325,6 +359,10 @@ stdinBar.addEventListener('click', () => showStdin(stdinEl.hidden));
   split.addEventListener('pointerdown', e => {
     e.preventDefault();
     split.setPointerCapture(e.pointerId);
+    // Pin the cursor and highlight for the whole drag, wherever the pointer is.
+    const cls = narrow.matches ? 'dragging-row' : 'dragging-col';
+    document.body.classList.add(cls);
+    split.classList.add('dragging');
     const rect = mainEl.getBoundingClientRect();
     const move = ev => {
       frac = narrow.matches ? (ev.clientY - rect.top) / rect.height
@@ -334,6 +372,8 @@ stdinBar.addEventListener('click', () => showStdin(stdinEl.hidden));
     split.addEventListener('pointermove', move);
     split.addEventListener('pointerup', () => {
       split.removeEventListener('pointermove', move);
+      document.body.classList.remove(cls);
+      split.classList.remove('dragging');
       try { localStorage.setItem(KEY, frac); } catch (err) {}
     }, { once: true });
   });
