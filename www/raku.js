@@ -30,7 +30,7 @@
   var script = document.currentScript
     || (function () { var s = document.getElementsByTagName('script'); return s[s.length - 1]; })();
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
-  var VER = '?v=0b0fc9c5';                            // cache tag, stamped by deploy.sh
+  var VER = '?v=524762ca';                            // cache tag, stamped by deploy.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
 
   // ---- the shared interpreter worker -------------------------------------
@@ -133,7 +133,11 @@
     // The palette (bg/panel/text AND the VS Code token colours) lives in CSS
     // variables so it switches as one unit — Light+ by default, Dark+ under
     // system dark OR a forced data-theme. Same scheme as course.raku.org.
-    '.wrap{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;--accent:#d33682;',
+    // --accent can be re-tinted from the embedding page: set --rk-embed-accent
+    // on any ancestor and it inherits through the shadow boundary (custom
+    // properties are not reset by :host{all:initial}). Defaults to magenta.
+    '.wrap{--bg:#fbfbfc;--panel:#f1f2f4;--ink:#1b1d23;--muted:#5b616e;',
+    '  --accent:var(--rk-embed-accent,#d33682);',
     '  --accent2:#268bd2;--border:#d7dae0;',
     '  --tk:#0000ff;--tnb:#267f99;--tv:#001080;--ts:#a31515;--tm:#098658;--tc:#008000;',
     '  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;',
