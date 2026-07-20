@@ -19,12 +19,14 @@ sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$TAG/g" "$SRC"/index.html "$SRC"/raku.js
 echo "cache tag: ?v=$TAG"
 
 cp "$SRC"/index.html "$SRC"/worker.js "$SRC"/examples.js \
-   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/raku.js \
-   "$SRC"/embed-demo.html "$SRC"/embed-builder.html "$DEST"/
+   "$SRC"/rakujs.js "$SRC"/rakujs.wasm "$SRC"/raku.js "$DEST"/
+# Helper pages now live in their own dirs, served at /builder/ and /demo/.
+cp -R "$SRC"/builder "$SRC"/demo "$DEST"/
 
 # macOS cp over sshfs leaves AppleDouble files, which the server would serve.
-# Also drop the retired embed.js alias if it lingers on the server.
-rm -f "$DEST"/._* "$DEST"/embed.js
+# Also drop retired flat aliases if they linger on the server.
+find "$DEST" -name '._*' -delete
+rm -f "$DEST"/embed.js "$DEST"/embed-builder.html "$DEST"/embed-demo.html
 
 echo "deployed to $DEST:"
 ls -l "$DEST"
