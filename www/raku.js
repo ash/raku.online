@@ -187,7 +187,14 @@
     // VS Code token colours, driven by the palette variables above so they
     // track the theme (system or forced) exactly like the background does.
     '.t-k{color:var(--tk);}.t-nb{color:var(--tnb);}.t-v{color:var(--tv);}',
-    '.t-s{color:var(--ts);}.t-m{color:var(--tm);}.t-c{color:var(--tc);}'
+    '.t-s{color:var(--ts);}.t-m{color:var(--tm);}.t-c{color:var(--tc);}',
+    // Pygments token classes, as emitted by `rakupp --highlight` (the WASM
+    // highlighter) — same palette, so the two highlighters look identical.
+    '.k,.kd,.kn,.kp,.kr,.kt{color:var(--tk);}.nb,.bp{color:var(--tnb);}',
+    '.nv,.vg,.vi,.vc{color:var(--tv);}',
+    '.s,.s1,.s2,.sb,.sc,.sd,.sh,.si,.sr,.ss,.sx,.se,.dl{color:var(--ts);}',
+    '.mi,.mf,.mh,.mo,.mb,.il,.m{color:var(--tm);}',
+    '.c,.c1,.cm,.cp,.cs,.cpf{color:var(--tc);}'
   ].join('');
 
   var esc = function (s) { return s.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
@@ -201,6 +208,9 @@
   var NB = new Set(('Int UInt Str Num Rat Bool Array Hash List Seq Map Bag Set Pair Range Any Mu Cool Nil Whatever '
     + 'say print put note printf sprintf warn die map grep sort reverse join split first sum min max elems keys values '
     + 'pairs push pop shift unshift chars uc lc tc trim lines words comb get prompt slurp True False Inf NaN pi tau e now').split(' '));
+  // A name right after one of these is a DECLARATION, not a keyword/builtin —
+  // `method push { … }` names a method `push`; it must not paint like `.push`.
+  var DECL = new Set('sub method submethod multi proto token rule regex'.split(' '));
   var RE = new RegExp([
     /(#[^\n]*)/.source,
     /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/.source,
@@ -209,16 +219,52 @@
     /([A-Za-z_][\w'-]*)/.source
   ].join('|'), 'g');
   function highlight(code) {
-    var out = '', last = 0, m; RE.lastIndex = 0;
+    var out = '', last = 0, m, afterDecl = false; RE.lastIndex = 0;
     while ((m = RE.exec(code))) {
-      out += esc(code.slice(last, m.index));
-      var t = m[0];
+      var gap = code.slice(last, m.index);
+      out += esc(gap);
+      var t = m[0], isWord = m[5] !== undefined;
       var cls = m[1] !== undefined ? 'c' : m[2] !== undefined ? 's' : m[3] !== undefined ? 'm'
-        : m[4] !== undefined ? 'v' : KW.has(t) ? 'k' : NB.has(t) ? 'nb' : '';
+        : m[4] !== undefined ? 'v'
+        : (afterDecl && isWord && /^\s*$/.test(gap)) ? '' // the declared routine/rule name
+        : KW.has(t) ? 'k' : NB.has(t) ? 'nb' : '';
       out += cls ? '<span class="t-' + cls + '">' + esc(t) + '</span>' : esc(t);
+      afterDecl = isWord && DECL.has(t);
       last = m.index + t.length;
     }
     return out + esc(code.slice(last));
+  }
+
+  // rakupp's OWN highlighter (the WASM build, same tokenizer as `rakupp
+  // --highlight`), loaded lazily on the main thread. Until it's ready, editors
+  // paint with the fast JS approximation above; once it loads, every editor
+  // repaints through rakupp for exact fidelity — and edits stay exact too.
+  var rakuHL = null;          // function(src) -> inner highlighted HTML, or null
+  var rakuHLTried = false;
+  var HL_REPAINT = [];        // per-editor paint() callbacks, upgraded on load
+  function loadHighlighter() {
+    if (rakuHLTried) return; rakuHLTried = true;
+    if (!window.RakuJS && !document.querySelector('script[data-rakujs]')) {
+      var s = document.createElement('script');
+      s.src = BASE + 'rakujs.js' + VER; s.setAttribute('data-rakujs', '');
+      s.onload = initHighlighter; s.onerror = function () {};
+      document.head.appendChild(s);
+    } else initHighlighter();
+  }
+  function initHighlighter() {
+    if (!window.RakuJS) return;
+    window.RakuJS({ locateFile: function (p) { return BASE + p + VER; },
+                   print: function () {}, printErr: function () {} })
+      .then(function (m) {
+        var fn = m.cwrap('rakupp_highlight', 'string', ['string']);
+        rakuHL = function (src) {
+          var html = fn(src), i = html.indexOf('<pre'), j = html.lastIndexOf('</pre>');
+          if (i < 0 || j < 0) return null;
+          return html.slice(html.indexOf('>', i) + 1, j); // the inner spans only
+        };
+        HL_REPAINT.forEach(function (f) { try { f(); } catch (e) {} });
+      })
+      .catch(function () {});
   }
 
   // Does the program read standard input? Then reveal the input box up front.
@@ -240,6 +286,17 @@
 
   function Block(srcEl, opts) {
     var code = opts.code != null ? opts.code : srcEl.textContent.replace(/^\n/, '').replace(/\s+$/, '');
+    // Highlighting baked at build time by `rakupp --highlight` (Pygments-class
+    // spans): keep it for the untouched display, so a page that only SHOWS code
+    // needs no JS/WASM to be correctly coloured. Edits fall through to the live
+    // highlighter below. The trims mirror `code` so the overlay stays aligned.
+    var bakedEl = (srcEl.querySelector && srcEl.querySelector('pre')) || srcEl; // the <pre>, not its <div> wrapper
+    // Only keep spans from rakupp/Pygments (short token classes). Pandoc's
+    // `sourceCode` blocks use a different class scheme our CSS doesn't map, so
+    // let those fall through and be re-highlighted live instead.
+    var baked = (opts.code == null && /<span class="[a-z][a-z0-9]?[a-z0-9]?"/.test(bakedEl.innerHTML)
+                 && !/sourceCode/.test(bakedEl.innerHTML))
+              ? bakedEl.innerHTML.replace(/^\n/, '').replace(/\s+$/, '') : null;
     var host = document.createElement('div');
     host.className = 'rakupp-embed';
     if (srcEl.parentNode) srcEl.parentNode.replaceChild(host, srcEl);
@@ -286,9 +343,19 @@
     ta.value = code;
     if (opts.rows) ta.style.height = (opts.rows * 1.5 + 1.3) + 'em';
     else { var n = Math.max(1, code.split('\n').length); ta.style.height = (n * 1.5 + 1.3) + 'em'; }
-    function paint() { hl.innerHTML = highlight(ta.value); hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; }
+    function paint() {
+      var src = ta.value, html;
+      if (baked != null && src === code) html = baked;                  // pristine → the build-baked spans
+      else if (rakuHL && src.length < 20000) html = rakuHL(src);        // edited → rakupp WASM (once loaded)
+      else html = highlight(src);                                       // …else the JS approximation
+      hl.innerHTML = html;
+      hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;
+    }
     paint();
-    ta.addEventListener('input', paint);
+    HL_REPAINT.push(paint);        // upgrade this editor once rakupp's highlighter loads
+    // Load rakupp's WASM highlighter lazily — only when the user actually edits,
+    // so a page that merely DISPLAYS pre-rendered code fetches no WASM at all.
+    ta.addEventListener('input', function () { loadHighlighter(); paint(); });
     ta.addEventListener('scroll', function () { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
     // Tab inserts spaces; Ctrl/Cmd-Enter runs.
     ta.addEventListener('keydown', function (e) {
