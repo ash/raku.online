@@ -30,7 +30,7 @@
   var script = document.currentScript
     || (function () { var s = document.getElementsByTagName('script'); return s[s.length - 1]; })();
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
-  var VER = '?v=bb6a2f22';                            // cache tag, stamped by deploy.sh
+  var VER = '?v=b15a2d70';                            // cache tag, stamped by deploy.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
 
   // ---- the shared interpreter worker -------------------------------------
@@ -213,7 +213,7 @@
   var DECL = new Set('sub method submethod multi proto token rule regex'.split(' '));
   var RE = new RegExp([
     /(#[^\n]*)/.source,
-    /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/.source,
+    /("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')/.source,   // single-line: a stray quote can't paint the rest of the file
     /(\b0[xob][0-9a-fA-F_]+|\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)/.source,
     /([$@%&][.!^*?=:~<]?(?:[A-Za-z_][\w'-]*|\d+|[/!_]))/.source,
     /([A-Za-z_][\w'-]*)/.source
