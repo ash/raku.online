@@ -6,7 +6,13 @@ runs entirely in the browser. The interpreter is
 compiled to WebAssembly as
 [Raku.js](https://github.com/ash/rakupp/blob/main/rakujs/README.md).
 No code is sent to a server: programs execute in a Web Worker on the
-visitor's machine, and the site itself is five static files.
+visitor's machine, and the site itself is a handful of static files.
+
+The dropdown includes **language showcases** — whole interpreters (Lisp, Forth,
+JS/TS, Perl, Python) that run other languages in the browser. How a Python
+program interpreted by a Raku program interpreted by a WebAssembly C++ program
+still runs in a fraction of a second:
+[**Interpreters all the way down**](https://github.com/ash/rakupp/blob/main/rakujs/STACKED-INTERPRETERS.md).
 
 ## Layout
 
