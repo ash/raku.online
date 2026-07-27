@@ -95,6 +95,23 @@ case "${1:-all}" in
     *)     echo "usage: $0 [all|theme|tour|spec]" >&2; exit 2 ;;
 esac
 
+# The ?v= cache tag, hashed over every versioned engine asset, so browsers
+# refetch worker.js / rakujs.{js,wasm} / examples.js exactly when one of them
+# changes — examples can change without a new interpreter build.
+#
+# raku.js passes the tag to the engine it importScripts, so embedded editors on
+# other people's sites refetch on a new release too. That is why raku.js is
+# stamped alongside the playground's own page, and why this has to happen on
+# every build rather than at publish time: what is committed must already be
+# what gets served.
+stamp_cache_tag() {
+    tag=$(cat "$WWW"/rakujs.wasm "$WWW"/rakujs.js \
+              "$WWW"/play/examples.js "$WWW"/play/worker.js | md5 -q | cut -c1-8)
+    sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js
+    echo "cache tag: ?v=$tag"
+}
+stamp_cache_tag
+
 check_frozen
 check_shell
 check_theme_refs

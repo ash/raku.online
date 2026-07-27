@@ -40,7 +40,6 @@ rakupp path/to/raku++/showcase/rakus/rakus.raku 8317 out   # preview locally
 ```
 build.raku            the static generator (run by rakupp)
 .github/workflows/    build + verify + publish to GitHub Pages (tour.raku.online)
-deploy.sh             the same, for a self-hosted doc root over sshfs (fallback)
 src/
   site.raku           site config (title, links) — EVAL'd by the build
   theme/
