@@ -92,17 +92,10 @@
   let checking = false;
 
   /* ── theme ──────────────────────────────────────────────────────── */
-  function initTheme() {
-    const saved = localStorage.getItem(TKEY);
-    const dark = saved ? saved === 'dark'
-      : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  }
-  $('themeBtn').onclick = () => {
-    const dark = document.documentElement.dataset.theme !== 'dark';
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    localStorage.setItem(TKEY, dark ? 'dark' : 'light');
-  };
+  // Owned by /theme/boot.js, which resolves it before first paint and is driven
+  // from the site bar, so every section of raku.online switches the same way.
+  function initTheme() {}
+  // The theme is owned by /theme/boot.js and switched from the site bar.
 
   /* ── screens ────────────────────────────────────────────────────── */
   function show(name) {

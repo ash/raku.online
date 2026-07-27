@@ -64,10 +64,15 @@
     if (path.indexOf('/rakupp/') === 0) engine.setAttribute('aria-current', 'page');
     bar.appendChild(engine);
 
-    // The theme switcher floats over the bar's right end; keep clear of it.
-    bar.appendChild(el('span', { class: 'shell-pad' }));
-
     document.body.insertBefore(bar, document.body.firstChild);
+
+    // Give the theme switcher one home. Every page already ships the same
+    // .theme-switch markup and the inline boot script has bound its listeners
+    // by now (it registers its DOMContentLoaded handler from <head>, before
+    // this deferred script registers ours), so moving the node keeps them —
+    // listeners live on the element, not on its position in the document.
+    var sw = document.querySelector('.theme-switch');
+    if (sw) bar.appendChild(sw);
   }
 
   if (document.readyState === 'loading') {

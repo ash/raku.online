@@ -1079,6 +1079,10 @@ sub page-shell(Str $title, Str $body, Str $nav, :$home = False --> Str) {
     <title>{esc($title)}</title>
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
+    <!-- The Rules site is part of the spec, so it needs the spec's own layer
+         too: the wordmark and spec|rules switcher above the search box, and
+         the chart series variables the divergence graphs read. -->
+    <link rel="stylesheet" href="/theme/spec.css?v={$VERSION}">
     <link rel="stylesheet" href="/theme/rules.css?v={$VERSION}">
     <link rel="stylesheet" href="/theme/shell.css?v={$VERSION}">
     </head>
