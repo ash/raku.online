@@ -28,6 +28,9 @@ constant RAKUPP-DEFAULT = 'rakupp';
 # Cache-busting tag stamped onto theme assets (?v=…), set once per build from a
 # content hash of all sources.
 my $VERSION = '';
+# Where this site is mounted (e.g. '/tour'), and where the shared theme lives.
+my $BASE = '';
+my $THEME-DIR = 'src/theme';
 
 # Theme switcher: same code and 'raku-theme' localStorage key as the playground
 # and the spec site, so the three sites feel like one. Runs inline in <head> so
@@ -124,7 +127,7 @@ sub json-esc(Str $s --> Str) {
 
 # 8-char content hash over every source — the cache tag.
 sub asset-version(--> Str) {
-    my @files = dir('src/theme').grep({ .IO.f }).map(*.Str);
+    my @files = dir($THEME-DIR).grep({ .IO.f }).map(*.Str);
     @files.append: dir('src/lessons').grep({ .IO.f && .Str.ends-with('.md') }).map(*.Str);
     @files.push('src/site.raku');
     my $blob = @files.sort.map({ slurp($_) }).join;
@@ -432,7 +435,7 @@ class Renderer {
 
 sub nav-html(@lessons, $current) {
     my @parts = '<nav class="sidebar"><div class="sidebar-head">' ~
-        '<a class="brand" href="/">Raku<span>tour</span></a></div><div class="sidebar-nav">';
+        '<a class="brand" href="' ~ ($BASE || "/") ~ '">Raku<span>tour</span></a></div><div class="sidebar-nav">';
     for chapters(@lessons) -> %ch {
         @parts.push(
             '<div class="nav-cat open"><div class="nav-cat-name">' ~
@@ -440,7 +443,7 @@ sub nav-html(@lessons, $current) {
         for @(%ch<lessons>) -> $l {
             my $active = ($current.defined && $l === $current) ?? ' class="active"' !! '';
             @parts.push(
-                "<li><a$active data-slug=\"{esc-attr($l.slug)}\" href=\"/{$l.slug}/\">" ~
+                "<li><a$active data-slug=\"{esc-attr($l.slug)}\" href=\"{$BASE}/{$l.slug}/\">" ~
                 "<span class=\"tick\" aria-hidden=\"true\"></span>" ~
                 "<span class=\"lnum\">{$l.num}.</span> {esc($l.title)}</a></li>");
         }
@@ -504,11 +507,11 @@ sub lesson-footer(@lessons, $l --> Str) {
     my $prev = $l.num > 1               ?? @lessons[$l.num - 2] !! Nil;
     my $next = $l.num < @lessons.elems  ?? @lessons[$l.num]     !! Nil;
     my $left = $prev.defined
-        ?? "<a class=\"lnav prev\" href=\"/{$prev.slug}/\"><span class=\"lnav-dir\">← Previous</span>" ~
+        ?? "<a class=\"lnav prev\" href=\"{$BASE}/{$prev.slug}/\"><span class=\"lnav-dir\">← Previous</span>" ~
            "<span class=\"lnav-title\">{esc($prev.title)}</span></a>"
         !! '<span class="lnav"></span>';
     my $right = $next.defined
-        ?? "<a class=\"lnav next\" href=\"/{$next.slug}/\"><span class=\"lnav-dir\">Next →</span>" ~
+        ?? "<a class=\"lnav next\" href=\"{$BASE}/{$next.slug}/\"><span class=\"lnav-dir\">Next →</span>" ~
            "<span class=\"lnav-title\">{esc($next.title)}</span></a>"
         !! "<a class=\"lnav next\" href=\"/\"><span class=\"lnav-dir\">Finish ✓</span>" ~
            "<span class=\"lnav-title\">Back to the overview</span></a>";
@@ -541,7 +544,7 @@ sub render-home(%site, @lessons --> Str) {
         "<p class=\"tagline\">{esc(%site<tagline>)}</p>" ~
         "<p class=\"hero-stats\">{@lessons.elems} lessons · every example editable, runnable, " ~
         "and verified against the interpreter</p>" ~
-        "<p class=\"hero-links\"><a class=\"btn-start\" href=\"/{$first.slug}/\">Start the tour →</a>" ~
+        "<p class=\"hero-links\"><a class=\"btn-start\" href=\"{$BASE}/{$first.slug}/\">Start the tour →</a>" ~
         "<a class=\"btn-continue\" id=\"btn-continue\" href=\"\" hidden></a>" ~
         "<button class=\"btn-reset\" id=\"btn-reset\" type=\"button\" hidden>Reset progress</button></p>" ~
         '</div>';
@@ -553,7 +556,7 @@ sub render-home(%site, @lessons --> Str) {
             "<span class=\"ov-count\">{@(%ch<lessons>).elems}</span></h2><ul class=\"ov-list\">");
         for @(%ch<lessons>) -> $l {
             @parts.push(
-                "<li><a data-slug=\"{esc-attr($l.slug)}\" href=\"/{$l.slug}/\" title=\"{esc-attr($l.summary)}\">" ~
+                "<li><a data-slug=\"{esc-attr($l.slug)}\" href=\"{$BASE}/{$l.slug}/\" title=\"{esc-attr($l.summary)}\">" ~
                 "<span class=\"tick\" aria-hidden=\"true\"></span>" ~
                 "<span class=\"lnum\">{$l.num}.</span> {esc($l.title)}</a></li>");
         }
@@ -632,6 +635,8 @@ sub verify-examples(@lessons, Str $rakupp, Str $oracle --> Int) {
 sub MAIN(Bool :$verify = False, Bool :$clean = False,
          Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '') {
     my %site = EVAL slurp('src/site.raku');
+    $BASE      = %site<base>      // '';
+    $THEME-DIR = %site<theme-dir> // 'src/theme';
 
     if $clean && 'out'.IO.d {
         run('rm', '-rf', 'out');
@@ -648,9 +653,14 @@ sub MAIN(Bool :$verify = False, Bool :$clean = False,
     }
     spurt('out/index.html', render-home(%site, @lessons));
 
-    mkdir('out/theme');
-    for dir('src/theme').grep({ .IO.f }) -> $asset {
-        spurt("out/theme/{$asset.IO.basename}", slurp($asset.Str));
+    # The theme is shared across the whole of raku.online and is placed at the
+    # site root by the top-level build, so a sub-site must not ship its own copy.
+    # Standalone builds (no theme-out => False in the config) still copy it.
+    if %site<theme-out> // True {
+        mkdir('out/theme');
+        for dir($THEME-DIR).grep({ .IO.f }) -> $asset {
+            spurt("out/theme/{$asset.IO.basename}", slurp($asset.Str));
+        }
     }
 
     say "built {@lessons.elems} lesson(s) + home -> out/";

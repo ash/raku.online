@@ -1,10 +1,13 @@
 # Site configuration for the Raku++ spec generator.
 # This file is EVAL'd by build.raku and must evaluate to a Hash.
 {
+    base       => '/spec',                 # where this site is mounted on raku.online
+    theme-out  => False,                   # the root build places the shared theme
+    theme-dir  => '../../theme',           # the shared theme, one copy for the whole site
     title      => 'Raku++ Specification',
     tagline    => 'How Raku++ behaves — every feature explained, with runnable, verified examples.',
     engine     => 'https://raku.online/raku.js',
-    playground => 'https://raku.online/',
+    playground => 'https://raku.online/play',
     repo       => 'https://github.com/ash/raku-spec',
     rakupp     => 'https://github.com/ash/rakupp',   # the interpreter's own repo/docs
 

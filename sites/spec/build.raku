@@ -24,6 +24,10 @@ constant RAKUPP-DEFAULT = 'rakupp';
 # content hash of all sources — so browsers refetch base.css/spec.js/search.js and
 # the search index exactly when their content changes.
 my $VERSION = '';
+# Where this site is mounted (e.g. '/spec'), and where the shared theme lives.
+# Both come from src/site.raku; empty base keeps the site buildable at a root.
+my $BASE = '';
+my $THEME-DIR = 'src/theme';
 
 # status key => (label, css-class, tooltip)
 my %STATUS =
@@ -116,7 +120,11 @@ sub fmt-basic(Str $seg --> Str) {
 sub inline(Str $text --> Str) {
     my @links;
     my $protected = $text.subst(/ '[' (<-[ \] ]>+) ']' '(' (<-[ ) ]>+) ')' /, {
-        @links.push('<a href="' ~ esc-attr(~$1) ~ '">' ~ fmt-basic(~$0) ~ '</a>');
+        # A link written as /cat/slug/ in the Markdown is site-root-relative;
+        # under a mounted base ('/spec') it has to carry the prefix.
+        my $href = ~$1;
+        $href = $BASE ~ $href if $href.starts-with('/') && !$href.starts-with('//');
+        @links.push('<a href="' ~ esc-attr($href) ~ '">' ~ fmt-basic(~$0) ~ '</a>');
         'zXLINKXz' ~ @links.end ~ 'zXENDXz'
     }, :g);
     my $body = fmt-basic($protected);
@@ -162,7 +170,7 @@ sub json-esc(Str $s --> Str) {
 # $*KERNEL.name to "darwin", so we can't branch on the OS anyway. Only needs to
 # change when any source changes; the exact digest (CRC vs MD5) is irrelevant.
 sub asset-version(--> Str) {
-    my @files = dir('src/theme').grep({ .IO.f }).map(*.Str);
+    my @files = dir($THEME-DIR).grep({ .IO.f }).map(*.Str);
     for dir('src/pages').grep({ .IO.d }).sort -> $cat {
         @files.append: dir($cat).grep({ .IO.f && .Str.ends-with('.md') }).map(*.Str);
     }
@@ -462,8 +470,8 @@ sub nav-html(%site, %by-cat, $current) {
         # link in the footer.
         '<div class="brandbar"><span class="wordmark">Raku++</span>' ~
         '<span class="siteswitch">' ~
-        '<a class="sw active" href="/">spec</a>' ~
-        '<a class="sw" href="/rules/">rules</a>' ~
+        '<a class="sw active" href="' ~ ($BASE || "/") ~ '">spec</a>' ~
+        '<a class="sw" href="' ~ $BASE ~ '/rules/">rules</a>' ~
         '</span></div>' ~
         '<div class="site-search"><input type="search" placeholder="Search the spec…" ' ~
         'aria-label="Search the spec" autocomplete="off" spellcheck="false">' ~
@@ -488,12 +496,12 @@ sub nav-html(%site, %by-cat, $current) {
             "<div class=\"nav-cat-body\"><ul>");
         for @cat-pages -> $p {
             my $active = ($current.defined && $p === $current) ?? ' class="active"' !! '';
-            @parts.push("<li><a$active href=\"/{$p.category}/{$p.slug}/\">{esc($p.title)}</a></li>");
+            @parts.push("<li><a$active href=\"{$BASE}/{$p.category}/{$p.slug}/\">{esc($p.title)}</a></li>");
         }
         @parts.push('</ul></div></div>');
     }
     @parts.push('<div class="nav-extra">' ~
-        '<a href="/rules/">Raku Rules — every operator and type →</a>' ~
+        '<a href="' ~ $BASE ~ '/rules/">Raku Rules — every operator and type →</a>' ~
         '</div>');
     @parts.push('</div></nav>');
     @parts.join
@@ -511,8 +519,10 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, :$home = False, :$extra-s
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{esc($title)}</title>
+    <script>window.__SITE_BASE={ $BASE ?? "'" ~ $BASE ~ "'" !! "''" };</script>
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
+    <link rel="stylesheet" href="/theme/spec.css?v={$VERSION}">
     </head>
     <body class="$body-class">
     <button class="nav-toggle" aria-label="Menu">☰</button>
@@ -562,8 +572,8 @@ sub render-conformance(%site, %by-cat --> Str) {
     <p class="conf-modes-intro">This is a reference for <strong>Raku++</strong> — the
     interpreter. A program can run three ways, and every example here is verified to give
     the same output in all three; the few features that need capabilities the browser
-    sandbox lacks (<a href="/concurrency/promises/">concurrency</a>,
-    <a href="/builtins/io/">IO</a>, deep recursion) are marked on their pages.</p>
+    sandbox lacks (<a href="{$BASE}/concurrency/promises/">concurrency</a>,
+    <a href="{$BASE}/builtins/io/">IO</a>, deep recursion) are marked on their pages.</p>
     <div class="table-wrap"><table class="conf-modes-tbl">
       <thead><tr><th>Mode</th><th>How to run</th><th>Threads</th><th>Files &amp; IO</th><th>Deep recursion</th></tr></thead>
       <tbody>
@@ -593,7 +603,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <div class="conf-head">
       <h1>Dashboard</h1>
       <p class="tagline">Raku++ by the numbers, release over release — the
-      <a href="/conformance/">Roast</a> standing, the ecosystem module battery,
+      <a href="{$BASE}/conformance/">Roast</a> standing, the ecosystem module battery,
       and the benchmark kernels. Every point is mined from numbers committed in
       the repos' own docs; nothing is measured at build time.</p>
       <div class="conf-stats" id="dash-tiles"></div>
@@ -610,7 +620,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <div class="dash-bench" id="dash-roast" aria-live="polite">Loading…</div>
     <h2 class="conf-areas-title">Documentation conformance <span>— every documented example, run three ways</span></h2>
     <p class="dash-note">The same coloured verdicts the
-    <a href="/conformance/">conformance page</a> shows as dots, counted over
+    <a href="{$BASE}/conformance/">conformance page</a> shows as dots, counted over
     time. <em>ok</em> is the one to watch: documentation, Rakudo and Raku++ all
     agreeing. <em>Raku++ differs</em> is the work list. The other three are not
     ours to fix — <em>docs stale</em> is where both engines agree against the
@@ -722,15 +732,15 @@ sub render-home(%site, %by-cat --> Str) {
         .map({ count-features($_.body) }).sum;
 
     my $excels-link = excels-entries(%site, %by-cat)
-        ?? ' <a href="/excels/">Where Raku++ excels →</a>' !! '';
+        ?? ' <a href="' ~ $BASE ~ '/excels/">Where Raku++ excels →</a>' !! '';
     my @parts =
         "<div class=\"hero\"><h1>{esc(%site<title>)}</h1>" ~
         "<p class=\"tagline\">{esc(%site<tagline>)}</p>" ~
         "<p class=\"hero-stats\">$features features across $pages pages · " ~
         "every example verified against Raku++, Rakudo, and the in-browser engine</p>" ~
-        "<p class=\"hero-links\"><a href=\"/rules/\">Raku Rules — the exhaustive reference →</a>" ~
-        " <a href=\"/conformance/\">See the full Roast conformance map →</a>" ~
-        ('src/data/dashboard.json'.IO.e ?? ' <a href="/dashboard/">Dashboard →</a>' !! '') ~
+        "<p class=\"hero-links\"><a href=\"{$BASE}/rules/\">Raku Rules — the exhaustive reference →</a>" ~
+        " <a href=\"{$BASE}/conformance/\">See the full Roast conformance map →</a>" ~
+        ('src/data/dashboard.json'.IO.e ?? ' <a href="' ~ $BASE ~ '/dashboard/">Dashboard →</a>' !! '') ~
         "{$excels-link}</p>" ~
         '</div>';
 
@@ -752,7 +762,7 @@ sub render-home(%site, %by-cat --> Str) {
         for @pages -> $p {
             my ($label, $cls, $) = @(%STATUS{ $p.status });
             @parts.push(
-                "<li><a href=\"/{$p.category}/{$p.slug}/\" title=\"{esc-attr($p.summary)}\">" ~
+                "<li><a href=\"{$BASE}/{$p.category}/{$p.slug}/\" title=\"{esc-attr($p.summary)}\">" ~
                 "<span class=\"dot $cls\" title=\"{$label}\"></span>{esc($p.title)}</a></li>");
         }
         @parts.push('</ul></section>');
@@ -794,7 +804,7 @@ sub render-excels(%site, %by-cat --> Str) {
         @cards.push(
             '<section class="excel-item">' ~
             "<div class=\"crumb\">{esc(%e<cat>)}</div>" ~
-            "<h2><a href=\"/{$p.category}/{$p.slug}/\">{esc($p.title)}</a></h2>" ~
+            "<h2><a href=\"{$BASE}/{$p.category}/{$p.slug}/\">{esc($p.title)}</a></h2>" ~
             $rendered ~
             '</section>');
     }
@@ -919,6 +929,8 @@ sub collect-pages(%site) {
 
 sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '', Str :$wasm = '') {
     my %site = EVAL slurp('src/site.raku');
+    $BASE      = %site<base>      // '';
+    $THEME-DIR = %site<theme-dir> // 'src/theme';
 
     if $clean && 'out'.IO.d {
         run('rm', '-rf', 'out');
@@ -961,7 +973,7 @@ sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFA
     # Client-side search index: one {u,t,b} record per page, loaded by search.js.
     my @entries;
     for @($pages) -> $p {
-        my $u = "/{$p.category}/{$p.slug}/";
+        my $u = "{$BASE}/{$p.category}/{$p.slug}/";
         my $b = ($p.summary ~ ' ' ~ index-body($p.body)).trim;
         # Cap generously so every term on a page stays searchable (the old 1800
         # limit truncated longer pages, hiding tail content like `samewith` from
@@ -972,9 +984,14 @@ sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFA
     }
     spurt('out/search-index.json', '[' ~ @entries.join(',') ~ ']');
 
-    mkdir('out/theme');
-    for dir('src/theme').grep({ .IO.f }) -> $asset {
-        spurt("out/theme/{$asset.IO.basename}", slurp($asset.Str));
+    # The theme is shared across the whole of raku.online and is placed at the
+    # site root by the top-level build, so a sub-site must not ship its own copy.
+    # Standalone builds (no theme-out => False in the config) still copy it.
+    if %site<theme-out> // True {
+        mkdir('out/theme');
+        for dir($THEME-DIR).grep({ .IO.f }) -> $asset {
+            spurt("out/theme/{$asset.IO.basename}", slurp($asset.Str));
+        }
     }
 
     say "built {@($pages).elems} page(s) + home -> out/";

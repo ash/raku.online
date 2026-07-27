@@ -6,10 +6,14 @@
 {
     title    => 'Raku Rules',
     tagline  => 'The exhaustive rulebook: every construct, every rule, every trap — each one runnable.',
-    base     => '/rules',
+    base     => '/spec/rules',   # URL
+    out-dir  => '/rules',        # path inside out/, which is mounted at /spec
+    spec-base  => '/spec',
+    theme-out  => False,                 # the parent spec site
+    theme-dir  => '../../../theme',
     engine     => 'https://raku.online/raku.js',
-    playground => 'https://raku.online/',
-    spec       => 'https://spec.raku.online/',
+    playground => 'https://raku.online/play',
+    spec       => '/spec/',
     repo       => 'https://github.com/ash/raku-spec',
     rakupp     => 'https://github.com/ash/rakupp',
 

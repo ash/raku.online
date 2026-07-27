@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Any — Raku Rules</title>
+<script>(function () {
+  var KEY = 'raku-theme';
+  var mql = window.matchMedia('(prefers-color-scheme: dark)');
+  var ICON = { system: '◐', light: '☀', dark: '☾' };
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function effective(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', effective(s));
+    var btn = document.querySelector('.theme-btn');
+    if (btn) btn.textContent = ICON[s] || ICON.system;
+    document.querySelectorAll('.theme-menu [data-theme-set]').forEach(function (el) {
+      el.setAttribute('aria-checked', el.getAttribute('data-theme-set') === s ? 'true' : 'false');
+    });
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__setTheme = function (s) { try { localStorage.setItem(KEY, s); } catch (e) {} apply(s); };
+  document.addEventListener('DOMContentLoaded', function () {
+    apply(stored());
+    var sw = document.querySelector('.theme-switch');
+    if (!sw) return;
+    var btn = sw.querySelector('.theme-btn'), menu = sw.querySelector('.theme-menu');
+    function open(o) { menu.hidden = !o; btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); open(menu.hidden); });
+    menu.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-theme-set]');
+      if (b) { window.__setTheme(b.getAttribute('data-theme-set')); open(false); btn.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!sw.contains(e.target)) open(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); open(false); btn.focus(); } });
+  });
+})();
+</script>
+<link rel="stylesheet" href="/theme/base.css?v=11053192">
+<link rel="stylesheet" href="/theme/rules.css?v=11053192">
+</head>
+<body class="rules">
+<button class="nav-toggle" aria-label="Menu">☰</button>
+<span class="theme-switch">
+<button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+<ul class="theme-menu" hidden>
+<li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+<li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+<li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+</ul>
+</span>
+<nav class="sidebar"><div class="sidebar-head"><div class="brandbar"><span class="wordmark">Raku++</span><span class="siteswitch"><a class="sw" href="/spec">spec</a><a class="sw active" href="/spec/rules/">rules</a></span></div><div class="site-search"><input type="search" placeholder="Search the rules…" aria-label="Search the rules" autocomplete="off" spellcheck="false"><span class="ss-hint" aria-hidden="true">/</span><div class="ss-results" hidden></div></div></div><div class="sidebar-nav"><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">How to read these rules</span><span class="nav-count">1</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">overview<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/reading/">How to read these rules</a></li></ul></div></div></div></div><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Terms &amp; literals</span><span class="nav-count">16</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">named terms<span class="nav-count">16</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/terms/term-lt-gt/"><code>&lt; &gt;</code></a></li><li><a href="/spec/rules/terms/term-e/"><code>e</code></a></li><li><a href="/spec/rules/terms/term-i/"><code>i</code></a></li><li><a href="/spec/rules/terms/term-nano/"><code>nano</code></a></li><li><a href="/spec/rules/terms/term-now/"><code>now</code></a></li><li><a href="/spec/rules/terms/term-pi/"><code>pi</code></a></li><li><a href="/spec/rules/terms/term-rand/"><code>rand</code></a></li><li><a href="/spec/rules/terms/term-self/"><code>self</code></a></li><li><a href="/spec/rules/terms/term-tau/"><code>tau</code></a></li><li><a href="/spec/rules/terms/term-u74-u65-u72-u6d-colon-lt-gt/"><code>term:&lt;&gt;</code></a></li><li><a href="/spec/rules/terms/term-time/"><code>time</code></a></li><li><a href="/spec/rules/terms/term-braces/"><code>{ }</code></a></li><li><a href="/spec/rules/terms/term-u3c0/"><code>π</code></a></li><li><a href="/spec/rules/terms/term-u3c4/"><code>τ</code></a></li><li><a href="/spec/rules/terms/term-empty-set/"><code>∅</code></a></li><li><a href="/spec/rules/terms/term-u1d452/"><code>𝑒</code></a></li></ul></div></div></div></div><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Operators</span><span class="nav-count">164</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">method call<span class="nav-count">12</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/methodop-dot/"><code>.</code></a></li><li><a href="/spec/rules/operators/methodop-dot-dquote-dquote/"><code>.""</code></a></li><li><a href="/spec/rules/operators/methodop-dot-amp/"><code>.&amp;</code></a></li><li><a href="/spec/rules/operators/methodop-all-dot/"><code>.*</code></a></li><li><a href="/spec/rules/operators/methodop-some-dot/"><code>.+</code></a></li><li><a href="/spec/rules/operators/methodop-dot-colon-colon/"><code>.::</code></a></li><li><a href="/spec/rules/operators/methodop-dot-colon-lt-u70-u72-u65-u66-u69-u78-u6f-u70-u65-u72-u61-u74-u6f-u72-gt/"><code>.:&lt;prefix operator&gt;</code></a></li><li><a href="/spec/rules/operators/methodop-dot-assign/"><code>.=</code></a></li><li><a href="/spec/rules/operators/methodop-safe-dot/"><code>.?</code></a></li><li><a href="/spec/rules/operators/methodop-meta-dot/"><code>.^</code></a></li><li><a href="/spec/rules/operators/methodop-dot-u70-u6f-u73-u74-u66-u69-u78-slash-dot-u70-u6f-u73-u74-u63-u69-u72-u63-u75-u6d-u66-u69-u78/"><code>.postfix / .postcircumfix</code></a></li><li><a href="/spec/rules/operators/methodop-ubb-dot-slash-u6d-u65-u74-u68-u6f-u64-u6f-u70-gt-gt-dot/"><code>». / methodop &gt;&gt;.</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">autoincrement<span class="nav-count">4</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-increment/"><code>++</code></a></li><li><a href="/spec/rules/operators/postfix-increment/"><code>++</code></a></li><li><a href="/spec/rules/operators/prefix-decrement/"><code>--</code></a></li><li><a href="/spec/rules/operators/postfix-decrement/"><code>--</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">exponentiation<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-power/"><code>**</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">symbolic unary<span class="nav-count">11</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-not/"><code>!</code></a></li><li><a href="/spec/rules/operators/prefix-plus/"><code>+</code></a></li><li><a href="/spec/rules/operators/prefix-numeric-xor/"><code>+^</code></a></li><li><a href="/spec/rules/operators/prefix-minus/"><code>-</code></a></li><li><a href="/spec/rules/operators/prefix-defined-or/"><code>//</code></a></li><li><a href="/spec/rules/operators/prefix-boolify/"><code>?</code></a></li><li><a href="/spec/rules/operators/prefix-boolean-xor/"><code>?^</code></a></li><li><a href="/spec/rules/operators/prefix-one-junction/"><code>^</code></a></li><li><a href="/spec/rules/operators/prefix-any-junction/"><code>|</code></a></li><li><a href="/spec/rules/operators/prefix-concat/"><code>~</code></a></li><li><a href="/spec/rules/operators/prefix-string-xor/"><code>~^</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">dotty infix<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-dot/"><code>.</code></a></li><li><a href="/spec/rules/operators/infix-dot-assign/"><code>.=</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">multiplicative<span class="nav-count">15</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-percent-sigil/"><code>%</code></a></li><li><a href="/spec/rules/operators/infix-divisible/"><code>%%</code></a></li><li><a href="/spec/rules/operators/infix-times/"><code>*</code></a></li><li><a href="/spec/rules/operators/infix-numeric-and/"><code>+&amp;</code></a></li><li><a href="/spec/rules/operators/infix-shift-left/"><code>+&lt;</code></a></li><li><a href="/spec/rules/operators/infix-shift-right/"><code>+&gt;</code></a></li><li><a href="/spec/rules/operators/infix-divide/"><code>/</code></a></li><li><a href="/spec/rules/operators/infix-boolean-and/"><code>?&amp;</code></a></li><li><a href="/spec/rules/operators/infix-div/"><code>div</code></a></li><li><a href="/spec/rules/operators/infix-gcd/"><code>gcd</code></a></li><li><a href="/spec/rules/operators/infix-lcm/"><code>lcm</code></a></li><li><a href="/spec/rules/operators/infix-mod/"><code>mod</code></a></li><li><a href="/spec/rules/operators/infix-string-and/"><code>~&amp;</code></a></li><li><a href="/spec/rules/operators/infix-string-shift-left/"><code>~&lt;</code></a></li><li><a href="/spec/rules/operators/infix-string-shift-right/"><code>~&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">additive<span class="nav-count">8</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-plus/"><code>+</code><span class="nav-name">Addition</span></a></li><li><a href="/spec/rules/operators/infix-numeric-xor/"><code>+^</code></a></li><li><a href="/spec/rules/operators/infix-numeric-or/"><code>+|</code></a></li><li><a href="/spec/rules/operators/infix-minus/"><code>-</code></a></li><li><a href="/spec/rules/operators/infix-boolean-xor/"><code>?^</code></a></li><li><a href="/spec/rules/operators/infix-boolean-or/"><code>?|</code></a></li><li><a href="/spec/rules/operators/infix-string-xor/"><code>~^</code></a></li><li><a href="/spec/rules/operators/infix-string-or/"><code>~|</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">replication<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-x/"><code>x</code></a></li><li><a href="/spec/rules/operators/infix-xx/"><code>xx</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">concatenation<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-concat/"><code>~</code><span class="nav-name">Concatenation</span></a></li><li><a href="/spec/rules/operators/infix-o/"><code>o</code></a></li><li><a href="/spec/rules/operators/infix-compose/"><code>∘</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">junctive and<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-all-junction/"><code>&amp;</code></a></li><li><a href="/spec/rules/operators/infix-intersection/"><code>∩</code></a></li><li><a href="/spec/rules/operators/infix-baggy-multiply/"><code>⊍</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">junctive or<span class="nav-count">6</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-one-junction/"><code>^</code></a></li><li><a href="/spec/rules/operators/infix-any-junction/"><code>|</code></a></li><li><a href="/spec/rules/operators/infix-set-difference/"><code>∖</code></a></li><li><a href="/spec/rules/operators/infix-union/"><code>∪</code></a></li><li><a href="/spec/rules/operators/infix-baggy-add/"><code>⊎</code></a></li><li><a href="/spec/rules/operators/infix-symmetric-difference/"><code>⊖</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">named unary<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-let/"><code>let</code></a></li><li><a href="/spec/rules/operators/prefix-temp/"><code>temp</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">structural<span class="nav-count">11</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-range/"><code>..</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-end/"><code>..^</code></a></li><li><a href="/spec/rules/operators/infix-numeric-cmp/"><code>&lt;=&gt;</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-start/"><code>^..</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-both/"><code>^..^</code></a></li><li><a href="/spec/rules/operators/infix-but/"><code>but</code></a></li><li><a href="/spec/rules/operators/infix-cmp/"><code>cmp</code></a></li><li><a href="/spec/rules/operators/infix-coll/"><code>coll</code></a></li><li><a href="/spec/rules/operators/infix-does/"><code>does</code></a></li><li><a href="/spec/rules/operators/infix-leg/"><code>leg</code></a></li><li><a href="/spec/rules/operators/infix-unicmp/"><code>unicmp</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">chaining<span class="nav-count">41</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-numeric-ne/"><code>!=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-lt/"><code>&lt;</code></a></li><li><a href="/spec/rules/operators/infix-numeric-le/"><code>&lt;=</code></a></li><li><a href="/spec/rules/operators/infix-container-identity/"><code>=:=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-eq/"><code>==</code></a></li><li><a href="/spec/rules/operators/infix-value-identity/"><code>===</code></a></li><li><a href="/spec/rules/operators/infix-approx-eq/"><code>=~=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-gt/"><code>&gt;</code></a></li><li><a href="/spec/rules/operators/infix-numeric-ge/"><code>&gt;=</code></a></li><li><a href="/spec/rules/operators/infix-after/"><code>after</code></a></li><li><a href="/spec/rules/operators/infix-before/"><code>before</code></a></li><li><a href="/spec/rules/operators/infix-eq/"><code>eq</code></a></li><li><a href="/spec/rules/operators/infix-eqv/"><code>eqv</code></a></li><li><a href="/spec/rules/operators/infix-ge/"><code>ge</code></a></li><li><a href="/spec/rules/operators/infix-gt/"><code>gt</code></a></li><li><a href="/spec/rules/operators/infix-le/"><code>le</code></a></li><li><a href="/spec/rules/operators/infix-lt/"><code>lt</code></a></li><li><a href="/spec/rules/operators/infix-ne/"><code>ne</code></a></li><li><a href="/spec/rules/operators/infix-smartmatch/"><code>~~</code></a></li><li><a href="/spec/rules/operators/infix-elem-sign/"><code>∈</code></a></li><li><a href="/spec/rules/operators/infix-not-elem-sign/"><code>∉</code></a></li><li><a href="/spec/rules/operators/infix-contains-sign/"><code>∋</code></a></li><li><a href="/spec/rules/operators/infix-not-contains-sign/"><code>∌</code></a></li><li><a href="/spec/rules/operators/infix-approx-sign/"><code>≅</code></a></li><li><a href="/spec/rules/operators/infix-ne-sign/"><code>≠</code></a></li><li><a href="/spec/rules/operators/infix-identical/"><code>≡</code></a></li><li><a href="/spec/rules/operators/infix-not-identical/"><code>≢</code></a></li><li><a href="/spec/rules/operators/infix-le-sign/"><code>≤</code></a></li><li><a href="/spec/rules/operators/infix-ge-sign/"><code>≥</code></a></li><li><a href="/spec/rules/operators/infix-baggy-subset/"><code>≼</code></a></li><li><a href="/spec/rules/operators/infix-baggy-superset/"><code>≽</code></a></li><li><a href="/spec/rules/operators/infix-proper-subset/"><code>⊂</code></a></li><li><a href="/spec/rules/operators/infix-proper-superset/"><code>⊃</code></a></li><li><a href="/spec/rules/operators/infix-not-proper-subset/"><code>⊄</code></a></li><li><a href="/spec/rules/operators/infix-not-proper-superset/"><code>⊅</code></a></li><li><a href="/spec/rules/operators/infix-subset-or-eq/"><code>⊆</code></a></li><li><a href="/spec/rules/operators/infix-superset-or-eq/"><code>⊇</code></a></li><li><a href="/spec/rules/operators/infix-not-subset/"><code>⊈</code></a></li><li><a href="/spec/rules/operators/infix-not-superset/"><code>⊉</code></a></li><li><a href="/spec/rules/operators/infix-u2a75/"><code>⩵</code></a></li><li><a href="/spec/rules/operators/infix-u2a76/"><code>⩶</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">tight and<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-tight-and/"><code>&amp;&amp;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">tight or<span class="nav-count">6</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-defined-or/"><code>//</code></a></li><li><a href="/spec/rules/operators/infix-tight-xor/"><code>^^</code></a></li><li><a href="/spec/rules/operators/infix-max/"><code>max</code></a></li><li><a href="/spec/rules/operators/infix-min/"><code>min</code></a></li><li><a href="/spec/rules/operators/infix-minmax/"><code>minmax</code></a></li><li><a href="/spec/rules/operators/infix-tight-or/"><code>||</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">conditional<span class="nav-count">9</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-ternary/"><code>?? !!</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66/"><code>^ff</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-caret/"><code>^ff^</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-u66/"><code>^fff</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-u66-caret/"><code>^fff^</code></a></li><li><a href="/spec/rules/operators/infix-ff/"><code>ff</code></a></li><li><a href="/spec/rules/operators/infix-u66-u66-caret/"><code>ff^</code></a></li><li><a href="/spec/rules/operators/infix-fff/"><code>fff</code></a></li><li><a href="/spec/rules/operators/infix-u66-u66-u66-caret/"><code>fff^</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">item assignment<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-assign/"><code>=</code></a></li><li><a href="/spec/rules/operators/infix-fatarrow/"><code>=&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose unary<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-so/"><code>so</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">comma<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-colon/"><code>:</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">list infix<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-sequence/"><code>...</code></a></li><li><a href="/spec/rules/operators/infix-X/"><code>X</code></a></li><li><a href="/spec/rules/operators/infix-Z/"><code>Z</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">list prefix<span class="nav-count">5</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/listop-bang-bang-bang/"><code>!!!</code></a></li><li><a href="/spec/rules/operators/listop-sequence/"><code>...</code></a></li><li><a href="/spec/rules/operators/infix-readonly-bind/"><code>::=</code></a></li><li><a href="/spec/rules/operators/infix-bind/"><code>:=</code></a></li><li><a href="/spec/rules/operators/listop-q-q-q/"><code>???</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose and<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-and/"><code>and</code></a></li><li><a href="/spec/rules/operators/infix-andthen/"><code>andthen</code></a></li><li><a href="/spec/rules/operators/infix-notandthen/"><code>notandthen</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose or<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-or/"><code>or</code></a></li><li><a href="/spec/rules/operators/infix-orelse/"><code>orelse</code></a></li><li><a href="/spec/rules/operators/infix-xor/"><code>xor</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">sequencer<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-feed-backward/"><code>&lt;==</code></a></li><li><a href="/spec/rules/operators/infix-feed-forward/"><code>==&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">circumfixes<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/circumfix-brackets/"><code>[ ]</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">postcircumfixes<span class="nav-count">4</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/postcircumfix-brackets/"><code>[ ]</code><span class="nav-name">Positional subscript</span></a></li><li><a href="/spec/rules/operators/postcircumfix-lt-gt/"><code>&lt;&gt;</code></a></li><li><a href="/spec/rules/operators/postcircumfix-braces/"><code>{ }</code></a></li><li><a href="/spec/rules/operators/postcircumfix-french-quotes/"><code>« »</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">unclassified<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-not/"><code>!</code></a></li><li><a href="/spec/rules/operators/prefix-lparen-u43-minus-u6c-u69-u6b-u65-rparen-u66-u6f-u72-u6d/"><code>(C-like) form</code></a></li></ul></div></div></div></div><div class="nav-cat open"><button class="nav-cat-title" type="button" aria-expanded="true"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Types, classes &amp; roles</span><span class="nav-count">355</span></button><div class="nav-cat-body"><div class="nav-sec open"><button class="nav-sec-title" type="button">basic<span class="nav-count">86</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/ast/">AST</a></li><li><a href="/spec/rules/types/allomorph/">Allomorph</a></li><li><a class="active" href="/spec/rules/types/any/">Any</a></li><li><a href="/spec/rules/types/block/">Block</a></li><li><a href="/spec/rules/types/bool/">Bool</a></li><li><a href="/spec/rules/types/callframe/">CallFrame</a></li><li><a href="/spec/rules/types/callable/">Callable</a></li><li><a href="/spec/rules/types/code/">Code</a></li><li><a href="/spec/rules/types/collation/">Collation</a></li><li><a href="/spec/rules/types/compiler/">Compiler</a></li><li><a href="/spec/rules/types/complex/">Complex</a></li><li><a href="/spec/rules/types/complexstr/">ComplexStr</a></li><li><a href="/spec/rules/types/cool/">Cool</a></li><li><a href="/spec/rules/types/currentthreadscheduler/">CurrentThreadScheduler</a></li><li><a href="/spec/rules/types/date/">Date</a></li><li><a href="/spec/rules/types/datetime/">DateTime</a></li><li><a href="/spec/rules/types/dateish/">Dateish</a></li><li><a href="/spec/rules/types/distribution/">Distribution</a></li><li><a href="/spec/rules/types/distribution-hash/">Distribution::Hash</a></li><li><a href="/spec/rules/types/distribution-locally/">Distribution::Locally</a></li><li><a href="/spec/rules/types/distribution-path/">Distribution::Path</a></li><li><a href="/spec/rules/types/distribution-resource/">Distribution::Resource</a></li><li><a href="/spec/rules/types/duration/">Duration</a></li><li><a href="/spec/rules/types/encoding/">Encoding</a></li><li><a href="/spec/rules/types/encoding-registry/">Encoding::Registry</a></li><li><a href="/spec/rules/types/endian/">Endian</a></li><li><a href="/spec/rules/types/fatrat/">FatRat</a></li><li><a href="/spec/rules/types/foreigncode/">ForeignCode</a></li><li><a href="/spec/rules/types/format/">Format</a></li><li><a href="/spec/rules/types/formatter/">Formatter</a></li><li><a href="/spec/rules/types/hyperseq/">HyperSeq</a></li><li><a href="/spec/rules/types/hyperwhatever/">HyperWhatever</a></li><li><a href="/spec/rules/types/instant/">Instant</a></li><li><a href="/spec/rules/types/int/">Int</a></li><li><a href="/spec/rules/types/intstr/">IntStr</a></li><li><a href="/spec/rules/types/junction/">Junction</a></li><li><a href="/spec/rules/types/label/">Label</a></li><li><a href="/spec/rules/types/lock-async/">Lock::Async</a></li><li><a href="/spec/rules/types/macro/">Macro</a></li><li><a href="/spec/rules/types/method/">Method</a></li><li><a href="/spec/rules/types/mu/">Mu</a></li><li><a href="/spec/rules/types/nil/">Nil</a></li><li><a href="/spec/rules/types/num/">Num</a></li><li><a href="/spec/rules/types/numstr/">NumStr</a></li><li><a href="/spec/rules/types/numeric/">Numeric</a></li><li><a href="/spec/rules/types/objat/">ObjAt</a></li><li><a href="/spec/rules/types/parameter/">Parameter</a></li><li><a href="/spec/rules/types/perl/">Perl</a></li><li><a href="/spec/rules/types/predictiveiterator/">PredictiveIterator</a></li><li><a href="/spec/rules/types/promisestatus/">PromiseStatus</a></li><li><a href="/spec/rules/types/proxy/">Proxy</a></li><li><a href="/spec/rules/types/raceseq/">RaceSeq</a></li><li><a href="/spec/rules/types/raku/">Raku</a></li><li><a href="/spec/rules/types/rakuast/">RakuAST</a></li><li><a href="/spec/rules/types/rakuast-doc/">RakuAST::Doc</a></li><li><a href="/spec/rules/types/rakuast-doc-block/">RakuAST::Doc::Block</a></li><li><a href="/spec/rules/types/rakuast-doc-declarator/">RakuAST::Doc::Declarator</a></li><li><a href="/spec/rules/types/rakuast-doc-declaratortarget/">RakuAST::Doc::DeclaratorTarget</a></li><li><a href="/spec/rules/types/rakuast-doc-markup/">RakuAST::Doc::Markup</a></li><li><a href="/spec/rules/types/rakuast-doc-paragraph/">RakuAST::Doc::Paragraph</a></li><li><a href="/spec/rules/types/rat/">Rat</a></li><li><a href="/spec/rules/types/ratstr/">RatStr</a></li><li><a href="/spec/rules/types/rational/">Rational</a></li><li><a href="/spec/rules/types/real/">Real</a></li><li><a href="/spec/rules/types/routine/">Routine</a></li><li><a href="/spec/rules/types/routine-wraphandle/">Routine::WrapHandle</a></li><li><a href="/spec/rules/types/scalar/">Scalar</a></li><li><a href="/spec/rules/types/signature/">Signature</a></li><li><a href="/spec/rules/types/str/">Str</a></li><li><a href="/spec/rules/types/strdistance/">StrDistance</a></li><li><a href="/spec/rules/types/stringy/">Stringy</a></li><li><a href="/spec/rules/types/sub/">Sub</a></li><li><a href="/spec/rules/types/submethod/">Submethod</a></li><li><a href="/spec/rules/types/telemetry/">Telemetry</a></li><li><a href="/spec/rules/types/telemetry-instrument-thread/">Telemetry::Instrument::Thread</a></li><li><a href="/spec/rules/types/telemetry-instrument-threadpool/">Telemetry::Instrument::ThreadPool</a></li><li><a href="/spec/rules/types/telemetry-instrument-usage/">Telemetry::Instrument::Usage</a></li><li><a href="/spec/rules/types/telemetry-period/">Telemetry::Period</a></li><li><a href="/spec/rules/types/telemetry-sampler/">Telemetry::Sampler</a></li><li><a href="/spec/rules/types/uint/">UInt</a></li><li><a href="/spec/rules/types/valueobjat/">ValueObjAt</a></li><li><a href="/spec/rules/types/variable/">Variable</a></li><li><a href="/spec/rules/types/version/">Version</a></li><li><a href="/spec/rules/types/whatever/">Whatever</a></li><li><a href="/spec/rules/types/whatevercode/">WhateverCode</a></li><li><a href="/spec/rules/types/atomicint/">atomicint</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">composite<span class="nav-count">37</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/array/">Array</a></li><li><a href="/spec/rules/types/associative/">Associative</a></li><li><a href="/spec/rules/types/bag/">Bag</a></li><li><a href="/spec/rules/types/baghash/">BagHash</a></li><li><a href="/spec/rules/types/baggy/">Baggy</a></li><li><a href="/spec/rules/types/blob/">Blob</a></li><li><a href="/spec/rules/types/buf/">Buf</a></li><li><a href="/spec/rules/types/capture/">Capture</a></li><li><a href="/spec/rules/types/enumeration/">Enumeration</a></li><li><a href="/spec/rules/types/hash/">Hash</a></li><li><a href="/spec/rules/types/iterable/">Iterable</a></li><li><a href="/spec/rules/types/iterationbuffer/">IterationBuffer</a></li><li><a href="/spec/rules/types/iterator/">Iterator</a></li><li><a href="/spec/rules/types/list/">List</a></li><li><a href="/spec/rules/types/map/">Map</a></li><li><a href="/spec/rules/types/mix/">Mix</a></li><li><a href="/spec/rules/types/mixhash/">MixHash</a></li><li><a href="/spec/rules/types/mixy/">Mixy</a></li><li><a href="/spec/rules/types/nfc/">NFC</a></li><li><a href="/spec/rules/types/nfd/">NFD</a></li><li><a href="/spec/rules/types/nfkc/">NFKC</a></li><li><a href="/spec/rules/types/nfkd/">NFKD</a></li><li><a href="/spec/rules/types/pair/">Pair</a></li><li><a href="/spec/rules/types/positional/">Positional</a></li><li><a href="/spec/rules/types/positionalbindfailover/">PositionalBindFailover</a></li><li><a href="/spec/rules/types/pseudostash/">PseudoStash</a></li><li><a href="/spec/rules/types/quanthash/">QuantHash</a></li><li><a href="/spec/rules/types/range/">Range</a></li><li><a href="/spec/rules/types/seq/">Seq</a></li><li><a href="/spec/rules/types/sequence/">Sequence</a></li><li><a href="/spec/rules/types/set/">Set</a></li><li><a href="/spec/rules/types/sethash/">SetHash</a></li><li><a href="/spec/rules/types/setty/">Setty</a></li><li><a href="/spec/rules/types/slip/">Slip</a></li><li><a href="/spec/rules/types/stash/">Stash</a></li><li><a href="/spec/rules/types/uni/">Uni</a></li><li><a href="/spec/rules/types/utf8/">utf8</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">domain-specific<span class="nav-count">66</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/attribute/">Attribute</a></li><li><a href="/spec/rules/types/cancellation/">Cancellation</a></li><li><a href="/spec/rules/types/channel/">Channel</a></li><li><a href="/spec/rules/types/compunit/">CompUnit</a></li><li><a href="/spec/rules/types/compunit-precompilationrepository/">CompUnit::PrecompilationRepository</a></li><li><a href="/spec/rules/types/compunit-repository/">CompUnit::Repository</a></li><li><a href="/spec/rules/types/compunit-repository-filesystem/">CompUnit::Repository::FileSystem</a></li><li><a href="/spec/rules/types/compunit-repository-installation/">CompUnit::Repository::Installation</a></li><li><a href="/spec/rules/types/compunit-repository-unknown/">CompUnit::Repository::Unknown</a></li><li><a href="/spec/rules/types/distro/">Distro</a></li><li><a href="/spec/rules/types/grammar/">Grammar</a></li><li><a href="/spec/rules/types/io/">IO</a></li><li><a href="/spec/rules/types/io-argfiles/">IO::ArgFiles</a></li><li><a href="/spec/rules/types/io-cathandle/">IO::CatHandle</a></li><li><a href="/spec/rules/types/io-handle/">IO::Handle</a></li><li><a href="/spec/rules/types/io-notification/">IO::Notification</a></li><li><a href="/spec/rules/types/io-notification-change/">IO::Notification::Change</a></li><li><a href="/spec/rules/types/io-path/">IO::Path</a></li><li><a href="/spec/rules/types/io-path-cygwin/">IO::Path::Cygwin</a></li><li><a href="/spec/rules/types/io-path-parts/">IO::Path::Parts</a></li><li><a href="/spec/rules/types/io-path-qnx/">IO::Path::QNX</a></li><li><a href="/spec/rules/types/io-path-unix/">IO::Path::Unix</a></li><li><a href="/spec/rules/types/io-path-win32/">IO::Path::Win32</a></li><li><a href="/spec/rules/types/io-pipe/">IO::Pipe</a></li><li><a href="/spec/rules/types/io-socket/">IO::Socket</a></li><li><a href="/spec/rules/types/io-socket-async/">IO::Socket::Async</a></li><li><a href="/spec/rules/types/io-socket-async-listensocket/">IO::Socket::Async::ListenSocket</a></li><li><a href="/spec/rules/types/io-socket-inet/">IO::Socket::INET</a></li><li><a href="/spec/rules/types/io-spec/">IO::Spec</a></li><li><a href="/spec/rules/types/io-spec-cygwin/">IO::Spec::Cygwin</a></li><li><a href="/spec/rules/types/io-spec-qnx/">IO::Spec::QNX</a></li><li><a href="/spec/rules/types/io-spec-unix/">IO::Spec::Unix</a></li><li><a href="/spec/rules/types/io-spec-win32/">IO::Spec::Win32</a></li><li><a href="/spec/rules/types/io-special/">IO::Special</a></li><li><a href="/spec/rules/types/kernel/">Kernel</a></li><li><a href="/spec/rules/types/lock/">Lock</a></li><li><a href="/spec/rules/types/lock-conditionvariable/">Lock::ConditionVariable</a></li><li><a href="/spec/rules/types/match/">Match</a></li><li><a href="/spec/rules/types/order/">Order</a></li><li><a href="/spec/rules/types/pod-block/">Pod::Block</a></li><li><a href="/spec/rules/types/pod-block-code/">Pod::Block::Code</a></li><li><a href="/spec/rules/types/pod-block-comment/">Pod::Block::Comment</a></li><li><a href="/spec/rules/types/pod-block-declarator/">Pod::Block::Declarator</a></li><li><a href="/spec/rules/types/pod-block-named/">Pod::Block::Named</a></li><li><a href="/spec/rules/types/pod-block-para/">Pod::Block::Para</a></li><li><a href="/spec/rules/types/pod-block-table/">Pod::Block::Table</a></li><li><a href="/spec/rules/types/pod-defn/">Pod::Defn</a></li><li><a href="/spec/rules/types/pod-formattingcode/">Pod::FormattingCode</a></li><li><a href="/spec/rules/types/pod-heading/">Pod::Heading</a></li><li><a href="/spec/rules/types/pod-item/">Pod::Item</a></li><li><a href="/spec/rules/types/proc/">Proc</a></li><li><a href="/spec/rules/types/proc-async/">Proc::Async</a></li><li><a href="/spec/rules/types/promise/">Promise</a></li><li><a href="/spec/rules/types/regex/">Regex</a></li><li><a href="/spec/rules/types/scheduler/">Scheduler</a></li><li><a href="/spec/rules/types/semaphore/">Semaphore</a></li><li><a href="/spec/rules/types/signal/">Signal</a></li><li><a href="/spec/rules/types/supplier/">Supplier</a></li><li><a href="/spec/rules/types/supplier-preserving/">Supplier::Preserving</a></li><li><a href="/spec/rules/types/supply/">Supply</a></li><li><a href="/spec/rules/types/systemic/">Systemic</a></li><li><a href="/spec/rules/types/tap/">Tap</a></li><li><a href="/spec/rules/types/thread/">Thread</a></li><li><a href="/spec/rules/types/threadpoolscheduler/">ThreadPoolScheduler</a></li><li><a href="/spec/rules/types/unicode/">Unicode</a></li><li><a href="/spec/rules/types/vm/">VM</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">exception<span class="nav-count">138</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/backtrace/">Backtrace</a></li><li><a href="/spec/rules/types/backtrace-frame/">Backtrace::Frame</a></li><li><a href="/spec/rules/types/cx-done/">CX::Done</a></li><li><a href="/spec/rules/types/cx-emit/">CX::Emit</a></li><li><a href="/spec/rules/types/cx-last/">CX::Last</a></li><li><a href="/spec/rules/types/cx-next/">CX::Next</a></li><li><a href="/spec/rules/types/cx-proceed/">CX::Proceed</a></li><li><a href="/spec/rules/types/cx-redo/">CX::Redo</a></li><li><a href="/spec/rules/types/cx-return/">CX::Return</a></li><li><a href="/spec/rules/types/cx-succeed/">CX::Succeed</a></li><li><a href="/spec/rules/types/cx-take/">CX::Take</a></li><li><a href="/spec/rules/types/cx-warn/">CX::Warn</a></li><li><a href="/spec/rules/types/exception/">Exception</a></li><li><a href="/spec/rules/types/failure/">Failure</a></li><li><a href="/spec/rules/types/x-adhoc/">X::AdHoc</a></li><li><a href="/spec/rules/types/x-anon-augment/">X::Anon::Augment</a></li><li><a href="/spec/rules/types/x-anon-multi/">X::Anon::Multi</a></li><li><a href="/spec/rules/types/x-assignment-ro/">X::Assignment::RO</a></li><li><a href="/spec/rules/types/x-attribute-nopackage/">X::Attribute::NoPackage</a></li><li><a href="/spec/rules/types/x-attribute-package/">X::Attribute::Package</a></li><li><a href="/spec/rules/types/x-attribute-required/">X::Attribute::Required</a></li><li><a href="/spec/rules/types/x-attribute-undeclared/">X::Attribute::Undeclared</a></li><li><a href="/spec/rules/types/x-augment-nosuchtype/">X::Augment::NoSuchType</a></li><li><a href="/spec/rules/types/x-bind/">X::Bind</a></li><li><a href="/spec/rules/types/x-bind-nativetype/">X::Bind::NativeType</a></li><li><a href="/spec/rules/types/x-bind-slice/">X::Bind::Slice</a></li><li><a href="/spec/rules/types/x-caller-notdynamic/">X::Caller::NotDynamic</a></li><li><a href="/spec/rules/types/x-cannot-empty/">X::Cannot::Empty</a></li><li><a href="/spec/rules/types/x-cannot-lazy/">X::Cannot::Lazy</a></li><li><a href="/spec/rules/types/x-channel-receiveonclosed/">X::Channel::ReceiveOnClosed</a></li><li><a href="/spec/rules/types/x-channel-sendonclosed/">X::Channel::SendOnClosed</a></li><li><a href="/spec/rules/types/x-comp/">X::Comp</a></li><li><a href="/spec/rules/types/x-composition-notcomposable/">X::Composition::NotComposable</a></li><li><a href="/spec/rules/types/x-constructor-positional/">X::Constructor::Positional</a></li><li><a href="/spec/rules/types/x-control/">X::Control</a></li><li><a href="/spec/rules/types/x-controlflow/">X::ControlFlow</a></li><li><a href="/spec/rules/types/x-controlflow-return/">X::ControlFlow::Return</a></li><li><a href="/spec/rules/types/x-datetime-timezoneclash/">X::DateTime::TimezoneClash</a></li><li><a href="/spec/rules/types/x-declaration-scope/">X::Declaration::Scope</a></li><li><a href="/spec/rules/types/x-declaration-scope-multi/">X::Declaration::Scope::Multi</a></li><li><a href="/spec/rules/types/x-does-typeobject/">X::Does::TypeObject</a></li><li><a href="/spec/rules/types/x-dynamic-notfound/">X::Dynamic::NotFound</a></li><li><a href="/spec/rules/types/x-eval-nosuchlang/">X::Eval::NoSuchLang</a></li><li><a href="/spec/rules/types/x-export-nameclash/">X::Export::NameClash</a></li><li><a href="/spec/rules/types/x-io/">X::IO</a></li><li><a href="/spec/rules/types/x-io-binarymode/">X::IO::BinaryMode</a></li><li><a href="/spec/rules/types/x-io-chdir/">X::IO::Chdir</a></li><li><a href="/spec/rules/types/x-io-chmod/">X::IO::Chmod</a></li><li><a href="/spec/rules/types/x-io-chown/">X::IO::Chown</a></li><li><a href="/spec/rules/types/x-io-copy/">X::IO::Copy</a></li><li><a href="/spec/rules/types/x-io-cwd/">X::IO::Cwd</a></li><li><a href="/spec/rules/types/x-io-dir/">X::IO::Dir</a></li><li><a href="/spec/rules/types/x-io-doesnotexist/">X::IO::DoesNotExist</a></li><li><a href="/spec/rules/types/x-io-flush/">X::IO::Flush</a></li><li><a href="/spec/rules/types/x-io-link/">X::IO::Link</a></li><li><a href="/spec/rules/types/x-io-lock/">X::IO::Lock</a></li><li><a href="/spec/rules/types/x-io-mkdir/">X::IO::Mkdir</a></li><li><a href="/spec/rules/types/x-io-move/">X::IO::Move</a></li><li><a href="/spec/rules/types/x-io-rename/">X::IO::Rename</a></li><li><a href="/spec/rules/types/x-io-rmdir/">X::IO::Rmdir</a></li><li><a href="/spec/rules/types/x-io-symlink/">X::IO::Symlink</a></li><li><a href="/spec/rules/types/x-io-unlink/">X::IO::Unlink</a></li><li><a href="/spec/rules/types/x-inheritance-notcomposed/">X::Inheritance::NotComposed</a></li><li><a href="/spec/rules/types/x-inheritance-unsupported/">X::Inheritance::Unsupported</a></li><li><a href="/spec/rules/types/x-method-invalidqualifier/">X::Method::InvalidQualifier</a></li><li><a href="/spec/rules/types/x-method-notfound/">X::Method::NotFound</a></li><li><a href="/spec/rules/types/x-method-private-permission/">X::Method::Private::Permission</a></li><li><a href="/spec/rules/types/x-method-private-unqualified/">X::Method::Private::Unqualified</a></li><li><a href="/spec/rules/types/x-mixin-notcomposable/">X::Mixin::NotComposable</a></li><li><a href="/spec/rules/types/x-nyi/">X::NYI</a></li><li><a href="/spec/rules/types/x-nodispatcher/">X::NoDispatcher</a></li><li><a href="/spec/rules/types/x-numeric-cannotconvert/">X::Numeric::CannotConvert</a></li><li><a href="/spec/rules/types/x-numeric-dividebyzero/">X::Numeric::DivideByZero</a></li><li><a href="/spec/rules/types/x-numeric-real/">X::Numeric::Real</a></li><li><a href="/spec/rules/types/x-os/">X::OS</a></li><li><a href="/spec/rules/types/x-obsolete/">X::Obsolete</a></li><li><a href="/spec/rules/types/x-outofrange/">X::OutOfRange</a></li><li><a href="/spec/rules/types/x-package-stubbed/">X::Package::Stubbed</a></li><li><a href="/spec/rules/types/x-parameter-default/">X::Parameter::Default</a></li><li><a href="/spec/rules/types/x-parameter-multipletypeconstraints/">X::Parameter::MultipleTypeConstraints</a></li><li><a href="/spec/rules/types/x-parameter-placeholder/">X::Parameter::Placeholder</a></li><li><a href="/spec/rules/types/x-parameter-twigil/">X::Parameter::Twigil</a></li><li><a href="/spec/rules/types/x-parameter-wrongorder/">X::Parameter::WrongOrder</a></li><li><a href="/spec/rules/types/x-phaser-multiple/">X::Phaser::Multiple</a></li><li><a href="/spec/rules/types/x-phaser-prepost/">X::Phaser::PrePost</a></li><li><a href="/spec/rules/types/x-placeholder-block/">X::Placeholder::Block</a></li><li><a href="/spec/rules/types/x-placeholder-mainline/">X::Placeholder::Mainline</a></li><li><a href="/spec/rules/types/x-pod/">X::Pod</a></li><li><a href="/spec/rules/types/x-proc-async/">X::Proc::Async</a></li><li><a href="/spec/rules/types/x-proc-async-alreadystarted/">X::Proc::Async::AlreadyStarted</a></li><li><a href="/spec/rules/types/x-proc-async-bindoruse/">X::Proc::Async::BindOrUse</a></li><li><a href="/spec/rules/types/x-proc-async-charsorbytes/">X::Proc::Async::CharsOrBytes</a></li><li><a href="/spec/rules/types/x-proc-async-mustbestarted/">X::Proc::Async::MustBeStarted</a></li><li><a href="/spec/rules/types/x-proc-async-openforwriting/">X::Proc::Async::OpenForWriting</a></li><li><a href="/spec/rules/types/x-proc-async-tapbeforespawn/">X::Proc::Async::TapBeforeSpawn</a></li><li><a href="/spec/rules/types/x-proc-unsuccessful/">X::Proc::Unsuccessful</a></li><li><a href="/spec/rules/types/x-promise-causeonlyvalidonbroken/">X::Promise::CauseOnlyValidOnBroken</a></li><li><a href="/spec/rules/types/x-promise-vowed/">X::Promise::Vowed</a></li><li><a href="/spec/rules/types/x-redeclaration/">X::Redeclaration</a></li><li><a href="/spec/rules/types/x-role-initialization/">X::Role::Initialization</a></li><li><a href="/spec/rules/types/x-scheduler-cueinnanseconds/">X::Scheduler::CueInNaNSeconds</a></li><li><a href="/spec/rules/types/x-seq-consumed/">X::Seq::Consumed</a></li><li><a href="/spec/rules/types/x-sequence-deduction/">X::Sequence::Deduction</a></li><li><a href="/spec/rules/types/x-signature-nameclash/">X::Signature::NameClash</a></li><li><a href="/spec/rules/types/x-signature-placeholder/">X::Signature::Placeholder</a></li><li><a href="/spec/rules/types/x-str-match-x/">X::Str::Match::x</a></li><li><a href="/spec/rules/types/x-str-numeric/">X::Str::Numeric</a></li><li><a href="/spec/rules/types/x-stubcode/">X::StubCode</a></li><li><a href="/spec/rules/types/x-syntax/">X::Syntax</a></li><li><a href="/spec/rules/types/x-syntax-augment-withoutmonkeytyping/">X::Syntax::Augment::WithoutMonkeyTyping</a></li><li><a href="/spec/rules/types/x-syntax-comment-embedded/">X::Syntax::Comment::Embedded</a></li><li><a href="/spec/rules/types/x-syntax-confused/">X::Syntax::Confused</a></li><li><a href="/spec/rules/types/x-syntax-infixintermposition/">X::Syntax::InfixInTermPosition</a></li><li><a href="/spec/rules/types/x-syntax-malformed/">X::Syntax::Malformed</a></li><li><a href="/spec/rules/types/x-syntax-missing/">X::Syntax::Missing</a></li><li><a href="/spec/rules/types/x-syntax-negatedpair/">X::Syntax::NegatedPair</a></li><li><a href="/spec/rules/types/x-syntax-noself/">X::Syntax::NoSelf</a></li><li><a href="/spec/rules/types/x-syntax-number-radixoutofrange/">X::Syntax::Number::RadixOutOfRange</a></li><li><a href="/spec/rules/types/x-syntax-p5/">X::Syntax::P5</a></li><li><a href="/spec/rules/types/x-syntax-perl5var/">X::Syntax::Perl5Var</a></li><li><a href="/spec/rules/types/x-syntax-regex-adverb/">X::Syntax::Regex::Adverb</a></li><li><a href="/spec/rules/types/x-syntax-regex-solitaryquantifier/">X::Syntax::Regex::SolitaryQuantifier</a></li><li><a href="/spec/rules/types/x-syntax-reserved/">X::Syntax::Reserved</a></li><li><a href="/spec/rules/types/x-syntax-self-withoutobject/">X::Syntax::Self::WithoutObject</a></li><li><a href="/spec/rules/types/x-syntax-signature-invocantmarker/">X::Syntax::Signature::InvocantMarker</a></li><li><a href="/spec/rules/types/x-syntax-term-missinginitializer/">X::Syntax::Term::MissingInitializer</a></li><li><a href="/spec/rules/types/x-syntax-unlesselse/">X::Syntax::UnlessElse</a></li><li><a href="/spec/rules/types/x-syntax-variable-match/">X::Syntax::Variable::Match</a></li><li><a href="/spec/rules/types/x-syntax-variable-numeric/">X::Syntax::Variable::Numeric</a></li><li><a href="/spec/rules/types/x-syntax-variable-twigil/">X::Syntax::Variable::Twigil</a></li><li><a href="/spec/rules/types/x-temporal/">X::Temporal</a></li><li><a href="/spec/rules/types/x-temporal-invalidformat/">X::Temporal::InvalidFormat</a></li><li><a href="/spec/rules/types/x-typecheck/">X::TypeCheck</a></li><li><a href="/spec/rules/types/x-typecheck-assignment/">X::TypeCheck::Assignment</a></li><li><a href="/spec/rules/types/x-typecheck-binding/">X::TypeCheck::Binding</a></li><li><a href="/spec/rules/types/x-typecheck-return/">X::TypeCheck::Return</a></li><li><a href="/spec/rules/types/x-typecheck-splice/">X::TypeCheck::Splice</a></li><li><a href="/spec/rules/types/x-undeclared/">X::Undeclared</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">fundamental<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/routines/">routines</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">metamodel<span class="nav-count">21</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/metamodel-attributecontainer/">Metamodel::AttributeContainer</a></li><li><a href="/spec/rules/types/metamodel-c3mro/">Metamodel::C3MRO</a></li><li><a href="/spec/rules/types/metamodel-classhow/">Metamodel::ClassHOW</a></li><li><a href="/spec/rules/types/metamodel-concreterolehow/">Metamodel::ConcreteRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-curriedrolehow/">Metamodel::CurriedRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-definitehow/">Metamodel::DefiniteHOW</a></li><li><a href="/spec/rules/types/metamodel-enumhow/">Metamodel::EnumHOW</a></li><li><a href="/spec/rules/types/metamodel-finalization/">Metamodel::Finalization</a></li><li><a href="/spec/rules/types/metamodel-mrobasedmethoddispatch/">Metamodel::MROBasedMethodDispatch</a></li><li><a href="/spec/rules/types/metamodel-methodcontainer/">Metamodel::MethodContainer</a></li><li><a href="/spec/rules/types/metamodel-mixins/">Metamodel::Mixins</a></li><li><a href="/spec/rules/types/metamodel-multipleinheritance/">Metamodel::MultipleInheritance</a></li><li><a href="/spec/rules/types/metamodel-naming/">Metamodel::Naming</a></li><li><a href="/spec/rules/types/metamodel-packagehow/">Metamodel::PackageHOW</a></li><li><a href="/spec/rules/types/metamodel-parametricrolegrouphow/">Metamodel::ParametricRoleGroupHOW</a></li><li><a href="/spec/rules/types/metamodel-parametricrolehow/">Metamodel::ParametricRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-primitives/">Metamodel::Primitives</a></li><li><a href="/spec/rules/types/metamodel-privatemethodcontainer/">Metamodel::PrivateMethodContainer</a></li><li><a href="/spec/rules/types/metamodel-rolecontainer/">Metamodel::RoleContainer</a></li><li><a href="/spec/rules/types/metamodel-rolepunning/">Metamodel::RolePunning</a></li><li><a href="/spec/rules/types/metamodel-trusting/">Metamodel::Trusting</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">module<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/test/">Test</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">uncategorised<span class="nav-count">5</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/metamodel-documenting/">Metamodel::Documenting</a></li><li><a href="/spec/rules/types/metamodel-methoddelegation/">Metamodel::MethodDelegation</a></li><li><a href="/spec/rules/types/metamodel-stashing/">Metamodel::Stashing</a></li><li><a href="/spec/rules/types/metamodel-typepretense/">Metamodel::TypePretense</a></li><li><a href="/spec/rules/types/metamodel-versioning/">Metamodel::Versioning</a></li></ul></div></div></div></div><div class="nav-extra"><a href="/spec/rules/symbols/">Symbol index</a><a href="/spec/rules/coverage/">Coverage</a><a href="/spec/rules/divergences/">Where things diverge</a><a href="/spec/">Spec 1.0 →</a></div></div></nav>
+<main>
+<div class="content">
+<div class="crumbs"><a href="/spec/rules/">Rules</a> / Types, classes &amp; roles / basic</div><h1>Any <span class="status st-ref" title="Signatures and hierarchy taken from the official documentation; examples run on both engines.">Reference</span></h1><p class="summary">Thing/object</p>
+<h2 id="what-it-is" class="sec">What it is <a class="anchor" href="#what-it-is" aria-label="link">#</a></h2>
+<h3 id="position-in-the-hierarchy">Position in the hierarchy <a class="anchor" href="#position-in-the-hierarchy" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>Inherits from</td><td>—</td></tr><tr><td>Does</td><td>—</td></tr><tr><td>Inherited by</td><td><a href="/spec/spec/rules/types/metamodel-primitives/"><code>Metamodel::Primitives</code></a>, <a href="/spec/spec/rules/types/scalar/"><code>Scalar</code></a>, <a href="/spec/spec/rules/types/variable/"><code>Variable</code></a>, <a href="/spec/spec/rules/types/proxy/"><code>Proxy</code></a>, <a href="/spec/spec/rules/types/cool/"><code>Cool</code></a></td></tr></tbody></table></div>
+<h2 id="routines" class="sec">Routines <a class="anchor" href="#routines" aria-label="link">#</a></h2>
+<p>Signatures are reproduced from the documentation, including their declared return types. A routine listed here is part of the type's published interface; whether Raku++ implements it is a separate question, answered by the examples below.</p>
+<h3 id="method-accepts">method <code>ACCEPTS</code> <a class="anchor" href="#method-accepts" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method ACCEPTS(Any:D: Mu $other)</code></pre>
+<p>Usage: Returns <code>True</code> if <code>$other === self</code> (i.e. it checks object identity). Many built-in types override this for more specific comparisons.</p>
+<h3 id="routine-any">routine <code>any</code> <a class="anchor" href="#routine-any" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method any(        --&gt; Junction:D)
+multi  any(+values --&gt; Junction:D)
+multi  any(@values --&gt; Junction:D)</code></pre>
+<p><strong>Returns</strong> <code>Junction:D</code>.</p>
+<p>Interprets the invocant or arguments as a list and creates an <a href="https://docs.raku.org/routine/any">any</a>-<a href="https://docs.raku.org/type/Junction"><code>Junction</code></a> from it.</p>
+<h3 id="routine-all">routine <code>all</code> <a class="anchor" href="#routine-all" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method all(        --&gt; Junction:D)
+multi  all(+values --&gt; Junction:D)
+multi  all(@values --&gt; Junction:D)</code></pre>
+<p><strong>Returns</strong> <code>Junction:D</code>.</p>
+<p>Interprets the invocant or arguments as a list and creates an <a href="https://docs.raku.org/routine/all">all</a>-<a href="https://docs.raku.org/type/Junction"><code>Junction</code></a> from it.</p>
+<h3 id="routine-one">routine <code>one</code> <a class="anchor" href="#routine-one" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method one(        --&gt; Junction:D)
+multi  one(+values --&gt; Junction:D)
+multi  one(@values --&gt; Junction:D)</code></pre>
+<p><strong>Returns</strong> <code>Junction:D</code>.</p>
+<p>Interprets the invocant or arguments as a list and creates a <a href="https://docs.raku.org/routine/one">one</a>-<a href="https://docs.raku.org/type/Junction"><code>Junction</code></a> from it.</p>
+<h3 id="routine-none">routine <code>none</code> <a class="anchor" href="#routine-none" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method none(        --&gt; Junction:D)
+multi  none(+values --&gt; Junction:D)
+multi  none(@values --&gt; Junction:D)</code></pre>
+<p><strong>Returns</strong> <code>Junction:D</code>.</p>
+<p>Interprets the invocant or arguments as a list and creates a <a href="https://docs.raku.org/routine/none">none</a>-<a href="https://docs.raku.org/type/Junction"><code>Junction</code></a> from it.</p>
+<h3 id="method-list">method <code>list</code> <a class="anchor" href="#method-list" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method list(Any:U:)
+multi method list(Any:D \SELF:)</code></pre>
+<p>Applies the infix <a href="https://docs.raku.org/routine/,"><code>,</code></a> operator to the invocant and returns the resulting <a href="https://docs.raku.org/type/List"><code>List</code></a>: Subclasses of <code>Any</code> may choose to return any <em>core</em> type that does the <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a> role from <a href="https://docs.raku.org/routine/list"><code>.list</code></a>. Use <a href="https://docs.raku.org/routine/List"><code>.List</code></a> to coerce specifically to <a href="https://docs.raku.org/type/List"><code>List</code></a>.  <code>@</code> can also be used as a list or <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a> contextualizer:</p>
+<h3 id="method-push">method <code>push</code> <a class="anchor" href="#method-push" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method push(Any:U \SELF: |values --&gt; Positional:D)</code></pre>
+<p><strong>Returns</strong> <code>Positional:D</code>.</p>
+<p>The method push is defined for undefined invocants and allows for autovivifying undefined to an empty <a href="https://docs.raku.org/type/Array"><code>Array</code></a>, unless the undefined value implements <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a> already. The argument provided will then be pushed into the newly created Array.</p>
+<h3 id="routine-reverse">routine <code>reverse</code> <a class="anchor" href="#routine-reverse" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        reverse(*@list  --&gt; Seq:D)
+multi method reverse(List:D: --&gt; Seq:D)</code></pre>
+<p><strong>Returns</strong> <code>Seq:D</code>.</p>
+<p>Returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> with the same elements in reverse order. Note that <code>reverse</code> always refers to reversing elements of a list; to reverse the characters in a string, use <a href="https://docs.raku.org/routine/flip">flip</a>. Examples:</p>
+<h3 id="method-sort">method <code>sort</code> <a class="anchor" href="#method-sort" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method sort()
+multi method sort(&amp;custom-routine-to-use)</code></pre>
+<p>Sorts iterables with <a href="https://docs.raku.org/routine/cmp">cmp</a> or given code object and returns a new <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>. Optionally, takes a <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> as a positional parameter, specifying how to sort. Examples:</p>
+<h3 id="routine-map">routine <code>map</code> <a class="anchor" href="#routine-map" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method map(\SELF: &amp;code)
+multi        map(&amp;code, +values)</code></pre>
+<p><code>map</code> will iterate over the invocant and apply the number of positional parameters of the code object from the invocant per call.  The returned values of the code object will become elements of the returned <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>. The additional parameters <code>:$label</code> and <code>:$item</code>, available in the <code>method</code> form, are useful only internally, since <code>for</code> loops get converted to <code>map</code>s. The <code>:$label</code> takes an existing <a href="https://docs.raku.org/type/Label"><code>Label</code></a> to</p>
+<h3 id="routine-deepmap">routine <code>deepmap</code> <a class="anchor" href="#routine-deepmap" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method deepmap(&amp;block --&gt; Iterable) is nodal
+sub    deepmap(&amp;op, \obj --&gt; Iterable)</code></pre>
+<p><strong>Returns</strong> <code>Iterable</code>.</p>
+<p><code>deepmap</code> will apply its argument (or first argument for the sub form) to each element and return a new <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> with the return values of the argument, unless the element does the <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> role. For those elements <a href="https://docs.raku.org/routine/deepmap">deepmap</a> will descend recursively into the sublist. In the case of <a href="https://docs.raku.org/type/Associative"><code>Associative</code></a>s, it will be applied to its values:</p>
+<h3 id="routine-duckmap">routine <code>duckmap</code> <a class="anchor" href="#routine-duckmap" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method duckmap(&amp;block --&gt; Iterable) is rw is nodal
+sub    duckmap(&amp;op, \obj --&gt; Iterable)</code></pre>
+<p><strong>Returns</strong> <code>Iterable</code>.</p>
+<p><code>duckmap</code> will apply its argument (or first argument for the sub form) to each element that behaves in such a way that the argument can be applied. If it fails, it will descend recursively if possible, or otherwise return the item without any transformation. It will act on values if the object is <a href="https://docs.raku.org/type/Associative"><code>Associative</code></a>. In the first case, it is applied to <code>c</code>, <code>d</code> and <code>e</code> which are the ones that</p>
+<h3 id="routine-nodemap">routine <code>nodemap</code> <a class="anchor" href="#routine-nodemap" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method nodemap(&amp;block --&gt; Iterable) is nodal
+sub    nodemap(&amp;op, \obj --&gt; Iterable)</code></pre>
+<p><strong>Returns</strong> <code>Iterable</code>.</p>
+<p><code>nodemap</code> will apply its argument (or first argument for the sub form) to each element and return a new <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> with the return values of its <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> argument. In contrast to <a href="https://docs.raku.org/routine/deepmap">deepmap</a> it will <strong>not</strong> descend recursively into sublists if it finds elements which <a href="https://docs.raku.org/routine/does">do</a> the <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> role. The examples above would have produced the exact same results if we had used</p>
+<h3 id="method-flat">method <code>flat</code> <a class="anchor" href="#method-flat" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method flat() is nodal</code></pre>
+<p>Interprets the invocant as a list, flattens <a href="https://docs.raku.org/language/containers">non-containerized</a> <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a>s into a flat list, and returns that list. Keep in mind <a href="https://docs.raku.org/type/Map"><code>Map</code></a> and <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a> types are <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> and so will be flattened into lists of pairs. Note that <a href="https://docs.raku.org/type/Array"><code>Array</code></a>s containerize their elements by default, and so <code>flat</code> will not flatten them. You can use the</p>
+<h3 id="method-eager">method <code>eager</code> <a class="anchor" href="#method-eager" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method eager() is nodal</code></pre>
+<p>Interprets the invocant as a <a href="https://docs.raku.org/type/List"><code>List</code></a>, evaluates it eagerly, and returns that <a href="https://docs.raku.org/type/List"><code>List</code></a>.</p>
+<h3 id="routine-elems">routine <code>elems</code> <a class="anchor" href="#routine-elems" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method elems(Any:U: --&gt; 1)
+multi method elems(Any:D:)
+multi        elems($a)
+multi        elems(array:D \a)</code></pre>
+<p><strong>Returns</strong> <code>1</code>.</p>
+<p>Interprets the invocant or argument as a list, and returns the number of elements in the list. It will also return 1 for classes.</p>
+<h3 id="routine-end">routine <code>end</code> <a class="anchor" href="#routine-end" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method end(Any:U: --&gt; 0)
+multi method end(Any:D:)
+multi        end($a)
+multi        end(array:D \a)
+multi        end($, *%)</code></pre>
+<p><strong>Returns</strong> <code>0</code>.</p>
+<p>Interprets the invocant or argument as a list, and returns the last index of that list.</p>
+<h3 id="method-pairup">method <code>pairup</code> <a class="anchor" href="#method-pairup" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method pairup(Any:U:)
+multi method pairup(Any:D:)</code></pre>
+<p>Returns an empty <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> if the invocant is a type object Interprets the invocant as a list, and constructs a list of <a href="https://docs.raku.org/type/Pair"><code>Pair</code></a>s from it, in the same way that assignment to a <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a> does.  That is, it takes two consecutive elements and constructs a pair from them, unless the item in the key position already is a pair (in which case the pair is passed through, and the next list item, if any,</p>
+<h3 id="method-array">method <code>Array</code> <a class="anchor" href="#method-array" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Array(--&gt; Array:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Array:D</code>.</p>
+<p>Coerces the invocant to an <a href="https://docs.raku.org/type/Array"><code>Array</code></a>.</p>
+<h3 id="method-list">method <code>List</code> <a class="anchor" href="#method-list" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method List(--&gt; List:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>List:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/List"><code>List</code></a>, using the <a href="https://docs.raku.org/routine/list">list</a> method.</p>
+<h3 id="method-serial">method <code>serial</code> <a class="anchor" href="#method-serial" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method serial()</code></pre>
+<p>This method is Rakudo specific, and is not included in the Raku spec. The method returns the self-reference to the instance itself: This is apparently a no-op, as exemplified by the third example above. However, in <a href="https://docs.raku.org/type/HyperSeq"><code>HyperSeq</code></a>s and <a href="https://docs.raku.org/type/RaceSeq"><code>RaceSeq</code></a>s it returns a serialized <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>, so it can be considered the opposite of the <code>hyper/race</code> methods. As such, it ensures that we are in serial list-processing mode, as</p>
+<h3 id="method-hash">method <code>Hash</code> <a class="anchor" href="#method-hash" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method Hash( --&gt; Hash:D)</code></pre>
+<p><strong>Returns</strong> <code>Hash:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a>.</p>
+<h3 id="method-hash">method <code>hash</code> <a class="anchor" href="#method-hash" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method hash(Any:U:)
+multi method hash(Any:D:)</code></pre>
+<p>When called on a type object, returns an empty <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a>. On instances, it is equivalent to assigning the invocant to a <code>%-</code>sigiled variable and returning that. Subclasses of <code>Any</code> may choose to return any <em>core</em> type that does the <a href="https://docs.raku.org/type/Associative"><code>Associative</code></a> role from <a href="https://docs.raku.org/routine/hash"><code>.hash</code></a>. Use <a href="https://docs.raku.org/routine/Hash"><code>.Hash</code></a> to coerce specifically to <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a>.</p>
+<h3 id="method-slip">method <code>Slip</code> <a class="anchor" href="#method-slip" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Slip(--&gt; Slip:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Slip:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Slip"><code>Slip</code></a>.</p>
+<h3 id="method-map">method <code>Map</code> <a class="anchor" href="#method-map" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Map(--&gt; Map:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Map:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Map"><code>Map</code></a>.</p>
+<h3 id="method-seq">method <code>Seq</code> <a class="anchor" href="#method-seq" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Seq() is nodal</code></pre>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>.</p>
+<h3 id="method-bag">method <code>Bag</code> <a class="anchor" href="#method-bag" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Bag(--&gt; Bag:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Bag:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Bag"><code>Bag</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-baghash">method <code>BagHash</code> <a class="anchor" href="#method-baghash" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method BagHash(--&gt; BagHash:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>BagHash:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/BagHash"><code>BagHash</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-set">method <code>Set</code> <a class="anchor" href="#method-set" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Set(--&gt; Set:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Set:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Set"><code>Set</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-sethash">method <code>SetHash</code> <a class="anchor" href="#method-sethash" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method SetHash(--&gt; SetHash:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>SetHash:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/SetHash"><code>SetHash</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-mix">method <code>Mix</code> <a class="anchor" href="#method-mix" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Mix(--&gt; Mix:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Mix:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Mix"><code>Mix</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-mixhash">method <code>MixHash</code> <a class="anchor" href="#method-mixhash" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method MixHash(--&gt; MixHash:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>MixHash:D</code>.</p>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/MixHash"><code>MixHash</code></a>, whereby <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s are treated as lists of values.</p>
+<h3 id="method-supply">method <code>Supply</code> <a class="anchor" href="#method-supply" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Supply(--&gt; Supply:D) is nodal</code></pre>
+<p><strong>Returns</strong> <code>Supply:D</code>.</p>
+<p>First, it coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method, and then to a <a href="https://docs.raku.org/type/Supply"><code>Supply</code></a>.</p>
+<h3 id="routine-min">routine <code>min</code> <a class="anchor" href="#routine-min" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method min(&amp;by?, :$k, :$v, :$kv, :$p )
+multi        min(+args, :&amp;by, :$k, :$v, :$kv, :$p)</code></pre>
+<p>Coerces the invocant to <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> and returns the smallest element using <a href="https://docs.raku.org/routine/cmp">cmp</a> semantics; in the case of <a href="https://docs.raku.org/type/Map"><code>Map</code></a>s and <a href="https://docs.raku.org/type/Hash"><code>Hash</code></a>es, it returns the <a href="https://docs.raku.org/type/Pair"><code>Pair</code></a> with the <strong>lowest</strong> value. A <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> positional argument can be given to the <code>method</code> form.  If that <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> accepts a single argument, then it</p>
+<h3 id="routine-max">routine <code>max</code> <a class="anchor" href="#routine-max" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method max(&amp;by?, :$k, :$v, :$kv, :$p )
+multi        max(+args, :&amp;by, :$k, :$v, :$kv, :$p)</code></pre>
+<p>The interface of the <code>max</code> method / routine is the same as the one of <code>min</code>.  But instead of the lowest value, it will return the <strong>highest</strong> value. As of the 2023.08 Rakudo compiler release:</p>
+<h3 id="routine-minmax">routine <code>minmax</code> <a class="anchor" href="#routine-minmax" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method minmax()
+multi method minmax(&amp;by)
+multi        minmax(+args, :&amp;by!)
+multi        minmax(+args)</code></pre>
+<p>Returns a <a href="https://docs.raku.org/type/Range"><code>Range</code></a> from the smallest to the largest element. If a <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> positional argument is provided, each value is passed into the filter, and its return value is compared instead of the original value. The original values are still used in the returned <a href="https://docs.raku.org/type/Range"><code>Range</code></a>. In <code>sub</code> form, the invocant is passed as an argument and a comparison <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a></p>
+<h3 id="method-minpairs">method <code>minpairs</code> <a class="anchor" href="#method-minpairs" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method minpairs(Any:D:)</code></pre>
+<p>Calls <a href="https://docs.raku.org/routine/pairs"><code>.pairs</code></a> and returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> with all of the Pairs with minimum values, as judged by the <a href="https://docs.raku.org/routine/cmp"><code>cmp</code> operator</a>:</p>
+<h3 id="method-maxpairs">method <code>maxpairs</code> <a class="anchor" href="#method-maxpairs" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method maxpairs(Any:D:)</code></pre>
+<p>Calls <a href="https://docs.raku.org/routine/pairs"><code>.pairs</code></a> and returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> with all of the Pairs with maximum values, as judged by the <a href="https://docs.raku.org/routine/cmp"><code>cmp</code> operator</a>:</p>
+<h3 id="method-keys">method <code>keys</code> <a class="anchor" href="#method-keys" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method keys(Any:U: --&gt; List)
+multi method keys(Any:D: --&gt; List)</code></pre>
+<p><strong>Returns</strong> <code>List</code>.</p>
+<p>For defined <code>Any</code> returns its <a href="https://docs.raku.org/routine/keys">keys</a> after calling <code>list</code> on it, otherwise calls <code>list</code> and returns it. See also <a href="https://docs.raku.org/type/List#routine_keys"><code>List.keys</code></a>. Trying the same on a class will return an empty list, since most of them don't really have keys.</p>
+<h3 id="method-flatmap">method <code>flatmap</code> <a class="anchor" href="#method-flatmap" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method flatmap(&amp;block, :$label)</code></pre>
+<p>Convenience method, analogous to <code></code>.map(&amp;block)<code></code><code></code>.flat<code></code>.</p>
+<h3 id="method-roll">method <code>roll</code> <a class="anchor" href="#method-roll" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method roll(--&gt; Any)
+multi method roll($n --&gt; Seq)</code></pre>
+<p><strong>Returns</strong> <code>Any</code> or <code>Seq</code>.</p>
+<p>Coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_roll"><code>List.roll</code></a> on it. <code>$m</code>, in this case, is converted into a list and then a (weighted in this case) dice is rolled on it. See also <a href="https://docs.raku.org/type/List#routine_roll"><code>List.roll</code></a> for more information.</p>
+<h3 id="method-iterator">method <code>iterator</code> <a class="anchor" href="#method-iterator" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method iterator(Any:)</code></pre>
+<p>Returns the object as an iterator after converting it to a list. This is the function called from the <code>for</code> statement. An iterable subclass of <code>Any</code> should provide its own implementation of this method, but other classes can inherit this as-is to provide a single-item-list iterator in contexts that require one.</p>
+<h3 id="method-pick">method <code>pick</code> <a class="anchor" href="#method-pick" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method pick(--&gt; Any)
+multi method pick($n --&gt; Seq)</code></pre>
+<p><strong>Returns</strong> <code>Any</code> or <code>Seq</code>.</p>
+<p>Coerces the invocant to a <a href="https://docs.raku.org/type/List"><code>List</code></a> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_pick"><code>List.pick</code></a> on it.</p>
+<h3 id="routine-skip">routine <code>skip</code> <a class="anchor" href="#routine-skip" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method skip()
+multi method skip(Whatever)
+multi method skip(Callable:D $w)
+multi method skip(Int() $n)
+multi method skip($skip, $produce)</code></pre>
+<p>Creates a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> from 1-item list's iterator and uses <a href="https://docs.raku.org/type/Seq#method_skip"><code>Seq.skip</code></a> on it, please check that document for real use cases; calling <code>skip</code> without argument is equivalent to <code>skip(1)</code>. As of release 2022.07 of the Rakudo compiler, there is also a "sub" version of <code>skip</code>.  It <strong>must</strong> have the skip specifier as the first argument.  The rest of the arguments are turned into a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> and then have the <code>skip</code></p>
+<h3 id="method-are">method <code>are</code> <a class="anchor" href="#method-are" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method are(Any:)
+multi method are(Any: Any $type)</code></pre>
+<p>The argumentless version available as of release 2022.02 of the Rakudo compiler.  The version with the type argument is in the 6.e language version (early implementation exists in Rakudo compiler 2024.05+). If called without arguments, returns the strictest type (or role) to which <strong>all</strong> elements of the list will smartmatch.  Returns <a href="https://docs.raku.org/type/Nil"><code>Nil</code></a> on an empty list. Scalar values are interpreted as a single element list.</p>
+<h3 id="method-prepend">method <code>prepend</code> <a class="anchor" href="#method-prepend" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method prepend(Any:U: --&gt; Array)
+multi method prepend(Any:U: @values --&gt; Array)</code></pre>
+<p><strong>Returns</strong> <code>Array</code>.</p>
+<p>Called with no arguments on an empty variable, it initializes it as an empty <a href="https://docs.raku.org/type/Array"><code>Array</code></a>; if called with arguments, it creates an array and then applies <a href="https://docs.raku.org/type/Array#routine_prepend"><code>Array.prepend</code></a> on it.</p>
+<h3 id="method-unshift">method <code>unshift</code> <a class="anchor" href="#method-unshift" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method unshift(Any:U: --&gt; Array)
+multi method unshift(Any:U: @values --&gt; Array)</code></pre>
+<p><strong>Returns</strong> <code>Array</code>.</p>
+<p>Initializes <code>Any</code> variable as empty <a href="https://docs.raku.org/type/Array"><code>Array</code></a> and calls <a href="https://docs.raku.org/type/Array#routine_unshift"><code>Array.unshift</code></a> on it.</p>
+<h3 id="routine-first">routine <code>first</code> <a class="anchor" href="#routine-first" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method first(Bool:D $t)
+multi method first(Regex:D $test, :$end, *%a)
+multi method first(Callable:D $test, :$end, *%a is copy)
+multi method first(Mu $test, :$end, *%a)
+multi method first(:$end, *%a)
+multi        first(Bool:D $t, |)
+multi        first(Mu $test, +values, *%a)</code></pre>
+<p>In general, coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_first"><code>List.first</code></a> on it. However, this is a multi with different signatures, which are implemented with (slightly) different behavior, although using it as a subroutine is equivalent to using it as a method with the second argument as the object. For starters, using a <a href="https://docs.raku.org/type/Bool"><code>Bool</code></a> as the argument will always return a <a href="https://docs.raku.org/type/Failure"><code>Failure</code></a>.</p>
+<h3 id="method-unique">method <code>unique</code> <a class="anchor" href="#method-unique" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method unique()
+multi method unique( :&amp;as!, :&amp;with! )
+multi method unique( :&amp;as! )
+multi method unique( :&amp;with! )</code></pre>
+<p>Creates a sequence of unique elements either of the object or of <code>values</code> in the case it's called as a <code>sub</code>. The <code>:as</code> and <code>:with</code> parameters receive functions that are used for transforming the item before checking equality, and for checking equality, since by default the <a href="https://docs.raku.org/routine/==="><code>===</code></a> operator is used: Please see <a href="https://docs.raku.org/type/independent-routines#routine_unique"><code>unique</code></a> for additional examples that use its sub form.</p>
+<h3 id="method-repeated">method <code>repeated</code> <a class="anchor" href="#method-repeated" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method repeated()
+multi method repeated( :&amp;as!, :&amp;with! )
+multi method repeated( :&amp;as! )
+multi method repeated( :&amp;with! )</code></pre>
+<p>Similarly to <a href="https://docs.raku.org/type/Any#method_unique"><code>unique</code></a>, finds repeated elements in <code>values</code> (as a routine) or in the object, using the <code>:as</code> associative argument as a normalizing function and <code>:with</code> as equality function. It returns the last repeated element before normalization, as shown in the example above. See <a href="https://docs.raku.org/type/independent-routines#routine_repeated"><code>repeated</code></a> for more examples that use its sub form.</p>
+<h3 id="method-squish">method <code>squish</code> <a class="anchor" href="#method-squish" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method squish( :&amp;as!, :&amp;with = &amp;[===] )
+multi method squish( :&amp;with = &amp;[===] )</code></pre>
+<p>Similar to <a href="https://docs.raku.org/type/Any#method_repeated"><code>.repeated</code></a>, returns the sequence of first elements of contiguous sequences of equal elements, after normalization by the function <code>:as</code>, if present, and using as an equality operator the <code>:with</code> argument or <code>===</code> by default. As shown in the last example, a sequence can contain a single element. See <a href="https://docs.raku.org/type/independent-routines#routine_squish"><code>squish</code></a> for additional <code>sub</code></p>
+<h3 id="method-permutations">method <code>permutations</code> <a class="anchor" href="#method-permutations" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method permutations(|c)</code></pre>
+<p>Coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_permutations"><code>List.permutations</code></a> on it. Permutations of data structures with a single or no element will return a list containing an empty list or a list with a single element.</p>
+<h3 id="method-join">method <code>join</code> <a class="anchor" href="#method-join" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method join($separator = '') is nodal</code></pre>
+<p>Converts the object to a list by calling <a href="https://docs.raku.org/type/Any#method_list"><code>self.list</code></a>, and calls <a href="https://docs.raku.org/type/List#routine_join"><code>.join</code></a> on the list. Can take a separator, which is an empty string by default.</p>
+<h3 id="routine-categorize">routine <code>categorize</code> <a class="anchor" href="#routine-categorize" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method categorize()
+multi method categorize(Whatever)
+multi method categorize($test, :$into!, :&amp;as)
+multi method categorize($test, :&amp;as)
+multi        categorize($test, +items, :$into!, *%named )
+multi        categorize($test, +items, *%named )</code></pre>
+<p>The first form will always fail. The second form classifies on the identity of the given object, which usually only makes sense in combination with the <code>:&amp;as</code> argument. In its simplest form, it uses a <code>$test</code> whose result will be used as a key; the values of the key will be an array of the elements that produced that key as a result of the test. The <code>:as</code> argument will normalize before categorizing</p>
+<h3 id="routine-classify">routine <code>classify</code> <a class="anchor" href="#routine-classify" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method classify()
+multi method classify(Whatever)
+multi method classify($test, :$into!, :&amp;as)
+multi method classify($test, :&amp;as)
+multi        classify($test, +items, :$into!, *%named )
+multi        classify($test, +items, *%named )</code></pre>
+<p>The first form will always fail. The second form classifies on the identity of the given object, which usually only makes sense in combination with the <code>:&amp;as</code> argument. The rest include a <code>$test</code> argument, which is a function that will return a scalar for every input; these will be used as keys of a hash whose values will be arrays with the elements that output that key for the test function. Similarly to <a href="https://docs.raku.org/type/Any#routine_categorize"><code>.categorize</code></a>, elements can be</p>
+<h3 id="routine-reduce">routine <code>reduce</code> <a class="anchor" href="#routine-reduce" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method reduce(Any:U: &amp; --&gt; Nil)
+multi method reduce(Any:D: &amp;with)
+multi        reduce (&amp;with, +list)</code></pre>
+<p><strong>Returns</strong> <code>Nil</code>.</p>
+<p>This routine combines the elements in a list-y object, and produces a single result, by applying a binary subroutine. It applies its argument (or first argument for the sub form) as an operator to all the elements in the object (or second argument for the sub form), producing a single result. The subroutine must be either an <a href="https://docs.raku.org/language/operators#index-entry-infix_operator">infix operator</a> or take two positional arguments. When using an infix operator, we must provide</p>
+<h3 id="routine-produce">routine <code>produce</code> <a class="anchor" href="#routine-produce" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method produce(Any:U: &amp; --&gt; Nil)
+multi method produce(Any:D: &amp;with)
+multi        produce (&amp;with, +list)</code></pre>
+<p><strong>Returns</strong> <code>Nil</code>.</p>
+<p>This is similar to <a href="https://docs.raku.org/routine/reduce#(List)_routine_reduce"><code>reduce</code></a>, but returns a list with the accumulated values instead of a single result. The last element of the produced list would be the output produced by the <code>.reduce</code> method. If it's a class, it will simply return Nil.</p>
+<h3 id="method-pairs">method <code>pairs</code> <a class="anchor" href="#method-pairs" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method pairs(Any:U:)
+multi method pairs(Any:D:)</code></pre>
+<p>Returns an empty <a href="https://docs.raku.org/type/List"><code>List</code></a> if the invocant is a type object: For a value object, it converts the invocant to a <a href="https://docs.raku.org/type/List"><code>List</code></a> via the <code>list</code> method and returns the result of <a href="https://docs.raku.org/type/List#routine_pairs">List.pairs</a> on it. In this case, every element (with weight) in a bag is converted to a pair.</p>
+<h3 id="method-antipairs">method <code>antipairs</code> <a class="anchor" href="#method-antipairs" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method antipairs(Any:U:)
+multi method antipairs(Any:D:)</code></pre>
+<p>Returns an empty <a href="https://docs.raku.org/type/List"><code>List</code></a> if the invocant is a type object If it's a value object, it returns the inverted list of pairs after converting it to a list of pairs; the values will become keys and the other way round.</p>
+<h3 id="method-invert">method <code>invert</code> <a class="anchor" href="#method-invert" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method invert(Any:U:)
+multi method invert(Any:D:)</code></pre>
+<p>Applied to a type object will return an empty list; applied to an object will convert it to a list and apply <a href="https://docs.raku.org/type/List#routine_invert"><code>List.invert</code></a> to it, that is, interchange key with value in every Pair. The resulting list needs to be a list of <a href="https://docs.raku.org/type/Pair"><code>Pair</code></a>s. In this case, a <a href="https://docs.raku.org/type/Bag"><code>Bag</code></a> can be converted to a list of <a href="https://docs.raku.org/type/Pair"><code>Pair</code></a>s. If the result of converting the object to a list is not a list of pairs, the method will fail.</p>
+<h3 id="routine-kv">routine <code>kv</code> <a class="anchor" href="#routine-kv" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method kv(Any:U:)
+multi method kv(Any:D:)
+multi        kv($x)</code></pre>
+<p>Returns an empty <a href="https://docs.raku.org/type/List"><code>List</code></a> if the invocant is a type object: It calls <code>list</code> on the invocant for value objects and returns the result of <a href="https://docs.raku.org/type/List#routine_kv">List.kv</a> on it as a list where keys and values will be ordered and contiguous In the case of <a href="https://docs.raku.org/type/Positional"><code>Positional</code></a>s, the indices will be considered <em>keys</em>.</p>
+<h3 id="method-toggle">method <code>toggle</code> <a class="anchor" href="#method-toggle" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method toggle(Any:D: *@conditions where .all ~~ Callable:D, Bool :$off  --&gt; Seq:D)</code></pre>
+<p><strong>Returns</strong> <code>Seq:D</code>.</p>
+<p><a href="https://docs.raku.org/routine/iterator">Iterates</a> over the invocant, producing a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>, toggling whether the received values are propagated to the result on and off, depending on the results of calling <a href="https://docs.raku.org/type/Callable"><code>Callables</code></a> in <code>@conditions</code>: Imagine a switch that's either on or off (<code>True</code> or <code>False</code>), and values are produced if it's on. By default, the initial state of that switch is in "on"</p>
+<h3 id="routine-head">routine <code>head</code> <a class="anchor" href="#routine-head" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method head(Any:D:) is raw
+multi method head(Any:D: Callable:D $w)
+multi method head(Any:D: $n)</code></pre>
+<p>Returns either the first element in the object, or the first <code>$n</code> if that's used. In the first two cases, the results are different since there's no defined order in <a href="https://docs.raku.org/type/Mix"><code>Mix</code></a>es. In the other cases, it returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a>. A <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> can be used to return all but the last elements: As of release 2022.07 of the Rakudo compiler, there is also a "sub" version of <code>head</code>.</p>
+<h3 id="routine-tail">routine <code>tail</code> <a class="anchor" href="#routine-tail" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method tail() is raw
+multi method tail($n)</code></pre>
+<p>Returns the last or the list of the <code>$n</code> last elements of an object. <code>$n</code> can be a <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a>, usually a <a href="https://docs.raku.org/type/WhateverCode"><code>WhateverCode</code></a>, which will be used to get all but the first <code>n</code> elements of the object. As of release 2022.07 of the Rakudo compiler, there is also a "sub" version of <code>tail</code>. It <strong>must</strong> have the tail specifier as the first argument.  The rest of the arguments are turned into a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> and then have the <code>tail</code></p>
+<h3 id="method-tree">method <code>tree</code> <a class="anchor" href="#method-tree" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method tree(Any:U:)
+multi method tree(Any:D:)
+multi method tree(Any:D: Whatever )
+multi method tree(Any:D: Int(Cool) $count)
+multi method tree(Any:D: @ [&amp;first, *@rest])
+multi method tree(Any:D: &amp;first, *@rest)</code></pre>
+<p>Returns the class if it's undefined or if it's not <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a>, returns the result of applying the <code>tree</code> method to its invocant otherwise. <code>.tree</code> has different prototypes for <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> elements. With a number, it iteratively applies <code>tree</code> to every element in the lower level; the first instance will apply <code>.tree(0)</code> to every element in the array, and likewise for the next example.</p>
+<h3 id="method-nl-out">method <code>nl-out</code> <a class="anchor" href="#method-nl-out" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method nl-out(--&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Returns <a href="https://docs.raku.org/type/Str"><code>Str</code></a> with the value of "\n". See <a href="https://docs.raku.org/type/IO::Handle#method_nl-out"><code>IO::Handle.nl-out</code></a> for the details.</p>
+<h3 id="method-combinations">method <code>combinations</code> <a class="anchor" href="#method-combinations" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method combinations(|c)</code></pre>
+<p>Coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_combinations"><code>List.combinations</code></a> on it. Combinations on an empty data structure will return a list with a single element, an empty list; on a data structure with a single element it will return a list with two lists, one of them empty and the other with a single element.</p>
+<h3 id="method-grep">method <code>grep</code> <a class="anchor" href="#method-grep" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method grep(Mu $matcher, :$k, :$kv, :$p, :$v --&gt; Seq)</code></pre>
+<p><strong>Returns</strong> <code>Seq</code>.</p>
+<p>Coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#routine_grep"><code>List.grep</code></a> on it. For undefined invocants, based on <code>$matcher</code> the return value can be either <code>((Any))</code> or the empty List.</p>
+<h3 id="method-append">method <code>append</code> <a class="anchor" href="#method-append" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method append(Any:U \SELF: |values)</code></pre>
+<p>In the case the instance is not a positional-thing, it instantiates it as a new <a href="https://docs.raku.org/type/Array"><code>Array</code></a>, otherwise clone the current instance. After that, it appends the values passed as arguments to the array obtained calling <a href="https://docs.raku.org/type/Array#method_append"><code>Array.append</code></a> on it.</p>
+<h3 id="method-values">method <code>values</code> <a class="anchor" href="#method-values" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method values(Any:U:)
+multi method values(Any:D:)</code></pre>
+<p>Will return an empty list for undefined or class arguments, and the object converted to a list otherwise.</p>
+<h3 id="method-collate">method <code>collate</code> <a class="anchor" href="#method-collate" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method collate()</code></pre>
+<p>The <code>collate</code> method sorts taking into account Unicode grapheme characteristics; that is, sorting more or less as one would expect instead of using the order in which their codepoints appear. <code>collate</code> will behave this way if the object it is applied to is <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a>. This method is affected by the <a href="https://docs.raku.org/language/variables#index-entry-$*COLLATION"><code>$*COLLATION</code></a> variable, which configures the four collation levels. While Primary, Secondary and</p>
+<h3 id="method-cache">method <code>cache</code> <a class="anchor" href="#method-cache" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method cache()</code></pre>
+<p>Provides a <a href="https://docs.raku.org/type/List"><code>List</code></a> representation of the object itself, calling the method <code>list</code> on the instance.</p>
+<h3 id="method-batch">method <code>batch</code> <a class="anchor" href="#method-batch" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method batch(Int:D $batch)
+multi method batch(Int:D :$elems!)</code></pre>
+<p>Coerces the invocant to a <code>list</code> by applying its <a href="https://docs.raku.org/routine/list"><code>.list</code></a> method and uses <a href="https://docs.raku.org/type/List#method_batch"><code>List.batch</code></a> on it.</p>
+<h3 id="method-rotor">method <code>rotor</code> <a class="anchor" href="#method-rotor" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method rotor(Any:D: Int:D $batch, :$partial)
+multi method rotor(Any:D: *@cycle, :$partial)</code></pre>
+<p>Creates a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> that groups the elements of the object in lists of <code>$batch</code> elements. With the <code>:partial</code> named argument, it will also include lists that do not get to be the <code>$batch</code> size: <code>.rotor</code> can be called with an array of integers and pairs, which will be applied in turn. While integers will establish the batch size, as above, <a href="https://docs.raku.org/type/Pair"><code>Pair</code></a>s will use the key as batch size and the value as number of elements to</p>
+<h3 id="method-sum">method <code>sum</code> <a class="anchor" href="#method-sum" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method sum() is nodal</code></pre>
+<p>If the content is iterable, it returns the sum of the values after pulling them one by one, or 0 if the list is empty. It will fail if any of the elements cannot be converted to a number.</p>
+<h3 id="multi-method">multi <code>method</code> <a class="anchor" href="#multi-method" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method slice(Any:D: *@indices --&gt; Seq:D)</code></pre>
+<p><strong>Returns</strong> <code>Seq:D</code>.</p>
+<p>Available as of the 2021.02 release of the Rakudo compiler. Converts the invocant to a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> and then calls the <a href="https://docs.raku.org/type/Seq#multi_method_slice">slice method</a> on it.</p>
+<h3 id="routine-snip">routine <code>snip</code> <a class="anchor" href="#routine-snip" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        snip(\matcher, +values)
+multi method snip(\values: \matcher)</code></pre>
+<p>Available as of 6.e language version (early implementation exists in Rakudo compiler 2022.07+). The <code>snip</code> method / subroutine provides a way to cut a given <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> into two or more <a href="https://docs.raku.org/type/List"><code>List</code></a>s.  A "snip" will be made as soon as the smartmatch of a value in the given <a href="https://docs.raku.org/type/Iterable"><code>Iterable</code></a> returns False.  The matcher may also be a list of matchers: as soon as a "snip" was made, will it start checking</p>
+<h3 id="routine-snitch">routine <code>snitch</code> <a class="anchor" href="#routine-snitch" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi  snitch(\snitchee)
+multi  snitch(&amp;snitcher, \snitchee)
+method snitch(\snitchee: &amp;snitcher = &amp;note)</code></pre>
+<p>Available as of 6.e language version (early implementation exists in Rakudo compiler 2022.12+). The <code>snitch</code> method / subroutine is a debugging / logging tool that will always return any invocant / argument given unchanged. By default, it will <a href="https://docs.raku.org/routine/note">note</a> the invocant / argument, but this can be overridden by specifying a <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> that is expected to take the invocant / argument as its only argument.</p>
+
+<h2 id="examples" class="sec">Examples, run three ways <a class="anchor" href="#examples" aria-label="link">#</a></h2><p>Every example below comes from the official documentation, together with the output that documentation asserts. Each was then executed by Rakudo and by Raku++ when this page was built. Where the three agree, one result is shown; where they do not, all three are — because which of them is wrong is exactly the information worth having.</p><p class="mx-note">11 all-differ · 6 doc-drift · 10 no-output · 1 not-runnable · 73 ok · 1 rakudo-differs · 4 rakupp-differs</p><div class="ex-block"><pre data-raku>class Any is Mu {}</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>EXPR.ACCEPTS(EXPR);</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say so 2 == &lt;1 2 3&gt;.any;        # OUTPUT: «True␤»
+say so 5 == any(&lt;1 2 3&gt;);       # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say so 3 &lt; &lt;2 3 4&gt;.all;         # OUTPUT: «False␤»
+say so 1 &lt; all(&lt;2 3 4&gt;);        # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say so 1 == (1, 2, 3).one;      # OUTPUT: «True␤»
+say so 1 == one(1, 2, 1);       # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say so 1 == (1, 2, 3).none;     # OUTPUT: «False␤»
+say so 4 == none(1, 2, 3);      # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say 42.list.^name;           # OUTPUT: «List␤»
+say 42.list.elems;           # OUTPUT: «1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>List
+1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $not-a-list-yet = $[1,2,3];
+say $not-a-list-yet.raku;             # OUTPUT: «$[1, 2, 3]␤»
+my @maybe-a-list = @$not-a-list-yet;
+say @maybe-a-list.^name;              # OUTPUT: «Array␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>$[1, 2, 3]
+Array
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my %h;
+say %h&lt;a&gt;;     # OUTPUT: «(Any)␤»      &lt;-- Undefined
+%h&lt;a&gt;.push(1); # .push on Any
+say %h;        # OUTPUT: «{a =&gt; [1]}␤» &lt;-- Note the Array</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(Any)
+{a =&gt; [1]}
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;hello world!&gt;.reverse;     # OUTPUT: «(world! hello)␤»
+say reverse ^10;                # OUTPUT: «(9 8 7 6 5 4 3 2 1 0)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(world! hello)
+(9 8 7 6 5 4 3 2 1 0)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;b c a&gt;.sort;                           # OUTPUT: «(a b c)␤»
+say 'bca'.comb.sort.join;                   # OUTPUT: «abc␤»
+say 'bca'.comb.sort({$^b cmp $^a}).join;    # OUTPUT: «cba␤»
+say '231'.comb.sort(&amp;infix:«&lt;=&gt;»).join;     # OUTPUT: «123␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(a b c)
+abc
+cba
+123
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>sub by-character-count { $^a.chars &lt;=&gt; $^b.chars }
+say &lt;Let us impart what we have seen tonight unto young Hamlet&gt;.sort(&amp;by-character-count);
+# OUTPUT: «(us we Let what have seen unto young impart Hamlet tonight)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(us we Let what have seen unto young impart Hamlet tonight)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say gather for 1 {
+^3 .map: *.take;
+} # OUTPUT: «(0 1 2)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 2)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say [[1,2,3],[[4,5],6,7]].deepmap(* + 1);
+# OUTPUT: «[[2 3 4] [[5 6] 7 8]]␤»
+say deepmap * + 1, [[1,2,3],[[4,5],6,7]];
+# OUTPUT: «[[2 3 4] [[5 6] 7 8]]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[[2 3 4] [[5 6] 7 8]]
+[[2 3 4] [[5 6] 7 8]]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>{ what =&gt; "is", this =&gt; "thing", a =&gt; &lt;real list&gt; }.deepmap( *.flip ).say;
+# OUTPUT: «{a =&gt; (laer tsil), this =&gt; gniht, what =&gt; si}␤»
+say deepmap *.flip, {what=&gt;'is', this=&gt;'thing', a=&gt;&lt;real list&gt;};
+# OUTPUT: «{a =&gt; (laer tsil), this =&gt; gniht, what =&gt; si}␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{a =&gt; (laer tsil), this =&gt; gniht, what =&gt; si}
+{a =&gt; (laer tsil), this =&gt; gniht, what =&gt; si}
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;a b c d e f g&gt;.duckmap(-&gt; $_ where &lt;c d e&gt;.any { .uc }).say;
+# OUTPUT: «(a b C D E f g)␤»
+(('d', 'e'), 'f').duckmap(-&gt; $_ where &lt;e f&gt;.any { .uc }).say;
+# OUTPUT: «((d E) F)␤»
+{ first =&gt; ('d', 'e'), second =&gt; 'f'}.duckmap(-&gt; $_ where &lt;e f&gt;.any { .uc }).say;
+# OUTPUT: «{first =&gt; (d E), second =&gt; F}␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(a b C D E f g)
+((d E) F)
+{first =&gt; (d E), second =&gt; F}
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say duckmap *², [[1,2,3],[[4,5],6,7]];   # OUTPUT: «[9 9]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[9 9]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say duckmap -&gt; Rat $_ { $_²}, [[1,2,3],[[4,5],6.1,7.2]];
+# OUTPUT: «[[1 2 3] [[4 5] 37.21 51.84]]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[[1 2 3] [[4 5] 37.21 51.84]]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say nodemap *+1, [[1,2,3], [[4,5],6,7], 7];
+# OUTPUT: «(4, 4, 8)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(4, 4, 8)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(4 4 8)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(4 4 8)
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say [[2, 3], [4, [5, 6]]]».nodemap(*+1)
+# OUTPUT: «((3 4) (5 3))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((3 4) (5 3))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say [[2,3], [[4,5],6,7], 7].nodemap({.elems == 1 ?? $_ !! slip});
+# OUTPUT: «(() () 7)␤»
+say [[2,3], [[4,5],6,7], 7].map({.elems == 1 ?? $_ !! slip});
+# OUTPUT: «(7)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(() () 7)
+(7)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say nodemap *.flip, { what =&gt; "is", this =&gt; "thing" };
+# OUTPUT: «{this =&gt; gniht, what =&gt; si}␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{this =&gt; gniht, what =&gt; si}
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say ((1, 2), (3), %(:42a));      # OUTPUT: «((1 2) 3 {a =&gt; 42})␤»
+say ((1, 2), (3), %(:42a)).flat; # OUTPUT: «(1 2 3 a =&gt; 42)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((1 2) 3 {a =&gt; 42})
+(1 2 3 a =&gt; 42)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say [[1, 2, 3], [(4, 5), 6, 7]]      .flat; # OUTPUT: «([1 2 3] [(4 5) 6 7])␤»
+say [[1, 2, 3], [(4, 5), 6, 7]]».List.flat; # OUTPUT: «(1 2 3 4 5 6 7)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>([1 2 3] [(4 5) 6 7])
+(1 2 3 4 5 6 7)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my  $range = 1..5;
+say $range;         # OUTPUT: «1..5␤»
+say $range.eager;   # OUTPUT: «(1 2 3 4 5)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1..5
+(1 2 3 4 5)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say elems 42;                   # OUTPUT: «1␤»
+say &lt;a b c&gt;.elems;              # OUTPUT: «3␤»
+say Whatever.elems ;            # OUTPUT: «1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1
+3
+1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say 6.end;                      # OUTPUT: «0␤»
+say &lt;a b c&gt;.end;                # OUTPUT: «2␤»
+say end ^9;                     # OUTPUT: «8␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>0
+2
+8
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>Range.pairup.say; # OUTPUT: «()␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (a =&gt; 1, 'b', 'c').pairup.raku;     # OUTPUT: «(:a(1), :b("c")).Seq␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(:a(1), :b("c")).Seq
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $b;                 # defaults to Any
+say $b.serial.^name;   # OUTPUT: «Any␤»
+say $b.^name;          # OUTPUT: «Any␤»
+my $breakfast = 'food';
+$breakfast.serial.say; # OUTPUT: «food␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Any
+Any
+food
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $d; # $d is Any
+say $d.hash; # OUTPUT: {}
+
+my %m is Map = a =&gt; 42, b =&gt; 666;
+say %m.hash;  # OUTPUT: «Map.new((a =&gt; 42, b =&gt; 666))␤»
+say %m.Hash;  # OUTPUT: «{a =&gt; 42, b =&gt; 666}␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>Map.new((a =&gt; 42, b =&gt; 666))
+{a =&gt; 42, b =&gt; 666}
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>{}
+Map.new((a =&gt; 42, b =&gt; 666))
+{a =&gt; 42, b =&gt; 666}
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>{}
+{a =&gt; 42, b =&gt; 666}
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>say (1,7,3).min();              # OUTPUT: «1␤»
+say (1,7,3).min({1/$_});        # OUTPUT: «7␤»
+say min(1,7,3);                 # OUTPUT: «1␤»
+say min(1,7,3,:by( { 1/$_ } )); # OUTPUT: «7␤»
+min( %(a =&gt; 3, b=&gt; 7 ) ).say ;  # OUTPUT: «a =&gt; 3␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1
+7
+1
+7
+a =&gt; 3
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;a b c a&gt;.min(:k);  # OUTPUT:«(0 3)␤»
+say &lt;a b c a&gt;.min(:v);  # OUTPUT:«(a a)␤»
+say &lt;a b c a&gt;.min(:kv); # OUTPUT:«(0 a 3 a)␤»
+say &lt;a b c a&gt;.min(:p);  # OUTPUT:«(0 =&gt; a 3 =&gt; a)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 3)
+(a a)
+(0 a 3 a)
+(0 =&gt; a 3 =&gt; a)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1,7,3).max();                # OUTPUT: «7␤»
+say (1,7,3).max({1/$_});          # OUTPUT: «1␤»
+say max(1,7,3,:by( { 1/$_ } ));   # OUTPUT: «1␤»
+say max(1,7,3);                   # OUTPUT: «7␤»
+max( %(a =&gt; 'B', b=&gt; 'C' ) ).say; # OUTPUT: «b =&gt; C␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>7
+1
+1
+7
+b =&gt; C
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;a b c c&gt;.max(:k);  # OUTPUT:«(2 3)␤»
+say &lt;a b c c&gt;.max(:v);  # OUTPUT:«(c c)␤»
+say &lt;a b c c&gt;.max(:kv); # OUTPUT:«(2 c 3 c)␤»
+say &lt;a b c c&gt;.max(:p);  # OUTPUT:«(2 =&gt; c 3 =&gt; c)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(2 3)
+(c c)
+(2 c 3 c)
+(2 =&gt; c 3 =&gt; c)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1,7,3).minmax();        # OUTPUT:«1..7␤»
+say (1,7,3).minmax({-$_});   # OUTPUT:«7..1␤»
+say minmax(1,7,3);           # OUTPUT: «1..7␤»
+say minmax(1,7,3,:by( -* )); # OUTPUT: «7..1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1..7
+7..1
+1..7
+7..1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;a b c a b c&gt;.minpairs.raku.put; # OUTPUT: «(0 =&gt; "a", 3 =&gt; "a").Seq␤»
+%(:42a, :75b).minpairs.raku.put; # OUTPUT: «(:a(42),).Seq␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(0 =&gt; "a", 3 =&gt; "a").Seq
+(:a(42),).Seq
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(0 =&gt; "a", 3 =&gt; "a")
+(:a(42),)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>("0" =&gt; "a", "3" =&gt; "a")
+(:a(42),)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>&lt;a b c a b c&gt;.maxpairs.raku.put; # OUTPUT: «(2 =&gt; "c", 5 =&gt; "c").Seq␤»
+%(:42a, :75b).maxpairs.raku.put; # OUTPUT: «(:b(75),).Seq␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(2 =&gt; "c", 5 =&gt; "c").Seq
+(:b(75),).Seq
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(2 =&gt; "c", 5 =&gt; "c")
+(:b(75),)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>("2" =&gt; "c", "5" =&gt; "c")
+(:b(75),)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>my $setty = Set(&lt;Þor Oðin Freija&gt;);
+say $setty.keys; # OUTPUT: «(Þor Oðin Freija)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(Þor Oðin Freija)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(Oðin Freija Þor)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(Freija Oðin Þor)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>my Mix $m = ("þ" xx 3, "ð" xx 4, "ß" xx 5).Mix;
+say $m.roll;    # OUTPUT: «ð␤»
+say $m.roll(5); # OUTPUT: «(ß ß þ ß þ)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>ð
+(ß ß þ ß þ)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>ð
+(ß þ ð ð ð)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>þ
+(þ ß ß ð ð)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>.say for 3; # OUTPUT: «3␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>3
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my Range $rg = 'α'..'ω';
+say $rg.pick(3); # OUTPUT: «(β α σ)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(β α σ)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(ρ τ ι)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(η θ ψ)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>multi skip(\skipper, +values)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say (1,2,3).are;        # OUTPUT: «(Int)␤»
+say &lt;a b c&gt;.are;        # OUTPUT: «(Str)␤»
+say &lt;42 666&gt;.are;       # OUTPUT: «(IntStr)␤»
+say (42,666e0).are;     # OUTPUT: «(Real)␤»
+say (42,i).are;         # OUTPUT: «(Numeric)␤»
+say ("a",42,3.14).are;  # OUTPUT: «(Cool)␤»
+say ().are;             # OUTPUT: «Nil␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(Int)
+(Str)
+(IntStr)
+(Real)
+(Numeric)
+(Cool)
+Nil
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say 42.are;             # OUTPUT: «(Int)␤»
+say Int.are;            # OUTPUT: «(Int)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(Int)
+(Int)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my %h = a =&gt; 42, b =&gt; "bar";
+say %h.keys.are;        # OUTPUT: «(Str)␤»
+say %h.values.are;      # OUTPUT: «(Cool)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(Str)
+(Cool)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1,2,3).are(Int);         # OUTPUT: «True␤»
+say &lt;a b c&gt;.are(Str);         # OUTPUT: «True␤»
+say &lt;42 666&gt;.are(Int);        # OUTPUT: «True␤»
+say &lt;42 666&gt;.are(Str);        # OUTPUT: «True␤»
+say (42,666e0).are(Real);     # OUTPUT: «True␤»
+say (42,i).are(Numeric);      # OUTPUT: «True␤»
+say ("a",42,3.14).are(Cool);  # OUTPUT: «True␤»
+say ().are(Int);              # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+True
+True
+True
+True
+True
+True
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>Int.are(Str);      # OUTPUT: «Expected 'Str' but got 'Int'␤»
+(1,2,3).are(Str);  # OUTPUT: «Expected 'Str' but got 'Int' in element 0␤»</pre><p class="ex-verdict v-skip">Neither engine can run this in isolation — the example depends on context from the surrounding text.</p></div><div class="ex-block"><pre data-raku>my $a;
+say $a.prepend; # OUTPUT: «[]␤»
+say $a;         # OUTPUT: «[]␤»
+my $b;
+say $b.prepend(1,2,3); # OUTPUT: «[1 2 3]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[]
+[]
+[1 2 3]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $a;
+say $a.unshift; # OUTPUT: «[]␤»
+say $a;         # OUTPUT: «[]␤»
+my $b;
+say $b.unshift([1,2,3]); # OUTPUT: «[[1 2 3]]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[]
+[]
+[[1 2 3]]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (3..33).first;           # OUTPUT: «3␤»
+say (3..33).first(:end);     # OUTPUT: «33␤»
+say (⅓,⅔…30).first( 0xF );   # OUTPUT: «15␤»
+say first 0xF, (⅓,⅔…30);     # OUTPUT: «15␤»
+say (3..33).first( /\d\d/ ); # OUTPUT: «10␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>3
+33
+15
+15
+10
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>3
+33
+15
+(Any)
+10
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>say (⅓,⅔…30).first( * %% 11, :end, :kv ); # OUTPUT: «(65 22)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(65 22)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (⅓,⅔…30).first( 3 | 33, :kv ); # OUTPUT: «(8 3)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(8 3)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;1 2 2 3 3 3&gt;.unique.say; # OUTPUT: «(1 2 3)␤»
+say unique &lt;1 2 2 3 3 3&gt;; # OUTPUT: «(1 2 3)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 2 3)
+(1 2 3)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>("1", 1, "1 ", 2).unique( as =&gt; Int, with =&gt; &amp;[==] ).say; # OUTPUT: «(1 2)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 2)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;1 -1 2 -2 3&gt;.repeated(:as(&amp;abs),:with(&amp;[==])).say; # OUTPUT: «(-1 -2)␤»
+(3+3i, 3+2i, 2+1i).repeated(as =&gt; *.re).say;        # OUTPUT: «(3+2i)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(-1 -2)
+(3+2i)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>"aabbccddaa".comb.squish.say;             # OUTPUT: «(a b c d a)␤»
+"aABbccdDaa".comb.squish( :as(&amp;lc) ).say; # OUTPUT: «(a B c d a)␤»
+(3+2i,3+3i,4+0i).squish( as =&gt; *.re, with =&gt; &amp;[==]).put; # OUTPUT: «3+2i 4+0i␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(a b c d a)
+(a B c d a)
+3+2i 4+0i
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;a b c&gt;.permutations;
+# OUTPUT: «((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))␤»
+say set(1,2).permutations;
+# OUTPUT: «((2 =&gt; True 1 =&gt; True) (1 =&gt; True 2 =&gt; True))␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
+((2 =&gt; True 1 =&gt; True) (1 =&gt; True 2 =&gt; True))
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
+((1 =&gt; True 2 =&gt; True) (2 =&gt; True 1 =&gt; True))
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
+((1 =&gt; True 2 =&gt; True) (2 =&gt; True 1 =&gt; True))
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say 1.permutations; # OUTPUT: «((1))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((1))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>(1..3).join.say;       # OUTPUT: «123␤»
+&lt;a b c&gt;.join("❧").put; # OUTPUT: «a❧b❧c␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>123
+a❧b❧c
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1..13).categorize( * %% 3);
+say categorize( * %% 3, 1..13)
+# OUTPUT: «{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}
+{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}
+{False =&gt; [1 2 4 5 7 8 10 11 13], True =&gt; [3 6 9 12]}
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say categorize( * %% 3, -5..5, as =&gt; &amp;abs )
+# OUTPUT: «{False =&gt; [5 4 2 1 1 2 4 5], True =&gt; [3 0 3]}␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{False =&gt; [5 4 2 1 1 2 4 5], True =&gt; [3 0 3]}
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my %leap-years;
+my @years = (2002..2009).map( { Date.new( $_~"-01-01" ) } );
+@years.categorize( *.is-leap-year , into =&gt; %leap-years );
+say %leap-years
+# OUTPUT:
+# «{ False
+# =&gt; [2002-01-01 2003-01-01 2005-01-01 2006-01-01 2007-01-01 2009-01-01],
+#    True =&gt; [2004-01-01 2008-01-01]}␤»</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>sub divisible-by( Int $n --&gt; Array(Seq) ) {
+gather {
+    for &lt;2 3 5 7&gt; {
+        take $_ if $n %% $_;
+    }
+}
+}
+
+say (3..13).categorize( &amp;divisible-by );
+# OUTPUT:
+# «{2 =&gt; [4 6 8 10 12], 3 =&gt; [3 6 9 12], 5 =&gt; [5 10], 7 =&gt; [7]}␤»</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my @years = (2003..2008).map( { Date.new( $_~"-01-01" ) } );
+@years.classify( *.is-leap-year , into =&gt; my %leap-years );
+say %leap-years;
+# OUTPUT: «{False =&gt; [2003-01-01 2005-01-01 2006-01-01 2007-01-01],
+#           True =&gt; [2004-01-01 2008-01-01]}␤»</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say (1..4).reduce(&amp;infix:&lt;+&gt;);   # OUTPUT: «10␤»
+say reduce &amp;infix:&lt;+&gt;, 1..4;     # OUTPUT: «10␤»
+say reduce &amp;min, 1..4;           # OUTPUT: «1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>10
+10
+1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>sub hyphenate(Str \a, Str \b) { a ~ '-' ~ b }
+say reduce &amp;hyphenate, 'a'..'c'; # OUTPUT: «a-b-c␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a-b-c
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say Range.reduce(&amp;infix:&lt;+&gt;);    # OUTPUT: «Nil␤»
+say Str.reduce(&amp;infix:&lt;~&gt;);      # OUTPUT: «Nil␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Nil
+Nil
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;10 5 3&gt;.reduce( &amp;[*] ).say ; # OUTPUT: «150␤»
+&lt;10 5 3&gt;.produce( &amp;[*] ).say; # OUTPUT: «(10 50 150)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>150
+(10 50 150)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say Num.pairs; # OUTPUT: «()␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;1 2 2 3 3 3&gt;.Bag.pairs.say;# OUTPUT: «(1 =&gt; 1 3 =&gt; 3 2 =&gt; 2)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(1 =&gt; 1 3 =&gt; 3 2 =&gt; 2)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(3 =&gt; 3 2 =&gt; 2 1 =&gt; 1)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(1 =&gt; 1 2 =&gt; 2 3 =&gt; 3)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>Range.antipairs.say; # OUTPUT: «()␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>%(s =&gt; 1, t=&gt; 2, u =&gt; 3).antipairs.say ;# OUTPUT: «(2 =&gt; t 1 =&gt; s 3 =&gt; u)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(2 =&gt; t 1 =&gt; s 3 =&gt; u)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(3 =&gt; u 1 =&gt; s 2 =&gt; t)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(1 =&gt; s 2 =&gt; t 3 =&gt; u)
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>"aaabbcccc".comb.Bag.invert.say; # OUTPUT: «(4 =&gt; c 3 =&gt; a 2 =&gt; b)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(4 =&gt; c 3 =&gt; a 2 =&gt; b)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(3 =&gt; a 2 =&gt; b 4 =&gt; c)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(3 =&gt; a 2 =&gt; b 4 =&gt; c)
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>Sub.kv.say ;# OUTPUT: «()␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>&lt;1 2 3&gt;.kv.say; # OUTPUT: «(0 1 1 2 2 3)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 1 2 2 3)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1..15).toggle(* &lt; 5, * &gt; 10, * &lt; 15); # OUTPUT: «(1 2 3 4 11 12 13 14)␤»
+say (1..15).toggle(:off, * &gt; 2, * &lt; 5, * &gt; 10, * &lt; 15); # OUTPUT: «(3 4 11 12 13 14)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 2 3 4 11 12 13 14)
+(3 4 11 12 13 14)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># our original sequence of elements:
+say list ^10; # OUTPUT: «(0 1 2 3 4 5 6 7 8 9)␤»
+# toggled result:
+say ^10 .toggle: * &lt; 4, * %% 2, &amp;is-prime; # OUTPUT: «(0 1 2 3 6 7)␤»
+
+# First tester Callable is `* &lt; 4` and initial state of switch is "on".
+# As we iterate over our original sequence:
+# 0 =&gt; 0 &lt; 4 === True  switch is on, value gets into result, switch is
+#                      toggled, so we keep using the same Callable:
+# 1 =&gt; 1 &lt; 4 === True  same
+# 2 =&gt; 2 &lt; 4 === True  same
+# 3 =&gt; 3 &lt; 4 === True  same
+# 4 =&gt; 4 &lt; 4 === False switch is now off, "4" does not make it into the
+#                      result. In addition, our switch got toggled, so
+#                      we're switching to the next tester Callable
+# 5 =&gt; 5 %% 2 === False  switch is still off, keep trying to find a value
+# 6 =&gt; 6 %% 2 === True   switch is now on, take "6" into result. The switch
+#                        toggled, so we'll use the next tester Callable
+# 7 =&gt; is-prime(7) === True  switch is still on, take value and keep going
+# 8 =&gt; is-prime(8) === False switch is now off, "8" does not make it into
+#                            the result. The switch got toggled, but we
+#                            don't have any more tester Callables, so it
+#                            will remain off for the rest of the sequence.</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 2 3 4 5 6 7 8 9)
+(0 1 2 3 6 7)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># our original sequence of elements:
+say &lt;0 1 2&gt;; # OUTPUT: «(0 1 2)␤»
+# toggled result:
+say &lt;0 1 2&gt;.toggle: * &gt; 1; # OUTPUT: «()␤»
+
+# First tester Callable is `* &gt; 1` and initial state of switch is "on".
+# As we iterate over our original sequence:
+# 0 =&gt; 0 &gt; 1 === False  switch is off, "0" does not make it into result.
+#                      In addition, switch got toggled, so we change the
+#                      tester Callable, and since we don't have any more
+#                      of them, the switch will remain "off" until the end</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 2)
+()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># our original sequence of elements:
+say &lt;0 1 2&gt;; # OUTPUT: «(0 1 2)␤»
+# toggled result:
+say &lt;0 1 2&gt;.toggle: :off, * &gt; 1; # OUTPUT: «(2)␤»
+
+# First tester Callable is `* &gt; 1` and initial state of switch is "off".
+# As we iterate over our original sequence:
+# 0 =&gt; 0 &gt; 1 === False  switch is off, "0" does not make it into result.
+#                       The switch did NOT get toggled this time, so we
+#                       keep using our current tester Callable
+# 1 =&gt; 1 &gt; 1 === False  same
+# 2 =&gt; 2 &gt; 1 === True   switch is on, "2" makes it into the result</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 2)
+(2)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>"aaabbc".comb.head.put; # OUTPUT: «a␤»
+say ^10 .head(5);           # OUTPUT: «(0 1 2 3 4)␤»
+say ^∞ .head(5);            # OUTPUT: «(0 1 2 3 4)␤»
+say ^10 .head;              # OUTPUT: «0␤»
+say ^∞ .head;               # OUTPUT: «0␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a
+(0 1 2 3 4)
+(0 1 2 3 4)
+0
+0
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (^10).head( * - 3 );# OUTPUT: «(0 1 2 3 4 5 6)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 1 2 3 4 5 6)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>multi head(\specifier, +values)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say (^12).reverse.tail ;     # OUTPUT: «0␤»
+say (^12).reverse.tail(3);   # OUTPUT: «(2 1 0)␤»
+say (^12).reverse.tail(*-7); # OUTPUT: «(4 3 2 1 0)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>0
+(2 1 0)
+(4 3 2 1 0)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>multi tail(\specifier, +values)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say Any.tree; # OUTPUT: «Any␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>Any
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(Any)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>(Any)
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>my @floors = ( 'A', ('B','C', ('E','F','G')));
+say @floors.tree(1).flat.elems; # OUTPUT: «6␤»
+say @floors.tree(2).flat.elems; # OUTPUT: «2␤»
+say @floors.tree( *.join("-"),*.join("—"),*.join("|"));# OUTPUT: «A-B—C—E|F|G␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>6
+2
+A-B—C—E|F|G
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>6
+2
+A-B—C—E|F|G
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>6
+6
+A-B—C—E|F|G
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>Num.nl-out.print;     # OUTPUT: «␤»
+Whatever.nl-out.print;# OUTPUT: «␤»
+33.nl-out.print;      # OUTPUT: «␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>
+
+
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (^3).combinations; # OUTPUT: «(() (0) (1) (2) (0 1) (0 2) (1 2) (0 1 2))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(() (0) (1) (2) (0 1) (0 2) (1 2) (0 1 2))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say set().combinations; # OUTPUT: «(())␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(())
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $a;
+say $a.grep({ True }); # OUTPUT: «((Any))␤»
+say $a.grep({ $_ });   # OUTPUT: «()␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>((Any))
+()
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>((Any))
+()
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>()
+()
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>my $a;
+say $a.append; # OUTPUT: «[]␤»
+my $b;
+say $b.append((1,2,3)); # OUTPUT: «[1 2 3]␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[]
+[1 2 3]
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (1..3).values; # OUTPUT: «(1 2 3)␤»
+say List.values;   # OUTPUT: «()␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 2 3)
+()
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say ('a', 'Z').sort; # (Z a)
+say ('a', 'Z').collate; # (a Z)
+say &lt;ä a o ö&gt;.collate; # (a ä o ö)
+my %hash = 'aa' =&gt; 'value', 'Za' =&gt; 'second';
+say %hash.collate; # (aa =&gt; value Za =&gt; second);</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>$*COLLATION.set(:quaternary(False), :tertiary(False));
+say 'a' coll 'A'; # OUTPUT: «Same␤»
+say ('a','A').collate == ('A','a').collate; # OUTPUT: «True␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>Same
+True
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>Same
+True
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>say (3..9).rotor(3); # OUTPUT: «((3 4 5) (6 7 8))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((3 4 5) (6 7 8))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (3..10).rotor(3, :partial); # OUTPUT: «((3 4 5) (6 7 8) (9 10))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((3 4 5) (6 7 8) (9 10))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (3..11).rotor(3, 2 =&gt; 1, 3 =&gt; -2, :partial);
+# OUTPUT: «((3 4 5) (6 7) (9 10 11) (10 11))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((3 4 5) (6 7) (9 10 11) (10 11))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say (3..11).rotor(3, 2 =&gt; 1, 3 =&gt; -4, :partial);
+# OUTPUT: «(exit code 1) Rotorizing gap is out of range. Is: -4, should be in
+# -3..^Inf; ␤Ensure a negative gap is not larger than the length of the
+# sublist␤ ␤␤»</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say (3..9).rotor(3+⅓); # OUTPUT: «((3 4 5) (6 7 8))␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>((3 4 5) (6 7 8))
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>(3,2,1).sum; # OUTPUT: «6␤»
+say 3.sum;   # OUTPUT: «3␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>6
+3
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>3
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>3
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say (1..10).slice(0, 3..6, 8);  # OUTPUT: «(1 4 5 6 7 9)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 4 5 6 7 9)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>.say for snip * &lt; 10, 2, 5, 13, 9, 6;      # OUTPUT: «(2 5)␤(13 9 6)␤»
+.say for snip (* &lt; 10, * &lt; 20), 5, 13, 29; # OUTPUT: «(5)␤(13)␤(29)␤»
+.say for snip Int, 2, 5, 5, "a", "b";      # OUTPUT: «(2 5 5)␤(a b)␤»
+.say for (2, 5, 13, 9, 6).snip(* &lt; 10);    # OUTPUT: «(2 5)␤(13 9 6)␤»
+.say for (5, 13,29).snip(* &lt; 10, * &lt; 20);  # OUTPUT: «(5)␤(13)␤(29)␤»
+.say for (2, 5, 5, "a", "b").snip: Int;    # OUTPUT: «(2 5 5)␤(a b)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>0
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>(my $a = 42).snitch = 666; say $a;  # OUTPUT: «42␤666␤»
+(1..5).snitch;                      # OUTPUT: «1..5␤»
+(1..5).Seq.snitch;                  # OUTPUT: «(1 2 3 4 5)␤»
+(1..5).Seq.snitch(&amp;dd);             # OUTPUT: «(1, 2, 3, 4, 5).Seq␤»
+(1..5).map(*+1).snitch;             # OUTPUT: «(2 3 4 5 6)␤»
+say (1..3).Seq.snitch.map(*+2);     # OUTPUT: «(1 2 3)␤(3 4 5)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>42
+666
+1..5
+(1 2 3 4 5)
+(1, 2, 3, 4, 5).Seq
+(2 3 4 5 6)
+(1 2 3)
+(3 4 5)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>666
+(3 4 5)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>(1..3).Seq ==&gt; snitch() ==&gt; map(*+2) ==&gt; say();  # OUTPUT: «(1 2 3)␤(3 4 5)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(1 2 3)
+(3 4 5)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(3 4 5)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>my @snitched;
+my @result = (1..3).Seq.snitch({ @snitched.push($_) }).map(*+2);
+say @snitched;  # OUTPUT: «[(1 2 3)]␤»
+say @result;    # OUTPUT: «[3 4 5]␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>[(1 2 3)]
+[3 4 5]
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>[(1 2 3)]
+[3 4 5]
+</code></pre></div><p class="ex-verdict v-diff">Raku++ matches the documentation; Rakudo does not. This is the one class where neither engine can be assumed right: it may be a stale doc that Raku++ was built from, or it may be a Rakudo bug that the documentation predates. Each case is examined individually.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div>
+</div>
+<footer>
+<span>Raku Rules — the exhaustive rulebook, companion to the <a href="/spec/">Raku++ Specification</a>.</span>
+<span>Every example runs in your browser and is build-verified against the interpreter. <a href="https://github.com/ash/raku-spec">Source</a>.</span>
+</footer>
+</main>
+<script src="/theme/spec.js?v=11053192" defer></script>
+<script>window.__SEARCH_INDEX = '/spec/rules/search-index.json';</script>
+<script src="/theme/chart.js?v=11053192" defer></script>
+<script src="/theme/rules.js?v=11053192" defer></script>
+<script src="/theme/search.js?v=11053192" defer></script>
+<script src="https://raku.online/raku.js"></script>
+</body>
+</html>

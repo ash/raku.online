@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Str — Raku Rules</title>
+<script>(function () {
+  var KEY = 'raku-theme';
+  var mql = window.matchMedia('(prefers-color-scheme: dark)');
+  var ICON = { system: '◐', light: '☀', dark: '☾' };
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function effective(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', effective(s));
+    var btn = document.querySelector('.theme-btn');
+    if (btn) btn.textContent = ICON[s] || ICON.system;
+    document.querySelectorAll('.theme-menu [data-theme-set]').forEach(function (el) {
+      el.setAttribute('aria-checked', el.getAttribute('data-theme-set') === s ? 'true' : 'false');
+    });
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__setTheme = function (s) { try { localStorage.setItem(KEY, s); } catch (e) {} apply(s); };
+  document.addEventListener('DOMContentLoaded', function () {
+    apply(stored());
+    var sw = document.querySelector('.theme-switch');
+    if (!sw) return;
+    var btn = sw.querySelector('.theme-btn'), menu = sw.querySelector('.theme-menu');
+    function open(o) { menu.hidden = !o; btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); open(menu.hidden); });
+    menu.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-theme-set]');
+      if (b) { window.__setTheme(b.getAttribute('data-theme-set')); open(false); btn.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!sw.contains(e.target)) open(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); open(false); btn.focus(); } });
+  });
+})();
+</script>
+<link rel="stylesheet" href="/theme/base.css?v=11053192">
+<link rel="stylesheet" href="/theme/rules.css?v=11053192">
+</head>
+<body class="rules">
+<button class="nav-toggle" aria-label="Menu">☰</button>
+<span class="theme-switch">
+<button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+<ul class="theme-menu" hidden>
+<li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+<li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+<li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+</ul>
+</span>
+<nav class="sidebar"><div class="sidebar-head"><div class="brandbar"><span class="wordmark">Raku++</span><span class="siteswitch"><a class="sw" href="/spec">spec</a><a class="sw active" href="/spec/rules/">rules</a></span></div><div class="site-search"><input type="search" placeholder="Search the rules…" aria-label="Search the rules" autocomplete="off" spellcheck="false"><span class="ss-hint" aria-hidden="true">/</span><div class="ss-results" hidden></div></div></div><div class="sidebar-nav"><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">How to read these rules</span><span class="nav-count">1</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">overview<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/reading/">How to read these rules</a></li></ul></div></div></div></div><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Terms &amp; literals</span><span class="nav-count">16</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">named terms<span class="nav-count">16</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/terms/term-lt-gt/"><code>&lt; &gt;</code></a></li><li><a href="/spec/rules/terms/term-e/"><code>e</code></a></li><li><a href="/spec/rules/terms/term-i/"><code>i</code></a></li><li><a href="/spec/rules/terms/term-nano/"><code>nano</code></a></li><li><a href="/spec/rules/terms/term-now/"><code>now</code></a></li><li><a href="/spec/rules/terms/term-pi/"><code>pi</code></a></li><li><a href="/spec/rules/terms/term-rand/"><code>rand</code></a></li><li><a href="/spec/rules/terms/term-self/"><code>self</code></a></li><li><a href="/spec/rules/terms/term-tau/"><code>tau</code></a></li><li><a href="/spec/rules/terms/term-u74-u65-u72-u6d-colon-lt-gt/"><code>term:&lt;&gt;</code></a></li><li><a href="/spec/rules/terms/term-time/"><code>time</code></a></li><li><a href="/spec/rules/terms/term-braces/"><code>{ }</code></a></li><li><a href="/spec/rules/terms/term-u3c0/"><code>π</code></a></li><li><a href="/spec/rules/terms/term-u3c4/"><code>τ</code></a></li><li><a href="/spec/rules/terms/term-empty-set/"><code>∅</code></a></li><li><a href="/spec/rules/terms/term-u1d452/"><code>𝑒</code></a></li></ul></div></div></div></div><div class="nav-cat"><button class="nav-cat-title" type="button" aria-expanded="false"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Operators</span><span class="nav-count">164</span></button><div class="nav-cat-body"><div class="nav-sec"><button class="nav-sec-title" type="button">method call<span class="nav-count">12</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/methodop-dot/"><code>.</code></a></li><li><a href="/spec/rules/operators/methodop-dot-dquote-dquote/"><code>.""</code></a></li><li><a href="/spec/rules/operators/methodop-dot-amp/"><code>.&amp;</code></a></li><li><a href="/spec/rules/operators/methodop-all-dot/"><code>.*</code></a></li><li><a href="/spec/rules/operators/methodop-some-dot/"><code>.+</code></a></li><li><a href="/spec/rules/operators/methodop-dot-colon-colon/"><code>.::</code></a></li><li><a href="/spec/rules/operators/methodop-dot-colon-lt-u70-u72-u65-u66-u69-u78-u6f-u70-u65-u72-u61-u74-u6f-u72-gt/"><code>.:&lt;prefix operator&gt;</code></a></li><li><a href="/spec/rules/operators/methodop-dot-assign/"><code>.=</code></a></li><li><a href="/spec/rules/operators/methodop-safe-dot/"><code>.?</code></a></li><li><a href="/spec/rules/operators/methodop-meta-dot/"><code>.^</code></a></li><li><a href="/spec/rules/operators/methodop-dot-u70-u6f-u73-u74-u66-u69-u78-slash-dot-u70-u6f-u73-u74-u63-u69-u72-u63-u75-u6d-u66-u69-u78/"><code>.postfix / .postcircumfix</code></a></li><li><a href="/spec/rules/operators/methodop-ubb-dot-slash-u6d-u65-u74-u68-u6f-u64-u6f-u70-gt-gt-dot/"><code>». / methodop &gt;&gt;.</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">autoincrement<span class="nav-count">4</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-increment/"><code>++</code></a></li><li><a href="/spec/rules/operators/postfix-increment/"><code>++</code></a></li><li><a href="/spec/rules/operators/prefix-decrement/"><code>--</code></a></li><li><a href="/spec/rules/operators/postfix-decrement/"><code>--</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">exponentiation<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-power/"><code>**</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">symbolic unary<span class="nav-count">11</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-not/"><code>!</code></a></li><li><a href="/spec/rules/operators/prefix-plus/"><code>+</code></a></li><li><a href="/spec/rules/operators/prefix-numeric-xor/"><code>+^</code></a></li><li><a href="/spec/rules/operators/prefix-minus/"><code>-</code></a></li><li><a href="/spec/rules/operators/prefix-defined-or/"><code>//</code></a></li><li><a href="/spec/rules/operators/prefix-boolify/"><code>?</code></a></li><li><a href="/spec/rules/operators/prefix-boolean-xor/"><code>?^</code></a></li><li><a href="/spec/rules/operators/prefix-one-junction/"><code>^</code></a></li><li><a href="/spec/rules/operators/prefix-any-junction/"><code>|</code></a></li><li><a href="/spec/rules/operators/prefix-concat/"><code>~</code></a></li><li><a href="/spec/rules/operators/prefix-string-xor/"><code>~^</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">dotty infix<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-dot/"><code>.</code></a></li><li><a href="/spec/rules/operators/infix-dot-assign/"><code>.=</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">multiplicative<span class="nav-count">15</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-percent-sigil/"><code>%</code></a></li><li><a href="/spec/rules/operators/infix-divisible/"><code>%%</code></a></li><li><a href="/spec/rules/operators/infix-times/"><code>*</code></a></li><li><a href="/spec/rules/operators/infix-numeric-and/"><code>+&amp;</code></a></li><li><a href="/spec/rules/operators/infix-shift-left/"><code>+&lt;</code></a></li><li><a href="/spec/rules/operators/infix-shift-right/"><code>+&gt;</code></a></li><li><a href="/spec/rules/operators/infix-divide/"><code>/</code></a></li><li><a href="/spec/rules/operators/infix-boolean-and/"><code>?&amp;</code></a></li><li><a href="/spec/rules/operators/infix-div/"><code>div</code></a></li><li><a href="/spec/rules/operators/infix-gcd/"><code>gcd</code></a></li><li><a href="/spec/rules/operators/infix-lcm/"><code>lcm</code></a></li><li><a href="/spec/rules/operators/infix-mod/"><code>mod</code></a></li><li><a href="/spec/rules/operators/infix-string-and/"><code>~&amp;</code></a></li><li><a href="/spec/rules/operators/infix-string-shift-left/"><code>~&lt;</code></a></li><li><a href="/spec/rules/operators/infix-string-shift-right/"><code>~&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">additive<span class="nav-count">8</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-plus/"><code>+</code><span class="nav-name">Addition</span></a></li><li><a href="/spec/rules/operators/infix-numeric-xor/"><code>+^</code></a></li><li><a href="/spec/rules/operators/infix-numeric-or/"><code>+|</code></a></li><li><a href="/spec/rules/operators/infix-minus/"><code>-</code></a></li><li><a href="/spec/rules/operators/infix-boolean-xor/"><code>?^</code></a></li><li><a href="/spec/rules/operators/infix-boolean-or/"><code>?|</code></a></li><li><a href="/spec/rules/operators/infix-string-xor/"><code>~^</code></a></li><li><a href="/spec/rules/operators/infix-string-or/"><code>~|</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">replication<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-x/"><code>x</code></a></li><li><a href="/spec/rules/operators/infix-xx/"><code>xx</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">concatenation<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-concat/"><code>~</code><span class="nav-name">Concatenation</span></a></li><li><a href="/spec/rules/operators/infix-o/"><code>o</code></a></li><li><a href="/spec/rules/operators/infix-compose/"><code>∘</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">junctive and<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-all-junction/"><code>&amp;</code></a></li><li><a href="/spec/rules/operators/infix-intersection/"><code>∩</code></a></li><li><a href="/spec/rules/operators/infix-baggy-multiply/"><code>⊍</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">junctive or<span class="nav-count">6</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-one-junction/"><code>^</code></a></li><li><a href="/spec/rules/operators/infix-any-junction/"><code>|</code></a></li><li><a href="/spec/rules/operators/infix-set-difference/"><code>∖</code></a></li><li><a href="/spec/rules/operators/infix-union/"><code>∪</code></a></li><li><a href="/spec/rules/operators/infix-baggy-add/"><code>⊎</code></a></li><li><a href="/spec/rules/operators/infix-symmetric-difference/"><code>⊖</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">named unary<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-let/"><code>let</code></a></li><li><a href="/spec/rules/operators/prefix-temp/"><code>temp</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">structural<span class="nav-count">11</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-range/"><code>..</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-end/"><code>..^</code></a></li><li><a href="/spec/rules/operators/infix-numeric-cmp/"><code>&lt;=&gt;</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-start/"><code>^..</code></a></li><li><a href="/spec/rules/operators/infix-range-excl-both/"><code>^..^</code></a></li><li><a href="/spec/rules/operators/infix-but/"><code>but</code></a></li><li><a href="/spec/rules/operators/infix-cmp/"><code>cmp</code></a></li><li><a href="/spec/rules/operators/infix-coll/"><code>coll</code></a></li><li><a href="/spec/rules/operators/infix-does/"><code>does</code></a></li><li><a href="/spec/rules/operators/infix-leg/"><code>leg</code></a></li><li><a href="/spec/rules/operators/infix-unicmp/"><code>unicmp</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">chaining<span class="nav-count">41</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-numeric-ne/"><code>!=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-lt/"><code>&lt;</code></a></li><li><a href="/spec/rules/operators/infix-numeric-le/"><code>&lt;=</code></a></li><li><a href="/spec/rules/operators/infix-container-identity/"><code>=:=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-eq/"><code>==</code></a></li><li><a href="/spec/rules/operators/infix-value-identity/"><code>===</code></a></li><li><a href="/spec/rules/operators/infix-approx-eq/"><code>=~=</code></a></li><li><a href="/spec/rules/operators/infix-numeric-gt/"><code>&gt;</code></a></li><li><a href="/spec/rules/operators/infix-numeric-ge/"><code>&gt;=</code></a></li><li><a href="/spec/rules/operators/infix-after/"><code>after</code></a></li><li><a href="/spec/rules/operators/infix-before/"><code>before</code></a></li><li><a href="/spec/rules/operators/infix-eq/"><code>eq</code></a></li><li><a href="/spec/rules/operators/infix-eqv/"><code>eqv</code></a></li><li><a href="/spec/rules/operators/infix-ge/"><code>ge</code></a></li><li><a href="/spec/rules/operators/infix-gt/"><code>gt</code></a></li><li><a href="/spec/rules/operators/infix-le/"><code>le</code></a></li><li><a href="/spec/rules/operators/infix-lt/"><code>lt</code></a></li><li><a href="/spec/rules/operators/infix-ne/"><code>ne</code></a></li><li><a href="/spec/rules/operators/infix-smartmatch/"><code>~~</code></a></li><li><a href="/spec/rules/operators/infix-elem-sign/"><code>∈</code></a></li><li><a href="/spec/rules/operators/infix-not-elem-sign/"><code>∉</code></a></li><li><a href="/spec/rules/operators/infix-contains-sign/"><code>∋</code></a></li><li><a href="/spec/rules/operators/infix-not-contains-sign/"><code>∌</code></a></li><li><a href="/spec/rules/operators/infix-approx-sign/"><code>≅</code></a></li><li><a href="/spec/rules/operators/infix-ne-sign/"><code>≠</code></a></li><li><a href="/spec/rules/operators/infix-identical/"><code>≡</code></a></li><li><a href="/spec/rules/operators/infix-not-identical/"><code>≢</code></a></li><li><a href="/spec/rules/operators/infix-le-sign/"><code>≤</code></a></li><li><a href="/spec/rules/operators/infix-ge-sign/"><code>≥</code></a></li><li><a href="/spec/rules/operators/infix-baggy-subset/"><code>≼</code></a></li><li><a href="/spec/rules/operators/infix-baggy-superset/"><code>≽</code></a></li><li><a href="/spec/rules/operators/infix-proper-subset/"><code>⊂</code></a></li><li><a href="/spec/rules/operators/infix-proper-superset/"><code>⊃</code></a></li><li><a href="/spec/rules/operators/infix-not-proper-subset/"><code>⊄</code></a></li><li><a href="/spec/rules/operators/infix-not-proper-superset/"><code>⊅</code></a></li><li><a href="/spec/rules/operators/infix-subset-or-eq/"><code>⊆</code></a></li><li><a href="/spec/rules/operators/infix-superset-or-eq/"><code>⊇</code></a></li><li><a href="/spec/rules/operators/infix-not-subset/"><code>⊈</code></a></li><li><a href="/spec/rules/operators/infix-not-superset/"><code>⊉</code></a></li><li><a href="/spec/rules/operators/infix-u2a75/"><code>⩵</code></a></li><li><a href="/spec/rules/operators/infix-u2a76/"><code>⩶</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">tight and<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-tight-and/"><code>&amp;&amp;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">tight or<span class="nav-count">6</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-defined-or/"><code>//</code></a></li><li><a href="/spec/rules/operators/infix-tight-xor/"><code>^^</code></a></li><li><a href="/spec/rules/operators/infix-max/"><code>max</code></a></li><li><a href="/spec/rules/operators/infix-min/"><code>min</code></a></li><li><a href="/spec/rules/operators/infix-minmax/"><code>minmax</code></a></li><li><a href="/spec/rules/operators/infix-tight-or/"><code>||</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">conditional<span class="nav-count">9</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-ternary/"><code>?? !!</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66/"><code>^ff</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-caret/"><code>^ff^</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-u66/"><code>^fff</code></a></li><li><a href="/spec/rules/operators/infix-caret-u66-u66-u66-caret/"><code>^fff^</code></a></li><li><a href="/spec/rules/operators/infix-ff/"><code>ff</code></a></li><li><a href="/spec/rules/operators/infix-u66-u66-caret/"><code>ff^</code></a></li><li><a href="/spec/rules/operators/infix-fff/"><code>fff</code></a></li><li><a href="/spec/rules/operators/infix-u66-u66-u66-caret/"><code>fff^</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">item assignment<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-assign/"><code>=</code></a></li><li><a href="/spec/rules/operators/infix-fatarrow/"><code>=&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose unary<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/prefix-so/"><code>so</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">comma<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-colon/"><code>:</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">list infix<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-sequence/"><code>...</code></a></li><li><a href="/spec/rules/operators/infix-X/"><code>X</code></a></li><li><a href="/spec/rules/operators/infix-Z/"><code>Z</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">list prefix<span class="nav-count">5</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/listop-bang-bang-bang/"><code>!!!</code></a></li><li><a href="/spec/rules/operators/listop-sequence/"><code>...</code></a></li><li><a href="/spec/rules/operators/infix-readonly-bind/"><code>::=</code></a></li><li><a href="/spec/rules/operators/infix-bind/"><code>:=</code></a></li><li><a href="/spec/rules/operators/listop-q-q-q/"><code>???</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose and<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-and/"><code>and</code></a></li><li><a href="/spec/rules/operators/infix-andthen/"><code>andthen</code></a></li><li><a href="/spec/rules/operators/infix-notandthen/"><code>notandthen</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">loose or<span class="nav-count">3</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-or/"><code>or</code></a></li><li><a href="/spec/rules/operators/infix-orelse/"><code>orelse</code></a></li><li><a href="/spec/rules/operators/infix-xor/"><code>xor</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">sequencer<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-feed-backward/"><code>&lt;==</code></a></li><li><a href="/spec/rules/operators/infix-feed-forward/"><code>==&gt;</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">circumfixes<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/circumfix-brackets/"><code>[ ]</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">postcircumfixes<span class="nav-count">4</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/postcircumfix-brackets/"><code>[ ]</code><span class="nav-name">Positional subscript</span></a></li><li><a href="/spec/rules/operators/postcircumfix-lt-gt/"><code>&lt;&gt;</code></a></li><li><a href="/spec/rules/operators/postcircumfix-braces/"><code>{ }</code></a></li><li><a href="/spec/rules/operators/postcircumfix-french-quotes/"><code>« »</code></a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">unclassified<span class="nav-count">2</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/operators/infix-not/"><code>!</code></a></li><li><a href="/spec/rules/operators/prefix-lparen-u43-minus-u6c-u69-u6b-u65-rparen-u66-u6f-u72-u6d/"><code>(C-like) form</code></a></li></ul></div></div></div></div><div class="nav-cat open"><button class="nav-cat-title" type="button" aria-expanded="true"><span class="nav-cat-chev" aria-hidden="true"></span><span class="nav-cat-name">Types, classes &amp; roles</span><span class="nav-count">355</span></button><div class="nav-cat-body"><div class="nav-sec open"><button class="nav-sec-title" type="button">basic<span class="nav-count">86</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/ast/">AST</a></li><li><a href="/spec/rules/types/allomorph/">Allomorph</a></li><li><a href="/spec/rules/types/any/">Any</a></li><li><a href="/spec/rules/types/block/">Block</a></li><li><a href="/spec/rules/types/bool/">Bool</a></li><li><a href="/spec/rules/types/callframe/">CallFrame</a></li><li><a href="/spec/rules/types/callable/">Callable</a></li><li><a href="/spec/rules/types/code/">Code</a></li><li><a href="/spec/rules/types/collation/">Collation</a></li><li><a href="/spec/rules/types/compiler/">Compiler</a></li><li><a href="/spec/rules/types/complex/">Complex</a></li><li><a href="/spec/rules/types/complexstr/">ComplexStr</a></li><li><a href="/spec/rules/types/cool/">Cool</a></li><li><a href="/spec/rules/types/currentthreadscheduler/">CurrentThreadScheduler</a></li><li><a href="/spec/rules/types/date/">Date</a></li><li><a href="/spec/rules/types/datetime/">DateTime</a></li><li><a href="/spec/rules/types/dateish/">Dateish</a></li><li><a href="/spec/rules/types/distribution/">Distribution</a></li><li><a href="/spec/rules/types/distribution-hash/">Distribution::Hash</a></li><li><a href="/spec/rules/types/distribution-locally/">Distribution::Locally</a></li><li><a href="/spec/rules/types/distribution-path/">Distribution::Path</a></li><li><a href="/spec/rules/types/distribution-resource/">Distribution::Resource</a></li><li><a href="/spec/rules/types/duration/">Duration</a></li><li><a href="/spec/rules/types/encoding/">Encoding</a></li><li><a href="/spec/rules/types/encoding-registry/">Encoding::Registry</a></li><li><a href="/spec/rules/types/endian/">Endian</a></li><li><a href="/spec/rules/types/fatrat/">FatRat</a></li><li><a href="/spec/rules/types/foreigncode/">ForeignCode</a></li><li><a href="/spec/rules/types/format/">Format</a></li><li><a href="/spec/rules/types/formatter/">Formatter</a></li><li><a href="/spec/rules/types/hyperseq/">HyperSeq</a></li><li><a href="/spec/rules/types/hyperwhatever/">HyperWhatever</a></li><li><a href="/spec/rules/types/instant/">Instant</a></li><li><a href="/spec/rules/types/int/">Int</a></li><li><a href="/spec/rules/types/intstr/">IntStr</a></li><li><a href="/spec/rules/types/junction/">Junction</a></li><li><a href="/spec/rules/types/label/">Label</a></li><li><a href="/spec/rules/types/lock-async/">Lock::Async</a></li><li><a href="/spec/rules/types/macro/">Macro</a></li><li><a href="/spec/rules/types/method/">Method</a></li><li><a href="/spec/rules/types/mu/">Mu</a></li><li><a href="/spec/rules/types/nil/">Nil</a></li><li><a href="/spec/rules/types/num/">Num</a></li><li><a href="/spec/rules/types/numstr/">NumStr</a></li><li><a href="/spec/rules/types/numeric/">Numeric</a></li><li><a href="/spec/rules/types/objat/">ObjAt</a></li><li><a href="/spec/rules/types/parameter/">Parameter</a></li><li><a href="/spec/rules/types/perl/">Perl</a></li><li><a href="/spec/rules/types/predictiveiterator/">PredictiveIterator</a></li><li><a href="/spec/rules/types/promisestatus/">PromiseStatus</a></li><li><a href="/spec/rules/types/proxy/">Proxy</a></li><li><a href="/spec/rules/types/raceseq/">RaceSeq</a></li><li><a href="/spec/rules/types/raku/">Raku</a></li><li><a href="/spec/rules/types/rakuast/">RakuAST</a></li><li><a href="/spec/rules/types/rakuast-doc/">RakuAST::Doc</a></li><li><a href="/spec/rules/types/rakuast-doc-block/">RakuAST::Doc::Block</a></li><li><a href="/spec/rules/types/rakuast-doc-declarator/">RakuAST::Doc::Declarator</a></li><li><a href="/spec/rules/types/rakuast-doc-declaratortarget/">RakuAST::Doc::DeclaratorTarget</a></li><li><a href="/spec/rules/types/rakuast-doc-markup/">RakuAST::Doc::Markup</a></li><li><a href="/spec/rules/types/rakuast-doc-paragraph/">RakuAST::Doc::Paragraph</a></li><li><a href="/spec/rules/types/rat/">Rat</a></li><li><a href="/spec/rules/types/ratstr/">RatStr</a></li><li><a href="/spec/rules/types/rational/">Rational</a></li><li><a href="/spec/rules/types/real/">Real</a></li><li><a href="/spec/rules/types/routine/">Routine</a></li><li><a href="/spec/rules/types/routine-wraphandle/">Routine::WrapHandle</a></li><li><a href="/spec/rules/types/scalar/">Scalar</a></li><li><a href="/spec/rules/types/signature/">Signature</a></li><li><a class="active" href="/spec/rules/types/str/">Str</a></li><li><a href="/spec/rules/types/strdistance/">StrDistance</a></li><li><a href="/spec/rules/types/stringy/">Stringy</a></li><li><a href="/spec/rules/types/sub/">Sub</a></li><li><a href="/spec/rules/types/submethod/">Submethod</a></li><li><a href="/spec/rules/types/telemetry/">Telemetry</a></li><li><a href="/spec/rules/types/telemetry-instrument-thread/">Telemetry::Instrument::Thread</a></li><li><a href="/spec/rules/types/telemetry-instrument-threadpool/">Telemetry::Instrument::ThreadPool</a></li><li><a href="/spec/rules/types/telemetry-instrument-usage/">Telemetry::Instrument::Usage</a></li><li><a href="/spec/rules/types/telemetry-period/">Telemetry::Period</a></li><li><a href="/spec/rules/types/telemetry-sampler/">Telemetry::Sampler</a></li><li><a href="/spec/rules/types/uint/">UInt</a></li><li><a href="/spec/rules/types/valueobjat/">ValueObjAt</a></li><li><a href="/spec/rules/types/variable/">Variable</a></li><li><a href="/spec/rules/types/version/">Version</a></li><li><a href="/spec/rules/types/whatever/">Whatever</a></li><li><a href="/spec/rules/types/whatevercode/">WhateverCode</a></li><li><a href="/spec/rules/types/atomicint/">atomicint</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">composite<span class="nav-count">37</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/array/">Array</a></li><li><a href="/spec/rules/types/associative/">Associative</a></li><li><a href="/spec/rules/types/bag/">Bag</a></li><li><a href="/spec/rules/types/baghash/">BagHash</a></li><li><a href="/spec/rules/types/baggy/">Baggy</a></li><li><a href="/spec/rules/types/blob/">Blob</a></li><li><a href="/spec/rules/types/buf/">Buf</a></li><li><a href="/spec/rules/types/capture/">Capture</a></li><li><a href="/spec/rules/types/enumeration/">Enumeration</a></li><li><a href="/spec/rules/types/hash/">Hash</a></li><li><a href="/spec/rules/types/iterable/">Iterable</a></li><li><a href="/spec/rules/types/iterationbuffer/">IterationBuffer</a></li><li><a href="/spec/rules/types/iterator/">Iterator</a></li><li><a href="/spec/rules/types/list/">List</a></li><li><a href="/spec/rules/types/map/">Map</a></li><li><a href="/spec/rules/types/mix/">Mix</a></li><li><a href="/spec/rules/types/mixhash/">MixHash</a></li><li><a href="/spec/rules/types/mixy/">Mixy</a></li><li><a href="/spec/rules/types/nfc/">NFC</a></li><li><a href="/spec/rules/types/nfd/">NFD</a></li><li><a href="/spec/rules/types/nfkc/">NFKC</a></li><li><a href="/spec/rules/types/nfkd/">NFKD</a></li><li><a href="/spec/rules/types/pair/">Pair</a></li><li><a href="/spec/rules/types/positional/">Positional</a></li><li><a href="/spec/rules/types/positionalbindfailover/">PositionalBindFailover</a></li><li><a href="/spec/rules/types/pseudostash/">PseudoStash</a></li><li><a href="/spec/rules/types/quanthash/">QuantHash</a></li><li><a href="/spec/rules/types/range/">Range</a></li><li><a href="/spec/rules/types/seq/">Seq</a></li><li><a href="/spec/rules/types/sequence/">Sequence</a></li><li><a href="/spec/rules/types/set/">Set</a></li><li><a href="/spec/rules/types/sethash/">SetHash</a></li><li><a href="/spec/rules/types/setty/">Setty</a></li><li><a href="/spec/rules/types/slip/">Slip</a></li><li><a href="/spec/rules/types/stash/">Stash</a></li><li><a href="/spec/rules/types/uni/">Uni</a></li><li><a href="/spec/rules/types/utf8/">utf8</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">domain-specific<span class="nav-count">66</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/attribute/">Attribute</a></li><li><a href="/spec/rules/types/cancellation/">Cancellation</a></li><li><a href="/spec/rules/types/channel/">Channel</a></li><li><a href="/spec/rules/types/compunit/">CompUnit</a></li><li><a href="/spec/rules/types/compunit-precompilationrepository/">CompUnit::PrecompilationRepository</a></li><li><a href="/spec/rules/types/compunit-repository/">CompUnit::Repository</a></li><li><a href="/spec/rules/types/compunit-repository-filesystem/">CompUnit::Repository::FileSystem</a></li><li><a href="/spec/rules/types/compunit-repository-installation/">CompUnit::Repository::Installation</a></li><li><a href="/spec/rules/types/compunit-repository-unknown/">CompUnit::Repository::Unknown</a></li><li><a href="/spec/rules/types/distro/">Distro</a></li><li><a href="/spec/rules/types/grammar/">Grammar</a></li><li><a href="/spec/rules/types/io/">IO</a></li><li><a href="/spec/rules/types/io-argfiles/">IO::ArgFiles</a></li><li><a href="/spec/rules/types/io-cathandle/">IO::CatHandle</a></li><li><a href="/spec/rules/types/io-handle/">IO::Handle</a></li><li><a href="/spec/rules/types/io-notification/">IO::Notification</a></li><li><a href="/spec/rules/types/io-notification-change/">IO::Notification::Change</a></li><li><a href="/spec/rules/types/io-path/">IO::Path</a></li><li><a href="/spec/rules/types/io-path-cygwin/">IO::Path::Cygwin</a></li><li><a href="/spec/rules/types/io-path-parts/">IO::Path::Parts</a></li><li><a href="/spec/rules/types/io-path-qnx/">IO::Path::QNX</a></li><li><a href="/spec/rules/types/io-path-unix/">IO::Path::Unix</a></li><li><a href="/spec/rules/types/io-path-win32/">IO::Path::Win32</a></li><li><a href="/spec/rules/types/io-pipe/">IO::Pipe</a></li><li><a href="/spec/rules/types/io-socket/">IO::Socket</a></li><li><a href="/spec/rules/types/io-socket-async/">IO::Socket::Async</a></li><li><a href="/spec/rules/types/io-socket-async-listensocket/">IO::Socket::Async::ListenSocket</a></li><li><a href="/spec/rules/types/io-socket-inet/">IO::Socket::INET</a></li><li><a href="/spec/rules/types/io-spec/">IO::Spec</a></li><li><a href="/spec/rules/types/io-spec-cygwin/">IO::Spec::Cygwin</a></li><li><a href="/spec/rules/types/io-spec-qnx/">IO::Spec::QNX</a></li><li><a href="/spec/rules/types/io-spec-unix/">IO::Spec::Unix</a></li><li><a href="/spec/rules/types/io-spec-win32/">IO::Spec::Win32</a></li><li><a href="/spec/rules/types/io-special/">IO::Special</a></li><li><a href="/spec/rules/types/kernel/">Kernel</a></li><li><a href="/spec/rules/types/lock/">Lock</a></li><li><a href="/spec/rules/types/lock-conditionvariable/">Lock::ConditionVariable</a></li><li><a href="/spec/rules/types/match/">Match</a></li><li><a href="/spec/rules/types/order/">Order</a></li><li><a href="/spec/rules/types/pod-block/">Pod::Block</a></li><li><a href="/spec/rules/types/pod-block-code/">Pod::Block::Code</a></li><li><a href="/spec/rules/types/pod-block-comment/">Pod::Block::Comment</a></li><li><a href="/spec/rules/types/pod-block-declarator/">Pod::Block::Declarator</a></li><li><a href="/spec/rules/types/pod-block-named/">Pod::Block::Named</a></li><li><a href="/spec/rules/types/pod-block-para/">Pod::Block::Para</a></li><li><a href="/spec/rules/types/pod-block-table/">Pod::Block::Table</a></li><li><a href="/spec/rules/types/pod-defn/">Pod::Defn</a></li><li><a href="/spec/rules/types/pod-formattingcode/">Pod::FormattingCode</a></li><li><a href="/spec/rules/types/pod-heading/">Pod::Heading</a></li><li><a href="/spec/rules/types/pod-item/">Pod::Item</a></li><li><a href="/spec/rules/types/proc/">Proc</a></li><li><a href="/spec/rules/types/proc-async/">Proc::Async</a></li><li><a href="/spec/rules/types/promise/">Promise</a></li><li><a href="/spec/rules/types/regex/">Regex</a></li><li><a href="/spec/rules/types/scheduler/">Scheduler</a></li><li><a href="/spec/rules/types/semaphore/">Semaphore</a></li><li><a href="/spec/rules/types/signal/">Signal</a></li><li><a href="/spec/rules/types/supplier/">Supplier</a></li><li><a href="/spec/rules/types/supplier-preserving/">Supplier::Preserving</a></li><li><a href="/spec/rules/types/supply/">Supply</a></li><li><a href="/spec/rules/types/systemic/">Systemic</a></li><li><a href="/spec/rules/types/tap/">Tap</a></li><li><a href="/spec/rules/types/thread/">Thread</a></li><li><a href="/spec/rules/types/threadpoolscheduler/">ThreadPoolScheduler</a></li><li><a href="/spec/rules/types/unicode/">Unicode</a></li><li><a href="/spec/rules/types/vm/">VM</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">exception<span class="nav-count">138</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/backtrace/">Backtrace</a></li><li><a href="/spec/rules/types/backtrace-frame/">Backtrace::Frame</a></li><li><a href="/spec/rules/types/cx-done/">CX::Done</a></li><li><a href="/spec/rules/types/cx-emit/">CX::Emit</a></li><li><a href="/spec/rules/types/cx-last/">CX::Last</a></li><li><a href="/spec/rules/types/cx-next/">CX::Next</a></li><li><a href="/spec/rules/types/cx-proceed/">CX::Proceed</a></li><li><a href="/spec/rules/types/cx-redo/">CX::Redo</a></li><li><a href="/spec/rules/types/cx-return/">CX::Return</a></li><li><a href="/spec/rules/types/cx-succeed/">CX::Succeed</a></li><li><a href="/spec/rules/types/cx-take/">CX::Take</a></li><li><a href="/spec/rules/types/cx-warn/">CX::Warn</a></li><li><a href="/spec/rules/types/exception/">Exception</a></li><li><a href="/spec/rules/types/failure/">Failure</a></li><li><a href="/spec/rules/types/x-adhoc/">X::AdHoc</a></li><li><a href="/spec/rules/types/x-anon-augment/">X::Anon::Augment</a></li><li><a href="/spec/rules/types/x-anon-multi/">X::Anon::Multi</a></li><li><a href="/spec/rules/types/x-assignment-ro/">X::Assignment::RO</a></li><li><a href="/spec/rules/types/x-attribute-nopackage/">X::Attribute::NoPackage</a></li><li><a href="/spec/rules/types/x-attribute-package/">X::Attribute::Package</a></li><li><a href="/spec/rules/types/x-attribute-required/">X::Attribute::Required</a></li><li><a href="/spec/rules/types/x-attribute-undeclared/">X::Attribute::Undeclared</a></li><li><a href="/spec/rules/types/x-augment-nosuchtype/">X::Augment::NoSuchType</a></li><li><a href="/spec/rules/types/x-bind/">X::Bind</a></li><li><a href="/spec/rules/types/x-bind-nativetype/">X::Bind::NativeType</a></li><li><a href="/spec/rules/types/x-bind-slice/">X::Bind::Slice</a></li><li><a href="/spec/rules/types/x-caller-notdynamic/">X::Caller::NotDynamic</a></li><li><a href="/spec/rules/types/x-cannot-empty/">X::Cannot::Empty</a></li><li><a href="/spec/rules/types/x-cannot-lazy/">X::Cannot::Lazy</a></li><li><a href="/spec/rules/types/x-channel-receiveonclosed/">X::Channel::ReceiveOnClosed</a></li><li><a href="/spec/rules/types/x-channel-sendonclosed/">X::Channel::SendOnClosed</a></li><li><a href="/spec/rules/types/x-comp/">X::Comp</a></li><li><a href="/spec/rules/types/x-composition-notcomposable/">X::Composition::NotComposable</a></li><li><a href="/spec/rules/types/x-constructor-positional/">X::Constructor::Positional</a></li><li><a href="/spec/rules/types/x-control/">X::Control</a></li><li><a href="/spec/rules/types/x-controlflow/">X::ControlFlow</a></li><li><a href="/spec/rules/types/x-controlflow-return/">X::ControlFlow::Return</a></li><li><a href="/spec/rules/types/x-datetime-timezoneclash/">X::DateTime::TimezoneClash</a></li><li><a href="/spec/rules/types/x-declaration-scope/">X::Declaration::Scope</a></li><li><a href="/spec/rules/types/x-declaration-scope-multi/">X::Declaration::Scope::Multi</a></li><li><a href="/spec/rules/types/x-does-typeobject/">X::Does::TypeObject</a></li><li><a href="/spec/rules/types/x-dynamic-notfound/">X::Dynamic::NotFound</a></li><li><a href="/spec/rules/types/x-eval-nosuchlang/">X::Eval::NoSuchLang</a></li><li><a href="/spec/rules/types/x-export-nameclash/">X::Export::NameClash</a></li><li><a href="/spec/rules/types/x-io/">X::IO</a></li><li><a href="/spec/rules/types/x-io-binarymode/">X::IO::BinaryMode</a></li><li><a href="/spec/rules/types/x-io-chdir/">X::IO::Chdir</a></li><li><a href="/spec/rules/types/x-io-chmod/">X::IO::Chmod</a></li><li><a href="/spec/rules/types/x-io-chown/">X::IO::Chown</a></li><li><a href="/spec/rules/types/x-io-copy/">X::IO::Copy</a></li><li><a href="/spec/rules/types/x-io-cwd/">X::IO::Cwd</a></li><li><a href="/spec/rules/types/x-io-dir/">X::IO::Dir</a></li><li><a href="/spec/rules/types/x-io-doesnotexist/">X::IO::DoesNotExist</a></li><li><a href="/spec/rules/types/x-io-flush/">X::IO::Flush</a></li><li><a href="/spec/rules/types/x-io-link/">X::IO::Link</a></li><li><a href="/spec/rules/types/x-io-lock/">X::IO::Lock</a></li><li><a href="/spec/rules/types/x-io-mkdir/">X::IO::Mkdir</a></li><li><a href="/spec/rules/types/x-io-move/">X::IO::Move</a></li><li><a href="/spec/rules/types/x-io-rename/">X::IO::Rename</a></li><li><a href="/spec/rules/types/x-io-rmdir/">X::IO::Rmdir</a></li><li><a href="/spec/rules/types/x-io-symlink/">X::IO::Symlink</a></li><li><a href="/spec/rules/types/x-io-unlink/">X::IO::Unlink</a></li><li><a href="/spec/rules/types/x-inheritance-notcomposed/">X::Inheritance::NotComposed</a></li><li><a href="/spec/rules/types/x-inheritance-unsupported/">X::Inheritance::Unsupported</a></li><li><a href="/spec/rules/types/x-method-invalidqualifier/">X::Method::InvalidQualifier</a></li><li><a href="/spec/rules/types/x-method-notfound/">X::Method::NotFound</a></li><li><a href="/spec/rules/types/x-method-private-permission/">X::Method::Private::Permission</a></li><li><a href="/spec/rules/types/x-method-private-unqualified/">X::Method::Private::Unqualified</a></li><li><a href="/spec/rules/types/x-mixin-notcomposable/">X::Mixin::NotComposable</a></li><li><a href="/spec/rules/types/x-nyi/">X::NYI</a></li><li><a href="/spec/rules/types/x-nodispatcher/">X::NoDispatcher</a></li><li><a href="/spec/rules/types/x-numeric-cannotconvert/">X::Numeric::CannotConvert</a></li><li><a href="/spec/rules/types/x-numeric-dividebyzero/">X::Numeric::DivideByZero</a></li><li><a href="/spec/rules/types/x-numeric-real/">X::Numeric::Real</a></li><li><a href="/spec/rules/types/x-os/">X::OS</a></li><li><a href="/spec/rules/types/x-obsolete/">X::Obsolete</a></li><li><a href="/spec/rules/types/x-outofrange/">X::OutOfRange</a></li><li><a href="/spec/rules/types/x-package-stubbed/">X::Package::Stubbed</a></li><li><a href="/spec/rules/types/x-parameter-default/">X::Parameter::Default</a></li><li><a href="/spec/rules/types/x-parameter-multipletypeconstraints/">X::Parameter::MultipleTypeConstraints</a></li><li><a href="/spec/rules/types/x-parameter-placeholder/">X::Parameter::Placeholder</a></li><li><a href="/spec/rules/types/x-parameter-twigil/">X::Parameter::Twigil</a></li><li><a href="/spec/rules/types/x-parameter-wrongorder/">X::Parameter::WrongOrder</a></li><li><a href="/spec/rules/types/x-phaser-multiple/">X::Phaser::Multiple</a></li><li><a href="/spec/rules/types/x-phaser-prepost/">X::Phaser::PrePost</a></li><li><a href="/spec/rules/types/x-placeholder-block/">X::Placeholder::Block</a></li><li><a href="/spec/rules/types/x-placeholder-mainline/">X::Placeholder::Mainline</a></li><li><a href="/spec/rules/types/x-pod/">X::Pod</a></li><li><a href="/spec/rules/types/x-proc-async/">X::Proc::Async</a></li><li><a href="/spec/rules/types/x-proc-async-alreadystarted/">X::Proc::Async::AlreadyStarted</a></li><li><a href="/spec/rules/types/x-proc-async-bindoruse/">X::Proc::Async::BindOrUse</a></li><li><a href="/spec/rules/types/x-proc-async-charsorbytes/">X::Proc::Async::CharsOrBytes</a></li><li><a href="/spec/rules/types/x-proc-async-mustbestarted/">X::Proc::Async::MustBeStarted</a></li><li><a href="/spec/rules/types/x-proc-async-openforwriting/">X::Proc::Async::OpenForWriting</a></li><li><a href="/spec/rules/types/x-proc-async-tapbeforespawn/">X::Proc::Async::TapBeforeSpawn</a></li><li><a href="/spec/rules/types/x-proc-unsuccessful/">X::Proc::Unsuccessful</a></li><li><a href="/spec/rules/types/x-promise-causeonlyvalidonbroken/">X::Promise::CauseOnlyValidOnBroken</a></li><li><a href="/spec/rules/types/x-promise-vowed/">X::Promise::Vowed</a></li><li><a href="/spec/rules/types/x-redeclaration/">X::Redeclaration</a></li><li><a href="/spec/rules/types/x-role-initialization/">X::Role::Initialization</a></li><li><a href="/spec/rules/types/x-scheduler-cueinnanseconds/">X::Scheduler::CueInNaNSeconds</a></li><li><a href="/spec/rules/types/x-seq-consumed/">X::Seq::Consumed</a></li><li><a href="/spec/rules/types/x-sequence-deduction/">X::Sequence::Deduction</a></li><li><a href="/spec/rules/types/x-signature-nameclash/">X::Signature::NameClash</a></li><li><a href="/spec/rules/types/x-signature-placeholder/">X::Signature::Placeholder</a></li><li><a href="/spec/rules/types/x-str-match-x/">X::Str::Match::x</a></li><li><a href="/spec/rules/types/x-str-numeric/">X::Str::Numeric</a></li><li><a href="/spec/rules/types/x-stubcode/">X::StubCode</a></li><li><a href="/spec/rules/types/x-syntax/">X::Syntax</a></li><li><a href="/spec/rules/types/x-syntax-augment-withoutmonkeytyping/">X::Syntax::Augment::WithoutMonkeyTyping</a></li><li><a href="/spec/rules/types/x-syntax-comment-embedded/">X::Syntax::Comment::Embedded</a></li><li><a href="/spec/rules/types/x-syntax-confused/">X::Syntax::Confused</a></li><li><a href="/spec/rules/types/x-syntax-infixintermposition/">X::Syntax::InfixInTermPosition</a></li><li><a href="/spec/rules/types/x-syntax-malformed/">X::Syntax::Malformed</a></li><li><a href="/spec/rules/types/x-syntax-missing/">X::Syntax::Missing</a></li><li><a href="/spec/rules/types/x-syntax-negatedpair/">X::Syntax::NegatedPair</a></li><li><a href="/spec/rules/types/x-syntax-noself/">X::Syntax::NoSelf</a></li><li><a href="/spec/rules/types/x-syntax-number-radixoutofrange/">X::Syntax::Number::RadixOutOfRange</a></li><li><a href="/spec/rules/types/x-syntax-p5/">X::Syntax::P5</a></li><li><a href="/spec/rules/types/x-syntax-perl5var/">X::Syntax::Perl5Var</a></li><li><a href="/spec/rules/types/x-syntax-regex-adverb/">X::Syntax::Regex::Adverb</a></li><li><a href="/spec/rules/types/x-syntax-regex-solitaryquantifier/">X::Syntax::Regex::SolitaryQuantifier</a></li><li><a href="/spec/rules/types/x-syntax-reserved/">X::Syntax::Reserved</a></li><li><a href="/spec/rules/types/x-syntax-self-withoutobject/">X::Syntax::Self::WithoutObject</a></li><li><a href="/spec/rules/types/x-syntax-signature-invocantmarker/">X::Syntax::Signature::InvocantMarker</a></li><li><a href="/spec/rules/types/x-syntax-term-missinginitializer/">X::Syntax::Term::MissingInitializer</a></li><li><a href="/spec/rules/types/x-syntax-unlesselse/">X::Syntax::UnlessElse</a></li><li><a href="/spec/rules/types/x-syntax-variable-match/">X::Syntax::Variable::Match</a></li><li><a href="/spec/rules/types/x-syntax-variable-numeric/">X::Syntax::Variable::Numeric</a></li><li><a href="/spec/rules/types/x-syntax-variable-twigil/">X::Syntax::Variable::Twigil</a></li><li><a href="/spec/rules/types/x-temporal/">X::Temporal</a></li><li><a href="/spec/rules/types/x-temporal-invalidformat/">X::Temporal::InvalidFormat</a></li><li><a href="/spec/rules/types/x-typecheck/">X::TypeCheck</a></li><li><a href="/spec/rules/types/x-typecheck-assignment/">X::TypeCheck::Assignment</a></li><li><a href="/spec/rules/types/x-typecheck-binding/">X::TypeCheck::Binding</a></li><li><a href="/spec/rules/types/x-typecheck-return/">X::TypeCheck::Return</a></li><li><a href="/spec/rules/types/x-typecheck-splice/">X::TypeCheck::Splice</a></li><li><a href="/spec/rules/types/x-undeclared/">X::Undeclared</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">fundamental<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/routines/">routines</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">metamodel<span class="nav-count">21</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/metamodel-attributecontainer/">Metamodel::AttributeContainer</a></li><li><a href="/spec/rules/types/metamodel-c3mro/">Metamodel::C3MRO</a></li><li><a href="/spec/rules/types/metamodel-classhow/">Metamodel::ClassHOW</a></li><li><a href="/spec/rules/types/metamodel-concreterolehow/">Metamodel::ConcreteRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-curriedrolehow/">Metamodel::CurriedRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-definitehow/">Metamodel::DefiniteHOW</a></li><li><a href="/spec/rules/types/metamodel-enumhow/">Metamodel::EnumHOW</a></li><li><a href="/spec/rules/types/metamodel-finalization/">Metamodel::Finalization</a></li><li><a href="/spec/rules/types/metamodel-mrobasedmethoddispatch/">Metamodel::MROBasedMethodDispatch</a></li><li><a href="/spec/rules/types/metamodel-methodcontainer/">Metamodel::MethodContainer</a></li><li><a href="/spec/rules/types/metamodel-mixins/">Metamodel::Mixins</a></li><li><a href="/spec/rules/types/metamodel-multipleinheritance/">Metamodel::MultipleInheritance</a></li><li><a href="/spec/rules/types/metamodel-naming/">Metamodel::Naming</a></li><li><a href="/spec/rules/types/metamodel-packagehow/">Metamodel::PackageHOW</a></li><li><a href="/spec/rules/types/metamodel-parametricrolegrouphow/">Metamodel::ParametricRoleGroupHOW</a></li><li><a href="/spec/rules/types/metamodel-parametricrolehow/">Metamodel::ParametricRoleHOW</a></li><li><a href="/spec/rules/types/metamodel-primitives/">Metamodel::Primitives</a></li><li><a href="/spec/rules/types/metamodel-privatemethodcontainer/">Metamodel::PrivateMethodContainer</a></li><li><a href="/spec/rules/types/metamodel-rolecontainer/">Metamodel::RoleContainer</a></li><li><a href="/spec/rules/types/metamodel-rolepunning/">Metamodel::RolePunning</a></li><li><a href="/spec/rules/types/metamodel-trusting/">Metamodel::Trusting</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">module<span class="nav-count">1</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/test/">Test</a></li></ul></div></div><div class="nav-sec"><button class="nav-sec-title" type="button">uncategorised<span class="nav-count">5</span></button><div class="nav-sec-body"><ul><li><a href="/spec/rules/types/metamodel-documenting/">Metamodel::Documenting</a></li><li><a href="/spec/rules/types/metamodel-methoddelegation/">Metamodel::MethodDelegation</a></li><li><a href="/spec/rules/types/metamodel-stashing/">Metamodel::Stashing</a></li><li><a href="/spec/rules/types/metamodel-typepretense/">Metamodel::TypePretense</a></li><li><a href="/spec/rules/types/metamodel-versioning/">Metamodel::Versioning</a></li></ul></div></div></div></div><div class="nav-extra"><a href="/spec/rules/symbols/">Symbol index</a><a href="/spec/rules/coverage/">Coverage</a><a href="/spec/rules/divergences/">Where things diverge</a><a href="/spec/">Spec 1.0 →</a></div></div></nav>
+<main>
+<div class="content">
+<div class="crumbs"><a href="/spec/rules/">Rules</a> / Types, classes &amp; roles / basic</div><h1>Str <span class="status st-ref" title="Signatures and hierarchy taken from the official documentation; examples run on both engines.">Reference</span></h1><p class="summary">String of characters</p>
+<h2 id="what-it-is" class="sec">What it is <a class="anchor" href="#what-it-is" aria-label="link">#</a></h2>
+<h3 id="position-in-the-hierarchy">Position in the hierarchy <a class="anchor" href="#position-in-the-hierarchy" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>Inherits from</td><td>—</td></tr><tr><td>Does</td><td>—</td></tr><tr><td>Inherited by</td><td><a href="/spec/spec/rules/types/allomorph/"><code>Allomorph</code></a></td></tr></tbody></table></div>
+<h2 id="routines" class="sec">Routines <a class="anchor" href="#routines" aria-label="link">#</a></h2>
+<p>Signatures are reproduced from the documentation, including their declared return types. A routine listed here is part of the type's published interface; whether Raku++ implements it is a separate question, answered by the examples below.</p>
+<h3 id="routine-chop">routine <code>chop</code> <a class="anchor" href="#routine-chop" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method chop(Str:D:)
+multi method chop(Str:D: Int() $n)</code></pre>
+<p>Returns the string with <code>$n</code> characters removed from the end. The original string is left unchanged. The <code>$n</code> positional is converted to <a href="https://docs.raku.org/type/Int"><code>Int</code></a> beforehand. Calls without an argument remove just one character. If the string contains fewer characters than are to be chopped, the result is the empty string.</p>
+<h3 id="routine-chomp">routine <code>chomp</code> <a class="anchor" href="#routine-chomp" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        chomp(Str:D  --&gt; Str:D)
+multi method chomp(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns the string with a logical newline (any codepoint that has the <code>NEWLINE</code> property) removed from the end. Examples:</p>
+<h3 id="method-contains">method <code>contains</code> <a class="anchor" href="#method-contains" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method contains(Str:D: Str:D $needle --&gt; Bool)
+multi method contains(Str:D: Str:D $needle, Int:D $pos --&gt; Bool)
+multi method contains(Str:D: Str:D $needle, :m(:$ignoremark)! --&gt; Bool)
+multi method contains(Str:D: Str:D $needle, :i(:$ignorecase)!, :m(:$ignoremark) --&gt; Bool)
+multi method contains(Str:D: Str:D $needle, Int:D $pos, :m(:$ignoremark)! --&gt; Bool)
+multi method contains(Str:D: Str:D $needle, Int:D $pos, :i(:$ignorecase)!, :m(:$ignoremark) --&gt; Bool)
+multi method contains(Str:D: Regex:D $needle --&gt; Bool)
+multi method contains(Str:D: Regex:D $needle, Int:D $pos --&gt; Bool)</code></pre>
+<p><strong>Returns</strong> <code>Bool</code>.</p>
+<p>Given a <code>Str</code> invocant (known as the <em>haystack</em>) and a first argument (known as the <code>$needle</code>), it searches for the <code>$needle</code> in the <em>haystack</em> from the beginning of the string and returns <code>True</code> if <code>$needle</code> is found. If the optional parameter <code>$pos</code> is provided, then <code>contains</code> will search the <em>haystack</em> starting from <code>$pos</code> characters into the string. In the first case, <code>contains</code> searches for the <code>'Hello'</code> string on the</p>
+<h3 id="routine-lc">routine <code>lc</code> <a class="anchor" href="#routine-lc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        lc(Str:D  --&gt; Str:D)
+multi method lc(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns a lowercase version of the string. Examples:</p>
+<h3 id="routine-uc">routine <code>uc</code> <a class="anchor" href="#routine-uc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        uc(Str:D  --&gt; Str:D)
+multi method uc(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns an uppercase version of the string.</p>
+<h3 id="routine-fc">routine <code>fc</code> <a class="anchor" href="#routine-fc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        fc(Str:D  --&gt; Str:D)
+multi method fc(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Does a Unicode "fold case" operation suitable for doing caseless string comparisons.  (In general, the returned string is unlikely to be useful for any purpose other than comparison.)</p>
+<h3 id="routine-tc">routine <code>tc</code> <a class="anchor" href="#routine-tc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        tc(Str:D  --&gt; Str:D)
+multi method tc(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Does a Unicode "titlecase" operation, that is changes the first character in the string to titlecase, or to uppercase if the character has no titlecase mapping.</p>
+<h3 id="routine-tclc">routine <code>tclc</code> <a class="anchor" href="#routine-tclc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        tclc(Str:D  --&gt; Str:D)
+multi method tclc(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Turns the first character to titlecase, and all other characters to lowercase.</p>
+<h3 id="routine-wordcase">routine <code>wordcase</code> <a class="anchor" href="#routine-wordcase" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        wordcase(Cool $x  --&gt; Str)
+multi        wordcase(Str:D $x --&gt; Str)
+multi method wordcase(Str:D: :&amp;filter = &amp;tclc, Mu :$where = True --&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Returns a string in which <code>&amp;filter</code> has been applied to all the words that match <code>$where</code>. By default, this means that the first letter of every word is capitalized, and all the other letters lowercased.</p>
+<h3 id="method-unival">method <code>unival</code> <a class="anchor" href="#method-unival" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method unival(Str:D: --&gt; Numeric)</code></pre>
+<p><strong>Returns</strong> <code>Numeric</code>.</p>
+<p>Returns the numeric value that the first codepoint in the invocant represents, or <code>NaN</code> if it's not numeric.</p>
+<h3 id="method-univals">method <code>univals</code> <a class="anchor" href="#method-univals" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method univals(Str:D: --&gt; List)</code></pre>
+<p><strong>Returns</strong> <code>List</code>.</p>
+<p>Returns a list of numeric values represented by each codepoint in the invocant string, and <code>NaN</code> for non-numeric characters.</p>
+<h3 id="routine-chars">routine <code>chars</code> <a class="anchor" href="#routine-chars" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        chars(Cool  $x --&gt; Int:D)
+multi        chars(Str:D $x --&gt; Int:D)
+multi        chars(str   $x --&gt; int)
+multi method chars(Str:D:   --&gt; Int:D)</code></pre>
+<p><strong>Returns</strong> <code>Int:D</code> or <code>int</code>.</p>
+<p>Returns the number of characters in the string in graphemes. On the JVM, this currently erroneously returns the number of codepoints instead.</p>
+<h3 id="method-encode">method <code>encode</code> <a class="anchor" href="#method-encode" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method encode(Str:D $encoding = 'utf8', :$replacement, Bool() :$translate-nl = False, :$strict)</code></pre>
+<p>Returns a <a href="https://docs.raku.org/type/Blob"><code>Blob</code></a> which represents the original string in the given encoding and normal form. The actual return type is as specific as possible, so <code>$str.encode('UTF-8')</code> returns a <a href="https://docs.raku.org/type/utf8"><code>utf8</code></a> object, <code>$str.encode('ISO-8859-1')</code> a <code>buf8</code>. If <code>:translate-nl</code> is set to <code>True</code>, it will translate newlines from <code>\n</code> to <code>\r\n</code>, but only in Windows. <code>$replacement</code> indicates how characters are going to be</p>
+<h3 id="method-index">method <code>index</code> <a class="anchor" href="#method-index" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method index(Str:D: Cool:D $needle, :i(:$ignorecase), :m(:$ignoremark) --&gt; Int:D)
+multi method index(Str:D: Str:D $needle, :i(:$ignorecase), :m(:$ignoremark) --&gt; Int:D)
+multi method index(Str:D: Cool:D $needle, Cool:D $pos, :i(:$ignorecase), :m(:$ignoremark) --&gt; Int:D)
+multi method index(Str:D: Str:D $needle, Int:D $pos, :i(:$ignorecase), :m(:$ignoremark) --&gt; Int:D)
+multi method index(Str:D: @needles --&gt; Int:D)
+multi method index(Str:D: @needles, :m(:$ignoremark)! --&gt; Int:D)
+multi method index(Str:D: @needles, :i(:$ignorecase)!, :m(:$ignoremark) --&gt; Int:D)</code></pre>
+<p><strong>Returns</strong> <code>Int:D</code>.</p>
+<p>Searches for <code>$needle</code> in the string starting from <code>$pos</code> (if present). It returns the offset into the string where <code>$needle</code> was found, and <a href="https://docs.raku.org/type/Nil"><code>Nil</code></a> if it was not found. Since Rakudo release 2020.02, if the optional named parameter <code>:ignorecase</code>, or <code>:i</code>, is specified, the search for <code>$needle</code> ignores the distinction between uppercase, lowercase and titlecase letters. In addition, if the optional named parameter <code>:ignoremark</code>, or <code>:m</code>, is</p>
+<h3 id="routine-rindex">routine <code>rindex</code> <a class="anchor" href="#routine-rindex" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method rindex(Str:D: Str:D $needle --&gt; Int:D)
+multi method rindex(Str:D: Str:D $needle, Int:D $pos --&gt; Int:D)
+multi method rindex(Str:D: @needles --&gt; Int:D)</code></pre>
+<p><strong>Returns</strong> <code>Int:D</code>.</p>
+<p>Returns the last position of <code>$needle</code> in the string not after <code>$pos</code>. Returns <a href="https://docs.raku.org/type/Nil"><code>Nil</code></a> if <code>$needle</code> wasn't found. Since Rakudo release 2020.05, <code>rindex</code> accepts a list of needles to search the string with, and return the highest index found or <a href="https://docs.raku.org/type/Nil"><code>Nil</code></a>. Examples: Other forms of <code>rindex</code>, including subs, are <a href="https://docs.raku.org/type/Cool#routine_rindex">inherited from <code>Cool</code></a>.</p>
+<h3 id="method-indices">method <code>indices</code> <a class="anchor" href="#method-indices" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method indices(Str:D: Str:D $needle, :i(:$ignorecase), :m(:$ignoremark), :$overlap --&gt; List:D)
+multi method indices(Str:D: Str:D $needle, Int:D $start, :i(:$ignorecase), :m(:$ignoremark), :$overlap --&gt; List:D)</code></pre>
+<p><strong>Returns</strong> <code>List:D</code>.</p>
+<p>Searches for all occurrences of <code>$needle</code> in the string starting from position <code>$start</code>, or zero if it is not specified, and returns a <a href="https://docs.raku.org/type/List"><code>List</code></a> with all offsets in the string where <code>$needle</code> was found, or an empty list if it was not found. If the optional parameter <code>:overlap</code> is specified the search continues from the index directly following the previous match, otherwise the search will continue</p>
+<h3 id="method-match">method <code>match</code> <a class="anchor" href="#method-match" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method match($pat, :continue(:$c), :pos(:$p), :global(:$g), :overlap(:$ov), :exhaustive(:$ex), :st(:$nd), :rd(:$th), :$nth, :$x --&gt; Match)</code></pre>
+<p><strong>Returns</strong> <code>Match</code>.</p>
+<p>Performs a match of the string against <code>$pat</code> and returns a <a href="https://docs.raku.org/type/Match"><code>Match</code></a> object if there is a successful match; it returns <a href="https://docs.raku.org/type/Nil"><code>Nil</code></a> otherwise. Matches are stored in the <a href="https://docs.raku.org/language/variables#index-entry-match_variable">default match variable <code>$/</code></a>. If <code>$pat</code> is not a <a href="https://docs.raku.org/type/Regex"><code>Regex</code></a> object, match will coerce the argument to a Str and then perform a literal match against <code>$pat</code>.</p>
+<h3 id="method-numeric">method <code>Numeric</code> <a class="anchor" href="#method-numeric" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Numeric(Str:D: --&gt; Numeric:D)</code></pre>
+<p><strong>Returns</strong> <code>Numeric:D</code>.</p>
+<p>Coerces the string to <a href="https://docs.raku.org/type/Numeric"><code>Numeric</code></a> using semantics equivalent to <a href="https://docs.raku.org/routine/val">val</a> routine. <a href="https://docs.raku.org/routine/fail">Fails</a> with <a href="https://docs.raku.org/type/X::Str::Numeric"><code>X::Str::Numeric</code></a> if the coercion to a number cannot be done. Only Unicode characters with property <code>Nd</code>, as well as leading and trailing whitespace are allowed, with the special case of the empty string being coerced to <code>0</code>. Synthetic codepoints (e.g. <code>"7\x[308]"</code>) are forbidden.</p>
+<h3 id="method-num">method <code>Num</code> <a class="anchor" href="#method-num" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Num(Str:D: --&gt; Num:D)</code></pre>
+<p><strong>Returns</strong> <code>Num:D</code>.</p>
+<p>Coerces the string to <a href="https://docs.raku.org/type/Num"><code>Num</code></a>, using the same rules as <a href="https://docs.raku.org/type/Str#method_Numeric"><code>Str.Numeric</code></a> and handling negative zero, <code>-0e0</code>, and positive zero, <code>0e0</code>.</p>
+<h3 id="method-int">method <code>Int</code> <a class="anchor" href="#method-int" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Int(Str:D: --&gt; Int:D)</code></pre>
+<p><strong>Returns</strong> <code>Int:D</code>.</p>
+<p>Coerces the string to <a href="https://docs.raku.org/type/Int"><code>Int</code></a>, using the same rules as <a href="https://docs.raku.org/type/Str#method_Numeric"><code>Str.Numeric</code></a>.</p>
+<h3 id="method-rat">method <code>Rat</code> <a class="anchor" href="#method-rat" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Rat(Str:D: --&gt; Rational:D)</code></pre>
+<p><strong>Returns</strong> <code>Rational:D</code>.</p>
+<p>Coerces the string to a <a href="https://docs.raku.org/type/Rat"><code>Rat</code></a> object, using the same rules as <a href="https://docs.raku.org/type/Str#method_Numeric"><code>Str.Numeric</code></a>. If the denominator is larger than 64-bits is it still kept and no degradation to <a href="https://docs.raku.org/type/Num"><code>Num</code></a> occurs.</p>
+<h3 id="method-bool">method <code>Bool</code> <a class="anchor" href="#method-bool" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Bool(Str:D: --&gt; Bool:D)</code></pre>
+<p><strong>Returns</strong> <code>Bool:D</code>.</p>
+<p>Returns <code>False</code> if the string is empty, <code>True</code> otherwise.</p>
+<h3 id="routine-parse-base">routine <code>parse-base</code> <a class="anchor" href="#routine-parse-base" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        parse-base(Str:D $num, Int:D $radix --&gt; Numeric)
+multi method parse-base(Str:D $num: Int:D $radix --&gt; Numeric)</code></pre>
+<p><strong>Returns</strong> <code>Numeric</code>.</p>
+<p>Performs the reverse of <a href="https://docs.raku.org/routine/base"><code>base</code></a> by converting a string with a base-<code>$radix</code> number to its <a href="https://docs.raku.org/type/Numeric"><code>Numeric</code></a> equivalent. Will <a href="https://docs.raku.org/routine/fail"><code>fail</code></a> if radix is not in range <code>2..36</code> or if the string being parsed contains characters that are not valid for the specified base. See also: <a href="https://docs.raku.org/syntax/Number%20literals">syntax for number literals</a></p>
+<h3 id="routine-parse-names">routine <code>parse-names</code> <a class="anchor" href="#routine-parse-names" aria-label="link">#</a></h3>
+<pre class="syntax"><code>sub    parse-names(Str:D $names  --&gt; Str:D)
+method parse-names(Str:D $names: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p><strong>DEPRECATED</strong>. Use <a href="https://docs.raku.org/routine/uniparse">uniparse</a> instead. Existed in Rakudo implementation as a proof of viability implementation before being renamed and will be removed when 6.e language is released.</p>
+<h3 id="routine-uniparse">routine <code>uniparse</code> <a class="anchor" href="#routine-uniparse" aria-label="link">#</a></h3>
+<pre class="syntax"><code>sub    uniparse(Str:D $names  --&gt; Str:D)
+method uniparse(Str:D $names: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Takes string with comma-separated Unicode names of characters and returns a string composed of those characters. Will <a href="https://docs.raku.org/routine/fail"><code>fail</code></a> if any of the characters' names are empty or not recognized. Whitespace around character names is ignored. See <a href="https://docs.raku.org/routine/uniname">uniname</a> and <a href="https://docs.raku.org/routine/uninames">uninames</a> for routines that work in the opposite direction with a single codepoint and multiple</p>
+<h3 id="method-samecase">method <code>samecase</code> <a class="anchor" href="#method-samecase" aria-label="link">#</a></h3>
+<p>multi method samecase(Str:D: Str:D $pattern --&gt; Str:D) Returns a copy of the invocant with case information for each individual character changed according to <code>$pattern</code>. <strong>Note</strong>: The pattern string can contain three types of characters, i.e. uppercase, lowercase and caseless. For a given character in <code>$pattern</code> its case information determines the case of the corresponding character in the result.</p>
+<h3 id="routine-split">routine <code>split</code> <a class="anchor" href="#routine-split" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        split(  Str:D $delimiter, Str:D $input, $limit = Inf,
+multi        split(Regex:D $delimiter, Str:D $input, $limit = Inf,
+multi        split(List:D $delimiters, Str:D $input, $limit = Inf,
+multi method split(Str:D:   Str:D $delimiter, $limit = Inf,
+multi method split(Str:D: Regex:D $delimiter, $limit = Inf,
+multi method split(Str:D: List:D $delimiters, $limit = Inf,</code></pre>
+<p>Splits a string up into pieces based on delimiters found in the string. If <code>$delimiter</code> is a string, it is used literally. An empty string effectively returns all characters of the string separately (plus an empty string at the begin and at the end). <code>$delimiter</code> also can be passed as a <a href="https://docs.raku.org/type/Regex"><code>Regex</code></a>. If a list is used, then each of its elements will be considered a delimiter based on its type as mentioned above.</p>
+<h3 id="routine-comb">routine <code>comb</code> <a class="anchor" href="#routine-comb" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        comb(Str:D   $matcher, Str:D $input, $limit = Inf)
+multi        comb(Regex:D $matcher, Str:D $input, $limit = Inf, Bool :$match)
+multi        comb(Int:D $size, Str:D $input, $limit = Inf)
+multi method comb(Str:D $input:)
+multi method comb(Str:D $input: Str:D   $matcher, $limit = Inf)
+multi method comb(Str:D $input: Regex:D $matcher, $limit = Inf, Bool :$match)
+multi method comb(Str:D $input: Int:D $size, $limit = Inf)</code></pre>
+<p>Searches for <code>$matcher</code> in <code>$input</code> and returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> of non-overlapping matches limited to at most <code>$limit</code> matches. If <code>$matcher</code> is a Regex, each <a href="https://docs.raku.org/type/Match"><code>Match</code></a> object is converted to a <code>Str</code>, unless <code>$match</code> is set (available as of the 2020.01 release of the Rakudo compiler). If no matcher is supplied, a Seq of characters in the string is returned, as if the matcher was <code>rx/./</code>.</p>
+<h3 id="routine-lines">routine <code>lines</code> <a class="anchor" href="#routine-lines" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method lines(Str:D: $limit, :$chomp = True)
+multi method lines(Str:D: :$chomp = True)</code></pre>
+<p>Returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> of lines. By default, it chomps line endings the same as a call to <code>$input.comb( / ^^ \N* /, $limit )</code> would. To keep line endings, set the optional named parameter <code>$chomp</code> to <code>False</code>. Examples: You can limit the number of lines returned by setting the <code>$limit</code> variable to a non-zero, non-<code>Infinity</code> value: **DEPRECATED as of <code>6.d</code> language**, the <code>:count</code> argument was used</p>
+<h3 id="routine-words">routine <code>words</code> <a class="anchor" href="#routine-words" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method words(Str:D: $limit)
+multi method words(Str:D:)</code></pre>
+<p>Returns a <a href="https://docs.raku.org/type/Seq"><code>Seq</code></a> of non-whitespace bits, i.e. the same as a call to <code>$input.comb( / \S+ /, $limit )</code> would. Examples: It can also be used as a subroutine, turning the first argument into the invocant. <code>$limit</code> is optional, but if it is provided (and not equal to <code>Inf</code>), it will return only the first <code>$limit</code> words.</p>
+<h3 id="routine-flip">routine <code>flip</code> <a class="anchor" href="#routine-flip" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        flip(Str:D  --&gt; Str:D)
+multi method flip(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns the string reversed character by character. Examples:</p>
+<h3 id="method-starts-with">method <code>starts-with</code> <a class="anchor" href="#method-starts-with" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method starts-with(Str:D: Str(Cool) $needle, :i(:$ignorecase), :m(:$ignoremark) --&gt; Bool:D)</code></pre>
+<p><strong>Returns</strong> <code>Bool:D</code>.</p>
+<p>Returns <code>True</code> if the invocant is identical to or starts with <code>$needle</code>. Since Rakudo release 2020.02, if the optional named parameter <code>:ignorecase</code>, or <code>:i</code>, is specified, the comparison of the invocant and <code>$needle</code> ignores the distinction between uppercase, lowercase and titlecase letters. Since Rakudo 2020.02, if the optional named parameter <code>:ignoremark</code>, or <code>:m</code>, is specified, the comparison of the invocant and <code>$needle</code></p>
+<h3 id="method-ends-with">method <code>ends-with</code> <a class="anchor" href="#method-ends-with" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method ends-with(Str:D: Str(Cool) $needle, :i(:$ignorecase), :m(:$ignoremark) --&gt; Bool:D)</code></pre>
+<p><strong>Returns</strong> <code>Bool:D</code>.</p>
+<p>Returns <code>True</code> if the invocant is identical to or ends with <code>$needle</code>. Since Rakudo release 2020.02, if the optional named parameter <code>:ignorecase</code>, or <code>:i</code>, is specified, the comparison of the invocant and <code>$needle</code> ignores the distinction between uppercase, lowercase and titlecase letters. Since Rakudo 2020.02, if the optional named parameter <code>:ignoremark</code>, or <code>:m</code>, is specified, the comparison of the invocant and <code>$needle</code></p>
+<h3 id="method-subst">method <code>subst</code> <a class="anchor" href="#method-subst" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method subst(Str:D: $matcher, $replacement = "", *%options)</code></pre>
+<p>Returns the invocant string where <code>$matcher</code> is replaced by <code>$replacement</code> (or the original string, if no match was found). If no <code>$replacement</code> is provided, the empty string is used (i.e., matched string(s) are removed). There is an in-place syntactic variant of <code>subst</code> spelled <code>s/matcher/replacement/</code> and with adverb following the <code>s</code> or inside the matcher. <code>$matcher</code> can be a <a href="https://docs.raku.org/type/Regex"><code>Regex</code></a>, or a literal <code>Str</code>. Non-Str matcher arguments of</p>
+<h3 id="method-subst-mutate">method <code>subst-mutate</code> <a class="anchor" href="#method-subst-mutate" aria-label="link">#</a></h3>
+<p><strong>NOTE:</strong> I&lt;&lt;&lt; <code>.subst-mutate</code> is deprecated in the 6.d version, and will be removed in future ones. You can use <a href="https://docs.raku.org/routine/subst">subst</a> with <a href="https://docs.raku.org/routine/.="><code>.=</code> method call assignment operator</a> or <a href="https://docs.raku.org/language/operators#s///_in-place_substitution"><code>s///</code> substitution operator</a> instead. &gt;&gt;&gt; Where <a href="https://docs.raku.org/routine/subst">subst</a> returns the modified string and leaves the original unchanged, it is possible to mutate the original string by using</p>
+<h3 id="routine-substr">routine <code>substr</code> <a class="anchor" href="#routine-substr" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        substr(Str:D $s, $from, $chars?  --&gt; Str:D)
+multi        substr(Str:D $s, Range  $from-to --&gt; Str:D)
+multi method substr(Str:D $s: $from, $chars?  --&gt; Str:D)
+multi method substr(Str:D $s: Range $from-to  --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns a substring of the original string, between the indices specified by <code>$from-to</code>'s endpoints (coerced to <a href="https://docs.raku.org/type/Int"><code>Int</code></a>) or from index <code>$from</code> and of length <code>$chars</code>. Both <code>$from</code> and <code>$chars</code> can be specified as <a href="https://docs.raku.org/type/Callable"><code>Callable</code></a> and the returned value will be used as the value for the argument. <code>$from</code> is invoked with the <a href="https://docs.raku.org/routine/chars">length</a> of the original string, while <code>$chars</code> is invoked with remaining character count after <code>$from</code>. If <code>$from</code> or</p>
+<h3 id="method-substr-eq">method <code>substr-eq</code> <a class="anchor" href="#method-substr-eq" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method substr-eq(Str:D:  Str(Cool) $test-string, Int(Cool) $from, :i(:$ignorecase), :m(:$ignoremark) --&gt; Bool)
+multi method substr-eq(Cool:D: Str(Cool) $test-string, Int(Cool) $from, :i(:$ignorecase), :m(:$ignoremark) --&gt; Bool)</code></pre>
+<p><strong>Returns</strong> <code>Bool</code>.</p>
+<p>Returns <code>True</code> if the <code>$test-string</code> exactly matches the <code>String</code> object, starting from the given initial index <code>$from</code>.  For example, beginning with the string <code>"foobar"</code>, the substring <code>"bar"</code> will match from index 3: However, the substring <code>"barz"</code> starting from index 3 won't match even though the first three letters of the substring do match: Naturally, to match the entire string, one merely matches from index 0:</p>
+<h3 id="method-substr-rw">method <code>substr-rw</code> <a class="anchor" href="#method-substr-rw" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method substr-rw($from, $length = *)</code></pre>
+<p>A version of <code>substr</code> that returns a <a href="https://docs.raku.org/type/Proxy"><code>Proxy</code></a> functioning as a writable reference to a part of a string variable. Its first argument, <code>$from</code> specifies the index in the string from which a substitution should occur, and its last argument, <code>$length</code> specifies how many characters are to be replaced. If not specified, <code>$length</code> defaults to the length of the string. For example, in its method form, if one wants to take the string <code>"abc"</code></p>
+<h3 id="routine-samemark">routine <code>samemark</code> <a class="anchor" href="#routine-samemark" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi  samemark(Str:D $string, Str:D $pattern --&gt; Str:D)
+method samemark(Str:D: Str:D $pattern --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns a copy of <code>$string</code> with the mark/accent information for each character changed such that it matches the mark/accent of the corresponding character in <code>$pattern</code>. If <code>$string</code> is longer than <code>$pattern</code>, the remaining characters in <code>$string</code> receive the same mark/accent as the last character in <code>$pattern</code>. If <code>$pattern</code> is empty no changes will be made. Examples:</p>
+<h3 id="method-succ">method <code>succ</code> <a class="anchor" href="#method-succ" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method succ(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns the string incremented by one. String increment is "magical". It searches for the last alphanumeric sequence that is not preceded by a dot, and increments it. The actual increment step works by mapping the last alphanumeric character to a character range it belongs to, and choosing the next character in that range, carrying to the previous letter on overflow. String increment is Unicode-aware, and generally works for scripts where a</p>
+<h3 id="method-pred">method <code>pred</code> <a class="anchor" href="#method-pred" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method pred(Str:D: --&gt; Str:D)</code></pre>
+<p><strong>Returns</strong> <code>Str:D</code>.</p>
+<p>Returns the string decremented by one. String decrementing is "magical" just like string increment (see <a href="https://docs.raku.org/routine/succ">succ</a>). It fails on underflow</p>
+<h3 id="routine-ord">routine <code>ord</code> <a class="anchor" href="#routine-ord" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi        ord(Str:D  --&gt; Int:D)
+multi method ord(Str:D: --&gt; Int:D)</code></pre>
+<p><strong>Returns</strong> <code>Int:D</code>.</p>
+<p>Returns the codepoint number of the base characters of the first grapheme in the string. Example:</p>
+<h3 id="method-ords">method <code>ords</code> <a class="anchor" href="#method-ords" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method ords(Str:D: --&gt; Seq)</code></pre>
+<p><strong>Returns</strong> <code>Seq</code>.</p>
+<p>Returns a list of Unicode codepoint numbers that describe the codepoints making up the string. Example: Strings are represented as graphemes. If a character in the string is represented by multiple codepoints, then all of those codepoints will appear in the result of <code>ords</code>. Therefore, the number of elements in the result may not always be equal to <a href="https://docs.raku.org/routine/chars">chars</a>, but will be equal to <a href="https://docs.raku.org/routine/codes">codes</a>; <a href="https://docs.raku.org/routine/codes">codes</a> computes the codepoints in a different way, so the result might be faster.</p>
+<h3 id="method-trans">method <code>trans</code> <a class="anchor" href="#method-trans" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method trans(Str:D: Pair:D \what, *%n --&gt; Str)
+multi method trans(Str:D: *@changes, :complement(:$c), :squash(:$s), :delete(:$d) --&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Replaces one or many characters with one or many characters. Ranges are supported, both for keys and values. Regexes work as keys. In case a list of keys and values is used, substrings can be replaced as well. When called with <code>:complement</code> anything but the matched value or range is replaced with a single value; with <code>:delete</code> the matched characters without corresponding replacement are removed. Combining <code>:complement</code> and <code>:delete</code> will remove</p>
+<h3 id="method-indent">method <code>indent</code> <a class="anchor" href="#method-indent" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method indent(Int $steps where { $_ == 0 } )
+multi method indent(Int $steps where { $_ &gt; 0  } )
+multi method indent($steps where { .isa(Whatever) || .isa(Int) &amp;&amp; $_ &lt; 0 } )</code></pre>
+<p>Indents each line of the string by <code>$steps</code>. If <code>$steps</code> is negative, it outdents instead. If <code>$steps</code> is <a href="https://docs.raku.org/routine/*"><code>*</code></a>, then the string is outdented to the margin:</p>
+<h3 id="method-trim">method <code>trim</code> <a class="anchor" href="#method-trim" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method trim(Str:D: --&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Remove leading and trailing whitespace. It can be used both as a method on strings and as a function. When used as a method it will return the trimmed string. In order to do in-place trimming, one needs to write <code>.=trim</code> See also <a href="https://docs.raku.org/routine/trim-trailing">trim-trailing</a> and <a href="https://docs.raku.org/routine/trim-leading">trim-leading</a>.</p>
+<h3 id="method-trim-trailing">method <code>trim-trailing</code> <a class="anchor" href="#method-trim-trailing" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method trim-trailing(Str:D: --&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Removes the whitespace characters from the end of a string. See also <a href="https://docs.raku.org/routine/trim">trim</a>.</p>
+<h3 id="method-trim-leading">method <code>trim-leading</code> <a class="anchor" href="#method-trim-leading" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method trim-leading(Str:D: --&gt; Str)</code></pre>
+<p><strong>Returns</strong> <code>Str</code>.</p>
+<p>Removes the whitespace characters from the beginning of a string. See also <a href="https://docs.raku.org/routine/trim">trim</a>.</p>
+<h3 id="method-nfc">method <code>NFC</code> <a class="anchor" href="#method-nfc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method NFC(Str:D: --&gt; NFC:D)</code></pre>
+<p><strong>Returns</strong> <code>NFC:D</code>.</p>
+<p>Returns a codepoint string in <a href="https://docs.raku.org/type/NFC"><code>NFC</code></a> format (Unicode Normalization Form C / Composed).</p>
+<h3 id="method-nfd">method <code>NFD</code> <a class="anchor" href="#method-nfd" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method NFD(Str:D: --&gt; NFD:D)</code></pre>
+<p><strong>Returns</strong> <code>NFD:D</code>.</p>
+<p>Returns a codepoint string in <a href="https://docs.raku.org/type/NFD"><code>NFD</code></a> format (Unicode Normalization Form D / Decomposed).</p>
+<h3 id="method-nfkc">method <code>NFKC</code> <a class="anchor" href="#method-nfkc" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method NFKC(Str:D: --&gt; NFKC:D)</code></pre>
+<p><strong>Returns</strong> <code>NFKC:D</code>.</p>
+<p>Returns a codepoint string in <a href="https://docs.raku.org/type/NFKC"><code>NFKC</code></a> format (Unicode Normalization Form KC / Compatibility Composed).</p>
+<h3 id="method-nfkd">method <code>NFKD</code> <a class="anchor" href="#method-nfkd" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method NFKD(Str:D: --&gt; NFKD:D)</code></pre>
+<p><strong>Returns</strong> <code>NFKD:D</code>.</p>
+<p>Returns a codepoint string in <a href="https://docs.raku.org/type/NFKD"><code>NFKD</code></a> format (Unicode Normalization Form KD / Compatibility Decomposed).</p>
+<h3 id="method-accepts">method <code>ACCEPTS</code> <a class="anchor" href="#method-accepts" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi method ACCEPTS(Str:D: $other)</code></pre>
+<p>Returns <code>True</code> if the string is <a href="https://docs.raku.org/routine/eq">the same as</a> <code>$other</code>.</p>
+<h3 id="method-capture">method <code>Capture</code> <a class="anchor" href="#method-capture" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Capture()</code></pre>
+<p>Throws <code>X::Cannot::Capture</code>.</p>
+<h3 id="routine-val">routine <code>val</code> <a class="anchor" href="#routine-val" aria-label="link">#</a></h3>
+<pre class="syntax"><code>multi val(*@maybevals)
+multi val(Slip:D \maybevals)
+multi val(List:D \maybevals)
+multi val(Pair:D \ww-thing)
+multi val(\one-thing)
+multi val(Str:D $MAYBEVAL, :$val-or-fail)</code></pre>
+<p>Given a <code>Str</code> that may be parsable as a numeric value, it will attempt to construct the appropriate <a href="https://docs.raku.org/language/glossary#Allomorph">allomorph</a>, returning one of <a href="https://docs.raku.org/type/IntStr"><code>IntStr</code></a>, <a href="https://docs.raku.org/type/NumStr"><code>NumStr</code></a>, <a href="https://docs.raku.org/type/RatStr"><code>RatStr</code></a> or <a href="https://docs.raku.org/type/ComplexStr"><code>ComplexStr</code></a> or a plain <code>Str</code> if a numeric value cannot be parsed. You can use the plus and minus sign, as well as the Unicode "Minus Sign" as</p>
+<h3 id="method-version">method <code>Version</code> <a class="anchor" href="#method-version" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Version(Str:D: --&gt; Version:D)</code></pre>
+<p><strong>Returns</strong> <code>Version:D</code>.</p>
+<p>Available as of the 2020.01 release of the Rakudo compiler. Coerces the string to <a href="https://docs.raku.org/type/Version"><code>Version</code></a>. This could be used for <a href="https://docs.raku.org/language/signatures#Coercion_type">type coercion in signature</a>, as for example:</p>
+<h3 id="method-date">method <code>Date</code> <a class="anchor" href="#method-date" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method Date(Str:D:)</code></pre>
+<p>Available as of the 2020.05 release of the Rakudo compiler. Coerces a <code>Str</code> to a <a href="https://docs.raku.org/type/Date"><code>Date</code></a> object, provided the string is properly formatted. <code>Date(Str)</code> also works. Examples:</p>
+<h3 id="method-datetime">method <code>DateTime</code> <a class="anchor" href="#method-datetime" aria-label="link">#</a></h3>
+<pre class="syntax"><code>method DateTime(Str:D:)</code></pre>
+<p>Available as of the 2020.05 release of the Rakudo compiler. Coerces a <code>Str</code> to a <a href="https://docs.raku.org/type/DateTime"><code>DateTime</code></a> object, provided the string is properly formatted. <code>DateTime(Str)</code> also works. Examples: Since Rakudo release 2022.07, it is also possible to just specify a "YYYY-MM-DD" string to indicate midnight on the given date.</p>
+
+<h2 id="examples" class="sec">Examples, run three ways <a class="anchor" href="#examples" aria-label="link">#</a></h2><p>Every example below comes from the official documentation, together with the output that documentation asserts. Each was then executed by Rakudo and by Raku++ when this page was built. Where the three agree, one result is shown; where they do not, all three are — because which of them is wrong is exactly the information worth having.</p><p class="mx-note">2 all-differ · 8 doc-drift · 17 no-output · 4 not-runnable · 70 ok · 5 rakupp-differs</p><div class="ex-block"><pre data-raku>class Str is Cool does Stringy { }</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say "Whateverable".chop(3.6);  # OUTPUT: «Whatevera␤»
+my $string= "Whateverable";
+say $string.chop("3");         # OUTPUT: «Whatevera␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Whatevera
+Whatevera
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say chomp("abc\n");       # OUTPUT: «abc␤»
+say "def\r\n".chomp;      # OUTPUT: «def␤» NOTE: \r\n is a single grapheme!
+say "foo\r".chomp;        # OUTPUT: «foo␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>abc
+def
+foo
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>abc
+def
+foo
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>abc
+def
+foo
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>say "Hello, World".contains('Hello');      # OUTPUT: «True␤»
+say "Hello, World".contains('hello');      # OUTPUT: «False␤»
+say "Hello, World".contains('Hello', 1);   # OUTPUT: «False␤»
+say "Hello, World".contains(',');          # OUTPUT: «True␤»
+say "Hello, World".contains(',', 3);       # OUTPUT: «True␤»
+say "Hello, World".contains(',', 10);      # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+False
+True
+True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, 12345".contains(5, "10.0");    # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say 'Hello, World'.contains(/\w &lt;?before ','&gt;/);    # OUTPUT: «True␤»
+say 'Hello, World'.contains(/\w &lt;?before ','&gt;/, 5); # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, World".contains("world");              # OUTPUT: «False␤»
+say "Hello, World".contains("world", :ignorecase); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abc".contains("ä");               # OUTPUT: «False␤»
+say "abc".contains("ä", :ignoremark);  # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;Hello, World&gt;.contains('Hello');    # OUTPUT: «True␤»
+say &lt;Hello, World&gt;.contains('Hello', 0); # OUTPUT: «True␤»
+say &lt;Hello, World&gt;.contains('Hello', 1); # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>lc("A"); # OUTPUT: «"a"»
+"A".lc;  # OUTPUT: «"a"»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>"a""a"</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say '4'.unival;     # OUTPUT: «4␤»
+say '¾'.unival;     # OUTPUT: «0.75␤»
+say 'a'.unival;     # OUTPUT: «NaN␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>4
+0.75
+NaN
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "4a¾".univals;  # OUTPUT: «(4 NaN 0.75)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(4 NaN 0.75)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $str = "Þor is mighty";
+say $str.encode("ascii", :replacement( 'Th') ).decode("ascii");
+# OUTPUT: «Thor is mighty␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Thor is mighty
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say $str.encode("ascii", :replacement).decode("ascii"); # OUTPUT: «?or is mighty␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>?or is mighty
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "þor".encode.bytes; # OUTPUT: «4␤»
+say "þor".encode.elems; # OUTPUT: «4␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>4
+4
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Camelia is a butterfly".index("a");         # OUTPUT: «1␤»
+say "Camelia is a butterfly".index("a", 2);      # OUTPUT: «6␤»
+say "Camelia is a butterfly".index("er");        # OUTPUT: «17␤»
+say "Camelia is a butterfly".index("Camel");     # OUTPUT: «0␤»
+say "Camelia is a butterfly".index("Onion");     # OUTPUT: «Nil␤»
+say "Camelia is a butterfly".index(&lt;a e i u&gt;);   # OUTPUT: «1␤»
+say "Camelia is a butterfly".index(&lt;a c&gt;, :i);   # OUTPUT: «0␤»
+say "Camelia is a butterfly".index(('w', 'x'));  # OUTPUT: «Nil␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1
+6
+17
+0
+Nil
+1
+0
+Nil
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, World".index("world");               # OUTPUT: «Nil␤»
+say "Hello, World".index("world", :ignorecase);  # OUTPUT: «7␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Nil
+7
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abc".index("ä");                            # OUTPUT: «Nil␤»
+say "abc".index("ä", :ignoremark);               # OUTPUT: «0␤»
+say "abc".index("x").defined ?? 'OK' !! 'NOT';   # OUTPUT: «NOT␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Nil
+0
+NOT
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "aardvark".rindex: "a";       # OUTPUT: «5␤»
+say "aardvark".rindex: "a", 0;    # OUTPUT: «0␤
+say "aardvark".rindex: "t";       # OUTPUT: «Nil␤»
+say "aardvark".rindex: &lt;d v k&gt;;   # OUTPUT: «7␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>5
+Nil
+7
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>5
+0
+Nil
+7
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>5
+0
+Nil
+7
+</code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say "banana".indices("a");              # OUTPUT: «(1 3 5)␤»
+say "banana".indices("ana");            # OUTPUT: «(1)␤»
+say "banana".indices("ana", :overlap);  # OUTPUT: «(1 3)␤»
+say "banana".indices("ana", 2);         # OUTPUT: «(3)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 3 5)
+(1)
+(1 3)
+(3)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "banAna".indices("a");              # OUTPUT:«(1 5)␤»
+say "banAna".indices("a", :ignorecase); # OUTPUT:«(1 3 5)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1 5)
+(1 3 5)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "tête-à-tête".indices("te");              # OUTPUT:«(2 9)␤»
+say "tête-à-tête".indices("te", :ignoremark); # OUTPUT:«(0 2 7 9)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(2 9)
+(0 2 7 9)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>
+say "properly".match('perl');                     # OUTPUT: «｢perl｣␤»
+say "properly".match(/p.../);                     # OUTPUT: «｢prop｣␤»
+say "1 2 3".match([1,2,3]);                       # OUTPUT: «｢1 2 3｣␤»
+say "a1xa2".match(/a./, :continue(2));            # OUTPUT: «｢a2｣␤»
+say "abracadabra".match(/ a .* a /, :exhaustive);
+# OUTPUT: «(｢abracadabra｣ ｢abracada｣ ｢abraca｣ ｢abra｣ ｢acadabra｣ ｢acada｣ ｢aca｣ ｢adabra｣ ｢ada｣ ｢abra｣)␤»
+say 'several words here'.match(/\w+/,:global);    # OUTPUT: «(｢several｣ ｢words｣ ｢here｣)␤»
+say 'abcdef'.match(/.*/, :pos(2));                # OUTPUT: «｢cdef｣␤»
+say "foo[bar][baz]".match(/../, :1st);            # OUTPUT: «｢fo｣␤»
+say "foo[bar][baz]".match(/../, :2nd);            # OUTPUT: «｢o[｣␤»
+say "foo[bar][baz]".match(/../, :3rd);            # OUTPUT: «｢ba｣␤»
+say "foo[bar][baz]".match(/../, :4th);            # OUTPUT: «｢r]｣␤»
+say "foo[bar][baz]bada".match('ba', :x(2));       # OUTPUT: «(｢ba｣ ｢ba｣)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>｢perl｣
+｢prop｣
+｢1 2 3｣
+｢a2｣
+(｢abracadabra｣ ｢abracada｣ ｢abraca｣ ｢abra｣ ｢acadabra｣ ｢acada｣ ｢aca｣ ｢adabra｣ ｢ada｣ ｢abra｣)
+(｢several｣ ｢words｣ ｢here｣)
+｢cdef｣
+｢fo｣
+｢o[｣
+｢ba｣
+｢r]｣
+(｢ba｣ ｢ba｣)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>｢perl｣
+｢prop｣
+｢1 2 3｣
+｢a2｣
+(｢abracadabra｣ ｢abracada｣ ｢abraca｣ ｢abra｣ ｢acadabra｣ ｢acada｣ ｢aca｣ ｢adabra｣ ｢ada｣ ｢abra｣)
+(｢several｣ ｢words｣ ｢here｣)
+｢cdef｣
+｢fo｣
+｢o[｣
+｢ba｣
+｢r]｣
+(｢ba｣ ｢ba｣)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>｢perl｣
+｢prop｣
+｢1 2 3｣
+｢a2｣
+｢abracadabra｣
+(｢several｣ ｢words｣ ｢here｣)
+｢cdef｣
+｢fo｣
+｢o[｣
+｢ba｣
+｢r]｣
+(｢ba｣ ｢ba｣)
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>" −33".Numeric;       # OUTPUT: «-33␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>-33
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>my Str $s = "-0/5";
+say (.self, .^name) given $s.Numeric;  # OUTPUT: «(0 Rat)␤»
+say (.self, .^name) given $s.Num;      # OUTPUT: «(-0 Num)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(0 Rat)
+(-0 Num)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>1337.base(32).parse-base(32).say; # OUTPUT: «1337␤»
+'Raku'.parse-base(36).say;        # OUTPUT: «1273422␤»
+'FF.DD'.parse-base(16).say;       # OUTPUT: «255.863281␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1337
+1273422
+255.863281
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "I {uniparse 'TWO HEARTS'} Raku"; # OUTPUT: «I 💕 Raku␤»
+'TWO HEARTS, BUTTERFLY'.uniparse.say; # OUTPUT: «💕🦋␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>I 💕 Raku
+💕🦋
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "\c[1337]"; # OUTPUT: «Թ␤»
+say '1337'.chr; # OUTPUT: «Թ␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Թ
+Թ
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "raKu".samecase("A_a_"); # OUTPUT: «Raku␤»
+say "rAKU".samecase("Ab");   # OUTPUT: «Raku␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Raku
+Raku
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>  :$skip-empty, :$v, :$k, :$kv, :$p)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say split(";", "a;b;c").raku;           # OUTPUT: «("a", "b", "c").Seq␤»
+say split(";", "a;b;c", :v).raku;       # OUTPUT: «("a", ";", "b", ";", "c").Seq␤»
+say split(";", "a;b;c", 2).raku;        # OUTPUT: «("a", "b;c").Seq␤»
+say split(";", "a;b;c", 2, :v).raku;    # OUTPUT: «("a", ";", "b;c").Seq␤»
+say split(";", "a;b;c,d").raku;         # OUTPUT: «("a", "b", "c,d").Seq␤»
+say split(/\;/, "a;b;c,d").raku;        # OUTPUT: «("a", "b", "c,d").Seq␤»
+say split(&lt;; ,&gt;, "a;b;c,d").raku;       # OUTPUT: «("a", "b", "c", "d").Seq␤»
+say split(/&lt;[;,]&gt;/, "a;b;c,d").raku;    # OUTPUT: «("a", "b", "c", "d").Seq␤»
+say split(&lt;; ,&gt;, "a;b;c,d", :k).raku;   # OUTPUT: «("a", 0, "b", 0, "c", 1, "d").Seq␤»
+say split(&lt;; ,&gt;, "a;b;c,d", :kv).raku;  # OUTPUT: «("a", 0, ";", "b", 0, ";", "c", 1, ",", "d").Seq␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("a", "b", "c").Seq
+("a", ";", "b", ";", "c").Seq
+("a", "b;c").Seq
+("a", ";", "b;c").Seq
+("a", "b", "c,d").Seq
+("a", "b", "c,d").Seq
+("a", "b", "c", "d").Seq
+("a", "b", "c", "d").Seq
+("a", 0, "b", 0, "c", 1, "d").Seq
+("a", 0, ";", "b", 0, ";", "c", 1, ",", "d").Seq
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "".split("x").raku;                 # OUTPUT: «("",).Seq␤»
+say "".split("x", :skip-empty).raku;    # OUTPUT: «().Seq␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("",).Seq
+().Seq
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abcde".split("").raku;             # OUTPUT: «("", "a", "b", "c", "d", "e", "").Seq␤»
+say "abcde".split("",:skip-empty).raku; # OUTPUT: «("a", "b", "c", "d", "e").Seq␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("", "a", "b", "c", "d", "e", "").Seq
+("a", "b", "c", "d", "e").Seq
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abc".comb.raku;                 # OUTPUT: «("a", "b", "c").Seq␤»
+say "abc".comb(:match).raku;         # OUTPUT: «(｢a｣ ｢b｣ ｢c｣)␤»
+say 'abcdefghijk'.comb(3).raku;      # OUTPUT: «("abc", "def", "ghi", "jk").Seq␤»
+say 'abcdefghijk'.comb(3, 2).raku;   # OUTPUT: «("abc", "def").Seq␤»
+say comb(/\w/, "a;b;c").raku;        # OUTPUT: «("a", "b", "c").Seq␤»
+say comb(/\N/, "a;b;c").raku;        # OUTPUT: «("a", ";", "b", ";", "c").Seq␤»
+say comb(/\w/, "a;b;c", 2).raku;     # OUTPUT: «("a", "b").Seq␤»
+say comb(/\w\;\w/, "a;b;c", 2).raku; # OUTPUT: «("a;b",).Seq␤»
+say comb(/.&lt;(.)&gt;/, "&lt;&gt;[]()").raku;   # OUTPUT: «("&gt;", "]", ")").Seq␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>("a", "b", "c").Seq
+(｢a｣ ｢b｣ ｢c｣)
+("abc", "def", "ghi", "jk").Seq
+("abc", "def").Seq
+("a", "b", "c").Seq
+("a", ";", "b", ";", "c").Seq
+("a", "b").Seq
+("a;b",).Seq
+("&gt;", "]", ")").Seq
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>("a", "b", "c").Seq
+("a", "b", "c").Seq
+("abc", "def", "ghi", "jk").Seq
+("abc", "def").Seq
+("a", "b", "c").Seq
+("a", ";", "b", ";", "c").Seq
+("a", "b").Seq
+("a;b",).Seq
+("&gt;", "]", ")").Seq
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>("a", "b", "c").Seq
+().Seq
+("abc", "def", "ghi", "jk").Seq
+("abc", "def").Seq
+("a", "b", "c").Seq
+("a", ";", "b", ";", "c").Seq
+("a", "b", "c").Seq
+("a;b",).Seq
+("&gt;", "]", ")").Seq
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>multi        comb(Pair:D $rotor, Str:D $input, $limit = Inf, Bool :$partial)
+multi method comb(Str:D $input: Pair:D $rotor, $limit = Inf, Bool :$partial)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say "abcde".comb(3 =&gt; -2);             # OUTPUT: «(abc bcd cde)␤»
+say "abcde".comb(3 =&gt; -2, :partial);   # OUTPUT: «(abc bcd cde de e)␤»
+say "abcdefg".comb(3 =&gt; -2, 2);        # OUTPUT: «(abc bcd)␤»
+say comb(3 =&gt; -2, "abcde");            # OUTPUT: «(abc bcd cde)␤»
+say comb(5 =&gt; -2, "abcde", :partial);  # OUTPUT: «(abc bcd cde de e)␤»
+say comb(5 =&gt; -2, "abcdefg", 2);       # OUTPUT: «(abc bcd)␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(abc bcd cde)
+(abc bcd cde de e)
+(abc bcd)
+(abc bcd cde)
+(abc bcd cde de e)
+(abc bcd)
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>()
+()
+()
+()
+()
+()
+</code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>say lines("a\nb").raku;    # OUTPUT: «("a", "b").Seq␤»
+say lines("a\nb").elems;   # OUTPUT: «2␤»
+say "a\nb".lines.elems;    # OUTPUT: «2␤»
+say "a\n".lines.elems;     # OUTPUT: «1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("a", "b").Seq
+2
+2
+1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># Keep line endings
+say lines(:!chomp, "a\nb").raku;  # OUTPUT: «("a\n", "b").Seq␤»
+say "a\n".lines(:!chomp).elems;   # OUTPUT: «1␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("a\n", "b").Seq
+1
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;not there yet&gt;.join("\n").lines( 2 ); # OUTPUT: «(not there)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(not there)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;not there yet&gt;.join("\n").lines( :count ); # OUTPUT: «3␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>3
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say &lt;not there yet&gt;.join("\n").lines.elems; # OUTPUT: «3␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>3
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "a\nb\n".words.raku;       # OUTPUT: «("a", "b").Seq␤»
+say "hello world".words.raku;  # OUTPUT: «("hello", "world").Seq␤»
+say "foo:bar".words.raku;      # OUTPUT: «("foo:bar",).Seq␤»
+say "foo:bar\tbaz".words.raku; # OUTPUT: «("foo:bar", "baz").Seq␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("a", "b").Seq
+("hello", "world").Seq
+("foo:bar",).Seq
+("foo:bar", "baz").Seq
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say words("I will be very brief here", 2); # OUTPUT: «(I will)␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(I will)
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>"Raku".flip;  # OUTPUT: «ukaR»
+"ABBA".flip;  # OUTPUT: «ABBA»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>ukaRABBA</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say "Hello, World".starts-with("Hello");     # OUTPUT: «True␤»
+say "https://raku.org/".starts-with('ftp');  # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, World".starts-with("hello");              # OUTPUT: «False␤»
+say "Hello, World".starts-with("hello", :ignorecase); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abc".starts-with("ä");              # OUTPUT: «False␤»
+say "abc".starts-with("ä", :ignoremark); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, World".ends-with('Hello');      # OUTPUT: «False␤»
+say "Hello, World".ends-with('ld');         # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "Hello, World".ends-with("world");              # OUTPUT: «False␤»
+say "Hello, World".ends-with("world", :ignorecase); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abc".ends-with("ç");              # OUTPUT: «False␤»
+say "abc".ends-with("ç", :ignoremark); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $some-string = "Some foo";
+my $another-string = $some-string.subst(/foo/, "string"); # gives 'Some string'
+$some-string.=subst(/foo/, "string"); # in-place substitution. $some-string is now 'Some string'</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say "multi-hyphenate".subst("-"); # OUTPUT: «multihyphenate␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>multihyphenate
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># Using capture from $/ variable (the $0 is the first positional capture)
+say 'abc123defg'.subst(/(\d+)/, { " before $0 after " });
+# OUTPUT: «abc before 123 after defg␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>abc before 123 after defg
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># Using capture from $/ variable (the $&lt;foo&gt; is a named capture)
+say 'abc123defg'.subst(/$&lt;foo&gt;=\d+/, { " before $&lt;foo&gt; after " });
+# OUTPUT: «abc before 123 after defg␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>abc before 123 after defg
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># Using WhateverCode to operate on the Match given in $_:
+say 'abc123defg'.subst(/(\d+)/, "[ " ~ *.flip ~ " ]");
+# OUTPUT: «abc[ 321 ]defg␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>abc[ 321 ]defg
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku># Using a Callable to generate substitution without involving current Match:
+my $i = 41;
+my $str = "The answer is secret.";
+say $str.subst(/secret/, {++$i});    # OUTPUT: «The answer is 42.␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>The answer is 42.
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>short                       | long        | meaning
+============================+=============+================
+:g                          | :global     | tries to match as often as possible
+:nth(Int|Callable|Whatever) |             | only substitute the nth match; aliases: :st, :nd, :rd, and :th
+:ss                         | :samespace  | preserves whitespace on substitution
+:ii                         | :samecase   | preserves case on substitution
+:mm                         | :samemark   | preserves character marks (e.g. 'ü' replaced with 'o' will result in 'ö')
+:x(Int|Range|Whatever)      |             | substitute exactly $x matches</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my $str = "Hey foo foo foo";</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>say $str.subst(/foo/, "bar", :g);           # OUTPUT: «Hey bar bar bar␤»
+say $str.subst(/\s+/, :g);                  # OUTPUT: «Heyfoofoofoo␤»</pre><p class="ex-verdict v-skip">Neither engine can run this in isolation — the example depends on context from the surrounding text.</p></div><div class="ex-block"><pre data-raku>say $str.subst(/foo/, "bar", :x(0));        # OUTPUT: «Hey foo foo foo␤»
+say $str.subst(/foo/, "bar", :x(1));        # OUTPUT: «Hey bar foo foo␤»
+# Can not match 4 times, so no substitutions made
+say $str.subst(/foo/, "bar", :x(4));        # OUTPUT: «Hey foo foo foo␤»
+say $str.subst(/foo/, "bar", :x(2..4));     # OUTPUT: «Hey bar bar bar␤»
+# Replace all of them, identical to :g
+say $str.subst(/foo/, "bar", :x(*));        # OUTPUT: «Hey bar bar bar␤»</pre><p class="ex-verdict v-skip">Neither engine can run this in isolation — the example depends on context from the surrounding text.</p></div><div class="ex-block"><pre data-raku>say $str.subst(/foo/, "bar", :nth(3));      # OUTPUT: «Hey foo foo bar␤»
+# Replace last match
+say $str.subst(/foo/, "bar", :nth(*));      # OUTPUT: «Hey foo foo bar␤»
+# Replace next-to-last last match
+say $str.subst(/foo/, "bar", :nth(*-1));    # OUTPUT: «Hey foo bar foo␤»</pre><p class="ex-verdict v-skip">Neither engine can run this in isolation — the example depends on context from the surrounding text.</p></div><div class="ex-block"><pre data-raku>say 'ooooo'.subst: 'o', 'x', :1st; # OUTPUT: «xoooo␤»
+say 'ooooo'.subst: 'o', 'x', :2nd; # OUTPUT: «oxooo␤»
+say 'ooooo'.subst: 'o', 'x', :3rd; # OUTPUT: «ooxoo␤»
+say 'ooooo'.subst: 'o', 'x', :4th; # OUTPUT: «oooxo␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>xoooo
+oxooo
+ooxoo
+oooxo
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $some-string = "Some foo";
+my $match = $some-string.subst-mutate(/foo/, "string");
+say $some-string;  # OUTPUT: «Some string␤»
+say $match;        # OUTPUT: «｢foo｣␤»
+$some-string.subst-mutate(/&lt;[oe]&gt;/, '', :g); # remove every o and e, notice the :g named argument from .subst</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Some string
+｢foo｣
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say substr("Long string", 3..6);     # OUTPUT: «g st␤»
+say substr("Long string", 6, 3);     # OUTPUT: «tri␤»
+say substr("Long string", 6);        # OUTPUT: «tring␤»
+say substr("Long string", 6, *-1);   # OUTPUT: «trin␤»
+say substr("Long string", *-3, *-1); # OUTPUT: «in␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>g st
+tri
+tring
+trin
+in
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "foobar";
+say $string.substr-eq("bar", 3);    # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "foobar";
+say $string.substr-eq("barz", 3);   # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "foobar";
+say $string.substr-eq("foobar", 0); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "foobar".substr-eq("Bar", 3);              # OUTPUT: «False␤»
+say "foobar".substr-eq("Bar", 3, :ignorecase); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "cliché".substr-eq("che", 3);              # OUTPUT: «False␤»
+say "cliché".substr-eq("che", 3, :ignoremark); # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $integer = 342;
+say $integer.substr-eq(42, 1);      # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $integer = 342;
+say $integer.substr-eq(342, 0);     # OUTPUT: «True␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $integer = 342;
+say $integer.substr-eq(42, 3);      # OUTPUT: «False␤»
+say $integer.substr-eq(7342, 0);    # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
+False
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "abc";
+$string.substr-rw(1, 1) = "z";
+$string.say;                         # OUTPUT: «azc␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>azc
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = 'azc';
+$string.substr-rw(2, 0) = "-Zorro-"; # insert new characters BEFORE the character at index 2
+$string.say;                         # OUTPUT: «az-Zorro-c␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>az-Zorro-c
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "abc";
+substr-rw($string, 1, 1) = "z";
+$string.say;                          # OUTPUT: «azc␤»
+substr-rw($string, 2, 0) = "-Zorro-";
+$string.say;                          # OUTPUT: «az-Zorro-c␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>azc
+az-Zorro-c
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $string = "A character in the 'Flintstones' is: barney";
+$string ~~ /(barney)/;
+my $ref := substr-rw($string, $0.from, $0.to-$0.from);
+$string.say;
+# OUTPUT: «A character in the 'Flintstones' is: barney␤»
+$ref = "fred";
+$string.say;
+# OUTPUT: «A character in the 'Flintstones' is: fred␤»
+$ref = "wilma";
+$string.say;
+# OUTPUT: «A character in the 'Flintstones' is: wilma␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>A character in the 'Flintstones' is: barney
+A character in the 'Flintstones' is: fred
+A character in the 'Flintstones' is: wilma
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>A character in the 'Flintstones' is: barney
+A character in the 'Flintstones' is: fred
+A character in the 'Flintstones' is: wilma
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>A character in the 'Flintstones' is: barney
+A character in the 'Flintstones' is: barney
+A character in the 'Flintstones' is: barney
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>say 'åäö'.samemark('aäo');                        # OUTPUT: «aäo␤»
+say 'åäö'.samemark('a');                          # OUTPUT: «aao␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>aäo
+aao
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say samemark('Räku', 'a');                        # OUTPUT: «Raku␤»
+say samemark('aöä', '');                          # OUTPUT: «aöä␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Raku
+aöä
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>'12.34'.succ;      # OUTPUT: «13.34»
+'img001.png'.succ; # OUTPUT: «img002.png»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>13.34img002.png</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>'aa'.succ;   # OUTPUT: «ab»
+'az'.succ;   # OUTPUT: «ba»
+'109'.succ;  # OUTPUT: «110»
+'α'.succ;    # OUTPUT: «β»
+'a9'.succ;   # OUTPUT: «b0»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>abba110βb0</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>'b0'.pred;           # OUTPUT: «a9»
+'a0'.pred;           # OUTPUT: Failure
+'img002.png'.pred;   # OUTPUT: «img001.png»</pre><p class="ex-verdict v-skip">Neither engine can run this in isolation — the example depends on context from the surrounding text.</p></div><div class="ex-block"><pre data-raku>ord("A"); # 65
+"«".ord;  # 171</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>"aå«".ords; # (97 229 171)</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my $str = 'say $x&lt;b&gt; &amp;&amp; $y&lt;a&gt;';
+$str.=trans( '&lt;' =&gt; '«' );
+$str.=trans( '&lt;' =&gt; '«', '&gt;' =&gt; '»' );</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>$str.=trans( [ '&lt;'   , '&gt;'   , '&amp;' ] =&gt;
+             [ '&amp;lt;', '&amp;gt;', '&amp;amp;' ]);</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>$str.=trans( ['a'..'y'] =&gt; ['A'..'z'] );</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>"abcdefghij".trans(/&lt;[aeiou]&gt; \w/ =&gt; '');                     # OUTPUT: «cdgh»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>cdgh</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>"a123b123c".trans(['a'..'z'] =&gt; 'x', :complement);            # OUTPUT: «axxxbxxxc»
+"aaa1123bb123c".trans('a'..'z' =&gt; 'A'..'Z', :squash);         # OUTPUT: «A1123B123C»
+"aaa1123bb123c".trans('a'..'z' =&gt; 'x', :complement, :squash); # OUTPUT: «aaaxbbxc»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>axxxbxxxcA1123B123Caaaxbbxc</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code></code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code></code></pre></div><p class="ex-verdict v-diff">Both engines agree; the documentation states something else. Trust the engines.</p></div></div><div class="ex-block"><pre data-raku>say "a123b123c".trans('23' =&gt; '4');   # OUTPUT: «a144b144c␤»
+say "a123b123c".trans('123' =&gt; 'þð'); # OUTPUT: «aþðþbþðþc␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a144b144c
+aþðþbþðþc
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "a123b123c".trans('123' =&gt; 'þð', :squash); # OUTPUT: «aþðbþðc␤»
+say "a123b123c".trans('123' =&gt; 'þð', :delete); # OUTPUT: «aþðbþðc␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>aþðbþðc
+aþðbþðc
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>aþðbþðc
+aþðbþðc
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>aþðþbþðþc
+aþðþbþðþc
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>say "abc".trans("abc".comb =&gt; 1..2, :delete);  # OUTPUT: «12␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>12
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>12
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>121
+</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>say "abcd".trans( "a" =&gt; "zz" );  # OUTPUT: «zbcd␤»
+say "abcd".trans( "ba" =&gt; "yz" ); # OUTPUT: «zycd␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>zbcd
+zycd
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "abcd".trans: ["a"] =&gt; ["zz"]; # OUTPUT: «zzbcd␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>zzbcd
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>"  indented by 2 spaces\n    indented even more".indent(*)
+    eq "indented by 2 spaces\n  indented even more"</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my $line = '   hello world    ';
+say '&lt;' ~ $line.trim ~ '&gt;';        # OUTPUT: «&lt;hello world&gt;␤»
+say '&lt;' ~ trim($line) ~ '&gt;';       # OUTPUT: «&lt;hello world&gt;␤»
+$line.trim;
+say '&lt;' ~ $line ~ '&gt;';             # OUTPUT: «&lt;   hello world    &gt;␤»
+$line.=trim;
+say '&lt;' ~ $line ~ '&gt;';             # OUTPUT: «&lt;hello world&gt;␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;hello world&gt;
+&lt;hello world&gt;
+&lt;   hello world    &gt;
+&lt;hello world&gt;
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say val("42").^name;    # OUTPUT: «IntStr␤»
+say val("42e0").^name;  # OUTPUT: «NumStr␤»
+say val("42.0").^name;  # OUTPUT: «RatStr␤»
+say val("42+0i").^name; # OUTPUT: «ComplexStr␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>IntStr
+NumStr
+RatStr
+ComplexStr
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say val("−42");         # OUTPUT: «−42␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>−42
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>sub f(Version(Str) $want-version) { say $want-version.^name };
+f "1.2.3";  # OUTPUT: «Version␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Version
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say '2015-11-24'.Date.year;  # OUTPUT: «2015␤»
+say Date('2015-11-24').year; # OUTPUT: «2015␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2015
+2015
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say ('2012-02-29T12:34:56Z').DateTime.hour; # OUTPUT: «12␤»
+say DateTime('2012-02-29T12:34:56Z').hour;  # OUTPUT: «12␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>12
+12
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>say "2023-03-04".DateTime;  # OUTPUT: «2023-03-04T00:00:00Z␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2023-03-04T00:00:00Z
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div>
+</div>
+<footer>
+<span>Raku Rules — the exhaustive rulebook, companion to the <a href="/spec/">Raku++ Specification</a>.</span>
+<span>Every example runs in your browser and is build-verified against the interpreter. <a href="https://github.com/ash/raku-spec">Source</a>.</span>
+</footer>
+</main>
+<script src="/theme/spec.js?v=11053192" defer></script>
+<script>window.__SEARCH_INDEX = '/spec/rules/search-index.json';</script>
+<script src="/theme/chart.js?v=11053192" defer></script>
+<script src="/theme/rules.js?v=11053192" defer></script>
+<script src="/theme/search.js?v=11053192" defer></script>
+<script src="https://raku.online/raku.js"></script>
+</body>
+</html>

@@ -123,7 +123,12 @@ sub inline(Str $text --> Str) {
     # on docs.raku.org look like `#infix_(.),_infix_⊍`. Allow one level of nesting
     # so the link does not end at the first `)`.
     my $protected = $text.subst(/ '[' (<-[ \] ]>+) ']' '(' ( [ <-[()]> || '(' <-[()]>* ')' ]+ ) ')' /, {
-        @links.push('<a href="' ~ esc-attr(~$1) ~ '">' ~ fmt-basic(~$0) ~ '</a>');
+        # Markdown links are written against the old site root (spec.raku.online),
+        # which is now mounted at /spec — so a leading / needs that prefix.
+        my $href = ~$1;
+        $href = (%SITE<spec-base> // '') ~ $href
+            if $href.starts-with('/') && !$href.starts-with('//');
+        @links.push('<a href="' ~ esc-attr($href) ~ '">' ~ fmt-basic(~$0) ~ '</a>');
         'zXLINKXz' ~ @links.end ~ 'zXENDXz'
     }, :g);
     my $body = fmt-basic($protected);
@@ -1003,7 +1008,7 @@ sub nav-html(%by-topic, $current --> Str) {
         # not just a link in the footer.
         '<div class="brandbar"><span class="wordmark">Raku++</span>' ~
         '<span class="siteswitch">' ~
-        '<a class="sw" href="/">spec</a>' ~
+        '<a class="sw" href="' ~ (%SITE<spec-base> // '/') ~ '">spec</a>' ~
         '<a class="sw active" href="' ~ base() ~ '/">rules</a>' ~
         '</span></div>' ~
         '<div class="site-search"><input type="search" placeholder="Search the rules…" ' ~
@@ -1858,7 +1863,9 @@ sub MAIN(
         ?? EVAL slurp 'src/rules/adjudications.raku' !! %();
     @HISTORY = load-history('src/data/history.jsonl');
 
-    my $out = 'out' ~ base();
+    # Where the files land, which is not where they are served from: the whole
+    # of out/ is mounted at /spec, so a base of /spec/rules writes to out/rules.
+    my $out = 'out' ~ (%SITE<out-dir> // base());
     # This directory is entirely generated, so it is always cleared: otherwise a
     # page that stops being produced (a construct dropped from the inventory, an
     # entry collapsed onto its topic URL) lingers as a stale orphan.
@@ -1912,12 +1919,16 @@ sub MAIN(
         page-shell('Where things diverge — ' ~ %SITE<title>,
                    render-divergences(@entries), $nav));
 
-    mkdir "$out/theme" unless "$out/theme".IO.d;
     spurt "$out/search-index.json", search-index(@entries);
     # (rakupp has no &copy — slurp/spurt is equivalent for these text assets)
-    mkdir 'out/theme' unless 'out/theme'.IO.d;
-    for <rules.css rules.js chart.js> -> $asset {
-        spurt "out/theme/$asset", slurp("src/theme/$asset") if "src/theme/$asset".IO.e;
+    # The theme is shared across raku.online and placed at the site root by the
+    # top-level build; a sub-site shipping its own copy would shadow it.
+    if %SITE<theme-out> // True {
+        mkdir 'out/theme' unless 'out/theme'.IO.d;
+        for <rules.css rules.js chart.js> -> $asset {
+            spurt "out/theme/$asset", slurp("{%SITE<theme-dir> // 'src/theme'}/$asset")
+                if "{%SITE<theme-dir> // 'src/theme'}/$asset".IO.e;
+        }
     }
 
     my $written = @entries.grep({ .status eq 'written' || .status eq 'partial' }).elems;
