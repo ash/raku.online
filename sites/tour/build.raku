@@ -474,6 +474,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, Str $tour-js, :$home = Fa
     <title>{esc($title)}</title>
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
+    <link rel="stylesheet" href="/theme/shell.css?v={$VERSION}">
     </head>
     <body class="$body-class">
     <button class="nav-toggle" aria-label="Menu">☰</button>
@@ -496,6 +497,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, Str $tour-js, :$home = Fa
     </footer>
     </main>
     $tour-js
+    <script src="/theme/shell.js?v={$VERSION}" defer></script>
     <script src="/theme/tour.js?v={$VERSION}" defer></script>
     <script src="$engine"></script>
     </body>

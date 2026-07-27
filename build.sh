@@ -23,6 +23,12 @@ build_theme() {
     rm -rf "$WWW/theme"
     mkdir -p "$WWW/theme"
     cp "$ROOT"/theme/* "$WWW/theme/"
+    # The bar names the engine version; take it from the binary that built the
+    # site rather than a number kept in sync by hand.
+    ver=$("$RAKUPP" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    [ -n "$ver" ] || { echo "could not read a version from '$RAKUPP --version'" >&2; exit 1; }
+    sed -i '' "s/__RAKUPP_VERSION__/$ver/g" "$WWW/theme/shell.js"
+    echo "       engine version in the bar: $ver"
 }
 
 build_tour() {
@@ -51,6 +57,19 @@ check_theme_refs() {
     echo "check: every referenced theme asset is present"
 }
 
+# Every page must carry the site bar, or a section quietly becomes a dead end.
+check_shell() {
+    missing=""
+    for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
+                "$WWW/rakupp/index.html" "$WWW/embed/index.html" \
+                "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html"; do
+        [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
+        grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
+    done
+    [ -z "$missing" ] || { echo "pages without the site bar:$missing" >&2; exit 1; }
+    echo "check: every section carries the site bar"
+}
+
 check_frozen() {
     for f in $FROZEN; do
         [ -s "$WWW/$f" ] || { echo "FROZEN FILE MISSING: www/$f" >&2; exit 1; }
@@ -77,6 +96,7 @@ case "${1:-all}" in
 esac
 
 check_frozen
+check_shell
 check_theme_refs
 check_no_stray_absolutes
 # JSON the client fetches carries URLs baked in at generation time, so a

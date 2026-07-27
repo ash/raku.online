@@ -1080,6 +1080,7 @@ sub page-shell(Str $title, Str $body, Str $nav, :$home = False --> Str) {
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
     <link rel="stylesheet" href="/theme/rules.css?v={$VERSION}">
+    <link rel="stylesheet" href="/theme/shell.css?v={$VERSION}">
     </head>
     <body class="$body-class">
     <button class="nav-toggle" aria-label="Menu">☰</button>
@@ -1101,6 +1102,7 @@ sub page-shell(Str $title, Str $body, Str $nav, :$home = False --> Str) {
     <span>Every example runs in your browser and is build-verified against the interpreter. <a href="$repo">Source</a>.</span>
     </footer>
     </main>
+    <script src="/theme/shell.js?v={$VERSION}" defer></script>
     <script src="/theme/spec.js?v={$VERSION}" defer></script>
     <script>window.__SEARCH_INDEX = '{$b}/search-index.json';</script>
     <script src="/theme/chart.js?v={$VERSION}" defer></script>

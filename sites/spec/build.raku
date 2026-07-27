@@ -523,6 +523,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, :$home = False, :$extra-s
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
     <link rel="stylesheet" href="/theme/spec.css?v={$VERSION}">
+    <link rel="stylesheet" href="/theme/shell.css?v={$VERSION}">
     </head>
     <body class="$body-class">
     <button class="nav-toggle" aria-label="Menu">☰</button>
@@ -544,6 +545,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, :$home = False, :$extra-s
     <span>Examples run live in your browser via WebAssembly, each verified to match native Raku++. <a href="$repo">Source</a>.</span>
     </footer>
     </main>
+    <script src="/theme/shell.js?v={$VERSION}" defer></script>
     <script src="/theme/spec.js?v={$VERSION}" defer></script>
     <script src="/theme/search.js?v={$VERSION}" defer></script>
     $extra-scripts
