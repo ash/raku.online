@@ -112,6 +112,25 @@ stamp_cache_tag() {
 }
 stamp_cache_tag
 
+# Links a script assembles at runtime are invisible to the HTML checks above,
+# and they are where the base prefix keeps getting forgotten — the tour's
+# Continue button and the spec's data fetches were both missed this way. Any
+# absolute path built in theme JS must be prefixed with a published base.
+check_runtime_urls() {
+    # shell.js is exempt: the site bar spans the whole origin, so its links to
+    # /play/, /tour/ and the rest are meant to be root-absolute.
+    files=$(ls "$ROOT"/theme/*.js | grep -v '/shell\.js$')
+    bad=$(grep -nE "(href|location\.href|fetch\()[^;]*['\"]/" $files \
+          | grep -v '__SITE_BASE' | grep -v '__SEARCH_INDEX' | grep -v 'BASE *+' || true)
+    [ -z "$bad" ] || {
+        echo "absolute URLs built in theme JS without a base:" >&2
+        echo "$bad" >&2
+        exit 1
+    }
+    echo "check: runtime-built URLs carry a base"
+}
+check_runtime_urls
+
 check_frozen
 check_shell
 check_theme_refs

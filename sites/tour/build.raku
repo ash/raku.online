@@ -472,6 +472,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, Str $tour-js, :$home = Fa
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{esc($title)}</title>
+    <script>window.__SITE_BASE={ $BASE ?? "'" ~ $BASE ~ "'" !! "''" };</script>
     <script>{$THEME-SCRIPT}</script>
     <link rel="stylesheet" href="/theme/base.css?v={$VERSION}">
     <link rel="stylesheet" href="/theme/shell.css?v={$VERSION}">

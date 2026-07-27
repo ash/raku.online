@@ -5,6 +5,10 @@
   'use strict';
   var KEY = 'raku-tour-done';
   var TOUR = window.TOUR || { order: [], slug: null };
+  // The tour is mounted at /tour, so every link this script builds needs the
+  // prefix the page shell publishes — the generator's own links get it from
+  // site.raku, but these are assembled here, at runtime.
+  var BASE = window.__SITE_BASE || '';
 
   function readDone() {
     try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
@@ -33,7 +37,7 @@
     var visited = TOUR.order.filter(function (s) { return done[s]; }).length;
     var next = TOUR.order.find(function (s) { return !done[s]; });
     if (visited > 0 && next) {
-      cont.href = '/' + next + '/';
+      cont.href = BASE + '/' + next + '/';
       cont.textContent = 'Continue at lesson ' + (TOUR.order.indexOf(next) + 1) + ' →';
       cont.hidden = false;
     }
@@ -72,9 +76,9 @@
     var i = TOUR.order.indexOf(TOUR.slug);
     if (i < 0) return;
     var dest = e.key === 'ArrowLeft' ? i - 1 : i + 1;
-    if (dest < 0) { window.location.href = '/'; return; }
+    if (dest < 0) { window.location.href = BASE + '/'; return; }
     if (dest >= TOUR.order.length) return;
-    window.location.href = '/' + TOUR.order[dest] + '/';
+    window.location.href = BASE + '/' + TOUR.order[dest] + '/';
   });
 
   // Mobile: hamburger toggles the sidebar drawer.
