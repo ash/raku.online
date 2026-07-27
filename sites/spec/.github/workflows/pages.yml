@@ -1,0 +1,90 @@
+name: Deploy to GitHub Pages
+
+# Build the spec site with the latest released rakupp binary and publish out/.
+# Verification (--verify against rakupp, plus the Rakudo oracle and the WASM
+# engine) stays a local pre-push gate in deploy.sh — not run on every push.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rakupp (latest release)
+        run: |
+          curl -fsSL -o /tmp/rakupp.tar.gz \
+            https://github.com/ash/rakupp/releases/latest/download/rakupp-linux-x86_64.tar.gz
+          tar xzf /tmp/rakupp.tar.gz -C /tmp
+          echo /tmp/rakupp/bin >> "$GITHUB_PATH"
+          /tmp/rakupp/bin/rakupp --version
+
+      - name: Build the site
+        run: rakupp build.raku --clean
+
+      # The Rules sub-site into out/rules. Must follow build.raku, which owns
+      # out/ and clears it with --clean. It reads the committed src/data/*.raku,
+      # so it needs neither a Rakudo checkout nor the doc sources here.
+      #
+      # This runs against the latest RELEASED rakupp, which may lag the
+      # interpreter the generator was written on — so it CAN fail here while
+      # building fine locally.
+      #
+      # It used to be continue-on-error, on the reasoning that the spec should
+      # still deploy rather than the whole site going stale. That reasoning does
+      # not hold on Pages: a deploy REPLACES the site, so a half-built /rules
+      # does not leave the previous one in place — it ships 404s for pages that
+      # worked before (which is exactly what happened to /rules/divergences/ on
+      # 2026-07-26). A stale but complete site is better than a fresh broken one,
+      # so a failure here fails the job and the previous deploy stays live.
+      - name: Build the Rules sub-site
+        run: rakupp rules.raku
+
+      # Cheap guard against a generator that exits 0 having written less than it
+      # should: name the pages that must exist, so a silent partial build is
+      # caught here rather than by a reader hitting a 404.
+      - name: Check the Rules sub-site is complete
+        run: |
+          for p in index divergences coverage operators types symbols terms reading; do
+            [ -s "out/rules/$p/index.html" ] || [ -s "out/rules/$p.html" ] || \
+              { [ "$p" = index ] && [ -s out/rules/index.html ]; } || \
+              { echo "missing: out/rules/$p" >&2; exit 1; }
+          done
+          echo "rules sub-site complete"
+
+      # Every /theme/ asset a page asks for must actually be in out/theme/. The
+      # generators copy assets by NAME (build.raku takes all of src/theme, but
+      # rules.raku takes a hand-written list), so adding a <script> without adding
+      # it to that list ships a 404 that no page-existence check would catch — and
+      # a missing chart.js blanks every chart on the site.
+      - name: Check every referenced theme asset exists
+        run: |
+          missing=0
+          for a in $(grep -rho '/theme/[A-Za-z0-9._-]*' out --include='*.html' | sort -u); do
+            [ -s "out$a" ] || { echo "missing asset: out$a" >&2; missing=1; }
+          done
+          [ "$missing" = 0 ] || exit 1
+          echo "every referenced theme asset is present"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - id: deployment
+        uses: actions/deploy-pages@v4
