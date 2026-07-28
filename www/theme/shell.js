@@ -22,7 +22,7 @@
 
   // Stamped by build.sh from `rakupp --version` so the bar can never claim a
   // version the deployed engine is not.
-  var ENGINE = 'Raku++ 1.2.0';
+  var ENGINE = 'Raku++ 1.2.6';
 
   function el(tag, attrs, text) {
     var n = document.createElement(tag);

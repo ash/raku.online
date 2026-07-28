@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — my program is slow</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js"></script>
+<link rel="stylesheet" href="/theme/base.css">
+<link rel="stylesheet" href="/theme/shell.css">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>my program is slow</h1>
+<p>The short answer, in order of how much it usually buys:</p>
+<ol><li><strong>Compile it</strong> — <code>rakupp --exe -O prog.raku -o prog</code></li><li><strong>Check it is actually CPU-bound</strong> before doing anything else</li><li><strong>Avoid rebuilding big values in a loop</strong></li></ol>
+<h2>Compile it</h2>
+<pre class="native-code"><code class="lang-bash">rakupp --exe -O prog.raku -o prog &amp;&amp; ./prog</code></pre>
+<p>Measured on the benchmark kernels, interpreter against <code>--exe -O</code>:</p>
+<div class="tablewrap"><table><tr><th>kernel</th><th>interpreter</th><th><code>--exe -O</code></th></tr><tr><td>5M integer accumulation</td><td>295ms</td><td><strong>32ms</strong></td></tr>
+<tr><td><code>fib(32)</code>, recursive calls</td><td>672ms</td><td><strong>170ms</strong></td></tr>
+<tr><td>1M <code>** 3</code> then <code>% 1000</code></td><td>538ms</td><td><strong>52ms</strong></td></tr>
+<tr><td>primes &lt; 200k by trial division</td><td>1245ms</td><td><strong>25ms</strong></td></tr></table></div>
+<p>That is where the big factors are: arithmetic in a loop, called functions, integer work. <code>-O</code> turns those into native operations instead of boxed values.</p>
+<p>What it does <strong>not</strong> speed up:</p>
+<div class="tablewrap"><table><tr><th>kernel</th><th>interpreter</th><th><code>--exe -O</code></th></tr><tr><td>400k string appends</td><td>23ms</td><td>23ms</td></tr></table></div>
+<p>String building, IO, regex and hash work are already doing the same underlying operations in both modes. If that is your program, compiling changes little — and <code>--exe</code> without <code>-O</code> is not the fast mode; the <code>-O</code> is what matters.</p>
+<h2>Check what you are actually measuring</h2>
+<pre class="native-code"><code class="lang-raku">my $t0 = now;
+# … the part you suspect …
+note "elapsed: ", (now - $t0).round(0.001), "s";</code></pre>
+<p>Startup is ~2ms, so for anything short you are timing the work, not the launch. If elapsed time is dominated by a <code>run</code>/<code>shell</code> call, a network round trip or reading a file, none of the above applies — you are waiting on something else.</p>
+<h2>Things that are slow in any Raku</h2>
+<p><strong>Rebuilding a big value inside a loop.</strong> Appending to a string with <code>~=</code> is in-place and cheap; <code>$s = $s ~ $x</code> is not, and neither is <code>@a = @a, $x</code>.</p>
+<p><strong>Sorting with a comparator when a key would do.</strong> <code>.sort({ $^a.foo cmp $^b.foo })</code> calls your block on every comparison — O(n log n) times. <code>.sort(*.foo)</code> extracts the key once per element:</p>
+<pre class="native-code"><code class="lang-raku">my @words = &lt;delta alpha charlie bravo&gt;;
+say @words.sort(*.chars);       # key extraction — one call per element</code></pre>
+<p><strong>Regexes rebuilt per iteration.</strong> Hoist a regex out of the loop if the pattern is constant.</p>
+<h2>Measuring a change</h2>
+<p>The repo has the harnesses used for its own numbers:</p>
+<pre class="native-code"><code class="lang-bash">rakupp tools/perf-guard.raku       # interpreter hot path, ~10s
+rakupp tools/run-bench.raku        # interpreter / --exe / Rakudo, 3-way
+rakupp tools/run-optbench.raku     # --exe vs --exe -O, and verifies they agree</code></pre>
+<p><code>run-optbench</code> checks that all four modes produce <em>identical output</em> before it reports a timing, so it catches an optimisation that changed an answer.</p>
+<p>If you have a program where Raku++ is much slower than you expect — especially slower than Rakudo — that is worth reporting. Include the program.</p>
+<p>---</p>
+<p>Deeper detail: <a href="https://github.com/ash/rakupp/blob/main/docs/OPTIMIZATION.md">OPTIMIZATION.md</a> for what <code>-O</code> does, <a href="https://github.com/ash/rakupp/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a> for the full measured set.</p>
+<p>Back to the <a href="/faq/">FAQ index</a>.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — running external commands</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js"></script>
+<link rel="stylesheet" href="/theme/base.css">
+<link rel="stylesheet" href="/theme/shell.css">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>running external commands</h1>
+<p>Every snippet on this page was run on both Raku++ and Rakudo and produces identical output. Where the two engines genuinely differ, it says so.</p>
+<h2>Run a command and let its output through</h2>
+<pre class="native-code"><code class="lang-raku">shell('ls');            # one command line, through the system shell
+run('ls', '-l');        # an argv — no shell, no word splitting</code></pre>
+<p>Both write the child's output to your terminal and return a <code>Proc</code>.</p>
+<p>Use <code>run</code> when you have the arguments as separate values: nothing is re-parsed, so a filename with a space in it stays one argument. Use <code>shell</code> when you want the shell itself — pipes, redirection, globbing, <code>&amp;&amp;</code>.</p>
+<pre class="native-code"><code class="lang-raku">run('rm', 'my file.txt');          # one file, whose name contains a space
+shell('ls *.txt | wc -l');         # the shell does the glob and the pipe</code></pre>
+<h2>Capture the output instead of printing it</h2>
+<p>Add <code>:out</code>. Nothing is printed while the command runs; you get the text.</p>
+<pre class="native-code"><code class="lang-raku">my $text = shell('ls', :out).out.slurp(:close);
+say $text.lines.elems;</code></pre>
+<p><code>:close</code> closes the pipe as it reads. Without it the handle stays open.</p>
+<div class="tablewrap"><table><tr><th>you want</th><th>write</th></tr><tr><td>capture stdout</td><td><code>shell('ls', :out).out.slurp(:close)</code></td></tr>
+<tr><td>capture stderr</td><td><code>shell('cmd', :err).err.slurp(:close)</code></td></tr>
+<tr><td>capture both</td><td><code>my $p = shell('cmd', :out, :err);</code> then read <code>$p.out</code> and <code>$p.err</code></td></tr>
+<tr><td>discard stdout (silent, not captured)</td><td><code>shell('ls', :!out)</code></td></tr>
+<tr><td>let it print through</td><td><code>shell('ls')</code></td></tr>
+<tr><td>the same with an argv</td><td><code>run('ls', :out)</code></td></tr></table></div>
+<p>Both streams at once — keep the <code>Proc</code>, since each pipe is read separately:</p>
+<pre class="native-code"><code class="lang-raku">my $p = shell('echo out; echo err 1&gt;&amp;2', :out, :err);
+say "stdout: ", $p.out.slurp(:close).trim;   # out
+say "stderr: ", $p.err.slurp(:close).trim;   # err</code></pre>
+<h2>Check whether it worked</h2>
+<pre class="native-code"><code class="lang-raku">say shell('exit 7').exitcode;   # 7
+say shell('true').so;           # True   — a Proc is true when it succeeded
+say shell('false').so;          # False</code></pre>
+<p>So the usual shape is:</p>
+<pre class="native-code"><code class="lang-raku">my $p = shell('git rev-parse HEAD', :out, :err);
+if $p {
+    say "commit: ", $p.out.slurp(:close).trim;
+}
+else {
+    note "git failed: ", $p.err.slurp(:close);
+}</code></pre>
+<h2>Feed it input</h2>
+<p>Add <code>:in</code> and write to <code>$proc.in</code>. The command starts when you close the pipe.</p>
+<pre class="native-code"><code class="lang-raku">my $p = run('wc', '-l', :in, :out);
+$p.in.print("a\nb\nc\n");
+$p.in.close;
+say $p.out.slurp(:close).trim;   # 3</code></pre>
+<h2>What a Proc shows you</h2>
+<pre class="native-code"><code class="lang-raku">say run('echo', 'hi');
+# Proc.new(in =&gt; IO::Pipe, out =&gt; IO::Pipe, err =&gt; IO::Pipe, os-error =&gt; Str,
+#          exitcode =&gt; 0, signal =&gt; 0, pid =&gt; 58353, command =&gt; ("echo", "hi"))</code></pre>
+<p><code>.command</code> is the argv you asked for — a one-element list for <code>shell</code>, since <code>shell</code> takes a single command line:</p>
+<pre class="native-code"><code class="lang-raku">say run('echo', 'z', :out).command.join(' ');   # echo z</code></pre>
+<h2>Where Raku++ and Rakudo differ</h2>
+<p><strong>Pass-through output is buffered, not live.</strong> When you do <em>not</em> pass <code>:out</code>, Rakudo hands the child your terminal directly, so a long-running command's output appears as it is produced. Raku++ captures internally and echoes when the child exits, so you see it all at once at the end. For anything that streams progress over time, that is a visible difference. With <code>:out</code> both engines capture and behave identically.</p>
+<p><strong>Windows.</strong> <code>shell</code> runs its argument through <code>%COMSPEC%</code> (<code>cmd.exe</code>), not <code>/bin/sh</code> — so <code>shell('dir')</code> works and <code>shell('ls')</code> does not, unless you have an <code>ls.exe</code> on <code>PATH</code>. <code>run</code> starts an executable directly; if the name is not an <code>.exe</code> (a <code>.bat</code>, a <code>.cmd</code>, or a shell builtin) it is retried through the command processor. A spawn that fails reports the OS error rather than a bare exit code.</p>
+<h2>Gotchas</h2>
+<p><strong><code>say shell('ls')</code> prints the listing, then a <code>Proc</code> line.</strong> That is correct — <code>shell</code> let the output through <em>and</em> <code>say</code> printed the returned <code>Proc</code>. If you only want the text, capture it:</p>
+<pre class="native-code"><code class="lang-raku">say shell('ls', :out).out.slurp(:close);</code></pre>
+<p>(Before v1.2.6 the <code>Proc</code> gisted as a dump of its internals, which included the captured output — so the listing appeared <em>twice</em>. Fixed.)</p>
+<p><strong><code>:out</code> and <code>:!out</code> are different.</strong> <code>:out</code> captures for you to read; <code>:!out</code> discards. Leaving both off lets the output through.</p>
+<p><strong>Reading a pipe twice gives you nothing the second time.</strong> <code>slurp(:close)</code> consumes it. Store the string if you need it more than once.</p>
+<p>---</p>
+<p>Back to the <a href="/faq/">FAQ index</a>.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js" defer></script>
+</body>
+</html>

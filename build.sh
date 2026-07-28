@@ -38,6 +38,13 @@ build_tour() {
     cp -R "$ROOT/sites/tour/out" "$WWW/tour"
 }
 
+build_faq() {
+    echo "faq -> www/faq"
+    ( cd "$ROOT/sites/faq" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/faq"
+    cp -R "$ROOT/sites/faq/out" "$WWW/faq"
+}
+
 build_spec() {
     echo "spec -> www/spec"
     ( cd "$ROOT/sites/spec" && "$RAKUPP" build.raku --clean && "$RAKUPP" rules.raku )
@@ -62,7 +69,8 @@ check_shell() {
     missing=""
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" \
-                "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html"; do
+                "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
+                "$WWW/faq/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
     done
@@ -80,9 +88,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|theme|play|rakupp|embed|builder|demo)$' || true)
+            | grep -vE '^/(tour|spec|faq|theme|play|rakupp|embed|builder|demo)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
 }
@@ -91,8 +99,9 @@ case "${1:-all}" in
     theme) build_theme ;;
     tour)  build_tour ;;
     spec)  build_spec ;;
-    all)   build_theme; build_tour; build_spec ;;
-    *)     echo "usage: $0 [all|theme|tour|spec]" >&2; exit 2 ;;
+    faq)   build_faq ;;
+    all)   build_theme; build_tour; build_spec; build_faq ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|faq]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
