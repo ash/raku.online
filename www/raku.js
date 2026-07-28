@@ -66,7 +66,36 @@
     ].join('\n');
   }
 
-  var worker = null, workerReady = false, current = null, queued = null;
+  var worker = null, workerReady = false, current = null, queue = [];
+
+  // Runs are serialized on one interpreter, so anything asked for while another
+  // block is running waits its turn. This used to be a single `queued` slot, so
+  // a third request overwrote the second and that block sat at 'queued…' for
+  // ever — press Run on several blocks and only the last one ever started.
+  function enqueue(block) {
+    if (queue.indexOf(block) < 0) queue.push(block);
+    relabel();
+  }
+  function dequeue(block) {
+    var i = queue.indexOf(block);
+    if (i < 0) return false;
+    queue.splice(i, 1);
+    relabel();
+    return true;
+  }
+  function relabel() {
+    for (var i = 0; i < queue.length; i++) {
+      queue[i].setStatus(queue.length > 1 ? 'queued ' + (i + 1) + '…' : 'queued…');
+    }
+  }
+  // Start the next waiting block, if any. Every path that ends a run calls this,
+  // including the failures — a load error or a killed worker used to clear
+  // `current` and leave the rest of the queue stranded.
+  function next() {
+    if (current) return;
+    var b = queue.shift();
+    if (b) { relabel(); startRun(b); }
+  }
   var RECURSION_MSG = 'Recursion too deep for the browser (a few hundred levels) — '
     + 'a WebAssembly stack limit, not a Raku one. Rewrite it iteratively, or run it natively.';
 
@@ -77,26 +106,30 @@
     worker.onmessage = function (e) {
       var m = e.data, b = current;
       switch (m.type) {
-        case 'ready': workerReady = true; if (queued) { var q = queued; queued = null; startRun(q); } break;
+        // A run posted before the engine finished loading is held by the worker
+        // behind its own `ready` promise, so `current` may already be set here;
+        // next() checks that rather than starting a second run on top of it.
+        case 'ready': workerReady = true; next(); break;
         case 'out': if (b) b.feed(m.text, m.cls); break;
         case 'done':
           if (b) { b.finish(m.rc, m.ms); }
-          current = null; if (queued) { var n = queued; queued = null; startRun(n); }
+          current = null; next();
           break;
         case 'runerror':
           if (b) { b.error(m.deep ? RECURSION_MSG : '[host error] ' + m.message); b.finish(1, 0); }
           current = null;
           // A crashed run left the module unknown; the worker already rebuilt it.
-          if (queued) { var k = queued; queued = null; startRun(k); }
+          next();
           break;
         case 'loaderror':
           if (b) { b.error('Could not load the interpreter — ' + m.message); b.finish(1, 0); }
-          current = null;
+          current = null; next();
           break;
       }
     };
     worker.onerror = function () {
       if (current) { current.error('[worker error]'); current.finish(1, 0); current = null; }
+      next();
     };
   }
   function ensureWorker() { if (!worker) createWorker(); }
@@ -110,20 +143,22 @@
     block.starting();
     worker.postMessage({ type: 'run', src: block.getCode(), stdin: block.getStdin() });
   }
-  // Public entry the blocks call. Serialize: if one is running, queue this one
-  // (a newer request replaces an older queued one).
+  // Public entry the blocks call. Serialized on the one interpreter: if another
+  // block is running, this one joins the back of the queue.
   function requestRun(block) {
     if (current === block) { stopRun(block); return; }   // clicking Run again = stop
-    if (current) { queued = block; block.setStatus('queued…'); return; }
+    if (dequeue(block)) { block.reset(); return; }       // …or take it out of the queue
+    if (current) { enqueue(block); return; }
     startRun(block);
   }
   function stopRun(block) {
-    if (current !== block && queued !== block) return;
-    if (queued === block) { queued = null; block.reset(); return; }
+    if (dequeue(block)) { block.reset(); return; }
+    if (current !== block) return;
     // The run lives in a synchronous ccall; the only way to stop it is to kill
     // the worker. A fresh one reloads lazily on the next run.
     killWorker();
     block.stopped();
+    next();          // stopping one block does not cancel the ones behind it
   }
 
   // ---- one editor -------------------------------------------------------
