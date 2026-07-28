@@ -17,7 +17,8 @@
     { href: '/play/',   label: 'Play',   hue: 'play'   },
     { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
     { href: '/drills/', label: 'Drills', hue: 'drills' },
-    { href: '/spec/',   label: 'Spec',   hue: 'spec'   }
+    { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
+    { href: '/faq/',    label: 'FAQ',    hue: 'faq'    }
   ];
 
   // Stamped by build.sh from `rakupp --version` so the bar can never claim a

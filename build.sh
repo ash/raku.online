@@ -118,6 +118,14 @@ stamp_cache_tag() {
               "$WWW"/play/examples.js "$WWW"/play/worker.js | md5 -q | cut -c1-8)
     sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js
     echo "cache tag: ?v=$tag"
+
+    # The drills ship their own JS and CSS and had no tag at all, so a returning
+    # visitor kept running whatever they cached the first time. Their own hash,
+    # since they change independently of the engine.
+    dtag=$(cat "$WWW"/drills/js/*.js "$WWW"/drills/css/*.css "$WWW"/drills/data/*.js \
+           | md5 -q | cut -c1-8)
+    sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$WWW"/drills/index.html
+    echo "drills cache tag: ?v=$dtag"
 }
 stamp_cache_tag
 

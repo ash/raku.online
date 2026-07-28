@@ -220,6 +220,11 @@ sub short-title(Str $t --> Str) {
     $t.subst(/ ^ 'FAQ' \s* [ '—' | '-' ] \s* /, '')
 }
 
+# Headings and index entries get a capital; the same title used as link text
+# inside a sentence ("See turning a program into a binary") keeps the author's
+# lower case, which is why %TITLES stores the uncapitalised form.
+sub heading-case(Str $t --> Str) { $t.tc }
+
 sub MAIN(Bool :$clean = False) {
     %SITE = EVAL slurp('src/site.raku');
     $BASE = %SITE<base> // '';
@@ -248,8 +253,8 @@ sub MAIN(Bool :$clean = False) {
         my $title = title-of($md);
         mkdir("out/$slug");
         spurt("out/$slug/index.html",
-              page($title, '<h1>' ~ esc(short-title($title)) ~ '</h1>' ~ "\n" ~ render($md)));
-        @entries.push({ slug => $slug, title => short-title($title) });
+              page($title, '<h1>' ~ esc(heading-case(short-title($title))) ~ '</h1>' ~ "\n" ~ render($md)));
+        @entries.push({ slug => $slug, title => heading-case(short-title($title)) });
     }
 
     my $list = @entries.map(-> %e {

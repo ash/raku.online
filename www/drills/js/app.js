@@ -108,11 +108,17 @@
     $('levelGrid').innerHTML = LEVELS.map((lv) => {
       const s = levelStats(lv.id);
       const pct = s.total ? Math.round((s.mastered / s.total) * 100) : 0;
+      // Mastery needs two correct answers, so a card that only reported it sat
+      // at 0/25 through a whole first session and read as nothing being saved.
+      // The lighter bar and the "seen" count show the work that has been done.
+      const seenPct = s.total ? Math.round((s.seen / s.total) * 100) : 0;
+      const seen = s.seen ? `<span>${s.seen} seen · ${s.mastered}/${s.total} mastered</span>`
+                          : `<span>${s.mastered}/${s.total} mastered</span>`;
       return `<button class="level-card" data-level="${lv.id}">
         <div class="lv-row"><span class="lv-id">${lv.id}</span><span class="lv-name">${esc(lv.name)}</span></div>
         <p class="lv-blurb">${esc(lv.blurb)}</p>
-        <div class="bar"><i style="width:${pct}%"></i></div>
-        <div class="lv-foot"><span>${s.mastered}/${s.total} mastered</span><span>${pct}%</span></div>
+        <div class="bar"><u style="width:${seenPct}%"></u><i style="width:${pct}%"></i></div>
+        <div class="lv-foot">${seen}<span>${pct}%</span></div>
       </button>`;
     }).join('');
     for (const el of $('levelGrid').querySelectorAll('.level-card')) {
