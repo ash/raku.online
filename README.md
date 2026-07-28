@@ -260,6 +260,27 @@ you tag, no plugin, no Custom HTML.
 the theme/footer (or via a plugin) and use `<pre data-raku>` blocks in posts —
 those are plain content and survive sanitizing.
 
+## Cache tags
+
+Nothing is served without a `?v=` tag, and `build.sh` stamps all of them from
+content hashes, so a stale asset is not a thing a reader can get:
+
+| tag | covers | stamped into |
+|---|---|---|
+| engine | `rakujs.{js,wasm}`, `play/examples.js`, `play/worker.js` | `play/index.html`, and `raku.js` for its own imports |
+| theme | everything in `theme/` | every page on the site |
+| raku.js | `raku.js` itself | every page that embeds an editor |
+| drills | the drills' own JS, CSS and data | `drills/index.html` |
+
+The theme tag is one value for the whole site on purpose. The generators used to
+stamp `/theme/` references with their own per-site version, so the identical
+`shell.js` was fetched twice under two URLs — which defeats the point of one
+origin. Stamping is idempotent: running `./build.sh` twice produces no diff.
+
+The bare `https://raku.online/raku.js` other people embed carries no tag, and
+must not — that URL is frozen. It gets its freshness from its own `?v=` on the
+engine files it imports.
+
 ## Updating the interpreter
 
 Build fresh artifacts in rakupp (`rakujs/build.sh`), copy `rakujs.{js,wasm}`

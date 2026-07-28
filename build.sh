@@ -126,6 +126,25 @@ stamp_cache_tag() {
            | md5 -q | cut -c1-8)
     sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$WWW"/drills/index.html
     echo "drills cache tag: ?v=$dtag"
+
+    # The shared theme, tagged once for the whole site. The generators used to
+    # stamp /theme/ references with their own per-site version, so the identical
+    # shell.js was fetched twice under two URLs — which defeats the point of
+    # putting everything on one origin. Pages that are not generated had no tag
+    # at all. One hash over theme/, applied to every page, fixes both.
+    ttag=$(cat "$WWW"/theme/* | md5 -q | cut -c1-8)
+    find "$WWW" -name '*.html' -print0 | xargs -0 sed -i '' -E \
+        "s|(/theme/[A-Za-z0-9._-]+)(\?v=[0-9a-f]{8})?|\1?v=$ttag|g"
+    echo "theme cache tag: ?v=$ttag"
+
+    # raku.js as our own pages load it. The URL itself never changes — other
+    # people's pages depend on the bare path — but ours can carry a tag so a new
+    # embed script reaches our readers without waiting for a cache to expire.
+    # Hashed after the stamping above, since that rewrites raku.js.
+    rtag=$(md5 -q "$WWW"/raku.js | cut -c1-8)
+    find "$WWW" -name '*.html' -print0 | xargs -0 sed -i '' -E \
+        "s|(\"/raku\.js)(\?v=[0-9a-f]{8})?\"|\1?v=$rtag\"|g"
+    echo "raku.js cache tag: ?v=$rtag"
 }
 stamp_cache_tag
 
