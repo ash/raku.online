@@ -730,7 +730,7 @@ sub render-home(%site, %by-cat --> Str) {
     my @cats-with-pages = @(%site<categories>).grep({ @(%by-cat{ .<slug> } // []).elems });
     my $pages    = @cats-with-pages.map({ @(%by-cat{ .<slug> }).elems }).sum;
     my $features = @cats-with-pages
-        .map({ @(%by-cat{ .<slug> }) }).flat
+        .map({ |@(%by-cat{ .<slug> }) })
         .map({ count-features($_.body) }).sum;
 
     my $excels-link = excels-entries(%site, %by-cat)

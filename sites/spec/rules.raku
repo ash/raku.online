@@ -1695,7 +1695,7 @@ sub render-coverage(@entries --> Str) {
     for @(%SITE<topics>) -> %t {
         my %secs = %(%by-topic{ %t<slug> } // %());
         next unless %secs;
-        my @all = %secs.values.map({ @($_) }).flat;
+        my @all = %secs.values.map({ |@($_) });
         my $w = @all.grep({ .status eq 'written' || .status eq 'partial' }).elems;
         @rows.push('<tr><td><a href="' ~ base() ~ '/' ~ %t<slug> ~ '/">' ~ esc(%t<title>) ~ '</a></td>' ~
             '<td>' ~ @all.elems ~ '</td><td>' ~ $w ~ '</td>' ~
@@ -1883,7 +1883,7 @@ sub MAIN(
     my %by-topic = group-entries(@entries);
 
     for %by-topic.kv -> $topic, %secs {
-        my @all = %secs.values.map({ @($_) }).flat;
+        my @all = %secs.values.map({ |@($_) });
         %SOLO{$topic} = @all[0].slug if @all.elems == 1;
     }
 

@@ -6,7 +6,7 @@ both engines reject the expression count as agreement, however differently they
 word the diagnostic — only value-vs-value differences and accept-vs-reject are
 listed. Every entry is a Raku++ fix candidate.
 
-**105** disagreements across **146** operators.
+**72** disagreements across **121** operators.
 
 ## Type mismatches by root cause
 
@@ -14,50 +14,13 @@ These collapse hard: fixing one defect clears every row it produced.
 
 | Raku++ returns | Rakudo returns | Rows | Example expression |
 |---|---|---:|---|
-| `Num` | `Int` | 3 | `+ (Nil)` |
 | `Int+{}` | `Int+{<anon\|1>}` | 2 | `1 but 2` |
+| `Num` | `Int` | 2 | `+ (Nil)` |
 | `Any` | `Slip` | 1 | `Nil andthen 1` |
 | `Bool+{}` | `Bool+{<anon\|1>}` | 1 | `True but False` |
 | `Str+{}` | `Str+{<anon\|1>}` | 1 | `"a" but "b"` |
 
-## Result value differs (34)
-
-| Operator | Expression | Raku++ | Rakudo |
-|---|---|---|---|
-| `infix:<!~~>` | `Nil !~~ 1` | `Bool — True` | `Bool — False` |
-| `infix:<(+)>` | `Nil (+) 1` | `Bag — Bag(1)` | `Bag — Bag(1 Nil)` |
-| `infix:<(-)>` | `Nil (-) 1` | `Set — Set()` | `Set — Set(Nil)` |
-| `infix:<(<)>` | `Nil (<) 1` | `Bool — True` | `Bool — False` |
-| `infix:<(<=)>` | `Nil (<=) 1` | `Bool — True` | `Bool — False` |
-| `infix:<(^)>` | `Nil (^) 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
-| `infix:<(\|)>` | `Nil (\|) 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
-| `infix:<...>` | `(1, 2) ... (3, 4, 5)` | `Seq — (1 2 3)` | `Seq — (1 2 3 4 5)` |
-| `infix:<...>` | `True ... False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<...^>` | `(1, 2) ...^ (3, 4, 5)` | `Seq — (1 2)` | `Seq — (1 2 4 5)` |
-| `infix:<...^>` | `True ...^ False` | `Seq — (True)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<=>>` | `(1, 2) => (3, 4, 5)` | `Pair — 1 2 => (3 4 5)` | `Pair — (1 2) => (3 4 5)` |
-| `infix:<^...>` | `(1, 2) ^... (3, 4, 5)` | `Seq — (2 3)` | `Seq — (2 3 4 5)` |
-| `infix:<^...>` | `True ^... False` | `Seq — (0)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<^...^>` | `(1, 2) ^...^ (3, 4, 5)` | `Seq — (2)` | `Seq — (2 4 5)` |
-| `infix:<^...^>` | `True ^...^ False` | `Seq — ()` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<mod>` | `1/2 mod 1/3` | `Rat — 0` | `Rat — 0.166667` |
-| `infix:<…>` | `(1, 2) … (3, 4, 5)` | `Seq — (1 2 3)` | `Seq — (1 2 3 4 5)` |
-| `infix:<…>` | `True … False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<…^>` | `1 …^ 2` | `Seq — (1 0)` | `Seq — (1)` |
-| `infix:<…^>` | `1 …^ "2"` | `Seq — (1 0)` | `Seq — (1)` |
-| `infix:<…^>` | `(1, 2) …^ (3, 4, 5)` | `Seq — (1 2)` | `Seq — (1 2 4 5)` |
-| `infix:<…^>` | `True …^ False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<∖>` | `Nil ∖ 1` | `Set — Set()` | `Set — Set(Nil)` |
-| `infix:<∪>` | `Nil ∪ 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
-| `infix:<⊂>` | `Nil ⊂ 1` | `Bool — True` | `Bool — False` |
-| `infix:<⊆>` | `Nil ⊆ 1` | `Bool — True` | `Bool — False` |
-| `infix:<⊎>` | `Nil ⊎ 1` | `Bag — Bag(1)` | `Bag — Bag(1 Nil)` |
-| `infix:<⊖>` | `Nil ⊖ 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
-| `prefix:<^>` | `^ (1)` | `Range — 0..^1` | `Range — ^1` |
-
-…and 4 more.
-
-## Raku++ rejects what Rakudo accepts (32)
+## Raku++ rejects what Rakudo accepts (26)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
@@ -73,12 +36,6 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<^ff^>` | `Nil ^ff^ 1` | _error:_ Undefined routine 'ff' | `Any — (Any)` |
 | `infix:<^fff>` | `Nil ^fff 1` | _error:_ Undefined routine 'fff' | `Any — (Any)` |
 | `infix:<^fff^>` | `Nil ^fff^ 1` | _error:_ Undefined routine 'fff' | `Any — (Any)` |
-| `infix:<^…^>` | `1 ^…^ 2` | _error:_ Stub code executed | `Seq — ()` |
-| `infix:<^…^>` | `"a" ^…^ "b"` | _error:_ Stub code executed | `Seq — ()` |
-| `infix:<^…^>` | `1 ^…^ "2"` | _error:_ Stub code executed | `Seq — ()` |
-| `infix:<^…^>` | `(1, 2) ^…^ (3, 4, 5)` | _error:_ Stub code executed | `Seq — (2 4 5)` |
-| `infix:<^…^>` | `True ^…^ False` | _error:_ Stub code executed | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<^…^>` | `1/2 ^…^ 1/3` | _error:_ Stub code executed | `Seq — ()` |
 | `infix:<but>` | `Nil but 1` | _error:_ Undefined routine 'but' | `Nil+{<anon\|1>} — Nil` |
 | `infix:<ff>` | `Nil ff 1` | _error:_ Undefined routine 'ff' | `Any — (Any)` |
 | `infix:<ff^>` | `Nil ff^ 1` | _error:_ Undefined routine 'ff' | `Any — (Any)` |
@@ -91,18 +48,16 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<~>` | `Nil ~ 1` | _error:_ No such method 'Nil' for invocant of type 'Str' | `Str — 1` |
 | `infix:<~^>` | `Nil ~^ 1` | _error:_ No such method 'Nil' for invocant of type 'Str' | `Str — 1` |
 | `infix:<≠>` | `"a" ≠ "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
+| `prefix:<let>` | `let (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
+| `prefix:<temp>` | `temp (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
 
-…and 2 more.
 
-## Raku++ accepts what Rakudo rejects (21)
+## Raku++ accepts what Rakudo rejects (15)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
 | `infix:<%>` | `True % False` | `Failure — (Failure)` | _error:_ Attempt to divide True by zero using % |
 | `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `infix:<...^>` | `Nil ...^ 1` | `Seq — (Nil)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `infix:<^...>` | `Nil ^... 1` | `Seq — (1)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `infix:<^...^>` | `Nil ^...^ 1` | `Seq — ()` | _error:_ Use of uninitialized value of type Any in string context. |
 | `infix:<but>` | `(1, 2) but (3, 4, 5)` | `List+{} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|4>,<anon\|5>,<anon\|6>} |
 | `infix:<but>` | `1/2 but 1/3` | `Rat — 0.166667` | _error:_ Cannot resolve caller infix:<but>(Rat:D, Int:D, :value(Int)); none of th |
 | `infix:<coll>` | `Nil coll 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<coll>(Nil:U, Int:D); none of these signatur |
@@ -110,9 +65,6 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<does>` | `(1, 2) does (3, 4, 5)` | `List+{} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|1>,<anon\|2>,<anon\|3>} |
 | `infix:<mod>` | `True mod False` | `Failure — (Failure)` | _error:_ Attempt to divide True by zero using div |
 | `infix:<unicmp>` | `Nil unicmp 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<unicmp>(Nil:U, Int:D); none of these signat |
-| `infix:<…>` | `Nil … 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `infix:<…^>` | `Nil …^ 1` | `Seq — (Nil)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `postfix:<i>` | `(Nil)i` | `Complex — 0+0i` | _error:_ Cannot resolve caller postfix:<i>(Nil:U); none of these signatures match |
 | `prefix:<~^>` | `~^ (1)` | `Str — ` | _error:_ prefix:<~^> not yet implemented. Sorry. |
 | `prefix:<~^>` | `~^ ("a")` | `Str — ` | _error:_ prefix:<~^> not yet implemented. Sorry. |
 | `prefix:<~^>` | `~^ ((1, 2))` | `Str — Ο` | _error:_ prefix:<~^> not yet implemented. Sorry. |
@@ -122,7 +74,28 @@ These collapse hard: fixing one defect clears every row it produced.
 ` | _error:_ prefix:<~^> not yet implemented. Sorry. |
 
 
-## Raku++ silently numifies a non-numeric string (10)
+## Result value differs (15)
+
+| Operator | Expression | Raku++ | Rakudo |
+|---|---|---|---|
+| `infix:<...>` | `(1, 2) ... (3, 4, 5)` | `Seq — (1 2 3)` | `Seq — (1 2 3 4 5)` |
+| `infix:<...>` | `True ... False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
+| `infix:<=>>` | `(1, 2) => (3, 4, 5)` | `Pair — 1 2 => (3 4 5)` | `Pair — (1 2) => (3 4 5)` |
+| `infix:<mod>` | `1/2 mod 1/3` | `Rat — 0` | `Rat — 0.166667` |
+| `infix:<∖>` | `Nil ∖ 1` | `Set — Set()` | `Set — Set(Nil)` |
+| `infix:<∪>` | `Nil ∪ 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
+| `infix:<⊂>` | `Nil ⊂ 1` | `Bool — True` | `Bool — False` |
+| `infix:<⊆>` | `Nil ⊆ 1` | `Bool — True` | `Bool — False` |
+| `infix:<⊎>` | `Nil ⊎ 1` | `Bag — Bag(1)` | `Bag — Bag(1 Nil)` |
+| `infix:<⊖>` | `Nil ⊖ 1` | `Set — Set(1)` | `Set — Set(1 Nil)` |
+| `prefix:<^>` | `^ (1)` | `Range — 0..^1` | `Range — ^1` |
+| `prefix:<^>` | `^ ((1, 2))` | `Range — 0..^2` | `Range — ^2` |
+| `prefix:<^>` | `^ (True)` | `Range — 0..^1` | `Range — ^True` |
+| `prefix:<^>` | `^ (Nil)` | `Range — 0..^0` | `Range — ^0` |
+| `prefix:<^>` | `^ (1/2)` | `Range — 0..^0` | `Range — 0..^0.5` |
+
+
+## Raku++ silently numifies a non-numeric string (9)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
@@ -133,12 +106,11 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<x>` | `"a" x "b"` | `Str \|` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
 | `infix:<xx>` | `"a" xx "b"` | `Seq — ()` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
 | `infix:<≅>` | `"a" ≅ "b"` | `Bool — True` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
-| `postfix:<i>` | `("a")i` | `Complex — 0+0i` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
 | `prefix:<+^>` | `+^ ("a")` | `Int — -1` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
 | `prefix:<^>` | `^ ("a")` | `Range — 0..^0` | _error:_ Cannot convert string to number: base-10 number must begin with valid di |
 
 
-## Result type differs (8)
+## Result type differs (7)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
@@ -149,6 +121,5 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<but>` | `True but False` | `Bool+{} — True` | `Bool+{<anon\|1>} — False` |
 | `prefix:<+>` | `+ (Nil)` | `Num — 0` | `Int — 0` |
 | `prefix:<->` | `- (Nil)` | `Num — -0` | `Int — 0` |
-| `prefix:<−>` | `− (Nil)` | `Num — -0` | `Int — 0` |
 
 

@@ -108,7 +108,7 @@ multi fail(Failure:D $fail --&gt; Nil)</code></pre>
 <p><strong>Returns</strong> <code>Nil</code>.</p>
 <p>Exits the calling <a href="https://docs.raku.org/type/Routine"><code>Routine</code></a> and returns a <code>Failure</code> object wrapping the exception <code>$e</code> - or, for the <code>cap</code> or <code>$payload</code> form, an <a href="https://docs.raku.org/type/X::AdHoc"><code>X::AdHoc</code></a> exception constructed from the concatenation of <code>@text</code>. If the caller activated fatal exceptions via the pragma <code>use fatal;</code>, the exception is thrown instead of being returned as a <code>Failure</code>. If it's called with a generic <code>Failure</code>, an ad-hoc undefined failure is</p>
 
-<h2 id="examples" class="sec">Examples, run three ways <a class="anchor" href="#examples" aria-label="link">#</a></h2><p>Every example below comes from the official documentation, together with the output that documentation asserts. Each was then executed by Rakudo and by Raku++ when this page was built. Where the three agree, one result is shown; where they do not, all three are — because which of them is wrong is exactly the information worth having.</p><p class="mx-note">2 all-differ · 8 no-output · 2 not-runnable · 5 ok · 1 rakupp-differs</p><div class="ex-block"><pre data-raku>class Failure is Nil { }</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>sub may_fail( --&gt; Numeric:D ) {
+<h2 id="examples" class="sec">Examples, run three ways <a class="anchor" href="#examples" aria-label="link">#</a></h2><p>Every example below comes from the official documentation, together with the output that documentation asserts. Each was then executed by Rakudo and by Raku++ when this page was built. Where the three agree, one result is shown; where they do not, all three are — because which of them is wrong is exactly the information worth having.</p><p class="mx-note">2 all-differ · 8 no-output · 2 not-runnable · 6 ok</p><div class="ex-block"><pre data-raku>class Failure is Nil { }</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>sub may_fail( --&gt; Numeric:D ) {
   my $value = (^10).pick || fail "Zero is unacceptable";
   fail "Odd is also not okay" if $value % 2;
   return $value;
@@ -122,7 +122,7 @@ with may_fail() -&gt; $value { # defined, so didn't fail
 say $e;
 CATCH{ default { say .^name, ': ', .Str } }
 # OUTPUT: «X::AdHoc: 2017-09-10T11:56:05.477237ZWELP‼␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>X::AdHoc: 2017-09-10T11:56:05.477237ZWELP‼
-</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>X::AdHoc: 2026-07-27T04:14:52.241152ZWELP‼
+</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>X::AdHoc: 2026-07-28T15:17:56.077507ZWELP‼
 </code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>Any: 
 </code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>sub f() { fail }; my $v = f; say $v.handled; # OUTPUT: «False␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>False
 </code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>sub f() { fail }
@@ -133,10 +133,8 @@ say $v.handled; # OUTPUT: «True␤»</pre><div class="expected"><span class="ex
 my $failure = failer;
 my $ex = $failure.exception;
 put "$ex.^name(): $ex";
-# OUTPUT: «X::AdHoc: Failed␤»</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>X::AdHoc: Failed
-</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>X::AdHoc: Failed
-</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>Failed.^name(): Failed
-</code></pre></div><p class="ex-verdict v-diff">Raku++ disagrees with both the documentation and Rakudo — a defect.</p></div></div><div class="ex-block"><pre data-raku>my $num1 = '♥'.Int;
+# OUTPUT: «X::AdHoc: Failed␤»</pre><div class="expected"><span class="expected-label">Output</span><pre class="output"><code>X::AdHoc: Failed
+</code></pre></div><p class="ex-verdict v-ok">Documentation, Rakudo and Raku++ all agree.</p></div><div class="ex-block"><pre data-raku>my $num1 = '♥'.Int;
 # $num1 now contains a Failure object, which may not be desirable</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my $num2 = '♥'.Int.self;
 # .self method call on Failure causes an exception to be thrown</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>my $num3 = '42'.Int.self;
 # Int type has a .self method, so here $num3 has `42` in it</pre><p class="ex-verdict v-skip">Not executed: the documentation states no expected output for this example.</p></div><div class="ex-block"><pre data-raku>(my $stuff = '♥'.Int).so;
@@ -144,7 +142,7 @@ say $stuff.self; # OUTPUT: «(HANDLED) Cannot convert string to number…»
 # Here, Failure is handled, so .self just returns it as is</pre><div class="three-way"><div class="tw-row"><span class="tw-l">Documentation</span><pre><code>(HANDLED) Cannot convert string to number…</code></pre></div><div class="tw-row"><span class="tw-l">Rakudo</span><pre><code>(HANDLED) Cannot convert string to number: base-10 number must begin with valid digits or '.' in '&lt;HERE&gt;♥' (indicated by &lt;HERE&gt;)
   in block &lt;unit&gt; at -e line 1
 
-</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>exception	(X::Str::Numeric)
+</code></pre></div><div class="tw-row tw-kp"><span class="tw-l">Raku++</span><pre><code>exception	
 handled	True
 message	Cannot convert string to number: base-10 number must begin with valid digits or '.' in '♥'
 </code></pre></div><p class="ex-verdict v-diff">All three differ. Needs a human.</p></div><p class="ex-verdict v-pending">Not yet examined. Which of these is correct has not been established — do not treat either engine as settled here.</p></div><div class="ex-block"><pre data-raku>sub f() { fail };
