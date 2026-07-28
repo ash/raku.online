@@ -109,7 +109,21 @@
         // A run posted before the engine finished loading is held by the worker
         // behind its own `ready` promise, so `current` may already be set here;
         // next() checks that rather than starting a second run on top of it.
-        case 'ready': workerReady = true; next(); break;
+        case 'ready':
+          workerReady = true;
+          // The only place the engine's real version is known is the engine
+          // itself. Publish it so the page chrome can name what actually
+          // loaded, rather than whatever built the site.
+          if (m.version) {
+            var v = String(m.version).match(/\d+\.\d+\.\d+/);
+            window.__RAKUPP_VERSION = v ? v[0] : String(m.version);
+            try {
+              window.dispatchEvent(new CustomEvent('rakupp:ready',
+                { detail: { version: window.__RAKUPP_VERSION } }));
+            } catch (e) { /* no CustomEvent — the global is still set */ }
+          }
+          next();
+          break;
         case 'out': if (b) b.feed(m.text, m.cls); break;
         case 'done':
           if (b) { b.finish(m.rc, m.ms); }

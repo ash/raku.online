@@ -43,6 +43,16 @@
       switch (d.type) {
         case 'ready':
           version = d.version || '';
+          // The site bar names the engine too, and the drills load their own
+          // rather than raku.js, so publish the same signal raku.js does.
+          if (version) {
+            const v = String(version).match(/\d+\.\d+\.\d+/);
+            window.__RAKUPP_VERSION = v ? v[0] : String(version);
+            try {
+              window.dispatchEvent(new CustomEvent('rakupp:ready',
+                { detail: { version: window.__RAKUPP_VERSION } }));
+            } catch (e) { /* the global is still set */ }
+          }
           setStatus(current ? 'busy' : 'ready');
           break;
         case 'loaderror':

@@ -23,12 +23,6 @@ build_theme() {
     rm -rf "$WWW/theme"
     mkdir -p "$WWW/theme"
     cp "$ROOT"/theme/* "$WWW/theme/"
-    # The bar names the engine version; take it from the binary that built the
-    # site rather than a number kept in sync by hand.
-    ver=$("$RAKUPP" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-    [ -n "$ver" ] || { echo "could not read a version from '$RAKUPP --version'" >&2; exit 1; }
-    sed -i '' "s/__RAKUPP_VERSION__/$ver/g" "$WWW/theme/shell.js"
-    echo "       engine version in the bar: $ver"
 }
 
 build_tour() {

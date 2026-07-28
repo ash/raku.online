@@ -272,6 +272,14 @@ content hashes, so a stale asset is not a thing a reader can get:
 | raku.js | `raku.js` itself | every page that embeds an editor |
 | drills | the drills' own JS, CSS and data | `drills/index.html` |
 
+The site bar names the engine, and takes that name from the engine itself at
+runtime — `raku.js` and the drills' loader both publish `window.__RAKUPP_VERSION`
+and a `rakupp:ready` event when the interpreter reports in. It is deliberately
+not stamped at build time: the version that matters is the one compiled into
+`www/rakujs.wasm`, which is not recoverable from the artifact and drifts from
+whatever `rakupp` is on `PATH`. Until an engine loads, and on pages that load
+none, the chip just reads `Raku++`.
+
 The theme tag is one value for the whole site on purpose. The generators used to
 stamp `/theme/` references with their own per-site version, so the identical
 `shell.js` was fetched twice under two URLs — which defeats the point of one

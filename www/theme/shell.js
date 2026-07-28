@@ -21,9 +21,13 @@
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    }
   ];
 
-  // Stamped by build.sh from `rakupp --version` so the bar can never claim a
-  // version the deployed engine is not.
-  var ENGINE = 'Raku++ 1.2.6';
+  // Deliberately not stamped at build time. The version that matters is the one
+  // in www/rakujs.wasm, which is not extractable from the artifact and drifts
+  // from whatever rakupp is on PATH — a newer CLI can build the site long before
+  // the WebAssembly is rebuilt, and the bar would then name a version nobody is
+  // running. raku.js publishes the real one when the engine reports ready; until
+  // then, and on pages that load no engine, the chip just says Raku++.
+  var ENGINE = 'Raku++';
 
   function el(tag, attrs, text) {
     var n = document.createElement(tag);
@@ -64,6 +68,12 @@
     var engine = el('a', { class: 'shell-engine', href: '/rakupp/' }, ENGINE);
     if (path.indexOf('/rakupp/') === 0) engine.setAttribute('aria-current', 'page');
     bar.appendChild(engine);
+
+    function name(v) { engine.textContent = v ? ENGINE + ' ' + v : ENGINE; }
+    if (window.__RAKUPP_VERSION) name(window.__RAKUPP_VERSION);
+    else window.addEventListener('rakupp:ready', function (e) {
+      name(e.detail && e.detail.version);
+    });
 
     document.body.insertBefore(bar, document.body.firstChild);
 
