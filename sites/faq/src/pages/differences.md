@@ -2,7 +2,7 @@
 
 Raku++ targets the same language as Rakudo and is measured against it: every
 runnable example in the official documentation is executed on both, and every
-Roast assertion is scored. **939 of 1,451 documentation examples produce
+Roast assertion is scored. **943 of 1,451 documentation examples produce
 byte-identical output on both engines**, and ~90% of Roast's declared tests pass.
 
 The two are not the same program, though, and this page is the honest list of
@@ -11,8 +11,9 @@ where you will notice — in both directions.
 ## Where Raku++ does something Rakudo does not
 
 **It compiles to a standalone binary.** `--exe` generates C++ and links it; the
-result needs no Raku installed, and with `-O` runs 4×–50× faster than the
-interpreter on arithmetic-heavy code. See [compiling.md](compiling.md).
+result needs no Raku installed, and with `-O` runs 4×–500× faster than the
+interpreter depending on the kernel — string building at the low end, tight
+integer loops at the high. See [compiling.md](compiling.md).
 
 **It runs in a browser.** The same interpreter compiled to WebAssembly — no
 server, no install: <https://raku.online>.
@@ -37,7 +38,7 @@ That one is a deliberate divergence, not an accident — a compiler that hangs i
 worse than one that answers.
 
 **And a handful of documented behaviours it gets right where Rakudo has drifted.**
-The conformance sweep classifies 18 examples as *doc and Raku++ agree, Rakudo does
+The conformance sweep classifies 19 examples as *doc and Raku++ agree, Rakudo does
 not*. Most are small — `1.asinh` gives the documented `0.881373587019543` here and
 `0.8813735870195429` in Rakudo, for instance. A few are randomness or stale docs
 rather than real wins; the classified list lives in

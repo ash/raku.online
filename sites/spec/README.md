@@ -163,17 +163,21 @@ examined is shown as such rather than silently resolved.
 ### The trajectory so far
 
 The comparison exists to be acted on, so the interesting figure is how `ok`
-moves. Both columns are the same corpus measured by the same tools; the current
+moves. Every column is the same corpus measured by the same tools; the current
 numbers are always in [CONFORMANCE.md](CONFORMANCE.md).
 
-| Verdict | 2026-07-25 (first run) | 2026-07-26 (Raku++ v1.2.0) |
-|---|---:|---:|
-| `ok` — all three agree | 596 | **835** |
-| `rakupp-differs` — Raku++ is wrong | 471 | **237** |
-| `all-differ` — needs a human | 176 | 164 |
-| `doc-drift` — the docs are stale | 104 | 112 |
-| `not-runnable` | 88 | 88 |
-| `rakudo-differs` — Rakudo is the odd one out | 16 | 15 |
+| Verdict | 2026-07-25 (v1.1.0) | 2026-07-27 (v1.2.0) | 2026-07-29 (v1.5.0) |
+|---|---:|---:|---:|
+| `ok` — all three agree | 596 | 853 | **943** |
+| `rakupp-differs` — Raku++ is wrong | 471 | 211 | **120** |
+| `all-differ` — needs a human | 176 | 159 | 157 |
+| `doc-drift` — the docs are stale | 104 | 119 | 123 |
+| `not-runnable` | 88 | 88 | 88 |
+| `rakudo-differs` — Rakudo is the odd one out | 16 | 21 | 20 |
+
+Every column is a line in `src/data/history.jsonl`, which is what the chart on
+`/rules/divergences/` draws — the table and the chart cannot disagree. There were
+two runs at v1.2.0 (596→835 and 835→853); the column above is the later one.
 
 Two cautions when reading a delta. `rakupp-differs` is not a clean progress
 metric on its own: fixing Raku++ reshuffles rows between `all-differ`,
