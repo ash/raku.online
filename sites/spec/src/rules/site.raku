@@ -14,7 +14,7 @@
     engine     => 'https://raku.online/raku.js',
     playground => 'https://raku.online/play',
     spec       => '/spec/',
-    repo       => 'https://github.com/ash/raku-spec',
+    repo       => 'https://github.com/ash/raku.online/tree/main/sites/spec',
     rakupp     => 'https://github.com/ash/rakupp',
 
     topics => [

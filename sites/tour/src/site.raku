@@ -9,6 +9,6 @@
     engine     => 'https://raku.online/raku.js',
     playground => 'https://raku.online/play',
     spec       => '/spec/',
-    repo       => 'https://github.com/ash/raku-tour',
+    repo       => 'https://github.com/ash/raku.online/tree/main/sites/tour',
     rakupp     => 'https://github.com/ash/rakupp',
 }

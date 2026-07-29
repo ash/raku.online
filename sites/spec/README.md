@@ -1,7 +1,7 @@
-# raku-spec — the Raku++ specification sites
+# spec — the Raku++ specification sites
 
-Two sites, one repository, one deploy. Both are served from
-**[spec.raku.online](https://spec.raku.online/)** (GitHub Pages, custom domain),
+Two sites, one source tree, one deploy. Both are served from
+**[raku.online/spec](https://raku.online/spec/)** (GitHub Pages),
 and in both every example runs live in your browser via the same WebAssembly
 build of [Raku++](https://github.com/ash/rakupp) that powers the
 [raku.online](https://raku.online/) playground.
@@ -260,16 +260,23 @@ rakupp path/to/rakus.raku 8080 out # preview at http://127.0.0.1:8080/
 
 ## Publishing
 
-`spec.raku.online` is **GitHub Pages** with a custom domain. Push to `main` and
-`.github/workflows/pages.yml` rebuilds: it installs the latest released `rakupp`,
-runs `build.raku --clean`, then `rules.raku`. The Rules step is
-`continue-on-error`, so a released interpreter that cannot build the generator
-degrades to the Spec alone rather than staling the whole site.
+Both sites publish as part of **raku.online**, at `/spec/` and `/spec/rules/`.
+Build them into the site tree and commit the result:
 
-There is no other deploy path. An earlier `deploy.sh` mirrored `out/` to a server
-doc root over sshfs; that tree serves nothing and the script is gone.
+```sh
+../../build.sh spec        # build.raku --clean && rules.raku, then -> www/spec
+```
 
-**The workflow does not verify anything** — it only builds. So verification is a
+then commit `www/` **together with** these sources, and push. The repo's
+`.github/workflows/pages.yml` serves `www/` **verbatim** — it runs no build step
+at all, so committing the sources alone changes nothing a visitor sees.
+
+This is not how it used to work. The spec was its own repo on its own domain,
+with a `pages.yml` that installed the latest released `rakupp` and built the site
+in CI; before that, a `deploy.sh` mirrored `out/` over sshfs. Both are gone, and
+so is the domain. Notes elsewhere describing either are describing history.
+
+**Nothing verifies on publish** — Pages only copies. So verification is a
 local pre-push gate:
 
 ```sh

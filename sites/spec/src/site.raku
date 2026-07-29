@@ -8,7 +8,7 @@
     tagline    => 'How Raku++ behaves — every feature explained, with runnable, verified examples.',
     engine     => 'https://raku.online/raku.js',
     playground => 'https://raku.online/play',
-    repo       => 'https://github.com/ash/raku-spec',
+    repo       => 'https://github.com/ash/raku.online/tree/main/sites/spec',
     rakupp     => 'https://github.com/ash/rakupp',   # the interpreter's own repo/docs
 
     # Order and display titles for the categories under src/pages/.

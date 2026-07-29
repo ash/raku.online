@@ -1,10 +1,10 @@
 #!/bin/sh
 # Build both sites and check every example, before pushing.
 #
-# This does NOT publish. spec.raku.online is GitHub Pages: push to main and
-# .github/workflows/pages.yml rebuilds it. But that workflow only *builds* — it
-# runs no verification at all — so this script is the gate that keeps a wrong
-# example from going live.
+# This does NOT publish. Publishing is ../../build.sh spec, then committing
+# www/ and pushing — Pages serves www/ verbatim and runs nothing, no build and
+# no checks. So this script is the only gate that keeps a wrong example from
+# going live.
 #
 # Three checks, each able to fail the run on its own:
 #

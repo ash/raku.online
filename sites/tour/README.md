@@ -1,6 +1,6 @@
-# raku-tour — A Tour of Raku
+# tour — A Tour of Raku
 
-▶ **Take the tour: [tour.raku.online](https://tour.raku.online/)**
+▶ **Take the tour: [raku.online/tour](https://raku.online/tour/)**
 
 An interactive introduction to the Raku language: 18 short lessons, each built
 around live code. **Every example is an editable, runnable editor in the
@@ -9,7 +9,7 @@ WebAssembly, the same engine as the [raku.online](https://raku.online/)
 playground ([source](https://github.com/ash/raku.online)). Nothing to install;
 nothing leaves the visitor's machine.
 
-Where the [Raku++ specification](https://spec.raku.online/) is the *reference*
+Where the [Raku++ specification](https://raku.online/spec/) is the *reference*
 (every feature, pinned down), the tour is the *front door*: a linear path from
 `say 'Hello, World!'` to grammars and junctions, with an exercise at the end of
 almost every lesson and a collapsed solution to compare against.
@@ -39,11 +39,11 @@ rakupp path/to/raku++/showcase/rakus/rakus.raku 8317 out   # preview locally
 
 ```
 build.raku            the static generator (run by rakupp)
-.github/workflows/    build + verify + publish to GitHub Pages (tour.raku.online)
+(built by ../../build.sh into ../../www/tour — Pages serves www/ verbatim)
 src/
   site.raku           site config (title, links) — EVAL'd by the build
   theme/
-    base.css          light/dark theme (shared look with spec.raku.online)
+    base.css          light/dark theme (shared look with the spec)
     tour.js           progress ticks, Continue button, ←/→ navigation
   lessons/
     NN-slug.md        one lesson per file, ordered by filename;
