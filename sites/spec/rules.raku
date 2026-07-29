@@ -1571,7 +1571,10 @@ sub render-divergences(@entries --> Str) {
     for %MATRIX.keys.sort({ -@(%MATRIX{$_}).grep({ $_[3] eq 'differ' }).elems }) -> $key {
         my @rows = @(%MATRIX{$key});
         my $differ = @rows.grep({ $_[3] eq 'differ' }).elems;
-        next unless $differ;
+        # Every operator is listed, not only the ones that disagree. The sort is
+        # still worst-first, so the problems stay at the top and everything that
+        # agrees runs green underneath them — which is the more useful picture:
+        # the reader can see how much has been checked, not only what failed.
         my ($cat, $sym) = $key.split('|', 2);
         my $link = %slug-op{$key} // '';
         my $name = $link ?? '<a href="' ~ $link ~ '"><code>' ~ esc($sym) ~ '</code></a>'
@@ -1614,8 +1617,9 @@ sub render-divergences(@entries --> Str) {
     '<th class="num">all</th>' ~
     '<th>outcome</th></tr></thead><tbody>' ~ @trows.join ~ '</tbody></table></div>' ~
     '<h2 class="sec">Operators</h2>' ~
-    '<p>Each dot is the same expression run on both engines. Only operators with at ' ~
-    'least one disagreement are listed.</p>' ~
+    '<p>Each dot is the same expression run on both engines. Every operator that ' ~
+    'parses is listed, worst first — so the disagreements cluster at the top and ' ~
+    'the rest runs green.</p>' ~
     '<div class="table-wrap"><table class="dv"><thead><tr>' ~
     '<th>Operator</th><th class="num">n</th><th class="num">agree</th>' ~
     '<th class="num">differ</th><th class="num">both reject</th>' ~
