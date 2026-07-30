@@ -212,6 +212,7 @@ class Page {
     has Str $.path;
     has Bool $.browser-ok;    # runs in the browser (WASM) engine, not just the interpreter/--exe
     has Str $.browser-why;    # if not: the reason (threads / filesystem / deep recursion)
+    has Str $.rakulib;        # 'battery' = examples need the module-battery dists on RAKULIB
     has @.examples is rw;     # list of [code, expected-or-Nil, line-number]
 }
 
@@ -251,6 +252,7 @@ sub load-page(Str $category, Str $path --> Page) {
         path        => $path,
         browser-ok  => (($meta<browser> // 'true').lc ne 'false'),
         browser-why => ($meta<browser-why> // ''),
+        rakulib     => ($meta<rakulib> // ''),
         examples    => [],
     )
 }
@@ -819,8 +821,12 @@ sub render-excels(%site, %by-cat --> Str) {
 # Verification against the real interpreter
 # ---------------------------------------------------------------------------
 
-sub run-snippet(Str $exe, Str $code) {
-    my $proc = run($exe, '/dev/stdin', :in, :out, :err);
+sub run-snippet(Str $exe, Str $code, :@libs, Str :$sep = ':') {
+    # module examples: the vendored battery dists go on RAKULIB (rakupp splits
+    # on ':', Rakudo on ',' — the caller passes the right separator)
+    my %env = %*ENV;
+    %env<RAKULIB> = @libs.join($sep) if @libs;
+    my $proc = run($exe, '/dev/stdin', :in, :out, :err, :env(%env));
     $proc.in.print($code);
     $proc.in.close;
     my $out = $proc.out.slurp(:close).subst(/ \n+ $ /, '');
@@ -832,17 +838,40 @@ sub run-snippet(Str $exe, Str $code) {
 # (e.g. --oracle=raku) — against Rakudo too. The declared output should equal
 # Rakudo's (the authority); an oracle mismatch means the author didn't consult it,
 # a rakupp-only mismatch means a genuine divergence (mark the page `divergent`).
-sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '' --> Int) {
+sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '', Str $battery = '' --> Int) {
     if $rakupp.contains('/') && !$rakupp.IO.e {
         note "verify: rakupp not found at $rakupp";
         return 1;
     }
+    # The vendored dists of the module battery (github raku-module-battery):
+    # pages marked `rakulib: battery` run their examples with these on RAKULIB,
+    # so `use JSON::Fast` etc. resolve to the same pinned copies the battery
+    # itself verifies. Without a battery checkout those examples are SKIPPED
+    # (with a note), never silently passed.
+    my @battery-libs;
+    if $battery && $battery.IO.d {
+        my $tsv = $battery.IO.add('harness/tier3-modules.tsv');
+        if $tsv.e {
+            @battery-libs = $tsv.lines.map({ .split("\t")[3] }).grep(*.defined).grep(*.chars)
+                                .map({ $battery.IO.add($_).add('lib').Str });
+        }
+    }
     my $has-oracle = $oracle.chars > 0;
     my $checked = 0;
+    my $skipped = 0;
     my $rakupp-fail = 0;
     my $oracle-fail = 0;
     my @wasm-ex;                       # examples to also run through raku.js (WASM)
     for @pages -> $page {
+        my @libs;
+        if $page.rakulib eq 'battery' {
+            if !@battery-libs {
+                $skipped += @($page.examples).grep({ .[1].defined }).elems;
+                note "verify: no battery checkout at '$battery' — skipping {$page.path}";
+                next;
+            }
+            @libs = @battery-libs;
+        }
         for @($page.examples) -> @ex {
             my ($code, $expected, $line) = @ex;
             next unless $expected.defined;
@@ -853,7 +882,7 @@ sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '' --> Int) {
             @wasm-ex.push({ p => "{$page.path}:$line", s => $code, e => $want })
                 if $wasm && $page.browser-ok;
 
-            my ($got, $err) = run-snippet($rakupp, $code);
+            my ($got, $err) = run-snippet($rakupp, $code, :@libs, :sep(':'));
             if $got ne $want {
                 $rakupp-fail++;
                 note "  RAKU++ MISMATCH {$page.path}:$line";
@@ -863,7 +892,7 @@ sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '' --> Int) {
             }
 
             if $has-oracle {
-                my ($ogot, $oerr) = run-snippet($oracle, $code);
+                my ($ogot, $oerr) = run-snippet($oracle, $code, :@libs, :sep(','));
                 if $ogot ne $want {
                     $oracle-fail++;
                     note "  ORACLE MISMATCH ($oracle) {$page.path}:$line";
@@ -875,7 +904,8 @@ sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '' --> Int) {
         }
     }
     if $has-oracle {
-        say "verify: $checked checked · $rakupp-fail rakupp mismatch(es) · $oracle-fail oracle mismatch(es) vs $oracle";
+        say "verify: $checked checked · $rakupp-fail rakupp mismatch(es) · $oracle-fail oracle mismatch(es) vs $oracle"
+            ~ ($skipped ?? " · $skipped SKIPPED (no battery)" !! '');
     }
     else {
         say "verify: $checked example(s) checked, $rakupp-fail mismatch(es)";
@@ -929,7 +959,8 @@ sub collect-pages(%site) {
     $(@pages), $(%by-cat)
 }
 
-sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '', Str :$wasm = '') {
+sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '', Str :$wasm = '',
+         Str :$battery = (%*ENV<HOME> // '') ~ '/raku-module-battery') {
     my %site = EVAL slurp('src/site.raku');
     $BASE      = %site<base>      // '';
     $THEME-DIR = %site<theme-dir> // 'src/theme';
@@ -998,5 +1029,5 @@ sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFA
 
     say "built {@($pages).elems} page(s) + home -> out/";
 
-    exit verify-examples(@($pages), $rakupp, $oracle, $wasm) if $verify;
+    exit verify-examples(@($pages), $rakupp, $oracle, $wasm, $battery) if $verify;
 }
