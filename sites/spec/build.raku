@@ -657,11 +657,18 @@ sub modes-html($page --> Str) {
     my $why = $page.browser-why || 'needs threads, the filesystem, or deep recursion';
     my $tip = $ok ?? 'Runs in the browser playground (raku.js / WebAssembly)'
                   !! "Not in the browser playground — $why";
-    '<div class="modes" title="Where this feature runs">' ~
+    my $head = '<div class="modes" title="Where this feature runs">' ~
     '<span class="mode ok" title="rakupp — the Raku++ tree-walking interpreter">' ~
       '<span class="mk">✓</span> Interpreter</span>' ~
     '<span class="mode ok" title="rakupp --exe — compiled to a standalone native binary">' ~
-      '<span class="mk">✓</span> Native (--exe)</span>' ~
+      '<span class="mk">✓</span> Native (--exe)</span>';
+    # Module pages (rakulib: battery): the playground simply has no module
+    # installation — an environment limitation, not a feature gap — so no
+    # ✗ Browser chip; the page prose explains why examples are static.
+    if $page.rakulib {
+        return $head ~ '</div>';
+    }
+    $head ~
     "<span class=\"mode {$ok ?? 'ok' !! 'no'}\" title=\"{esc-attr($tip)}\">" ~
       "<span class=\"mk\">{$ok ?? '✓' !! '✗'}</span> Browser</span>" ~
     '</div>'
