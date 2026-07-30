@@ -622,8 +622,8 @@ class Renderer {
 
     method !emit-static(Str $code, $expected) {
         @!out.push(
-            '<div class="native-ex"><span class="native-tag" title="Runs in the Raku++ ' ~
-            'interpreter and --exe binary, but not the browser playground.">not in browser</span>' ~
+            '<div class="native-ex"><button class="copy-btn" type="button" ' ~
+            'title="Copy this code">Copy</button>' ~
             '<pre class="native-code"><code>' ~ esc($code) ~ '</code></pre></div>');
         if $expected.defined {
             @!out.push(

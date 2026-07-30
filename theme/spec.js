@@ -38,6 +38,42 @@
     });
   });
 
+  // Copy buttons on static (non-runnable) examples: copy the sibling code
+  // block's text. navigator.clipboard needs a secure context (the site is
+  // https); the execCommand fallback covers file:// previews.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.copy-btn') : null;
+    if (!btn) return;
+    var box = btn.parentElement && btn.parentElement.querySelector('pre code');
+    if (!box) return;
+    var text = box.textContent;
+    function done(ok) {
+      if (!ok) return;
+      btn.classList.add('copied');
+      var label = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.classList.remove('copied'); btn.textContent = label; }, 1400);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      // a rejected write (permission policy) still gets the legacy path
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else {
+      fallback();
+    }
+  });
+
   // Scroll the nav list (not the page, and not the pinned head) so the current
   // page's entry — and its siblings in the same section — are in view on load.
   var scroller = document.querySelector('.sidebar-nav');
