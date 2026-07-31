@@ -510,6 +510,14 @@ sub nav-html(%site, %by-cat, $current) {
 }
 
 sub page-shell(%site, Str $title, Str $body, Str $nav, :$home = False, :$extra-scripts = '' --> Str) {
+    # Some page bodies are NON-interpolating heredocs (q:to), because they are
+    # mostly literal HTML and a stray `$` or `{` would otherwise need escaping.
+    # `{$BASE}` written inside one of those stays literal text, so substitute it
+    # here, where every page passes through: the conformance and dashboard pages
+    # each shipped a link reading `{$BASE}/…` verbatim, which a browser resolves
+    # relative to the current page and 404s. build.sh fails the build if one
+    # survives into www/.
+    my $body-based = $body.subst('{$BASE}', $BASE, :g);
     my $engine     = esc-attr(%site<engine>);
     my $playground = esc-attr(%site<playground>);
     my $repo       = esc-attr(%site<repo>);
@@ -540,7 +548,7 @@ sub page-shell(%site, Str $title, Str $body, Str $nav, :$home = False, :$extra-s
     $nav
     <main>
     <div class="content">
-    $body
+    $body-based
     </div>
     <footer>
     <span>Raku++ Specification — behaviour of <a href="$playground">raku.online</a>'s interpreter.</span>

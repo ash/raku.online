@@ -87,6 +87,17 @@ check_no_stray_absolutes() {
             | grep -vE '^/(tour|spec|faq|theme|play|rakupp|embed|builder|demo)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
+    check_no_unexpanded_base
+}
+
+# A page body written as a NON-interpolating heredoc keeps `{$BASE}` as literal
+# text. Such a link resolves relative to the page and 404s — the conformance and
+# dashboard pages both shipped one. page-shell substitutes it now; this makes
+# sure nothing slips past that again.
+check_no_unexpanded_base() {
+    leaked=$(grep -rl '{\$BASE}' "$WWW" --include='*.html' 2>/dev/null || true)
+    [ -z "$leaked" ] || { echo "unexpanded {\$BASE} in: $leaked" >&2; exit 1; }
+    echo "check: no unexpanded {\$BASE} in any page"
 }
 
 case "${1:-all}" in
