@@ -119,9 +119,16 @@ esac
 # every build rather than at publish time: what is committed must already be
 # what gets served.
 stamp_cache_tag() {
+    # LC_ALL=C on every sed below: these regexes are pure ASCII (/theme/ paths,
+    # ?v=<hex>, "/raku.js), so byte semantics are what we want — and one
+    # generated page under out/rules/ contains a truncated multi-byte character,
+    # which makes BSD sed abort with "RE error: illegal byte sequence" for
+    # anyone whose locale is UTF-8. Under LC_ALL=C sed passes the bytes through
+    # untouched instead of validating them. (The truncated character is a
+    # separate bug in the operator-matrix cell — see tools/matrix.raku.)
     tag=$(cat "$WWW"/rakujs.wasm "$WWW"/rakujs.js \
               "$WWW"/play/examples.js "$WWW"/play/worker.js | md5 -q | cut -c1-8)
-    sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js
+    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js
     echo "cache tag: ?v=$tag"
 
     # The drills ship their own JS and CSS and had no tag at all, so a returning
@@ -129,7 +136,7 @@ stamp_cache_tag() {
     # since they change independently of the engine.
     dtag=$(cat "$WWW"/drills/js/*.js "$WWW"/drills/css/*.css "$WWW"/drills/data/*.js \
            | md5 -q | cut -c1-8)
-    sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$WWW"/drills/index.html
+    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$WWW"/drills/index.html
     echo "drills cache tag: ?v=$dtag"
 
     # The shared theme, tagged once for the whole site. The generators used to
@@ -138,7 +145,7 @@ stamp_cache_tag() {
     # putting everything on one origin. Pages that are not generated had no tag
     # at all. One hash over theme/, applied to every page, fixes both.
     ttag=$(cat "$WWW"/theme/* | md5 -q | cut -c1-8)
-    find "$WWW" -name '*.html' -print0 | xargs -0 sed -i '' -E \
+    find "$WWW" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
         "s|(/theme/[A-Za-z0-9._-]+)(\?v=[0-9a-f]{8})?|\1?v=$ttag|g"
     echo "theme cache tag: ?v=$ttag"
 
@@ -147,7 +154,7 @@ stamp_cache_tag() {
     # embed script reaches our readers without waiting for a cache to expire.
     # Hashed after the stamping above, since that rewrites raku.js.
     rtag=$(md5 -q "$WWW"/raku.js | cut -c1-8)
-    find "$WWW" -name '*.html' -print0 | xargs -0 sed -i '' -E \
+    find "$WWW" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
         "s|(\"/raku\.js)(\?v=[0-9a-f]{8})?\"|\1?v=$rtag\"|g"
     echo "raku.js cache tag: ?v=$rtag"
 }
@@ -183,6 +190,14 @@ check_json_urls() {
           | sort -u | grep -v '^"u":"/spec/' || true)
     [ -z "$bad" ] || { echo "search index URLs missing their base: $bad" >&2; exit 1; }
     echo "check: search index URLs carry their base"
+
+    # A page that is not valid UTF-8 is what made the sed above abort in the
+    # first place, and it also reaches readers as a replacement character. Fail
+    # the build rather than ship it.
+    bad=$(find "$WWW" -name '*.html' -print0 | xargs -0 -I{} sh -c \
+          'iconv -f UTF-8 -t UTF-8 "$1" >/dev/null 2>&1 || echo "$1"' _ {} || true)
+    [ -z "$bad" ] || { echo "pages that are not valid UTF-8: $bad" >&2; exit 1; }
+    echo "check: every page is valid UTF-8"
 }
 check_json_urls
 

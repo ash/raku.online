@@ -80,6 +80,27 @@ sub probe(Str $exe, Str $expr --> Str) {
     'ERR ' ~ ($first.chars ?? $first !! 'failed')
 }
 
+# A probed value can be raw bytes rather than text: `~^ 1` under rakupp answers
+# a Str holding the single byte 0xCE, which is the LEAD byte of a two-byte
+# sequence with nothing after it. Stored as-is, that byte travels into
+# src/data/matrix.raku, into every page built from it, and finally into
+# build.sh, where BSD sed aborts the whole build with "RE error: illegal byte
+# sequence" for anyone whose locale is UTF-8. Escape anything that is not
+# printable ASCII or a well-formed character, so the data file and the pages
+# built from it are always valid UTF-8 — the cell still shows what came back,
+# just as \xCE rather than as an invalid byte.
+sub printable(Str $s --> Str) {
+    my $safe = '';
+    for $s.encode('utf8-c8').decode('utf8-c8').comb -> $c {
+        my $o = $c.ord;
+        # utf8-c8 maps an undecodable byte to a synthetic in the private range
+        $safe ~= ($o >= 0xDC80 && $o <= 0xDCFF) ?? sprintf('\x%02X', $o - 0xDC00)
+              !! ($o < 0x20 || $o == 0x7F)      ?? sprintf('\x%02X', $o)
+              !! $c;
+    }
+    $safe
+}
+
 sub MAIN(
     Str  :$rakupp = 'rakupp',
     Str  :$oracle = 'raku',
@@ -109,8 +130,8 @@ sub MAIN(
         for @battery -> @operands {
             my $expr = expr-for(%op<cat>, $sym, @operands);
             next unless $expr.defined;
-            my $a = probe($rakupp, $expr);
-            my $b = probe($oracle, $expr);
+            my $a = printable(probe($rakupp, $expr));
+            my $b = printable(probe($oracle, $expr));
             $rows++;
             # Both engines rejecting the expression is agreement, however
             # differently they word the diagnostic. Only a value-vs-value
