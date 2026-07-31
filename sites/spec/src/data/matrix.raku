@@ -322,7 +322,7 @@
     [ '(1, 2) o (3, 4, 5)', 'ERR Cannot resolve caller infix:<o>(List, List); only Callables compose', 'ERR Cannot resolve caller infix:<o>(List:D, List:D); none of these signatures matches:', 'both-reject' ],
     [ 'True o False', 'ERR Cannot resolve caller infix:<o>(Bool, Bool); only Callables compose', 'ERR Error while compiling -e', 'both-reject' ],
     [ 'Nil o 1', 'ERR Cannot resolve caller infix:<o>(Nil, Int); only Callables compose', 'ERR Error while compiling -e', 'both-reject' ],
-    [ '1/2 o 1/3', 'ERR Cannot resolve caller infix:<o>(Rat, Int); only Callables compose', 'ERR Cannot resolve caller infix:<o>(Rat:D, Rat:D); none of these signatures matches:', 'both-reject' ],
+    [ '1/2 o 1/3', 'ERR Cannot resolve caller infix:<o>(Rat, Rat); only Callables compose', 'ERR Cannot resolve caller infix:<o>(Rat:D, Rat:D); none of these signatures matches:', 'both-reject' ],
   ],
   'infix|∘' => [
     [ '1 ∘ 2', 'ERR Cannot resolve caller infix:<o>(Int, Int); only Callables compose', 'ERR Error while compiling -e', 'both-reject' ],
@@ -331,7 +331,7 @@
     [ '(1, 2) ∘ (3, 4, 5)', 'ERR Cannot resolve caller infix:<o>(List, List); only Callables compose', 'ERR Cannot resolve caller infix:<o>(List:D, List:D); none of these signatures matches:', 'both-reject' ],
     [ 'True ∘ False', 'ERR Cannot resolve caller infix:<o>(Bool, Bool); only Callables compose', 'ERR Error while compiling -e', 'both-reject' ],
     [ 'Nil ∘ 1', 'ERR Cannot resolve caller infix:<o>(Nil, Int); only Callables compose', 'ERR Error while compiling -e', 'both-reject' ],
-    [ '1/2 ∘ 1/3', 'ERR Cannot resolve caller infix:<o>(Rat, Int); only Callables compose', 'ERR Cannot resolve caller infix:<o>(Rat:D, Rat:D); none of these signatures matches:', 'both-reject' ],
+    [ '1/2 ∘ 1/3', 'ERR Cannot resolve caller infix:<o>(Rat, Rat); only Callables compose', 'ERR Cannot resolve caller infix:<o>(Rat:D, Rat:D); none of these signatures matches:', 'both-reject' ],
   ],
   'infix|&' => [
     [ '1 & 2', 'Junction | all(1, 2)', 'Junction | all(1, 2)', 'agree' ],

@@ -166,18 +166,24 @@ The comparison exists to be acted on, so the interesting figure is how `ok`
 moves. Every column is the same corpus measured by the same tools; the current
 numbers are always in [CONFORMANCE.md](CONFORMANCE.md).
 
-| Verdict | 2026-07-25 (v1.1.0) | 2026-07-27 (v1.2.0) | 2026-07-29 (v1.5.0) |
-|---|---:|---:|---:|
-| `ok` — all three agree | 596 | 853 | **943** |
-| `rakupp-differs` — Raku++ is wrong | 471 | 211 | **120** |
-| `all-differ` — needs a human | 176 | 159 | 157 |
-| `doc-drift` — the docs are stale | 104 | 119 | 123 |
-| `not-runnable` | 88 | 88 | 88 |
-| `rakudo-differs` — Rakudo is the odd one out | 16 | 21 | 20 |
+| Verdict | 2026-07-25 (v1.1.0) | 2026-07-27 (v1.2.0) | 2026-07-29 (v1.5.0) | 2026-07-31 (v1.5.2) |
+|---|---:|---:|---:|---:|
+| `ok` — all three agree | 596 | 853 | 943 | **937** |
+| `rakupp-differs` — Raku++ is wrong | 471 | 211 | 120 | **122** |
+| `all-differ` — needs a human | 176 | 159 | 157 | 156 |
+| `doc-drift` — the docs are stale | 104 | 119 | 123 | 124 |
+| `not-runnable` | 88 | 88 | 88 | 88 |
+| `rakudo-differs` — Rakudo is the odd one out | 16 | 21 | 20 | 24 |
 
 Every column is a line in `src/data/history.jsonl`, which is what the chart on
 `/rules/divergences/` draws — the table and the chart cannot disagree. There were
 two runs at v1.2.0 (596→835 and 835→853); the column above is the later one.
+
+v1.5.0 → v1.5.2 is the first pair of columns that does not move: six examples
+either way, against a run-to-run jitter of 15–30. Read it as *unchanged*, not as
+a small regression. Roast went the other way over the same span — 196395 to
+196568 assertions — which is the more sensitive measure at this point, because
+the documentation corpus has largely been exhausted as a source of new failures.
 
 Two cautions when reading a delta. `rakupp-differs` is not a clean progress
 metric on its own: fixing Raku++ reshuffles rows between `all-differ`,
