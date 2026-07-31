@@ -1,12 +1,12 @@
 ---
-title: Web building blocks — URI, Base64, HTTP::Status
+title: Web building blocks — URI, XML, Base64, HTTP::Status
 slug: web-and-text
 status: full
 browser: false
 browser-why: needs installed module distributions
 rakulib: battery
 order: 30
-summary: URI parsing and encoding, Base64 in two flavours, and HTTP status texts — verified under Raku++.
+summary: URI parsing and encoding, XML documents, Base64 in two flavours, and HTTP status texts — verified under Raku++.
 ---
 
 The small modules every web-facing program leans on. Verified under Raku++ and
@@ -36,15 +36,38 @@ top
 ## URI::Encode
 
 Percent-encoding for URLs — the component form encodes everything that isn't
-safe inside a query value. (`uri_decode` is one of the open gaps listed on the
-[overview page](../working/).)
+safe inside a query value, and `uri_decode` turns the escapes back into text.
 
 ```raku
 use URI::Encode;
 say uri_encode_component('a раку & b');
+say uri_decode('a%20%D1%80%D0%B0%D0%BA%D1%83%20%26%20b');
 ```
 ```output
 a%20%D1%80%D0%B0%D0%BA%D1%83%20%26%20b
+a раку & b
+```
+
+## XML
+
+A full XML parser and document model — attributes, nested elements, and
+stringification all round-trip.
+
+```raku
+use XML;
+
+my $doc = from-xml('<library><book id="7" lang="raku">Grammars</book></library>');
+my $book = $doc.root.elements(:TAG<book>)[0];
+say $book.attribs<id>;
+say $book.attribs<lang>;
+say $book.nodes[0];
+say $doc.root.elements.elems;
+```
+```output
+7
+raku
+Grammars
+1
 ```
 
 ## MIME::Base64 and Base64

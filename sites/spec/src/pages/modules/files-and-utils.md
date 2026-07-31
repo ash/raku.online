@@ -1,12 +1,12 @@
 ---
-title: Files, digests & monitors
+title: Files, digests & class extensions
 slug: files-and-utils
 status: full
 browser: false
 browser-why: needs installed module distributions and the filesystem
 rakulib: battery
 order: 40
-summary: File::Temp, File::Find, Digest::SHA1, HMAC and OO::Monitors under Raku++.
+summary: File::Temp, File::Find, Digest::SHA1, HMAC, UUID, OO::Monitors and Method::Also under Raku++.
 ---
 
 Filesystem helpers, hashing, and two object-system extensions — all running
@@ -60,6 +60,25 @@ say hmac(key => 'key'.encode, msg => 'message'.encode,
 2088df74d5f2146b48146caf4965377e9d0be3a4
 ```
 
+## UUID
+
+Random (version 4) UUIDs with the standard dashed formatting — 36 characters,
+the version digit in its slot.
+
+```raku
+use UUID;
+
+my $u = UUID.new(:version(4));
+say $u.Str.chars;
+say $u.Str.comb('-').elems;
+say $u.Str.substr(14, 1);
+```
+```output
+36
+4
+4
+```
+
 ## OO::Monitors
 
 `monitor` is a class whose method calls are mutually excluded — a
@@ -77,4 +96,25 @@ say $c.n;
 ```
 ```output
 3
+```
+
+## Method::Also
+
+One method, several names — `is also<…>` registers extra method names while
+the class composes.
+
+```raku
+use Method::Also;
+
+class Point {
+    has $.x; has $.y;
+    method magnitude() is also<abs2> { sqrt($!x² + $!y²) }
+}
+my $p = Point.new(:x(3), :y(4));
+say $p.magnitude;
+say $p.abs2;
+```
+```output
+5
+5
 ```

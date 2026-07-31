@@ -39,15 +39,22 @@ alpha, beta
 
 ## JSON::Tiny
 
-The lighter alternative. Generating works today; `from-json` is one of the
-open gaps listed on the [overview page](../working/).
+The lighter alternative — a grammar-driven parser in a few hundred lines.
+Both directions work: `from-json` parses with a real Raku grammar, and
+`to-json` \u-escapes anything outside printable ASCII, exactly like Rakudo.
 
 ```raku
 use JSON::Tiny;
-say to-json([1, 2, [3, 4]]);
+
+my $parsed = from-json('{"name": "raku", "level": [1, 2.5, true]}');
+say $parsed<name>;
+say $parsed<level>[1];
+say to-json(["four", "héllo"]);
 ```
 ```output
-[ 1, 2, [ 3, 4 ] ]
+raku
+2.5
+[ "four", "h\u00e9llo" ]
 ```
 
 ## YAMLish
