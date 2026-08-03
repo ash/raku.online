@@ -67,12 +67,12 @@
     [ '+^ (1/2)', 'Int | -1', 'Int | -1', 'agree' ],
   ],
   'prefix|~^' => [
-    [ '~^ (1)', 'Str | \\x0E', 'ERR prefix:<~^> not yet implemented. Sorry.', 'differ' ],
-    [ '~^ ("a")', 'Str | ', 'ERR prefix:<~^> not yet implemented. Sorry.', 'differ' ],
-    [ '~^ ((1, 2))', 'Str | Ο\\x0D', 'ERR prefix:<~^> not yet implemented. Sorry.', 'differ' ],
-    [ '~^ (True)', 'Str | «', 'ERR prefix:<~^> not yet implemented. Sorry.', 'differ' ],
-    [ '~^ (Nil)', 'Str |', 'ERR Use of Nil in string context', 'differ' ],
-    [ '~^ (1/2)', 'Str | ϑ\\x0A', 'ERR prefix:<~^> not yet implemented. Sorry.', 'differ' ],
+    [ '~^ (1)', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR prefix:<~^> not yet implemented. Sorry.', 'both-reject' ],
+    [ '~^ ("a")', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR prefix:<~^> not yet implemented. Sorry.', 'both-reject' ],
+    [ '~^ ((1, 2))', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR prefix:<~^> not yet implemented. Sorry.', 'both-reject' ],
+    [ '~^ (True)', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR prefix:<~^> not yet implemented. Sorry.', 'both-reject' ],
+    [ '~^ (Nil)', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR Use of Nil in string context', 'both-reject' ],
+    [ '~^ (1/2)', 'ERR prefix:<~^> not yet implemented. Sorry.', 'ERR prefix:<~^> not yet implemented. Sorry.', 'both-reject' ],
   ],
   'prefix|?^' => [
     [ '?^ (1)', 'Bool | False', 'Bool | False', 'agree' ],

@@ -6,7 +6,7 @@ both engines reject the expression count as agreement, however differently they
 word the diagnostic — only value-vs-value differences and accept-vs-reject are
 listed. Every entry is a Raku++ fix candidate.
 
-**30** disagreements across **121** operators.
+**24** disagreements across **121** operators.
 
 ## Type mismatches by root cause
 
@@ -17,25 +17,6 @@ These collapse hard: fixing one defect clears every row it produced.
 | `Num` | `Int` | 2 | `+ (Nil)` |
 | `Any` | `Int` | 1 | `Nil min 1` |
 | `Any` | `Slip` | 1 | `Nil andthen 1` |
-
-## Raku++ accepts what Rakudo rejects (12)
-
-| Operator | Expression | Raku++ | Rakudo |
-|---|---|---|---|
-| `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
-| `infix:<but>` | `(1, 2) but (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|4>,<anon\|5>,<anon\|6>} |
-| `infix:<but>` | `1/2 but 1/3` | `Rat — 0.166667` | _error:_ Cannot resolve caller infix:<but>(Rat:D, Int:D, :value(Int)); none of th |
-| `infix:<coll>` | `Nil coll 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<coll>(Nil:U, Int:D); none of these signatur |
-| `infix:<does>` | `(1, 2) does (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|1>,<anon\|2>,<anon\|3>} |
-| `infix:<unicmp>` | `Nil unicmp 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<unicmp>(Nil:U, Int:D); none of these signat |
-| `prefix:<~^>` | `~^ (1)` | `Str — ` | _error:_ prefix:<~^> not yet implemented. Sorry. |
-| `prefix:<~^>` | `~^ ("a")` | `Str — ` | _error:_ prefix:<~^> not yet implemented. Sorry. |
-| `prefix:<~^>` | `~^ ((1, 2))` | `Str — Ο` | _error:_ prefix:<~^> not yet implemented. Sorry. |
-| `prefix:<~^>` | `~^ (True)` | `Str — «` | _error:_ prefix:<~^> not yet implemented. Sorry. |
-| `prefix:<~^>` | `~^ (Nil)` | `Str \|` | _error:_ Use of Nil in string context |
-| `prefix:<~^>` | `~^ (1/2)` | `Str — ϑ
-` | _error:_ prefix:<~^> not yet implemented. Sorry. |
-
 
 ## Result value differs (10)
 
@@ -51,6 +32,18 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<⊖>` | `Nil ⊖ 1` | `Set — Set(Nil 1)` | `Set — Set(1 Nil)` |
 | `prefix:<^>` | `^ (True)` | `Range — ^1` | `Range — ^True` |
 | `prefix:<^>` | `^ (1/2)` | `Range — ^0` | `Range — 0..^0.5` |
+
+
+## Raku++ accepts what Rakudo rejects (6)
+
+| Operator | Expression | Raku++ | Rakudo |
+|---|---|---|---|
+| `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
+| `infix:<but>` | `(1, 2) but (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|4>,<anon\|5>,<anon\|6>} |
+| `infix:<but>` | `1/2 but 1/3` | `Rat — 0.166667` | _error:_ Cannot resolve caller infix:<but>(Rat:D, Int:D, :value(Int)); none of th |
+| `infix:<coll>` | `Nil coll 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<coll>(Nil:U, Int:D); none of these signatur |
+| `infix:<does>` | `(1, 2) does (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|1>,<anon\|2>,<anon\|3>} |
+| `infix:<unicmp>` | `Nil unicmp 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<unicmp>(Nil:U, Int:D); none of these signat |
 
 
 ## Raku++ rejects what Rakudo accepts (4)

@@ -6,8 +6,9 @@
 # Three time series, all from data that already exists elsewhere — this script
 # only collects, it never measures:
 #   releases  one entry per v* tag of the rakupp repo (plus current main),
-#             carrying the Roast standing (docs/ROAST.md) and the benchmark
-#             kernels (docs/BENCHMARKS.md) as committed at that tag;
+#             carrying the Roast standing (docs/status/ROAST.md) and the
+#             benchmark kernels (docs/status/BENCHMARKS.md) as committed at that
+#             tag — see status-doc() for why the path is not hardcoded;
 #   modules   the Tier-2 top-50 battery standing over time, read straight off
 #             the battery repo's commit subjects ("Tier-2: N/50 …").
 #
@@ -30,15 +31,33 @@ sub ref-date(Str $repo, Str $ref --> Str) {
     run-lines('git', '-C', $repo, 'log', '-1', '--format=%as', $ref).head // ''
 }
 
+#| A status document, wherever it lived at that ref. The docs were filed into
+#| subdirectories after v1.7.0, so one hardcoded path silently drops every
+#| release on the far side of that move — and since this script only collects
+#| and never measures, nothing fails: the release is simply absent from the
+#| timeline, which is exactly what happened to v1.8.0.
+#| Only the two `docs/` spellings. The bare root `ROAST.md` of the pre-v0.5.0
+#| era is deliberately NOT searched here: those refs predate the first tagged
+#| release and belong to dev-series(), which has its own root fallback. Adding
+#| it turns ten pre-release daily points into three early release entries and
+#| silently changes the shape of the chart.
+sub status-doc(Str $repo, Str $ref, Str $name --> Str) {
+    for "docs/status/$name", "docs/$name" -> $path {
+        my $text = show-file($repo, $ref, $path);
+        return $text if $text;
+    }
+    ''
+}
+
 # "157,293" -> 157293
 sub denum(Str $s --> Int) { $s.subst(',', '', :g).subst(/ <-[0..9]> /, '', :g).Int }
 
 # ---------------------------------------------------------------------------
-# Roast standing out of docs/ROAST.md at a given ref
+# Roast standing out of ROAST.md at a given ref
 # ---------------------------------------------------------------------------
 
 sub roast-at(Str $repo, Str $ref --> Hash) {
-    my $md = show-file($repo, $ref, 'docs/ROAST.md');
+    my $md = status-doc($repo, $ref, 'ROAST.md');
     return {} unless $md;
     my %r;
     for $md.lines -> $line {
@@ -66,7 +85,7 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 }
 
 # ---------------------------------------------------------------------------
-# Benchmark kernels out of docs/BENCHMARKS.md at a given ref
+# Benchmark kernels out of BENCHMARKS.md at a given ref
 # ---------------------------------------------------------------------------
 
 constant @KERNELS = <fib loopsum strcat>;
@@ -75,7 +94,7 @@ constant @KERNELS = <fib loopsum strcat>;
 # (| fib | <rakupp ms> | <rakudo ms> | …), then in the native --exe table
 # (| fib | <native ms> | <rakudo ms> | …). Collect in encounter order.
 sub bench-at(Str $repo, Str $ref --> Hash) {
-    my $md = show-file($repo, $ref, 'docs/BENCHMARKS.md');
+    my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
     return {} unless $md;
     my %seen;   # kernel => number of rows met so far
     my %out;
@@ -129,8 +148,8 @@ sub dev-series(Str $repo, Str $first-tag --> Array) {
         next unless $date.defined;
         next if %seen-date{$date};
         %seen-date{$date} = True;
-        my $md = show-file($repo, $sha, 'docs/ROAST.md');
-        $md = show-file($repo, $sha, 'ROAST.md') unless $md;
+        my $md = status-doc($repo, $sha, 'ROAST.md')
+              || show-file($repo, $sha, 'ROAST.md');   # the pre-v0.5.0 root spelling
         next unless $md;
         my %r;
         for $md.lines -> $l {
