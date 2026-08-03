@@ -35,6 +35,25 @@ program still runs in a fraction of a second:
 One origin means the ~6 MB WebAssembly interpreter is downloaded once for all
 of them, `localStorage` is shared, and the sections can link to each other.
 
+### Live mode
+
+The **Live** checkbox next to ▶ Run re-runs the program 400 ms after typing
+stops, so the output pane always shows what the source in front of you does.
+The whole program is re-run each time — a typical example is a few milliseconds
+of WebAssembly, well under the debounce, so there is nothing to make incremental.
+
+What makes it usable to type into:
+
+- output is **double-buffered** — the pane only changes when a run finishes, so
+  a half-written line never blanks it or flashes a parse error mid-word;
+- every live run is on a **2-second watchdog** — a runaway loop is killed (the
+  worker is terminated, as with Stop) and whatever it printed is still shown;
+- **two watchdog kills in a row switch the mode off**, with a note saying so,
+  since re-killing the worker on every keystroke of a genuinely long program
+  helps nobody. Press ▶ Run to run that program in full.
+
+The setting is remembered in `localStorage` (`rakujs-live`).
+
 ## Layout
 
 ```
@@ -96,6 +115,17 @@ and then runs six checks — any of which fails the build:
 The generated output under `www/tour`, `www/spec` and `www/faq` **is committed**, so the
 repository is publishable as-is and the Pages workflow needs no build step.
 Run `./build.sh` and commit the result whenever a source changes.
+
+### Looking at it locally
+
+```sh
+rakupp ~/raku++/showcase/rakus/rakus.raku 8973 www
+```
+
+`rakus` is the static server from the rakupp repo — a Raku program run by
+`rakupp`. Any static server does, as long as it sends `.wasm` as
+`application/wasm` (otherwise Emscripten falls back to a slow non-streaming
+compile); `file://` will not work at all, because it cannot load a Worker.
 
 `sites/spec/verify.sh` is a separate, slower gate: it runs every documented
 example against `rakupp`, against Rakudo as an oracle, and against the

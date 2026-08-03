@@ -115,6 +115,13 @@
                display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
   button.run:disabled { opacity: .5; cursor: default; }
   button.run.running { background: transparent; color: var(--accent); border-color: var(--accent); }
+  /* Live: re-run a beat after typing stops. Sits left of Run, styled as a tag
+     rather than a button so it reads as a mode, not an action. */
+  label.live { display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+               font-size: 12px; color: var(--muted); user-select: none; white-space: nowrap; }
+  label.live:hover { color: var(--ink); }
+  label.live.on { color: var(--accent); }
+  label.live input { accent-color: var(--accent); margin: 0; cursor: pointer; }
   .spinner { width: 12px; height: 12px; border-radius: 50%;
              border: 2px solid var(--border); border-top-color: var(--accent);
              animation: spin .7s linear infinite; }
@@ -254,6 +261,10 @@
         <a href="/demo/" target="_blank" rel="noopener">Guide</a></div>
     </div>
   </span>
+  <label class="live" id="liveLbl"
+         title="Run the program automatically a moment after you stop typing">
+    <input type="checkbox" id="liveChk">Live
+  </label>
   <button class="run" id="runBtn" disabled>▶ Run</button>
 </header>
 <main>
@@ -315,6 +326,33 @@ const runBtn = document.getElementById('runBtn');
 const sel = document.getElementById('examples');
 const sampleSel = document.getElementById('samples');
 const sampleLabel = document.getElementById('sampleLabel');
+const liveChk = document.getElementById('liveChk');
+const liveLbl = document.getElementById('liveLbl');
+
+// Live mode: the program runs itself a beat after typing stops, so the output
+// pane always shows what the source in front of you does. Three things make that
+// bearable to type into (the machinery is further down, next to run/stop):
+//
+//   * output is double-buffered — the pane only changes when a run finishes, so
+//     a half-written line never blanks it or flashes a parse error mid-word;
+//   * every live run is on a watchdog — a runaway loop is killed at LIVE_TIMEOUT
+//     instead of being left to spin behind every later keystroke;
+//   * two watchdog kills in a row switch the mode off, because re-killing the
+//     worker (each kill costs a fresh WASM instantiate) on every keystroke of a
+//     genuinely long program helps nobody.
+//
+// There is no incremental compilation here, REPL-style: a whole run of a typical
+// example is a few milliseconds of WASM, well under the debounce, so the simple
+// thing — re-run everything — is also the fast thing. These declarations sit
+// this early because paintHL() and the worker's 'ready' both reach for them.
+const LIVE_DELAY   = 400;    // ms of quiet before a live run starts
+const LIVE_TIMEOUT = 2000;   // ms a live run may take before the worker is killed
+const LIVE_KEY     = 'rakujs-live';
+let live = false;            // is the checkbox on?
+let curLive = false;         // is the run in flight a live one?
+let liveTimer = null, liveWatch = null, liveStalls = 0;
+let lastSrc = null, lastStdin = null;   // what the last run actually ran
+let buf = null, bufChars = 0;           // the double buffer, null while streaming
 
 // Stdin strip: collapsed by default, toggled by its bar; anything typed here is
 // what the program reads from standard input on the next Run.
@@ -436,7 +474,10 @@ function rakuHighlight(code) {
   return out + esc(code.slice(last));
 }
 function syncScroll() { hlEl.scrollTop = codeEl.scrollTop; hlEl.scrollLeft = codeEl.scrollLeft; }
-function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); }
+// Every path that changes the editor ends here — typing, Tab/Enter handling,
+// loading an example or a shared link — so this is also where live mode arms its
+// debounce (a no-op when the mode is off).
+function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); scheduleLive(); }
 codeEl.addEventListener('scroll', syncScroll);
 
 // Build the dropdown as <optgroup>s in first-seen category order. Each <option>
@@ -486,6 +527,7 @@ sampleSel.onchange = () => {
   if (ex.samples && ex.samples[+sampleSel.value]) {
     stdinEl.value = ex.samples[+sampleSel.value].code;
     showStdin(true);
+    scheduleLive();
   }
 };
 loadExample(EXAMPLES[0]);
@@ -654,6 +696,7 @@ async function loadSharedCode() {
       if (sIn) {
         stdinEl.value = await decodeShare(sIn);
         showStdin(true);
+        scheduleLive();
       }
     }
   } catch (err) {
@@ -862,18 +905,27 @@ const RECURSION_MSG = "Recursion too deep for the browser (a few hundred levels)
 // The single Run button doubles as Stop while a program runs. After 300 ms a
 // spinner joins the "Stop" label so long runs visibly show progress (quick runs
 // don't flash it). The button's min-width fits every label so it never resizes.
-function setRunning(on) {
+//
+// `quiet` (live mode) holds the button on "▶ Run" for a moment first: a live run
+// of a small program is over in a few milliseconds, and flipping the label to
+// Stop and back on every keystroke would make the toolbar strobe.
+function setRunning(on, quiet) {
   running = on;
-  runBtn.classList.toggle('running', on);
   clearTimeout(spinTimer);
-  if (on) {
-    runBtn.textContent = '■ Stop';
-    spinTimer = setTimeout(() => {
-      if (running) runBtn.innerHTML = '<span class="spinner"></span> Stop';
-    }, 300);
-  } else {
+  if (!on) {
+    runBtn.classList.remove('running');
     runBtn.textContent = '▶ Run';
+    return;
   }
+  if (quiet) {
+    spinTimer = setTimeout(() => { if (running) setRunning(true); }, 250);
+    return;
+  }
+  runBtn.classList.add('running');
+  runBtn.textContent = '■ Stop';
+  spinTimer = setTimeout(() => {
+    if (running) runBtn.innerHTML = '<span class="spinner"></span> Stop';
+  }, 300);
 }
 
 // If a worker never signals 'ready' (the WASM instantiate hung — usually memory
@@ -907,18 +959,22 @@ function createWorker() {
         verEl.textContent = "Raku++ " + m.version + " · compiled to WebAssembly · no server";
         if (pendingRun) { pendingRun = false; startRun(); }   // a restart was queued
         else if (autoRun) { autoRun = false; startRun(); }    // a shared link asked to run
+        else if (live) scheduleLive();                        // live mode: run what's in the editor
         else if (!running) statusEl.textContent = "ready";
         break;
       case 'out':
-        feed(m.text, m.cls);
+        if (buf) bufPush(m.text, m.cls); else feed(m.text, m.cls);
         break;
       case 'done':
+        endRun();
         if (!screen.length) pushText(" (no output)\n", "meta");
         pushText(`\n— exit ${m.rc} · ${m.ms} ms —`, "meta");
-        statusEl.textContent = `exit code ${m.rc} · ${m.ms} ms`;
+        statusEl.textContent = (curLive ? "live · " : "") + `exit code ${m.rc} · ${m.ms} ms`;
+        if (curLive) liveStalls = 0;
         setRunning(false);
         break;
       case 'runerror':
+        endRun();
         pushText("\n" + (m.deep ? RECURSION_MSG : "[host error] " + m.message) + "\n", "err");
         statusEl.textContent = m.deep ? "recursion limit" : "host error";
         setRunning(false);
@@ -953,11 +1009,29 @@ function killAndRecreate() {
   runBtn.disabled = true;
   createWorker();
 }
-function startRun() {
-  clearScreen();
-  statusEl.textContent = "running…";
-  setRunning(true);
-  worker.postMessage({ type: 'run', src: codeEl.value, stdin: stdinEl.value });
+function startRun(isLive) {
+  curLive = !!isLive;
+  lastSrc = codeEl.value; lastStdin = stdinEl.value;
+  clearTimeout(liveWatch);
+  if (curLive) {
+    // Collect this run's output instead of painting it: see flushBuf().
+    buf = []; bufChars = 0;
+    liveWatch = setTimeout(liveTimedOut, LIVE_TIMEOUT);
+    statusEl.textContent = "live · running…";
+  } else {
+    buf = null;
+    clearScreen();
+    statusEl.textContent = "running…";
+  }
+  setRunning(true, curLive);
+  worker.postMessage({ type: 'run', src: lastSrc, stdin: lastStdin });
+}
+
+// Common tail of every way a run can end (done, runerror, watchdog): stop the
+// watchdog and put the buffered output on screen.
+function endRun() {
+  clearTimeout(liveWatch);
+  flushBuf();
 }
 
 function run() {
@@ -976,11 +1050,66 @@ function run() {
 function stop() {
   if (!running) return;
   pendingRun = false;
+  endRun();
   killAndRecreate();
   setRunning(false);
   pushText("\n— stopped —", "meta");
   statusEl.textContent = "stopped";
 }
+
+// ---- live mode ---- (state is declared up with the other page state)
+function bufPush(text, cls) {
+  if (bufChars > OUT_CAP) return;       // the same cap feed() enforces on screen
+  bufChars += text.length;
+  buf.push([text, cls]);
+}
+// Swap the buffered run onto the screen in one go. feed() (not pushText) so
+// buffered ANSI screen-clears still reset the pane, as they do when streaming.
+function flushBuf() {
+  const b = buf;
+  buf = null; bufChars = 0;
+  if (!b) return;
+  clearScreen();
+  for (const [t, c] of b) feed(t, c);
+}
+
+function scheduleLive() {
+  if (!live) return;
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(liveRun, LIVE_DELAY);
+}
+function liveRun() {
+  if (!live || !ready) return;
+  if (codeEl.value === lastSrc && stdinEl.value === lastStdin) return;  // nothing changed
+  // Something is already running: let it finish (or let the watchdog take it)
+  // rather than paying for a worker restart on every keystroke.
+  if (running) { liveTimer = setTimeout(liveRun, 120); return; }
+  startRun(true);
+}
+function liveTimedOut() {
+  if (!running || !curLive) return;
+  flushBuf();                    // whatever it printed before the kill is still worth seeing
+  pushText(`\n— live run stopped after ${LIVE_TIMEOUT / 1000} s —\n`, "meta");
+  killAndRecreate();
+  setRunning(false);
+  statusEl.textContent = "live run timed out";
+  if (++liveStalls >= 2) {
+    setLive(false);
+    pushText("Live mode off: this program takes longer than a keystroke.\n"
+           + "Press ▶ Run to run it in full.\n", "meta");
+  }
+}
+function setLive(on) {
+  live = on;
+  liveChk.checked = on;
+  liveLbl.classList.toggle('on', on);
+  try { localStorage.setItem(LIVE_KEY, on ? '1' : '0'); } catch (e) {}
+  clearTimeout(liveTimer);
+  if (on) { liveStalls = 0; lastSrc = null; scheduleLive(); }   // run what's there now
+}
+liveChk.addEventListener('change', () => setLive(liveChk.checked));
+stdinEl.addEventListener('input', scheduleLive);   // the program's input is part of the program
+try { if (localStorage.getItem(LIVE_KEY) === '1') setLive(true); } catch (e) {}
 
 // Click the button to run; while running it shows Stop and clicking halts.
 runBtn.onclick = () => running ? stop() : run();
