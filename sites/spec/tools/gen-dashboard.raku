@@ -186,7 +186,11 @@ sub dev-series(Str $repo, Str $first-tag --> Array) {
 sub battery-series(Str $repo --> Array) {
     my @points;
     for run-lines('git', '-C', $repo, 'log', '--reverse', '--format=%as %s') -> $line {
-        if $line ~~ / ^ (\d+ '-' \d+ '-' \d+) ' ' .* 'Tier-2:' \s* (\d+) '/' (\d+) / {
+        # Two commit-subject conventions, one per era of the campaign:
+        # "Tier-2: N/50" was the probe bar; "battery: N/59" is the zef bar
+        # (a dist counts only when its own install-time suite passes). Each
+        # point carries its own total, so the bar change shows honestly.
+        if $line ~~ / ^ (\d+ '-' \d+ '-' \d+) ' ' .* [ 'Tier-2:' | 'battery:' ] \s* (\d+) '/' (\d+) / {
             my %p = date => ~$0, n => (~$1).Int, total => (~$2).Int;
             # The fix-batch number is the natural x-axis (the campaign can land
             # several batches in one day, so dates alone don't order it).
