@@ -30,7 +30,7 @@
   var script = document.currentScript
     || (function () { var s = document.getElementsByTagName('script'); return s[s.length - 1]; })();
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
-  var VER = '?v=5050c60c';                            // cache tag, stamped by build.sh
+  var VER = '?v=46a6cf42';                            // cache tag, stamped by build.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
 
   // ---- the shared interpreter worker -------------------------------------
