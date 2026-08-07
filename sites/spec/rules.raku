@@ -1688,9 +1688,7 @@ sub gaps-html(@entries --> Str) {
 
 sub render-coverage(@entries --> Str) {
     my $total   = @entries.elems;
-    my $written = @entries.grep({ .status eq 'written' || .status eq 'partial' }).elems;
     my $gaps    = @entries.grep({ .status eq 'gap' }).elems;
-    my $pct     = $total ?? (100 * $written / $total).round !! 0;
     my $rules   = @entries.map({ .rules.elems }).sum;
     my $ex      = @entries.map({ .examples.elems }).sum;
 
@@ -1700,21 +1698,18 @@ sub render-coverage(@entries --> Str) {
         my %secs = %(%by-topic{ %t<slug> } // %());
         next unless %secs;
         my @all = %secs.values.map({ |@($_) });
-        my $w = @all.grep({ .status eq 'written' || .status eq 'partial' }).elems;
         @rows.push('<tr><td><a href="' ~ base() ~ '/' ~ %t<slug> ~ '/">' ~ esc(%t<title>) ~ '</a></td>' ~
-            '<td>' ~ @all.elems ~ '</td><td>' ~ $w ~ '</td>' ~
-            '<td><div class="bar"><span style="width:' ~
-            (@all.elems ?? (100 * $w / @all.elems).round !! 0) ~ '%"></span></div></td></tr>');
+            '<td>' ~ @all.elems ~ '</td></tr>');
     }
 
     '<h1>Coverage</h1>' ~
-    '<p class="summary">What exists versus what is written. The denominator is not a ' ~
-    'guess: it is every construct the official documentation describes, so a missing ' ~
-    'page cannot hide.</p>' ~
+    '<p class="summary">Every construct the official documentation describes, and what ' ~
+    'this site measures about each one. The list is not a guess — it is derived from the ' ~
+    'documentation itself, so nothing can hide. The pages are generated: machine-extracted ' ~
+    'facts, parse probes against this implementation, and examples checked on both ' ~
+    'engines before they are allowed to appear.</p>' ~
     '<div class="cov-tiles">' ~
       '<div class="tile"><b>' ~ $total ~ '</b><span>constructs</span></div>' ~
-      '<div class="tile"><b>' ~ $written ~ '</b><span>written up</span></div>' ~
-      '<div class="tile"><b>' ~ $pct ~ '%</b><span>coverage</span></div>' ~
       '<div class="tile"><b>' ~ $rules ~ '</b><span>numbered rules</span></div>' ~
       '<div class="tile"><b>' ~ $ex ~ '</b><span>verified examples</span></div>' ~
       '<div class="tile"><b>' ~ $gaps ~ '</b><span>Raku++ gaps</span></div>' ~
@@ -1723,7 +1718,7 @@ sub render-coverage(@entries --> Str) {
     '</div>' ~
     '<h2 class="sec">By topic</h2>' ~
     '<div class="table-wrap"><table><thead><tr><th>Topic</th><th>Constructs</th>' ~
-    '<th>Written</th><th></th></tr></thead><tbody>' ~ @rows.join ~ '</tbody></table></div>' ~
+    '</tr></thead><tbody>' ~ @rows.join ~ '</tbody></table></div>' ~
     # (a "declared but undocumented" section lived here while the inventory was
     #  extracted from Rakudo's grammar. With the documentation as the source, an
     #  operator cannot be in the inventory without a doc section, so the section
@@ -1733,7 +1728,6 @@ sub render-coverage(@entries --> Str) {
 
 sub render-home(@entries, %by-topic --> Str) {
     my $total   = @entries.elems;
-    my $written = @entries.grep({ .status eq 'written' || .status eq 'partial' }).elems;
     my @cards;
     for @(%SITE<topics>) -> %t {
         my %secs = %(%by-topic{ %t<slug> } // %());
@@ -1752,7 +1746,6 @@ sub render-home(@entries, %by-topic --> Str) {
     'implementation and Rakudo disagree.</p>' ~
     '<div class="cov-tiles">' ~
       '<div class="tile"><b>' ~ $total ~ '</b><span>constructs indexed</span></div>' ~
-      '<div class="tile"><b>' ~ $written ~ '</b><span>written up</span></div>' ~
       '<div class="tile"><a href="' ~ base() ~ '/coverage/">coverage →</a></div>' ~
       '<div class="tile"><a href="' ~ base() ~ '/divergences/">divergences →</a></div>' ~
     '</div>' ~
