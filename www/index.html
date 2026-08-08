@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Raku — run it in your browser</title>
-<meta name="description" content="Raku in your browser: grammars, lazy sequences, multiple dispatch and exact rationals, all runnable on the page. No install, no server.">
-
-<!-- Old links land here and must not break.
-     Embedded editors built by raku.js ship an "open in playground" button that
-     points at the site root with a #code= fragment (raku.js: BASE ~ '#code='),
-     and shared playground links carry ?url= / ?file=. Those are live in other
-     people's pages right now, so this forward stays permanently — long after
-     raku.js itself starts emitting /play links, because cached copies of the
-     old script will be around for years. Runs before anything renders. -->
+<title>Raku++ — an interpreter, a compiler and a toolchain for Raku</title>
+<meta name="description" content="Raku with grammars, multiple dispatch, lazy lists and exact rationals — run by Raku++ in a browser tab, from a 2 ms command line, or compiled to a standalone binary.">
+<!-- Old links land here and must not break. Carried over verbatim from the
+     current front page, because this one has to be a drop-in replacement for
+     it: embedded editors built by raku.js ship an "open in playground" button
+     that points at the site ROOT with a #code= fragment (raku.js: BASE +
+     '#code='), and shared playground links carry ?url= / ?file=. Those are live
+     in other people's pages right now, so this forward stays permanently — long
+     after raku.js itself starts emitting /play links, because cached copies of
+     the old script will be around for years. Runs before anything renders. -->
 <script>
 (function () {
   var h = location.hash, q = location.search;
@@ -22,11 +22,12 @@
 })();
 </script>
 
-<script src="/theme/boot.js?v=58af817f"></script>
-<link rel="stylesheet" href="/theme/base.css?v=58af817f">
-<link rel="stylesheet" href="/theme/shell.css?v=58af817f">
+<script src="/theme/boot.js?v=243cfb33"></script>
+<link rel="stylesheet" href="/theme/base.css?v=243cfb33">
+<link rel="stylesheet" href="/theme/shell.css?v=243cfb33">
+<link rel="stylesheet" href="/theme/showroom.css?v=243cfb33">
 </head>
-<body class="home">
+<body class="showroom">
 
 <span class="theme-switch">
   <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
@@ -40,120 +41,967 @@
 <main>
 <div class="content">
 
-<h1>Raku</h1>
-<p class="tagline">
-  A language with a great many ideas in it. Every example below is a real
-  editor — change it, run it, break it. Nothing is installed and nothing is
-  sent to a server.
-</p>
+<!-- ============================ hero ============================ -->
+<div class="sr-hero">
+  <p class="sr-eyebrow"><b>Version 2.0.0</b> · an independent Raku implementation in C++17</p>
 
-<p class="hero-links">
-  <a class="btn-start" href="/play/">Open the playground →</a>
-</p>
+  <h1>
+    <span class="sr-mark">Raku++</span>
+    <span class="sr-sub">An interpreter, a compiler and a toolchain for Raku</span>
+  </h1>
 
-<div class="feature">
-  <h3>One name, many implementations</h3>
-  <p>
-    Multiple dispatch picks the right body from the arguments' types and shapes,
-    so you write what each case means instead of unpicking it inside one
-    function.
+  <p class="sr-lede">
+    Grammars in the syntax, multiple dispatch, lazy infinite lists, exact
+    rationals, Unicode that counts characters the way you do — Raku is a large
+    language, and <strong>Raku++</strong> is a single self-contained tool that
+    runs, compiles and inspects all of it, with nothing underneath it to
+    install. About two milliseconds to the first line of output; a standalone
+    executable when you want to hand a program to someone; a linter, a
+    profiler, a syntax highlighter and an AST dump in the same place. It builds
+    to WebAssembly as well — and that build is what runs the editor below.
   </p>
-<pre data-raku>multi greet(Int $n) { "the number $n" }
-multi greet(Str $s) { "the string '$s'" }
-multi greet(@list)  { "a list of {@list.elems}" }
 
-say greet($_) for 42, "hi", [1, 2, 3];</pre>
+  <p class="sr-cta">
+    <a class="sr-btn" href="/play/">Open the playground</a>
+    <a class="sr-btn ghost" href="#install">Install it</a>
+    <a class="sr-btn ghost" href="#embed">Put it on your site</a>
+    <a class="sr-btn ghost" href="#learn">Learn the language</a>
+  </p>
+
+  <div class="sr-demo">
+<pre data-raku>my @fib = 1, 1, * + * ... *;        # lazy, and infinite
+say @fib[^12];
+
+say 0.1 + 0.2 == 0.3;               # exact rationals, not floats
+
+grammar Version {                   # parsing is part of the language
+    token TOP   { &lt;major&gt; '.' &lt;minor&gt; '.' &lt;patch&gt; }
+    token major { \d+ }
+    token minor { \d+ }
+    token patch { \d+ }
+}
+my $m = Version.parse('2.0.0');
+say "major $m&lt;major&gt;, minor $m&lt;minor&gt;";</pre>
+    <p class="sr-demo-cap">
+      Press <b>▶ Run</b> — the interpreter is already loading in the background,
+      so it should answer straight away, and it answers <em>here</em>: nothing is
+      sent to a server, and the same WebAssembly serves every code block on this
+      page. Change any of them and run it again.
+    </p>
+  </div>
+
+  <div class="sr-stats">
+    <div class="sr-stat"><b>~2 ms</b><span>cold start of the native binary</span></div>
+    <div class="sr-stat"><b>90%</b><span>of the tests Roast declares, passing</span></div>
+    <div class="sr-stat"><b>50 / 59</b><span>ecosystem distributions passing their own suites</span></div>
+    <div class="sr-stat"><b>0</b><span>servers, accounts or runtime dependencies</span></div>
+  </div>
+
+  <nav class="sr-jump" aria-label="On this page">
+    <a href="#run">Five ways to run it</a>
+    <a href="#language">The language</a>
+    <a href="#stacked">Interpreters all the way down</a>
+    <a href="#speed">Speed</a>
+    <a href="#concurrency">Concurrency</a>
+    <a href="#build">What you can build</a>
+    <a href="#toolbox">The toolbox</a>
+    <a href="#install">Install</a>
+    <a href="#modules">Modules</a>
+    <a href="#embed">Embed</a>
+    <a href="#learn">Learn &amp; look up</a>
+    <a href="#honest">What this is, honestly</a>
+  </nav>
 </div>
 
-<div class="feature">
-  <h3>Sequences that never end</h3>
-  <p>
-    The <code>...</code> operator continues a sequence from the pattern you
-    started, and lists are lazy — so an infinite one costs nothing until you
-    ask for a piece of it.
+<!-- ========================= three runtimes ========================= -->
+<section class="sr-sec" id="run">
+  <p class="sr-kicker">The shop floor</p>
+  <h2>Five ways to run the same language</h2>
+  <p class="sr-intro">
+    One implementation, five shapes, and the semantics do not change between
+    them: the browser engine is the command-line interpreter compiled with
+    Emscripten, and every standalone mode either carries that interpreter or
+    transpiles the program it would have walked. Which one you want depends on
+    what you are handing to whom.
   </p>
+
+  <div class="sr-grid three">
+    <div class="sr-card link">
+      <span class="sr-tag cli">Interpreted</span>
+      <h3><a href="#install">rakupp app.raku</a></h3>
+      <p>
+        The tree-walking interpreter, and the default: no build step, about
+        2 ms to first line. It takes files, <code>-e</code> one-liners and
+        stdin, and clusters perl's flags — <code>-nlae</code>,
+        <code>-i.bak</code>.
+      </p>
+      <p class="sr-more">Install it →</p>
+    </div>
+
+    <div class="sr-card link">
+      <span class="sr-tag browser">In the browser</span>
+      <h3><a href="/play/">The playground</a></h3>
+      <p>
+        That same interpreter as WebAssembly, in a Web Worker on the reader's
+        machine. Editor, live output, standard input, shareable links, and every
+        example from the repository built in.
+      </p>
+      <p class="sr-more">Open it →</p>
+    </div>
+
+    <div class="sr-card link">
+      <span class="sr-tag compile">Compiled</span>
+      <h3><a href="#toolbox">--exe</a></h3>
+      <p>
+        Transpiled to C++ and compiled — about a second, roughly 9 MB out. No
+        interpreter inside, and the only mode that changes how fast the program
+        itself runs.
+      </p>
+      <p class="sr-more">See the toolchain →</p>
+    </div>
+
+    <div class="sr-card link">
+      <span class="sr-tag standalone">Standalone</span>
+      <h3><a href="https://github.com/ash/rakupp/blob/main/docs/guide/COMPILERS.md">--bundle</a></h3>
+      <p>
+        Embeds the program's source and links it against the runtime library:
+        one executable, nothing needed on the target, about 10 ms cold. It
+        re-parses and walks that source at run time, so it covers the whole
+        language.
+      </p>
+      <p class="sr-more">How the modes differ →</p>
+    </div>
+
+    <div class="sr-card link">
+      <span class="sr-tag standalone">Standalone</span>
+      <h3><a href="https://github.com/ash/rakupp/blob/main/docs/guide/COMPILERS.md">--aot</a></h3>
+      <p>
+        Parses at build time — so parse errors surface then, not on your user's
+        machine — and emits C++ that rebuilds the exact tree at startup for the
+        interpreter to walk. Whole language too, grammars included.
+      </p>
+      <p class="sr-more">How the modes differ →</p>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    The three standalone modes all shell out to a C++ compiler when you build,
+    and none of them needs one afterwards. <code>--bundle</code> and
+    <code>--aot</code> run at interpreted speed, since the interpreter is still
+    what walks the program; <code>--exe</code> is the one that removes it.
+  </p>
+</section>
+
+<!-- =========================== the language =========================== -->
+<section class="sr-sec" id="language">
+  <p class="sr-kicker">The goods</p>
+  <h2>What you get for learning it</h2>
+  <p class="sr-intro">
+    Seven of them, anyway — the ones that fit on a page. Each is something Raku
+    has <em>in the language</em>, where most others send you to a library, a
+    code generator or a workaround, and each is runnable right here. The
+    <a href="/tour/">tour</a> and <a href="/spec/">the specification</a> cover
+    the rest.
+  </p>
+
+  <div class="sr-feat">
+    <h3>One name, many implementations</h3>
+    <p>
+      Multiple dispatch picks the body from the arguments' types, shapes and
+      values, so each case says what it means instead of being unpicked inside
+      one function by hand.
+    </p>
+<pre data-raku>multi greet(Int $n)              { "the number $n" }
+multi greet(Str $s)              { "the string '$s'" }
+multi greet(@list)               { "a list of {@list.elems}" }
+multi greet(Int $n where $n &lt; 0) { "a negative number" }
+
+say greet($_) for 42, "hi", [1, 2, 3], -7;</pre>
+  </div>
+
+  <div class="sr-feat">
+    <h3>Grammars are part of the language</h3>
+    <p>
+      Parsing is not a library and not a separate file to generate. A grammar is
+      a kind of class, its tokens are named, reusable and inheritable, and what
+      comes back is a match tree you can index into.
+    </p>
+<pre data-raku>grammar INI {
+    token TOP     { &lt;section&gt;+ }
+    token section { '[' &lt;name&gt; ']' \n &lt;pair&gt;* }
+    token name    { &lt;-[\]]&gt;+ }
+    token pair    { &lt;key&gt; '=' &lt;value&gt; \n? }
+    token key     { \w+ }
+    token value   { \N+ }
+}
+
+# a heredoc: the indentation of the terminator is stripped from every line
+my $config = q:to/CONFIG/;
+    [server]
+    host=example.com
+    port=8080
+    [limits]
+    timeout=30
+    retries=3
+    CONFIG
+
+for @(INI.parse($config)&lt;section&gt;) -&gt; $s {
+    say "[$s&lt;name&gt;] " ~ $s&lt;pair&gt;.map({ "$_&lt;key&gt; = $_&lt;value&gt;" }).join(', ');
+}</pre>
+  </div>
+
+  <div class="sr-feat">
+    <h3>Sequences that never end</h3>
+    <p>
+      The <code>...</code> operator continues a sequence from the pattern you
+      started, and lists are lazy — so an infinite one costs nothing until you
+      ask it for a piece.
+    </p>
 <pre data-raku>my @powers = 1, 2, 4 ... *;
 say @powers[^10];
 
-my @fib = 1, 1, * + * ... *;
-say @fib[^12];</pre>
-</div>
+say (1..∞).grep(*.is-prime)[^8];
 
-<div class="feature">
-  <h3>Grammars are part of the language</h3>
-  <p>
-    Parsing is not a library here. A grammar is a kind of class, its tokens are
-    named and reusable, and what comes back is a match tree you can index.
-  </p>
-<pre data-raku>grammar Date {
-    token TOP   { &lt;year&gt; '-' &lt;month&gt; '-' &lt;day&gt; }
-    token year  { \d ** 4 }
-    token month { \d ** 2 }
-    token day   { \d ** 2 }
-}
+my @triangular = [\+] 1..*;         # running sums of an endless list
+say @triangular[^8];</pre>
+  </div>
 
-my $m = Date.parse('2026-07-28');
-say "year $m&lt;year&gt;, month $m&lt;month&gt;, day $m&lt;day&gt;";</pre>
-</div>
-
-<div class="feature">
-  <h3>Decimals that add up</h3>
-  <p>
-    <code>0.1 + 0.2 == 0.3</code> is <code>True</code>. Raku keeps decimal
-    literals as exact rationals rather than binary floating point, so money and
-    measurements behave the way you were taught they would.
-  </p>
+  <div class="sr-feat">
+    <h3>Decimals that add up</h3>
+    <p>
+      <code>0.1 + 0.2 == 0.3</code> is <code>True</code>. Decimal literals are
+      kept as exact rationals rather than binary floating point, so money and
+      measurements behave the way you were taught they would.
+    </p>
 <pre data-raku>say 0.1 + 0.2 == 0.3;
 
-say (1/3).nude;      # numerator and denominator
-say 1/3 + 1/6;</pre>
-</div>
+say (1/3).nude;      # numerator and denominator, exactly
+say 1/3 + 1/6;
+say (2/3).raku;</pre>
+  </div>
 
-<div class="feature">
-  <h3>One value that is several values</h3>
-  <p>
-    A junction holds many values at once and collapses to a single answer when
-    you compare against it — no loop, no <code>grep</code>.
-  </p>
+  <div class="sr-feat">
+    <h3>One value that is several values</h3>
+    <p>
+      A junction holds many values at once and collapses to a single answer when
+      you compare against it — no loop, no <code>grep</code>, no boolean
+      bookkeeping.
+    </p>
 <pre data-raku>my $n = 42;
 
 say so $n == any(3, 42, 100);
-say so $n  > all(1, 2, 3);</pre>
-</div>
+say so $n  &gt; all(1, 2, 3);
+say so "camelia" ~~ all(/a/, /e/, /l/);</pre>
+  </div>
 
-<div class="feature">
-  <h3>Operators that operate on operators</h3>
-  <p>
-    <code>[+]</code> folds an operator across a list; <code>»*»</code> applies
-    one to every element. Both are built from ordinary operators rather than
-    being special cases.
-  </p>
+  <div class="sr-feat">
+    <h3>Operators that operate on operators</h3>
+    <p>
+      <code>[+]</code> folds an operator across a list, <code>[\+]</code> keeps
+      the running results, <code>»*»</code> applies one to every element. They
+      are built out of ordinary operators rather than being special cases, so
+      they work with the ones you define yourself.
+    </p>
 <pre data-raku>my @r = 1, 2, 4, 8;
 
 say [+] @r;          # reduce with +
 say @r »*» 2;        # apply * to each
+say [\+] @r;         # running totals
 say (1..5).map(* ** 2);</pre>
-</div>
+  </div>
 
-<h2>Where to go</h2>
-<ul class="home-nav">
-  <li><a href="/tour/">A Tour of Raku</a> — eighteen short lessons, every example runnable. About an hour.</li>
-  <li><a href="/drills/">Raku Drills</a> — practise what you have read, one snippet at a time.</li>
-  <li><a href="/spec/">The specification</a> — how Raku++ behaves, feature by feature, with verified examples.</li>
-  <li><a href="/faq/">The FAQ</a> — task-shaped answers: running commands, why a list has one element, compiling to a binary.</li>
-  <li><a href="/rakupp/">Raku++</a> — the interpreter all of this runs on.</li>
-  <li><a href="/embed/">Embed Raku</a> — put a running editor on your own site with one script tag.</li>
-</ul>
+  <div class="sr-feat">
+    <h3>Characters, the way a reader counts them</h3>
+    <p>
+      A string is a sequence of graphemes, not bytes and not code points, so an
+      accented letter and a family emoji each count as the one character you can
+      see. The character database is in the language too: names in both
+      directions, properties, numeric values, and Unicode script classes usable
+      straight from a regex.
+    </p>
+<pre data-raku>say "Zoë".chars;              # graphemes, not bytes or code points
+say "👨‍👩‍👧".chars;              # one family, one character
+say "ß".fc eq "SS".fc;        # real case folding
+say "π".uniname;
+say so "Ωμέγα" ~~ /^&lt;:Script&lt;Greek&gt;&gt;+$/;</pre>
+  </div>
 
-<footer>
-  <span>Runs on <a href="/rakupp/">Raku++</a>, compiled to WebAssembly — your code never leaves the browser.</span>
+  <p class="sr-fine">
+    And roles, phasers, custom operators with their own precedence, native
+    types, a bignum tower, promises and channels, NativeCall into C.
+    <a href="/tour/">The tour</a> walks through them in about an hour;
+    <a href="/spec/">the specification</a> is the reference.
+  </p>
+</section>
+
+<!-- ============================= stacked ============================= -->
+<section class="sr-sec" id="stacked">
+  <p class="sr-kicker">The party trick</p>
+  <h2>Interpreters all the way down</h2>
+  <p class="sr-intro">
+    The playground's dropdown carries five complete interpreters for
+    <em>other</em> languages, each one written in Raku. Pick the Python one,
+    put a Python program in the standard-input box and press Run: what answers
+    you, in a second or so, is three interpreters stacked on top of each other
+    inside a browser tab, with no server anywhere in the picture.
+  </p>
+
+  <ol class="sr-stack">
+    <li class="sr-layer" data-hue="prog">
+      <span class="sr-layer-name">fizzbuzz.py</span>
+      <span class="sr-layer-what">your Python program, typed into the input box</span>
+    </li>
+    <li class="sr-rel">is parsed and executed by</li>
+    <li class="sr-layer" data-hue="raku">
+      <span class="sr-layer-name">python.raku</span>
+      <span class="sr-layer-what">a Python 3 interpreter — 1,472 lines of Raku</span>
+    </li>
+    <li class="sr-rel">which is itself parsed and executed by</li>
+    <li class="sr-layer" data-hue="engine">
+      <span class="sr-layer-name">Raku++</span>
+      <span class="sr-layer-what">a Raku interpreter, written in C++17</span>
+    </li>
+    <li class="sr-rel">compiled ahead of time to</li>
+    <li class="sr-layer" data-hue="wasm">
+      <span class="sr-layer-name">WebAssembly</span>
+      <span class="sr-layer-what">running in the tab you are reading this in, with no server behind it</span>
+    </li>
+  </ol>
+
+  <div class="table-wrap">
+  <table class="sr-table">
+    <tr><th>Showcase</th><th>Written in Raku</th><th>Interprets</th></tr>
+    <tr>
+      <td><a href="/play/?ex=lisp-interpreter&amp;in=closures&amp;run">Lisp&nbsp;↗</a></td>
+      <td class="num">432 lines</td>
+      <td>a Scheme subset, closures and an exact numeric tower included</td>
+    </tr>
+    <tr>
+      <td><a href="/play/?ex=forth-interpreter&amp;in=full-demo&amp;run">Forth&nbsp;↗</a></td>
+      <td class="num">223 lines</td>
+      <td>Forth — a stack machine and a word dictionary</td>
+    </tr>
+    <tr>
+      <td><a href="/play/?ex=perl-interpreter&amp;in=regex&amp;run">Perl&nbsp;↗</a></td>
+      <td class="num">1,635 lines</td>
+      <td>Perl 5, with its own regex engine</td>
+    </tr>
+    <tr>
+      <td><a href="/play/?ex=python-interpreter&amp;in=word-count&amp;run">Python&nbsp;↗</a></td>
+      <td class="num">1,472 lines</td>
+      <td>Python 3, off-side rule and all</td>
+    </tr>
+    <tr>
+      <td><a href="/play/?ex=javascript-typescript&amp;in=bank-typescript&amp;run">JavaScript&nbsp;↗</a></td>
+      <td class="num">2,167 lines</td>
+      <td>JavaScript and TypeScript, classes and closures included</td>
+    </tr>
+  </table>
+  </div>
+
+  <p class="sr-fine" style="margin-top:.6rem">
+    Every name above is a link: it opens the playground with that interpreter
+    loaded and a program already in the input box, and runs it.
+  </p>
+
+  <p class="sr-cta" style="margin-top:1.2rem">
+    <a class="sr-btn" href="/play/?ex=python-interpreter&amp;in=fizzbuzz&amp;run">Run a Python program on it →</a>
+  </p>
+
+  <p class="sr-fine">
+    They are not toys built to look good on a landing page: each one is a
+    mid-size program that exercises a different corner of Raku — grammars and a
+    tree-walking evaluator, a full precedence ladder, sigil variables and
+    context, an <code>INDENT</code>/<code>DEDENT</code> tokenizer — and each was
+    written partly to find bugs in Raku++, which it duly did. The long version,
+    with where every millisecond goes:
+    <a href="https://github.com/ash/rakupp/blob/main/rakujs/STACKED-INTERPRETERS.md">Interpreters all the way down</a>.
+  </p>
+</section>
+
+<!-- ============================== speed ============================== -->
+<section class="sr-sec" id="speed">
+  <p class="sr-kicker">The numbers</p>
+  <h2>What it costs to run</h2>
+  <p class="sr-intro">
+    Cold start is about <strong>2 ms</strong> — best of a 200-spawn loop, 1.8 ms
+    — because there is no VM to bring up first. After that, the same program can
+    be interpreted or compiled with <code>--exe</code>, and what compiling is
+    worth depends entirely on
+    what the program spends its time doing: nothing at all on one of the nine
+    benchmarks, 9.6× on another. Best of six runs, process start included;
+    lower is better.
+  </p>
+
+  <div class="table-wrap">
+  <table class="sr-table narrow">
+    <tr>
+      <th>Benchmark</th>
+      <th class="num">Interpreted</th>
+      <th class="num">Compiled</th>
+      <th class="num">Speed-up</th>
+    </tr>
+    <tr><td>string building</td><td class="num">16.0 ms</td><td class="num win">4.8 ms</td><td class="num">3.3×</td></tr>
+    <tr><td>hashes</td><td class="num">37.9 ms</td><td class="num win">17.4 ms</td><td class="num">2.2×</td></tr>
+    <tr><td>tight loop</td><td class="num">204.6 ms</td><td class="num win">28.9 ms</td><td class="num">7.1×</td></tr>
+    <tr><td>regex</td><td class="num">91.8 ms</td><td class="num win">72.0 ms</td><td class="num">1.3×</td></tr>
+    <tr><td>naive recursion</td><td class="num">671.4 ms</td><td class="num win">159.6 ms</td><td class="num">4.2×</td></tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    Appending to a string with <code>~=</code> appends in place in every mode, so
+    building a large string is linear rather than quadratic work. The browser
+    engine is the same interpreter again, and lands within 1.3–6.8× of the native
+    interpreter on these kernels. All nine benchmarks, the machine they were
+    measured on, and the method:
+    <a href="https://github.com/ash/rakupp/blob/main/docs/status/BENCHMARKS.md">BENCHMARKS.md</a>.
+  </p>
+</section>
+
+<!-- =========================== concurrency =========================== -->
+<section class="sr-sec" id="concurrency">
+  <p class="sr-kicker">More than one core</p>
+  <h2>Threads that actually use them</h2>
+  <p class="sr-intro">
+    <code>start</code> and <code>await</code>, promises, supplies, channels and
+    <code>react { whenever … }</code> — the same shapes as the reference
+    implementation. By default worker threads coordinate under a global lock,
+    which keeps shared state honest; <code>RAKUPP_PARALLEL=1</code> lifts it and
+    lets independent work actually run at once.
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">Four independent workers, no shared state between them</span>
+<pre class="native-code"><code><span class="k">my</span> <span class="nv">@results</span> = <span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: -&gt; <span class="nv">$n</span> {
+    <span class="k">start</span> { (<span class="mi">1</span> .. <span class="mi">300_000</span>).<span class="nb">map</span>({ <span class="nv">$_</span> * <span class="nv">$n</span> }).<span class="nb">sum</span> }
+};
+<span class="nb">say</span> <span class="nv">@results</span>.<span class="nb">sum</span>;</code></pre>
+  </div>
+
+  <div class="table-wrap">
+  <table class="sr-table narrow">
+    <tr>
+      <th>Threads</th>
+      <th class="num"><code>RAKUPP_PARALLEL=1</code></th>
+      <th class="num">default (locked)</th>
+    </tr>
+    <tr><td>1</td><td class="num">1.00×</td><td class="num">0.96×</td></tr>
+    <tr><td>2</td><td class="num win">1.95×</td><td class="num">0.96×</td></tr>
+    <tr><td>4</td><td class="num win">3.72×</td><td class="num">0.99×</td></tr>
+    <tr><td>8</td><td class="num win">4.22×</td><td class="num">0.95×</td></tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    Speed-up over the same work in a plain loop, on a contention-free fan-out.
+    Change the shape and the number changes with it: four threads hammering one
+    shared counter give 1.45×, because the process is in the kernel arbitrating
+    rather than computing — which is exactly why
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">the method page</a>
+    insists you report the thread count beside the ratio. This is also the one
+    section here you cannot try in the editors above: a browser tab runs the
+    interpreter single-threaded.
+  </p>
+</section>
+
+<!-- ============================== build ============================== -->
+<section class="sr-sec" id="build">
+  <p class="sr-kicker">What you can build with it</p>
+  <h2>Servers, not just scripts</h2>
+  <p class="sr-intro">
+    Asynchronous sockets are in the box: <code>IO::Socket::Async</code> for
+    clients and servers, <code>signal()</code> for a shutdown that closes
+    cleanly, and TLS through <code>IO::Socket::Async::SSL</code> when the system
+    has an OpenSSL to talk to. A server is a <code>react</code> block.
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">A TCP echo server, whole</span>
+<pre class="native-code"><code><span class="k">react</span> {
+    <span class="k">whenever</span> <span class="n">IO::Socket::Async</span>.<span class="n">listen</span>(<span class="s">'127.0.0.1'</span>, <span class="mi">15480</span>) -&gt; <span class="nv">$conn</span> {
+        <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span>(:<span class="n">bin</span>) -&gt; <span class="nv">$data</span> {
+            <span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;echo: &quot;</span>.<span class="n">encode</span> ~ <span class="nv">$data</span>);
+            <span class="nv">$conn</span>.<span class="nb">close</span>;
+        }
+    }
+}</code></pre>
+  </div>
+
+  <p class="sr-fine" style="margin-bottom:1.4rem">
+    Each of these is a real program in the repository, and each compiles to a
+    standalone binary with <code>--exe</code>. The tiles link to the
+    <strong>source on GitHub</strong> — these are programs to read and run
+    yourself, not demos running somewhere:
+  </p>
+
+  <div class="sr-grid three">
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/pastebin">A pastebin</a></h3>
+      <p>An HTTP server written straight onto raw sockets — no framework underneath, no framework needed.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/rakus">A static file server</a></h3>
+      <p><code>rakus</code>: point it at a folder, open a browser. It is what this site is developed against locally.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/chat">A chat server</a></h3>
+      <p>Many clients at once, one thread each, driven from as many terminals as you care to open.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/kvstore">A key-value store</a></h3>
+      <p>Redis-shaped, with its own text protocol on TCP — the "can it hold a connection open and talk" test.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/raytracer">A path tracer</a></h3>
+      <p>Floating point in a tight loop, with the allocation discipline that made it 13× faster, measured.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp/tree/main/showcase/modinfo">A distribution inspector</a></h3>
+      <p>Seventeen ecosystem distributions doing the work: dependency graphs, validation, reports.</p>
+      <p class="sr-more">Read the source ↗</p>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    All of them, with what each one is meant to prove:
+    <a href="https://github.com/ash/rakupp/tree/main/showcase">the showcase directory</a>.
+    The networking guide — clients, servers, graceful shutdown, HTTPS — is
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NETWORKING.md">NETWORKING.md</a>.
+  </p>
+</section>
+
+<!-- ============================= toolbox ============================= -->
+<section class="sr-sec" id="toolbox">
+  <p class="sr-kicker">What else is in the binary</p>
+  <h2>It is a toolchain, not just a runtime</h2>
+  <p class="sr-intro">
+    A linter, a syntax highlighter, an AST dump, a profiler and a native
+    compiler — in the one executable, with no plugins to install and nothing to
+    configure. Every transcript below is real output from this version.
+  </p>
+
+  <div class="sr-grid one">
+
+    <div class="sr-card">
+      <h3><code>--lint</code> — ten rules, before it runs at all</h3>
+      <div class="sr-tool-body">
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp --lint app.raku
+app.raku:2: warning: '$n' is declared but never used [unused-variable]
+app.raku:3: warning: condition is a constant; the branch never runs [constant-condition]
+app.raku:4: note: 'return' as the final statement is redundant; the block's last value is returned automatically [redundant-return]
+rakupp --lint: 2 warnings, 1 note in app.raku</code></pre>
+      <p>
+        Eight warnings and two advisory notes, deliberately built to
+        under-report rather than cry wolf: faced with <code>EVAL</code> or a
+        symbolic reference, a rule switches itself off rather than guess.
+        Warnings exit non-zero, so CI can gate on it; notes do not.
+      </p>
+      </div>
+    </div>
+
+    <div class="sr-card">
+      <h3><code>--highlight</code> — the highlighter this page is using</h3>
+      <div class="sr-tool-body">
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp --highlight --ansi -e 'my $x = 42; say "x is $x";'
+<span class="a32">my</span> <span class="a34">$x</span> = <span class="a36">42</span>; <span class="a32">say</span> <span class="a31">"x is $x"</span>;
+
+<span class="sh-p">$</span> rakupp --highlight --html -e 'my $x = 42; say "x is $x";'
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;my&lt;/span&gt; &lt;span class="nv"&gt;$x&lt;/span&gt; = &lt;span class="mi"&gt;42&lt;/span&gt;; &lt;span class="nb"&gt;say&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;x is $x&amp;quot;&lt;/span&gt;;&lt;/pre&gt;&lt;/div&gt;</code></pre>
+      <p>
+        The terminal form paints straight in, as above; the HTML form emits
+        standard Pygments classes, so it drops into a stylesheet you already
+        have. The same highlighter colours this site, the course, and —
+        compiled to WebAssembly along with everything else — the editors on this
+        page, live, as you type into them.
+      </p>
+      </div>
+    </div>
+
+    <div class="sr-card">
+      <h3><code>--ast</code> — what it made of your program</h3>
+      <div class="sr-tool-body">
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp --ast -e 'say 1 + 2 * 3'
+Program
+  Call say
+    Binary +
+      IntLit 1
+      Binary *
+        IntLit 2
+        IntLit 3</code></pre>
+      <p>
+        For answering "did it parse that the way I meant?" without a debugger.
+        <code>-c</code> checks the syntax without running anything, and
+        <code>--cpp</code> prints the C++ that <code>--exe</code> would compile
+        — add <code>-O</code> to read the optimized codegen instead.
+      </p>
+      </div>
+    </div>
+
+    <div class="sr-card">
+      <h3><code>--exe</code> — one file, 9 MB, 2 ms to start</h3>
+      <div class="sr-tool-body">
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp --exe hello.raku -o hello
+Compiled (native) hello.raku -&gt; hello
+
+<span class="sh-p">$</span> ls -lh hello
+-rwxr-xr-x  9.3M  hello</code></pre>
+      <p>
+        About a second to compile, and the size barely moves with the program:
+        a 46-line Mandelbrot and a 106-line JSON grammar both come out at
+        9.4 MB, because what dominates is the runtime linked in beside them.
+        The machine that runs the result needs nothing installed — not even
+        Raku++.
+      </p>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    Also in there: <code>--profile</code>, which prints a routine-level
+    wall-time profile after the run (or JSON, for a tool to read);
+    <code>--bundle</code> and <code>--aot</code>, which produce standalone
+    binaries that carry the interpreter rather than replacing it; and the perl
+    one-liner family — <code>-n</code>, <code>-p</code>, <code>-a</code>,
+    <code>-i.bak</code> — which cluster the way you expect.
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/CLI.md">CLI.md</a>
+    is the full list; <a href="install/#options">the install page</a> has the
+    short one.
+  </p>
+</section>
+
+<!-- ============================= install ============================= -->
+<section class="sr-sec" id="install">
+  <p class="sr-kicker">Take one home</p>
+  <h2>Install it</h2>
+  <p class="sr-intro">
+    One binary, no runtime to install beside it, no package manager required if
+    you would rather not use one.
+  </p>
+
+  <div class="sr-grid two">
+    <div class="sr-card">
+      <h3>macOS, with Homebrew</h3>
+      <div class="sr-code">
+        <span class="lbl">Apple Silicon gets a prebuilt binary</span>
+<pre class="native-code"><code>brew tap ash/rakupp
+brew install rakupp</code></pre>
+      </div>
+      <p class="sr-more"><a href="install/">Every other way to get it →</a></p>
+    </div>
+
+    <div class="sr-card">
+      <h3>Then run something</h3>
+      <div class="sr-code">
+        <span class="lbl">A file, a one-liner, or standard input</span>
+<pre class="native-code"><code>rakupp program.raku
+rakupp -e 'say (1..100).grep(*.is-prime).sum'
+rakupp -ne '.say if /error/' server.log</code></pre>
+      </div>
+      <p class="sr-more"><a href="/faq/">Task-shaped answers in the FAQ →</a></p>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1rem">
+    Self-contained archives for macOS (universal), Linux (x86-64, static) and
+    Windows (x64, static CRT) are on the
+    <a href="https://github.com/ash/rakupp/releases/latest">releases page</a>;
+    there are also Guix and Nix channels, and it builds from source with CMake
+    and any C++17 compiler — no third-party libraries.
+
+  </p>
+</section>
+
+<!-- ============================= modules ============================= -->
+<section class="sr-sec" id="modules">
+  <p class="sr-kicker">Other people's code</p>
+  <h2>The ecosystem comes with it</h2>
+  <p class="sr-intro">
+    Raku++ reads the <em>same</em> installation store
+    <a href="https://github.com/ugexe/zef">zef</a> populates. There is no
+    separate registry, no re-packaging and no rakupp-flavoured fork of anything:
+    a distribution installed once is what <code>use</code> picks up, unmodified.
+    <code>zef</code> itself runs under Raku++ end to end, too.
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">Installed once, in the usual way</span>
+<pre class="native-code"><code>zef install JSON::Fast</code></pre>
+  </div>
+
+  <div class="sr-code">
+    <span class="lbl">&hellip;and then, under rakupp &mdash; with nothing in between</span>
+<pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+<span class="nb">say</span> <span class="n">to-json</span>({ <span class="n">name</span> =&gt; <span class="s">'Ada'</span> }, :!<span class="n">pretty</span>);   <span class="c1"># {&quot;name&quot;:&quot;Ada&quot;}</span>
+
+<span class="k">use</span> <span class="n">XML</span>;
+<span class="nb">say</span> <span class="n">from-xml</span>(<span class="s">'&lt;r&gt;&lt;i&gt;hi&lt;/i&gt;&lt;/r&gt;'</span>).<span class="n">elements</span>[<span class="mi">0</span>].<span class="n">contents</span>[<span class="mi">0</span>];   <span class="c1"># hi</span>
+
+<span class="k">use</span> <span class="n">MIME::Base64</span>;
+<span class="nb">say</span> <span class="n">MIME::Base64</span>.<span class="n">encode-str</span>(<span class="s">'raku'</span>);        <span class="c1"># cmFrdQ==</span></code></pre>
+  </div>
+
+  <div class="sr-grid three" style="margin-top:1.6rem">
+    <div class="sr-card">
+      <h3>50 of the 59 most depended-on</h3>
+      <p>
+        The working set is the ecosystem's top distributions, ranked by how many
+        other distributions depend on them. Fifty of the fifty-nine pass
+        <em>their own</em> install-time test suites &mdash; their tests, not ours.
+      </p>
+    </div>
+    <div class="sr-card">
+      <h3>Including the ones that call C</h3>
+      <p>
+        Roughly a quarter of that set uses NativeCall. It works interpreted and
+        compiled, through one marshaller, and finds <code>libffi</code> at run
+        time &mdash; so there is still nothing for you to install.
+      </p>
+    </div>
+    <div class="sr-card">
+      <h3>Your own <code>lib/</code>, as usual</h3>
+      <p>
+        <code>-I</code>, <code>RAKULIB</code> and <code>use lib</code> all work
+        the way you expect, and a <code>use</code> that cannot be found is fatal
+        rather than quietly skipped.
+      </p>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    That set is also where a great many of this release's fixes came from:
+    running other people's tests finds what a suite written alongside an
+    implementation never will. The per-distribution picture, including what is
+    still failing and why, is in
+    <a href="https://github.com/ash/rakupp/blob/main/docs/status/ROADMAP.md">the roadmap</a>;
+    the how-to is <a href="install/#modules">on the install page</a> and in
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md">MODULES.md</a>.
+  </p>
+</section>
+
+<!-- ============================== embed ============================== -->
+<section class="sr-sec" id="embed">
+  <p class="sr-kicker">Take it with you</p>
+  <h2>Put a running Raku editor on your own page</h2>
+  <p class="sr-intro">
+    One script tag. Your readers get a real interpreter in their own browser,
+    and you get nothing to run, host or pay for.
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">Load it once, anywhere in the page</span>
+<pre class="native-code"><code>&lt;script src="https://raku.online/raku.js"&gt;&lt;/script&gt;</code></pre>
+  </div>
+
+  <div class="sr-code">
+    <span class="lbl">Then any element carrying data-raku becomes an editor</span>
+<pre class="native-code"><code>&lt;pre data-raku&gt;say "Hello from someone else's website!";&lt;/pre&gt;</code></pre>
+  </div>
+
+  <p class="sr-fine" style="margin-bottom:.8rem">Which renders exactly this — and it runs:</p>
+<pre data-raku>say "Hello from someone else's website!";</pre>
+
+  <div class="sr-grid three" style="margin-top:1.6rem">
+    <div class="sr-card">
+      <h3>One interpreter per page</h3>
+      <p>Ten editors share a single WebAssembly instance and one worker — one download, not ten.</p>
+    </div>
+    <div class="sr-card">
+      <h3>It cannot break your CSS</h3>
+      <p>Every editor lives in its own Shadow DOM. Your styles cannot reach in and ours cannot leak out, so it survives WordPress.</p>
+    </div>
+    <div class="sr-card">
+      <h3>Nothing to operate</h3>
+      <p>Code runs in your visitors' browsers. There is no server in the picture, so there is nothing to secure, scale or bill.</p>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    Already have <code>&lt;pre&gt;&lt;code class="language-raku"&gt;</code> blocks from a
+    highlighter? Add <code>data-auto</code> to the script tag and they become
+    runnable with no other change.
+    <a href="/builder/">The builder</a> turns pasted code into a snippet to copy;
+    <a href="/demo/">the demo page</a> shows every pattern side by side;
+    <a href="/embed/">the guide</a> lists the options. The largest example is
+    this site: <a href="/tour/">the tour</a>, <a href="/drills/">the drills</a>
+    and <a href="/spec/">the specification</a> all run their examples through the
+    same script.
+  </p>
+</section>
+
+<!-- ============================== learn ============================== -->
+<section class="sr-sec" id="learn">
+  <p class="sr-kicker">The rest of the shop</p>
+  <h2>Learn it, and look things up</h2>
+
+  <a class="sr-hero-card" href="https://course.raku.org">
+    <span class="sr-tag course">The course ↗</span>
+    <h3>The Complete Course of the Raku Programming Language</h3>
+    <p>
+      From your first line of code to grammars, concurrency and web services:
+      five parts of theory, each section ending in exercises you are meant to
+      attempt before reading the answer, and a hundred-question final test over
+      the whole thing. Free, open source, supported by The Perl &amp; Raku
+      Foundation, and translated into nine languages.
+    </p>
+    <div class="sr-course-stats">
+      <div><b>5</b><span>parts</span></div>
+      <div><b>384</b><span>topics</span></div>
+      <div><b>217</b><span>quizzes</span></div>
+      <div><b>346</b><span>exercises</span></div>
+      <div><b>9</b><span>languages</span></div>
+    </div>
+    <span class="sr-more">Start the course →</span>
+  </a>
+
+  <p class="sr-fine" style="margin-bottom:1.6rem">
+    Its code samples are syntax-highlighted by Raku++, and it sends its readers
+    here to run them. What follows is the shorter material, on this site.
+  </p>
+
+  <div class="sr-hero-card semi">
+    <span class="sr-tag deck">The deck ↗</span>
+    <h3><a href="/slides/">Thirteen slides on Raku++ and its ecosystem</a></h3>
+    <p>
+      The quickest visual tour: what it is, how much of Raku it runs, how fast,
+      what it compiles to, and where the edges still are. Keyboard-navigable,
+      with a light and a dark theme.
+    </p>
+    <p class="sr-more">
+      <a href="/slides/">Open the deck →</a>
+      <span class="sep">·</span>
+      <a href="/slides/rakupp-presentation.pdf">Download the PDF (792 KB)</a>
+    </p>
+  </div>
+
+  <div class="sr-grid three">
+    <div class="sr-card link">
+      <h3><a href="/tour/">A Tour of Raku</a></h3>
+      <p>Eighteen short lessons, every example runnable on the page. About an hour, start to finish.</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="/drills/">Raku Drills</a></h3>
+      <p>Practise what you have just read, one snippet at a time, with the answer a click away.</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="/spec/">The specification</a></h3>
+      <p>How Raku++ behaves, feature by feature, with examples verified against Raku++, Rakudo and the browser engine.</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="/spec/rules/">Raku Rules</a></h3>
+      <p>The exhaustive rulebook: every construct, numbered rule by numbered rule, including the traps.</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="/faq/">The FAQ</a></h3>
+      <p>Task-shaped answers — running a command, why a list has one element, compiling to a binary.</p>
+    </div>
+    <div class="sr-card link">
+      <h3><a href="https://github.com/ash/rakupp">The source</a></h3>
+      <p>C++17, no third-party dependencies, and the documentation that goes with it: reference, cookbook, internals.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== honest ============================== -->
+<section class="sr-sec" id="honest">
+  <p class="sr-kicker">The label on the tin</p>
+  <h2>What this is, and how it is counted</h2>
+
+  <div class="sr-honest">
+    <p>
+      Raku++ is an independent implementation, written from scratch: a
+      hand-written lexer, parser and evaluator in C++17, with no third-party
+      libraries underneath it and no borrowed code inside it. What it targets is
+      the <em>language</em>, and what it is measured against is
+      <a href="https://github.com/Raku/roast">Roast</a> — the official test suite
+      — plus the examples in the official documentation and the test suites that
+      ecosystem modules ship with themselves.
+    </p>
+    <p>
+      Those measurements are run on every release and published in full, losses
+      included. Nothing on this page is an estimate, and every figure below has a
+      page behind it saying exactly what it counts.
+    </p>
+  </div>
+
+  <div class="table-wrap" style="margin-top:1.4rem">
+  <table class="sr-table">
+    <tr><th>Where it stands, at 2.0.0</th><th class="num">Count</th></tr>
+    <tr><td>Roast tests passing, of the ~218,700 the suite declares</td><td class="num">197,090 (90%)</td></tr>
+    <tr><td>Roast files in which <em>every</em> assertion passes, of 1,462</td><td class="num">594 (41%)</td></tr>
+    <tr><td>Ecosystem distributions passing their own install-time test suites</td><td class="num">50 / 59</td></tr>
+    <tr><td>Examples from the official documentation reproduced exactly</td><td class="num">952</td></tr>
+    <tr><td>Built-in subroutines implemented</td><td class="num">198</td></tr>
+    <tr><td>Built-in methods implemented</td><td class="num">667</td></tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    How each of those is counted, including what deliberately does not count:
+    <a href="https://github.com/ash/rakupp/blob/main/docs/status/COUNTING.md">COUNTING.md</a>.
+    The live picture, release over release, is on
+    <a href="/spec/conformance/">the conformance pages</a> and
+    <a href="/spec/dashboard/">the dashboard</a>. Where a feature behaves
+    differently here than the specification describes,
+    <a href="/spec/">the page for that feature</a> says so in as many words.
+  </p>
+
+  <p class="sr-cta" style="margin-top:1.8rem">
+    <a class="sr-btn" href="/play/">Open the playground</a>
+    <a class="sr-btn ghost" href="/tour/">Start the tour</a>
+    <a class="sr-btn ghost" href="install/">Install it</a>
+  </p>
+</section>
+
+<footer class="sr-foot">
+  <span>Everything on this site is run by <a href="/rakupp/">Raku++</a> compiled to WebAssembly — and generated by Raku++ as a native binary. Your code never leaves your browser.</span>
   <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
 </footer>
 
 </div>
 </main>
 
-<script src="/raku.js?v=a06b06ce"></script>
-<script src="/theme/shell.js?v=58af817f" defer></script>
+<script src="/raku.js?v=fbfee845"></script>
+
+<!-- Warm the engine while the reader is still reading.
+     Pressing Run is the moment this page is selling, so the editors do NOT
+     auto-run — but the interpreter is ~6 MB of WebAssembly, and waiting for it
+     after the click is exactly the wrong place to spend that. So a hidden,
+     empty editor is enhanced with run:true once the page is idle: that boots
+     the very same Worker the visible editors use, fetches and instantiates the
+     module, and publishes the engine's version to the site bar. Runs serialise
+     on that one worker, but this one has no program in it and finishes in about
+     a millisecond, so a reader who clicks Run immediately waits no longer than
+     they would have anyway.
+     Skipped on metered or slow connections: there, the download should happen
+     because someone asked for it.
+
+     The inner div is what gets enhanced, and the wrapper is what stays hidden:
+     enhance() REPLACES the element it is given with its own host node, which
+     would otherwise arrive visible and leave a stray empty editor at the foot
+     of the page. -->
+<div id="engine-warmup" hidden aria-hidden="true"><div></div></div>
+<script>
+(function () {
+  var c = navigator.connection || {};
+  if (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')) return;
+  function warm() {
+    var box = document.getElementById('engine-warmup');
+    if (!box || !box.firstElementChild || !window.RakuEmbed) return;
+    try { window.RakuEmbed.enhance(box.firstElementChild, { run: true }); }
+    catch (e) { /* the editors still work on click */ }
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 2500 });
+  else window.addEventListener('load', function () { setTimeout(warm, 1200); });
+})();
+</script>
+
+<script src="/theme/shell.js?v=243cfb33" defer></script>
 </body>
 </html>

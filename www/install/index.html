@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Raku++ — every way to get the binary</title>
+<meta name="description" content="Homebrew, prebuilt archives for macOS, Linux and Windows, Guix, Nix, or a CMake build from source. One binary, no runtime to install beside it.">
+<script src="/theme/boot.js?v=243cfb33"></script>
+<link rel="stylesheet" href="/theme/base.css?v=243cfb33">
+<link rel="stylesheet" href="/theme/shell.css?v=243cfb33">
+<link rel="stylesheet" href="/theme/showroom.css?v=243cfb33">
+</head>
+<body class="showroom">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<div class="sr-hero">
+  <p class="sr-eyebrow"><a href="../">← the front page</a> · <b>Raku++ 2.0.0</b></p>
+
+  <h1>Install it</h1>
+
+  <p class="sr-lede">
+    Raku++ is one native binary with no runtime to install beside it and no
+    third-party libraries underneath it. Pick whichever line below matches your
+    machine — or skip all of this and
+    <a href="/play/">use the browser version</a>, which installs nothing at all.
+  </p>
+
+  <nav class="sr-jump" aria-label="On this page">
+    <a href="#brew">Homebrew</a>
+    <a href="#binaries">Supported platforms</a>
+    <a href="#source">From source</a>
+    <a href="#guix">Guix</a>
+    <a href="#nix">Nix</a>
+    <a href="#first">Your first program</a>
+    <a href="#options">The options worth knowing</a>
+    <a href="#modules">Modules</a>
+  </nav>
+</div>
+
+<!-- ============================== brew ============================== -->
+<section class="sr-sec" id="brew">
+  <p class="sr-kicker">macOS</p>
+  <h2>Homebrew</h2>
+<pre class="native-code"><code>brew tap ash/rakupp
+brew install rakupp
+
+brew install --HEAD rakupp     # or: the latest main branch</code></pre>
+  <p class="sr-fine" style="margin-top:.8rem">
+    Apple Silicon installs a prebuilt binary and compiles nothing; Intel builds
+    from source. Homebrew itself needs the Xcode Command Line Tools — if
+    <code>brew install</code> asks for them, run <code>xcode-select --install</code>
+    first.
+  </p>
+</section>
+
+<!-- ============================ binaries ============================ -->
+<section class="sr-sec" id="binaries">
+  <p class="sr-kicker">Every platform, and how it is served</p>
+  <h2>Supported platforms</h2>
+  <p class="sr-intro">
+    Five prebuilt archives ship with every release, each self-contained and each
+    with a <code>.sha256</code> beside it on the
+    <a href="https://github.com/ash/rakupp/releases/latest">releases page</a>.
+    Nothing in them needs installing — they only need unpacking. Every one is
+    built and smoke-tested in CI on the platform it targets.
+  </p>
+
+  <div class="table-wrap">
+  <table class="sr-table">
+    <tr><th>Platform</th><th>Archive</th><th>Notes</th></tr>
+    <tr>
+      <td>macOS 11+, Apple&nbsp;Silicon and Intel</td>
+      <td><code>rakupp-macos-universal.tar.gz</code></td>
+      <td>one universal binary for both architectures — or <a href="#brew">Homebrew</a></td>
+    </tr>
+    <tr>
+      <td>Linux, x86-64</td>
+      <td><code>rakupp-linux-x86_64.tar.gz</code></td>
+      <td>static libstdc++ — no dependencies to satisfy</td>
+    </tr>
+    <tr>
+      <td>Windows, x64</td>
+      <td><code>rakupp-windows-x64.zip</code></td>
+      <td>built with MSVC, static CRT — no redistributable</td>
+    </tr>
+    <tr>
+      <td>Windows, x64 (MinGW)</td>
+      <td><code>rakupp-windows-x64-mingw.zip</code></td>
+      <td>for a MinGW-w64 / MSYS2 toolchain</td>
+    </tr>
+    <tr>
+      <td>OpenBSD, x86-64</td>
+      <td><code>rakupp-openbsd-x86_64.tar.gz</code></td>
+      <td>base clang; built in a CI virtual machine each release</td>
+    </tr>
+    <tr>
+      <td>The browser</td>
+      <td><code>rakujs-*.zip</code></td>
+      <td>the WebAssembly build — or just use <a href="/play/">the playground</a></td>
+    </tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    Unpack keeping the <code>bin/ lib/ include/</code> layout together — that is
+    what <code>--exe</code> links against — and put <code>bin/</code> on your
+    <code>PATH</code>. <code>rakupp</code> finds its runtime library relative to
+    its own binary, so it works from any directory; if you copy the executable
+    somewhere on its own, point it back with
+    <code>RAKUPP_HOME=&lt;prefix&gt;</code>.
+  </p>
+
+  <p class="sr-fine">
+    <strong>Anywhere else</strong> — Linux on ARM, another BSD, a distribution
+    older than the archive expects — <a href="#source">build from source</a>.
+    It needs CMake and a C++17 compiler and nothing else: there are no
+    third-party libraries to find first, which is what makes the list above
+    short rather than a matrix. Two cases have their own route rather than an
+    archive: <a href="#nix">NixOS</a>, which cannot run the generic Linux binary
+    at all (it has no global ELF interpreter), and <a href="#guix">Guix</a>,
+    which has a channel.
+  </p>
+</section>
+
+<!-- ============================= source ============================= -->
+<section class="sr-sec" id="source">
+  <p class="sr-kicker">Anywhere with a C++17 compiler</p>
+  <h2>From source</h2>
+  <p class="sr-intro">
+    There are no third-party dependencies to fetch first — CMake and a compiler
+    is the whole list.
+  </p>
+<pre class="native-code"><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build                       # → build/rakupp
+
+# install the binary and the runtime --exe links against
+cmake --install build --prefix ~/.local   # → ~/.local/{bin,lib,include/rakupp}</code></pre>
+  <p class="sr-fine" style="margin:.8rem 0 .5rem">
+    On Windows, build from a Developer Command Prompt and pass the configuration
+    to the build step — the Visual Studio generator is multi-config, so
+    <code>-DCMAKE_BUILD_TYPE</code> alone is not enough:
+  </p>
+<pre class="native-code"><code>cmake -S . -B build
+cmake --build build --config Release       # → build\Release\rakupp.exe</code></pre>
+</section>
+
+<!-- ============================== guix ============================== -->
+<section class="sr-sec" id="guix">
+  <p class="sr-kicker">Linux</p>
+  <h2>GNU Guix</h2>
+  <p class="sr-intro">
+    The repository is also a Guix channel, contributed by
+    <a href="https://github.com/4zv4l">@4zv4l</a>. From a checkout:
+  </p>
+<pre class="native-code"><code>guix build -f .guix/modules/rakupp-package.scm</code></pre>
+  <p class="sr-fine" style="margin:.8rem 0 .5rem">Or add the channel to <code>~/.config/guix/channels.scm</code>:</p>
+<pre class="native-code"><code>(channel
+  (name 'rakupp)
+  (url "https://github.com/ash/rakupp")
+  (branch "main"))</code></pre>
+<pre class="native-code" style="margin-top:.6rem"><code>guix pull &amp;&amp; guix install rakupp</code></pre>
+</section>
+
+<!-- =============================== nix =============================== -->
+<section class="sr-sec" id="nix">
+  <p class="sr-kicker">Linux · NixOS</p>
+  <h2>Nix</h2>
+<pre class="native-code"><code>nix run github:ash/rakupp -- -e 'say 42'
+nix profile install github:ash/rakupp</code></pre>
+  <p class="sr-fine" style="margin-top:.8rem">
+    From a checkout, <code>nix build</code> produces
+    <code>./result/bin/rakupp</code>.
+  </p>
+</section>
+
+<!-- ============================== first ============================== -->
+<section class="sr-sec" id="first">
+  <p class="sr-kicker">First run</p>
+  <h2>Check that it works</h2>
+<pre class="native-code"><code>rakupp --version
+rakupp -e 'say "hello, world"'
+rakupp -e 'say (1..100).grep(*.is-prime).sum'      # → 1060
+echo 'say 42' | rakupp
+rakupp program.raku</code></pre>
+  <p class="sr-fine" style="margin-top:.8rem">
+    Cold start is about two milliseconds, so one-liners and shell glue feel like
+    any other native tool. The same program in your browser, with nothing
+    installed, is <a href="/play/">the playground</a>.
+  </p>
+</section>
+
+<!-- ============================= options ============================= -->
+<section class="sr-sec" id="options">
+  <p class="sr-kicker">The command line</p>
+  <h2>The options worth knowing</h2>
+
+  <div class="table-wrap">
+  <table class="sr-table">
+    <tr><th>Option</th><th>What it does</th></tr>
+    <tr><td><code>FILE</code> · <code>-e 'CODE'</code> · <em>stdin</em></td><td>Run a program from a file, a one-liner, or standard input</td></tr>
+    <tr><td><code>-I &lt;path&gt;</code> · <code>-M &lt;module&gt;</code></td><td>Add a module search directory, or load a module first (both repeatable)</td></tr>
+    <tr><td><code>-n</code> <code>-p</code> <code>-a</code> <code>-F&lt;sep&gt;</code></td><td>The perl one-liner family: line loop, autoprint, autosplit into <code>@F</code> — and they cluster, as in <code>-lane</code></td></tr>
+    <tr><td><code>-i[.ext]</code></td><td>With <code>-n</code>/<code>-p</code>: edit the argument files in place (<code>-pi.bak</code> keeps backups)</td></tr>
+    <tr><td><code>--exe SRC -o OUT</code></td><td>Compile to a standalone native binary (also <code>--bundle</code>, <code>--aot</code>)</td></tr>
+    <tr><td><code>--lint SRC</code></td><td>Static analysis without running: unused variables, unreachable code, and more</td></tr>
+    <tr><td><code>--profile[=FILE]</code></td><td>Routine-level wall-time profile after the run (<code>.json</code> for machine-readable)</td></tr>
+    <tr><td><code>--highlight [SRC]</code></td><td>Syntax-highlight Raku to HTML (<code>--html</code>) or to the terminal (<code>--ansi</code>)</td></tr>
+    <tr><td><code>-c</code> · <code>--ast SRC</code></td><td>Syntax-check only, or print the parsed AST</td></tr>
+    <tr><td><code>--cpp SRC [-O]</code></td><td>Print the C++ that <code>--exe</code> transpiles to</td></tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    Flags are position-independent and cluster like perl's, so
+    <code>rakupp -pi.bak -e '$_ = $_.subst("a", "b")' *.txt</code> works as you
+    would hope. <code>RAKUPP_PARALLEL=1</code> opts into true CPU parallelism for
+    <code>start</code> and worker threads. The full reference is
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/CLI.md">CLI.md</a>.
+  </p>
+</section>
+
+<!-- ============================= modules ============================= -->
+<section class="sr-sec" id="modules">
+  <p class="sr-kicker">The ecosystem</p>
+  <h2>Modules</h2>
+  <p class="sr-intro">
+    Raku++ reads the same store <a href="https://github.com/ugexe/zef">zef</a>
+    populates, so a distribution installed once is picked up by <code>use</code>
+    with no further setup.
+  </p>
+<pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;                             <span class="c1"># installed with `zef install JSON::Fast`</span>
+<span class="nb">say</span> <span class="n">to-json</span>({ <span class="n">name</span> =&gt; <span class="s">'Ada'</span> }, :!<span class="n">pretty</span>);   <span class="c1"># {&quot;name&quot;:&quot;Ada&quot;}</span></code></pre>
+  <p class="sr-fine" style="margin-top:.8rem">
+    Your own files under <code>lib/</code> are found too, as are
+    <code>-I</code>, <code>RAKULIB</code> and <code>use lib</code> paths. A
+    <code>use</code> that cannot be found, or fails to compile, is fatal — the
+    program stops rather than carrying on without the module. Fifty of the
+    fifty-nine distributions in the sample pass their own install-time test
+    suites; the guide is
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md">MODULES.md</a>.
+  </p>
+
+  <p class="sr-cta" style="margin-top:2rem">
+    <a class="sr-btn" href="../">Back to the front page</a>
+    <a class="sr-btn ghost" href="/faq/">The FAQ</a>
+    <a class="sr-btn ghost" href="/spec/">The specification</a>
+  </p>
+</section>
+
+<footer class="sr-foot">
+  <span>Raku++ is C++17 with no third-party dependencies, and compiles to WebAssembly for <a href="/play/">the browser</a>.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/rakupp">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=243cfb33" defer></script>
+</body>
+</html>

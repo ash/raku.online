@@ -20,7 +20,8 @@ program still runs in a fraction of a second:
 
 | URL | What it is | Source |
 |---|---|---|
-| `/` | About Raku, with a live editor | `www/index.html` |
+| `/` | The front page: what Raku++ is, with live editors | `www/index.html` |
+| `/install/` | Every way to get it, and every supported platform | `www/install/` |
 | `/play/` | The full playground | `www/play/` |
 | `/tour/` | A Tour of Raku — 18 lessons | generated from `sites/tour/` |
 | `/drills/` | Raku Drills — practice questions | `www/drills/` |
@@ -31,6 +32,7 @@ program still runs in a fraction of a second:
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
 | `/builder/` | Paste code → copy an embed snippet | `www/builder/` |
 | `/demo/` | Every embed pattern, side by side | `www/demo/` |
+| `/slides/` | The 13-slide deck, plus its PDF export | `www/slides/` — copied from `rakupp/presentation/` |
 
 One origin means the ~6 MB WebAssembly interpreter is downloaded once for all
 of them, `localStorage` is shared, and the sections can link to each other.
@@ -59,6 +61,7 @@ The setting is remembered in `localStorage` (`rakujs-live`).
 ```
 theme/            one stylesheet system for the whole site
   base.css          everything shared
+  showroom.css      the front page's own layer, loaded after base on / and /install/
   spec.css          the spec's own layer, loaded after base on /spec pages
   rules.css         the rulebook's layer
   shell.js/.css     the site bar, injected on every page

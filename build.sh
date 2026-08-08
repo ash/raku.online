@@ -62,7 +62,7 @@ check_theme_refs() {
 check_shell() {
     missing=""
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
-                "$WWW/rakupp/index.html" "$WWW/embed/index.html" \
+                "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
