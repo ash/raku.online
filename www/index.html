@@ -106,6 +106,7 @@ say "major $m&lt;major&gt;, minor $m&lt;minor&gt;";</pre>
     <a href="#concurrency">Concurrency</a>
     <a href="#build">What you can build</a>
     <a href="#toolbox">The toolbox</a>
+    <a href="#precomp">Precompilation</a>
     <a href="#install">Install</a>
     <a href="#modules">Modules</a>
     <a href="#embed">Embed</a>
@@ -727,6 +728,71 @@ Compiled (native) hello.raku -&gt; hello
     <a href="https://github.com/ash/rakupp/blob/main/docs/guide/CLI.md">CLI.md</a>
     is the full list; <a href="install/#options">the install page</a> has the
     short one.
+  </p>
+</section>
+
+<!-- ============================= precomp ============================= -->
+<section class="sr-sec" id="precomp">
+  <p class="sr-kicker">Parse once</p>
+  <h2>Precompiled modules — and programs</h2>
+  <p class="sr-intro">
+    Raku++ can cache the <em>parsed form</em> of what it runs, so the next run
+    does not re-read and re-parse text that has not changed. It is off until you
+    ask, nothing is written to your disk before then, and it comes as two
+    switches rather than one — because the two halves are worth very different
+    amounts.
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">Two switches, and the two that tell you what is going on</span>
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp --precomp-modules=on    # cache the parse of the modules you use
+<span class="sh-p">$</span> rakupp --precomp-files=on      # cache the program's own parse
+<span class="sh-p">$</span> rakupp --precomp-info          # what is on, where it lives, what it holds
+<span class="sh-p">$</span> rakupp --precomp-clean         # empty it — always safe</code></pre>
+  </div>
+
+  <div class="sr-grid two" style="margin-top:1.4rem">
+    <div class="sr-card">
+      <h3>Modules: worth it immediately</h3>
+      <p>
+        A dependency tree is a lot of source, and none of it changes between
+        runs. If you turn on one switch, turn on this one.
+      </p>
+      <div class="table-wrap">
+      <table class="sr-table narrow">
+        <tr><th><code>use XML</code> · 10 files</th><th class="num">start-up</th></tr>
+        <tr><td>no cache</td><td class="num">16.0 ms</td></tr>
+        <tr><td>cached</td><td class="num win">5.7 ms</td></tr>
+      </table>
+      </div>
+    </div>
+    <div class="sr-card">
+      <h3>Programs: only the big ones</h3>
+      <p>
+        A script's own parse is already sub-millisecond, and a small program's
+        floor is process start-up, not parsing. It pays from about a thousand
+        lines up.
+      </p>
+      <div class="table-wrap">
+      <table class="sr-table narrow">
+        <tr><th>bare file</th><th class="num">saved</th></tr>
+        <tr><td>50 lines</td><td class="num">0.4 ms</td></tr>
+        <tr><td>1,000 lines</td><td class="num">4.9 ms</td></tr>
+        <tr><td>20,000 lines</td><td class="num win">92.3 ms</td></tr>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-fine" style="margin-top:1.2rem">
+    Across the 22 fastest programs in <code>examples/</code> — 12 to 106 lines
+    each — turning the file cache on made no measurable difference at all, and
+    the run that <em>writes</em> an entry pays for it. That asymmetry is why
+    these are two switches: one is nearly always right, the other is a
+    judgement about your own program. Both settings persist, and what is stored
+    is the parse, not your source.
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/CACHING.md">CACHING.md</a>
+    has the method, what invalidates an entry, and how to look inside it.
   </p>
 </section>
 
