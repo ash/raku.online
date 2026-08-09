@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Node Specialization — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 18</p><h1>Node Specialization</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#what-it-does">What it does</a></li><li><a href="#why-these-shapes-and-not-constant-folding">Why these shapes, and not constant folding</a></li><li><a href="#what-cached-means-here">What "cached" means here</a></li><li><a href="#the-guards">The guards</a></li><li><a href="#why-it-is-not-a-new-node-kind">Why it is not a new node kind</a></li><li><a href="#measured">Measured</a></li><li><a href="#what-went-wrong-on-the-way">What went wrong on the way</a></li><li><a href="#codegen-already-had-this">Codegen already had this</a></li><li><a href="#extending-it">Extending it</a></li></ul></nav>
+<p>This chapter is a single optimisation, described in full, because it is the clearest worked example in the project of the method the whole thing runs on: count the opportunity before building anything, remove work rather than adding cleverness, and keep a control in the measurement.</p>
+<h2 id="what-it-does">What it does</h2>
+<p><code>evalBinary</code> and <code>evalIndex</code> recognise a handful of syntactic <strong>shapes</strong>, record that verdict on the node, and take a short path.</p>
+<div class="tablewrap"><table><tr><th>shape</th><th>example</th></tr><tr><td><code>$var OP literal</code></td><td><code>$n &lt; 2</code>, <code>$n - 1</code></td></tr>
+<tr><td><code>literal OP $var</code></td><td><code>2 * $n</code></td></tr>
+<tr><td><code>$var OP $var</code></td><td><code>$a + $b</code></td></tr>
+<tr><td><code>@arr[$var]</code> / <code>@arr[literal]</code></td><td><code>@a[$i]</code>, <code>@a[0]</code></td></tr></table></div>
+<p>Three costs disappear on those paths.</p>
+<p><strong>The variable's copy.</strong> <code>eval()</code> on a <code>VarExpr</code> returns the value <em>by value</em> — hundreds of bytes, several strings, eleven refcount increments. The fast path takes a <code>Value*</code> out of the environment and hands it to <code>applyArith</code>, which already took <code>const&amp;</code>.</p>
+<p><strong>The literal's reconstruction.</strong> The <code>1</code> in <code>$n - 1</code> was rebuilt into a fresh <code>Value</code> on every visit. It is now built once and kept on the node.</p>
+<p><strong>The probes that cannot apply.</strong> Every binary operation ran two string comparisons for <code>DateTime</code>/<code>Duration</code> handling, plus the hyper and <code>Z</code>/<code>X</code> checks. None of them can match two plain scalars.</p>
+<p>For <code>@arr[$i]</code> the win is the same in kind: the general path opens by copying the whole container into a local <code>Value</code> in order to read one element out of it.</p>
+<h2 id="why-these-shapes-and-not-constant-folding">Why these shapes, and not constant folding</h2>
+<p>The idea started as "let <code>-O</code> fold the tree before walking it". That was measured first, with <code>tools/ast-opportunity.raku</code>, which reads <code>rakupp --dump-ast</code> and counts the patterns a tree optimizer would rewrite. Across 48 real files — the showcase interpreters, the examples, the tools — 51,353 AST nodes:</p>
+<div class="tablewrap"><table><tr><th>pattern</th><th>sites</th><th>per 1k nodes</th></tr><tr><td>constant folding (both operands literal)</td><td>37</td><td>0.7</td></tr>
+<tr><td><strong>binary with ONE literal operand</strong></td><td><strong>1,282</strong></td><td><strong>25.0</strong></td></tr>
+<tr><td><code>$x = $x + …</code> self-update</td><td>24</td><td>0.5</td></tr>
+<tr><td>constant condition</td><td>0</td><td>0.0</td></tr></table></div>
+<p>Classical constant folding has essentially nothing to fold in real Raku: 0.07% of nodes, and none of it in a loop. Dead branches: none at all. What <em>is</em> plentiful is the operand shapes above, and they sit in loop conditions and index arithmetic, where they run millions of times.</p>
+<p>That table is the whole reason this is a specialisation pass and not a folding pass. It took two minutes to produce, and it prevented building the wrong thing. <strong>Re-run the tool before assuming any other classical optimisation is worth building</strong>; the static count is an upper bound on the opportunity.</p>
+<h2 id="what-cached-means-here">What "cached" means here</h2>
+<p>"Cache" is a misleading word for this, so be precise. In most contexts caching means remembering a computed result so you do not recompute it. <strong>Nothing about the result is remembered.</strong> What is remembered is a fact about the source code.</p>
+<p>The entire mechanism is two extra fields on each <code>Binary</code> node — one byte and one pointer. No table, no map, no key, nothing global:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Binary
+mutable DecidedOnce&lt;signed char&gt; fastShape{-1};   // which shape this node is
+mutable DecidedOnce&lt;const void*&gt; litVal{nullptr}; // the literal, shapes 1 and 2</code></pre>
+<p>Walk one node, <code>$n - 1</code>, through its life.</p>
+<p><strong>After parsing</strong>, the fields say nothing:</p>
+<pre class="native-code"><code>op        = "-"
+lhs      -&gt; VarExpr("$n")
+rhs      -&gt; IntLit(1)
+fastShape = -1            &lt;- nobody has looked at this node yet
+litVal    = nullptr</code></pre>
+<p><strong>On the first evaluation</strong> the interpreter asks a question <em>about the syntax</em>: is the left child a plain lexical, and the right child a scalar literal? Both yes, so it writes the answer down:</p>
+<pre class="native-code"><code>fastShape = 1             &lt;- "variable, operator, literal"
+litVal   -&gt; Value(1)      &lt;- the 1 from the source text</code></pre>
+<p><strong>On every evaluation after that</strong>, including the millionth, the node reads <code>fastShape == 1</code> and goes straight to: look up <code>$n</code>, check its type, apply the operator. It never asks the question again.</p>
+<p>So the two fields hold two different kinds of thing.</p>
+<ul><li><strong><code>fastShape</code> is a classification of the syntax</strong> — "this expression is written as variable-operator-literal". That is a fact about the <em>text of the program</em>. It is true before the program starts and stays true until it exits, because source code does not rewrite itself.</li><li><strong><code>litVal</code> is the literal's value.</strong> This is cached in the ordinary sense, but a literal is a constant by definition: if the source says <code>1</code>, it is 1 forever.</li></ul>
+<p><strong><code>$n</code> appears in neither field</strong> — not its value, not its address, not the scope it was found in. Every evaluation does a fresh lookup by name through the current environment and a fresh type check on whatever comes back. Which is why all of this behaves normally:</p>
+<pre class="native-code"><code class="lang-raku">my $v = 1;
+for ^4 { say $v + 1; $v = $v ~~ Int ?? "10" !! 1 }   # 2, 11, 2, 11</code></pre>
+<p>One AST node, four evaluations, a variable that changes both value and type underneath it, and the right answer each time. The visits where <code>$v</code> holds a <code>Str</code> still take the fast path, because <code>Str</code> is in the guard; had it become a <code>DateTime</code>, that visit alone would have fallen through to the general path.</p>
+<p>Why store anything at all, then? Because the classification is not free — it is several branches: check both child node kinds, check the variable name's second character, check the literal is not a bignum or a <code>Rat</code>. Asking that once per <em>node</em> instead of once per <em>evaluation</em> is the whole optimisation. A <code>fib(29)</code> run evaluates <code>$n - 1</code> about 1.6 million times and answers the question once.</p>
+<p>It is less a cache than a <strong>sticky note on the node</strong>, written the first time anyone reads it. The precedent sits directly above it in the same struct: <code>simpleOp</code> does exactly the same thing for "is this a plain operator, or one of the special-cased ones?", also decided once, also from the syntax alone.</p>
+<h2 id="the-guards">The guards</h2>
+<p>The fast path is declined, and the untouched general path runs, unless:</p>
+<ul><li><strong>the name is a plain lexical</strong> — second character a letter or <code>_</code>, which excludes every twigilled and special name (<code>$*dyn</code>, <code>$?FILE</code>, <code>$^a</code>, <code>$/</code>), each of which has its own lookup rules;</li><li><strong>the value is <code>Int</code>, <code>Num</code>, <code>Str</code> or <code>Bool</code> with an empty <code>hashKind</code></strong>, which excludes <code>Proxy</code>, junctions, <code>DateTime</code>, <code>Duration</code>, <code>Failure</code>, allomorphs and undefined values;</li><li><strong>for a subscript</strong>: no adverb, not multidimensional, not a slice, a plain materialised <code>Array</code> (no <code>ext</code>, so no lazy sequence), and a <strong>non-negative</strong> in-range integer index.</li></ul>
+<p><code>Rat</code> is deliberately left out even though it would probably qualify; so is anything with a shared payload, so that a cached literal can never be mutated through.</p>
+<p>Falling through costs nothing incorrect. The only things the fast path evaluates are variable lookups and cached literals, neither of which has side effects, so nothing is ever evaluated twice.</p>
+<h2 id="why-it-is-not-a-new-node-kind">Why it is not a new node kind</h2>
+<p>The obvious implementation is a new <code>NK::</code> per shape — a superinstruction — rewritten into the tree by a pass. This is deliberately not that.</p>
+<p>A new node kind has to be taught to the parser, <code>AstDump</code>, <code>AstEmit</code> (which serialises the tree for <code>--aot</code>), <code>Codegen</code>, <code>Lint</code>, and every <code>switch</code> over <code>NK</code>; any of those missing a case is a silent wrong answer. Caching a verdict <em>inside</em> the existing node needs none of them, degrades to the old behaviour by construction, and leaves the AST dump and both compiling back ends seeing exactly the tree they saw before.</p>
+<p>It also needs no <code>-O</code> flag. The transformation cannot change semantics — same <code>applyArith</code>, same operands — so it is always on, decided lazily per node.</p>
+<h2 id="measured">Measured</h2>
+<p>Alternating A/B, medians of seven, both binaries interleaved so that machine drift hits each equally:</p>
+<div class="tablewrap"><table><tr><th>kernel</th><th>base</th><th>specialised</th><th>delta</th></tr><tr><td>vars — <code>$a OP $b</code></td><td>840.8 ms</td><td>686.5</td><td><strong>−18.3%</strong></td></tr>
+<tr><td>lits — <code>$a OP 1</code></td><td>728.9</td><td>600.0</td><td><strong>−17.7%</strong></td></tr>
+<tr><td>fib</td><td>478.6</td><td>422.4</td><td><strong>−11.7%</strong></td></tr>
+<tr><td>asg</td><td>395.1</td><td>349.5</td><td><strong>−11.5%</strong></td></tr>
+<tr><td>index — <code>@a[$i]</code></td><td>195.3</td><td>178.4</td><td><strong>−8.7%</strong></td></tr>
+<tr><td>hash</td><td>42.6</td><td>40.0</td><td>−6.2%</td></tr>
+<tr><td>loopsum</td><td>208.6</td><td>209.6</td><td>+0.5%</td></tr>
+<tr><td><strong>ctl — method dispatch only</strong></td><td>327.9</td><td>327.0</td><td><strong>−0.3%</strong></td></tr></table></div>
+<p><strong>The control is the point of the table.</strong> It is a loop of pure method dispatch, containing nothing the specialisation can touch, and it does not move. Without it the other rows would only be evidence that the machine was quieter the second time.</p>
+<p>Roast came out identical: 196,590 assertions, 631 files fully passing, with not one file moving in either direction.</p>
+<h2 id="what-went-wrong-on-the-way">What went wrong on the way</h2>
+<p>Three mistakes, all invisible to reasoning and obvious to measurement. They are the reason this chapter exists.</p>
+<p>*<em>The first version made the control 5.7% </em>slower<em>.</em><em> It bound the right operand through a <code>std::optional</code> so the literal could be used by reference — which cost the </em>general* path its copy elision, since <code>Value r = eval(...)</code> constructs in place where <code>emplace</code> move-constructs. The lesson is structural: <strong>add an early exit, never restructure the shared code underneath it.</strong> The final version leaves everything after the fast path byte-identical.</p>
+<p><strong>The literal cache was a reassignable <code>shared_ptr</code>.</strong> Under parallel execution a second thread rebuilding it could free the object while this thread held a raw pointer into it. It is now allocated once and never freed: the node outlives every evaluation, so there is nothing to reclaim before exit, and a racing double-build leaks one <code>Value</code> instead of dangling.</p>
+<p><strong>A negative subscript nearly changed behaviour.</strong> The first <code>evalIndex</code> version wrapped negative indices from the end, copying logic from a branch further down that plain arrays never reach. <code>my $i = -1; @a[$i]</code> must throw <code>X::OutOfRange</code>. Rakudo could not have caught this — it rejects the spelling at compile time — so it was found by diffing against the <strong>previous rakupp binary</strong>, which is now the habit: for a change that is supposed to be semantically invisible, the baseline binary is the oracle, not another implementation.</p>
+<h2 id="codegen-already-had-this">Codegen already had this</h2>
+<p>Worth knowing before anyone ports it: <code>--exe</code> does not need it. The code generator keeps variables in C++ locals, so there is no lookup and no copy, and it calls <code>applyArith</code> directly rather than going through <code>evalBinary</code>, so the temporal and hyper probes never existed there. With <code>-O</code> it goes one level deeper still, into a raw <code>int64</code> lane that never materialises a <code>Value</code> for the arithmetic at all (<a href="/book/optimizer/">Chapter 26</a>).</p>
+<p>What this change really did was close part of the gap between the interpreter and what the code generator had been doing all along — which is why the win was large.</p>
+<h2 id="extending-it">Extending it</h2>
+<p>The same treatment fits other shapes, in rough order of expected value:</p>
+<ul><li><code>Assign</code> where the target and the left operand are the same variable (<code>$x = $x + 1</code>) — write through the slot instead of building and storing;</li><li><code>%h{$k}</code> and <code>%h&lt;lit&gt;</code>, the associative twin of the array path;</li><li><code>Unary</code> on a plain lexical (<code>-$x</code>, <code>!$x</code>, <code>++$i</code>);</li><li>method calls on a plain lexical invocant, which is where the <em>other</em> half of the profile lives.</li></ul>
+<p>Whatever is added, the two rules that made this one safe still apply: <strong>guard on the runtime value every time, and leave the general path underneath untouched.</strong></p><nav class="ch-nav"><a class="prev" href="/book/lazy/"><span>Previous</span>Laziness, Junctions, and the Wilder Values</a><a class="next" href="/book/regex-compile/"><span>Next</span>Compiling a Regex</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Lexer — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 3</p><h1>The Lexer</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-token">The token</a></li><li><a href="#spacebefore-whitespace-is-significant"><code>spaceBefore</code>: whitespace is significant</a></li><li><a href="#regex-or-division">Regex or division?</a></li><li><a href="#quote-forms-and-heredocs">Quote forms and heredocs</a></li><li><a href="#identifiers-sigils-twigils-unicode">Identifiers, sigils, twigils, Unicode</a></li><li><a href="#operators-are-a-fixed-hand-ordered-vocabulary">Operators are a fixed, hand-ordered vocabulary</a></li><li><a href="#rule-bodies-are-not-tokenized">Rule bodies are not tokenized</a></li><li><a href="#what-else-the-lexer-carries-out">What else the lexer carries out</a></li><li><a href="#errors">Errors</a></li></ul></nav>
+<p>Raku's grammar is too context-sensitive for a generated tokenizer, so the lexer is hand-written: a loop that skips whitespace and comments, dispatches on the current character to a handler, and appends one or a few tokens. The output is a flat <code>std::vector&lt;Token&gt;</code>.</p>
+<p>What makes it interesting is not the loop. It is the set of decisions Raku forces the lexer to make that most languages never have to.</p>
+<h2 id="the-token">The token</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Token.h
+enum class Tok {
+    End, IntLit, NumLit, StrLit, VersionLit, StrInterp, RegexLit,
+    SubstLit, QwList, Ident, Var, LParen, RParen, LBrace, RBrace,
+    LBracket, RBracket, Semicolon, Comma, FatArrow, Op
+};
+struct Token {
+    Tok kind = Tok::End;
+    std::string text;    // identifier / operator spelling / raw literal
+    std::string text2;   // s/// replacement; regex adverb flags
+    long long ival; double nval;
+    int line, col;
+    bool spaceBefore = false;
+    bool flag = false;   // S/// — the non-mutating substitution
+};</code></pre>
+<p>Two absences are as informative as the contents.</p>
+<p><strong>There is no keyword kind.</strong> <code>if</code>, <code>sub</code>, <code>class</code>, <code>given</code> all arrive as <code>Tok::Ident</code>. The parser decides, from position, whether a given identifier is acting as a keyword. That is why Raku has no reserved-word list and why <code>my $if = 1</code> is legal.</p>
+<p><strong>There is no operator identity.</strong> Every operator arrives as <code>Tok::Op</code> carrying only its spelling. The lexer knows nothing about precedence, associativity, or which operators exist beyond a fixed vocabulary of spellings. All of that is the parser's problem, which is precisely what makes user-declared operators possible (<a href="/book/user-operators/">Chapter 5</a>).</p>
+<h2 id="spacebefore-whitespace-is-significant"><code>spaceBefore</code>: whitespace is significant</h2>
+<p>Raku is one of the few languages where a space changes the parse. <code>f()</code> is a call; <code>f ()</code> is <code>f</code> applied to a parenthesised list. <code>%h&lt;k&gt;</code> is a subscript; <code>%h &lt;k&gt;</code> is not. So every token records whether whitespace preceded it:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.cpp — the tokenize loop
+size_t before = pos_;
+skipWhitespaceAndComments();
+bool spaced = (pos_ &gt; before &amp;&amp; pos_ != atomDropEnd_) || before == 0;
+// … lex the token …
+t.spaceBefore = spaced;</code></pre>
+<p>The flag is true exactly when skipping advanced the cursor. The parser then leans on it constantly: to tell a postcircumfix from a list, a call from an application, a postfix operator from a fresh term.</p>
+<h2 id="regex-or-division">Regex or division?</h2>
+<p>A bare <code>/</code> starts a regex in term position and divides in operator position. The lexer decides by looking at the <em>previous</em> token:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.cpp — regexContext(), the Tok::Op case
+case Tok::Op:
+    return pv.text != "++" &amp;&amp; pv.text != "--" &amp;&amp;
+           pv.text != "&gt;"  &amp;&amp; pv.text != "&lt;"  &amp;&amp;
+           pv.text != "&gt;&gt;" &amp;&amp; pv.text != "&lt;&lt;" &amp;&amp;
+           pv.text != "&gt;=" &amp;&amp; pv.text != "&lt;=";</code></pre>
+<p>After most operators a term is expected, so <code>/</code> opens a regex. After a value — a number, a variable, a closing bracket — or after a postfix <code>++</code>/<code>--</code>, division follows. After an identifier it is a regex only when the word is in a small set of keywords that take an expression (<code>if</code>, <code>while</code>, <code>say</code>, <code>grep</code>, <code>split</code>, and friends). <code>//</code> and <code>/=</code> are matched earlier so they lex as operators.</p>
+<p>This is a heuristic in the honest sense: it implements Raku's actual rule for the cases the rule covers, and a sufficiently perverse program can still be surprised.</p>
+<h2 id="quote-forms-and-heredocs">Quote forms and heredocs</h2>
+<p><code>tryQuoteForm</code> handles the whole <code>q</code>/<code>qq</code>/<code>Q</code> family plus <code>m</code>, <code>rx</code>, <code>s</code>, <code>tr</code> and <code>qw</code>, with adverbs (<code>:w</code>, <code>:to</code>, <code>:!c</code>, …) and <strong>arbitrary delimiters</strong> — any bracket pair, or any non-bracket character. Whether the result interpolates is decided here and encoded in the token kind: <code>qq</code> produces <code>Tok::StrInterp</code>, <code>q</code> produces <code>Tok::StrLit</code>. Adverbs that flip a <code>Q</code> into interpolating emit a feature sentinel the parser reads later.</p>
+<p>Heredocs cannot be captured inline, because the body is on <em>later</em> lines. The lexer emits an empty-bodied token immediately and defers:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.cpp — tryQuoteForm, on a :to adverb
+heredocMarker_ = raw;                // the terminator, e.g. END
+heredocInterp_ = (w == "qq");
+out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, "");</code></pre>
+<p>The pending heredoc — marker, token index, interpolation flag — is queued. When the lexer reaches the newline that ends the current line, <code>processHeredocs</code> reads lines until the marker, dedents them, and <strong>back-patches the token's text</strong>. Because interpolation was already fixed by the token kind, the patched body needs no further decision.</p>
+<p>Several heredocs can be opened on one line; the queue keeps them in order, each with its own interpolation-feature string.</p>
+<h2 id="identifiers-sigils-twigils-unicode">Identifiers, sigils, twigils, Unicode</h2>
+<p><code>lexIdentOrVar</code> reads a sigil (<code>$ @ % &amp;</code>), an optional twigil (<code>*</code> dynamic, <code>.</code>/<code>!</code> attribute, <code>^</code> placeholder, <code>?</code> compile-time), then the name — which may contain <code>-</code> or <code>'</code>, may be package-qualified with <code>::</code>, may be all digits (<code>$0</code>, <code>$^1</code>), and may be a Unicode identifier. The whole thing becomes one <code>Tok::Var</code>.</p>
+<p>The rule about <code>-</code> and <code>'</code> inside a name is small and was a genuine bug, so it lives in the header where everyone who needs it can see it:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.h
+inline bool rakuIdentStart(char c) {
+    return std::isalpha((unsigned char)c) || c == '_';
+}
+inline bool rakuIdentJoins(char sep, char next) {
+    return (sep == '-' || sep == '\'') &amp;&amp; rakuIdentStart(next);
+}</code></pre>
+<p>A <code>-</code> continues a name only when a <em>letter</em> follows, never a digit. So <code>elems-1</code> is <code>elems - 1</code> and <code>$x-1</code> is <code>$x - 1</code>.</p>
+<p>That rule has to be answered in two places: the lexer, and the string interpolation scanner in the parser. They disagreed. The interpolation scanner tested <code>isalnum</code>, glued the digit into the name, and handed <code>"$x-1"</code> to the expression parser — which re-split it correctly and then interpolated the <em>arithmetic result</em>. So <code>my $x = 5; say "$x-1"</code> printed <code>4</code> where Rakudo prints <code>5-1</code>. Six sites implemented the rule three different ways; the fix was to write it once, in a header, and delete the other five.</p>
+<p>Superscripts are folded here too: a run like <code>x³</code> emits a synthetic tight <code>**</code> operator and an <code>IntLit 3</code>, so it parses as <code>x ** 3</code>.</p>
+<h2 id="operators-are-a-fixed-hand-ordered-vocabulary">Operators are a fixed, hand-ordered vocabulary</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.cpp — lexOperator
+for (const char* op : ops) {
+    std::string s(op);
+    bool ok = true;
+    for (size_t k = 0; k &lt; s.size(); k++)
+        if (peek(k) != s[k]) { ok = false; break; }
+    if (ok) { /* consume s, return Tok::Op */ }
+}
+// unmatched: a single-character Op</code></pre>
+<p>This is not a longest-match scanner. It is a manually ordered table where longer entries are placed before their prefixes, and the first full match wins. Adding a built-in operator means inserting it at the right position — a real maintenance hazard, and named as one.</p>
+<p>The fall-through matters more than the table: anything unmatched becomes a <strong>single-character <code>Tok::Op</code></strong>. That is why a novel user-defined operator still arrives as a token the parser can pick up, even though the lexer has never heard of it.</p>
+<p>The vocabulary also covers Unicode aliases (<code>≤</code> for <code>&lt;=</code>), hyper metaoperators (<code>»op«</code>), and the set operators (<code>(elem)</code>, <code>∈</code>) — but it is <em>static</em>. It tracks no user declarations whatsoever.</p>
+<h2 id="rule-bodies-are-not-tokenized">Rule bodies are not tokenized</h2>
+<p>One construct is deliberately opaque. A <code>token</code>/<code>rule</code>/<code>regex NAME { … }</code> declaration is not lexed as Raku:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.h
+bool tryRuleDecl(std::vector&lt;Token&gt;&amp; out, bool spaced);</code></pre>
+<p><code>tryRuleDecl</code> captures the balanced-brace body <strong>raw</strong> and emits it as a single <code>Tok::RegexLit</code>. Regex syntax is a different sub-language — <code>&lt;[a..z]&gt;</code>, <code>**</code>, <code>%%</code>, <code>&lt;?{ … }&gt;</code> mean nothing to the Raku tokenizer — so keeping it out of the token stream avoids teaching the lexer two grammars. The regex engine re-lexes the captured text later, in <a href="/book/regex-compile/">Chapter 19</a>.</p>
+<p>The same applies to a bare <code>/…/</code> literal and the <code>s///</code> family: the pattern text travels in <code>Token::text</code> and the replacement in <code>Token::text2</code>, both unparsed.</p>
+<h2 id="what-else-the-lexer-carries-out">What else the lexer carries out</h2>
+<p>Beyond tokens, <code>Lexer</code> produces three side channels the parser and the runtime need:</p>
+<div class="tablewrap"><table><tr><th>Channel</th><th>Contents</th></tr><tr><td><code>finishData()</code></td><td>the text after <code>=finish</code>, for <code>$=finish</code></td></tr>
+<tr><td><code>podData()</code></td><td>rendered <code>=begin pod</code> content, for <code>--doc</code></td></tr>
+<tr><td><code>declPod_</code> / <code>leadPod_</code></td><td><code>#=</code> and `#</td><td>` declarator documentation, keyed by line</td></tr></table></div>
+<p>Declarator pod is keyed by line because that is how it attaches: a <code>#|</code> run immediately above a declaration documents it, a <code>#=</code> run immediately below or beside it does. The parser resolves that association with <code>leadingPodFor(line)</code> and <code>trailingPodFor(line)</code>, and records which lines a <em>parameter</em> has already claimed — otherwise the parameter documentation of a multi-line <code>sub MAIN</code> signature would be picked up a second time as the routine's own usage text.</p>
+<h2 id="errors">Errors</h2>
+<p>A construct that runs off the end of the file gets a dedicated diagnostic:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Lexer.h
+[[noreturn]] void runawayQuote(const char* construct,
+                               const char* finalDelim, int startLine) const;
+[[noreturn]] void runawayTerm(const std::string&amp; close,
+                              const std::string&amp; open, int startLine) const;</code></pre>
+<p>Two spellings, because Rakudo has two: the bare quote forms name the <em>construct</em>, the bracketed <code>q</code>/<code>rx</code>/comment forms name the <em>terminator</em>. Both quote the line the construct <em>started</em> on, which is the only coordinate still meaningful once the scan has eaten the rest of the file.</p>
+<p>An <code>atEof</code> flag rides along on the resulting error. Only the REPL reads it, to tell "give me a continuation line" from "this is a syntax error" — which is how a half-typed string literal at an interactive prompt asks for more input instead of failing (<a href="/book/tooling/">Chapter 34</a>).</p><nav class="ch-nav"><a class="prev" href="/book/shape-of-source/"><span>Previous</span>The Shape of the Source</a><a class="next" href="/book/parser/"><span>Next</span>The Parser</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

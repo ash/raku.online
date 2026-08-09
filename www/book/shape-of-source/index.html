@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Shape of the Source — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 2</p><h1>The Shape of the Source</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-numbers">The numbers</a></li><li><a href="#the-library-boundary">The library boundary</a></li><li><a href="#what-each-file-is-for">What each file is for</a></li><li><a href="#reading-conventions-in-the-source">Reading conventions in the source</a></li><li><a href="#building-it">Building it</a></li><li><a href="#the-test-surface">The test surface</a></li></ul></nav>
+<p>Before the mechanisms, the map. This chapter is the one to come back to when a later chapter names a file and you want to know what else lives near it.</p>
+<h2 id="the-numbers">The numbers</h2>
+<p><code>src/</code> holds about <strong>147,000 lines</strong> of C++. That figure is misleading on its own, because <strong>79,400 of them are generated Unicode tables</strong> — character names, properties, collation weights, normalization data — emitted from the pinned UCD and UCA 17.0 files in <code>tools/ucd/</code>. Nobody reads those, and nobody edits them.</p>
+<p>The hand-written implementation is about <strong>67,700 lines</strong>, and it is very unevenly distributed:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Lines</th><th>What it is</th></tr><tr><td><code>Interpreter.cpp</code></td><td>20,787</td><td>the tree walk, calls, dispatch, modules, concurrency</td></tr>
+<tr><td><code>Builtins.cpp</code></td><td>9,887</td><td>named built-ins, <code>Test</code>, the head of the method chain</td></tr>
+<tr><td><code>Parser.cpp</code></td><td>7,210</td><td>statements, expressions, declarations, interpolation</td></tr>
+<tr><td><code>MethodCallPart2.cpp</code></td><td>3,549</td><td>the method chain, continued</td></tr>
+<tr><td><code>Regex.cpp</code></td><td>2,785</td><td>the regex and grammar engine</td></tr>
+<tr><td><code>MethodCallPart3.cpp</code></td><td>2,652</td><td>the method chain, continued</td></tr>
+<tr><td><code>Codegen.cpp</code></td><td>2,586</td><td>the <code>--exe</code> transpiler</td></tr>
+<tr><td><code>Lexer.cpp</code></td><td>2,351</td><td>tokenizer</td></tr>
+<tr><td><code>MethodCallTail.cpp</code></td><td>2,277</td><td>the method chain, the end of it</td></tr>
+<tr><td><code>Interpreter.h</code></td><td>1,363</td><td>the interpreter's own interface, plus the <code>rt*</code> helpers</td></tr>
+<tr><td><code>main.cpp</code></td><td>1,281</td><td>the CLI and the four compile drivers</td></tr>
+<tr><td><code>Value.cpp</code></td><td>1,093</td><td>coercions, comparison, <code>gist</code>, <code>flatten</code></td></tr></table></div>
+<p>Two shapes stand out and both are deliberate.</p>
+<p><strong><code>Interpreter.cpp</code> is enormous.</strong> It is the tree walk, and the tree walk touches everything: scopes, calls, operators, assignment, control flow, module loading, the FFI marshaller, the concurrency runtime. Splitting it by topic would mostly move <code>#include</code>s around, because the pieces share the interpreter's private state rather than a clean interface.</p>
+<p><strong>The method dispatcher is split across four files for one reason.</strong> It used to be a single 9,138-line function, <code>methodCallInner</code>, and that stopped being compilable in a reasonable time. It is now four ordered <em>segments</em> — <code>Builtins.cpp</code> holds the head, then <code>MethodCallPart2</code>, <code>MethodCallPart3</code>, <code>MethodCallTail</code> — each returning <code>std::optional&lt;Value&gt;</code>, where <code>nullopt</code> means "not handled here, try the next segment".</p>
+<p>The critical property, stated in the source and worth repeating: <strong>these are segments, not categories.</strong> The chain is order-sensitive. Later arms deliberately catch what earlier ones decline. An arm belongs where its priority is, not where it reads nicely. <code>MethodCallSegment.h</code> exists so that the four files share one include prologue and cannot drift apart.</p>
+<h2 id="the-library-boundary">The library boundary</h2>
+<pre class="native-code"><code>  src/main.cpp        the rakupp CLI          ─┐
+                                               ├─► both link librakupp_rt.a
+  generated stub.cpp  a --exe/--aot binary    ─┘</code></pre>
+<p>Everything except <code>main.cpp</code> and <code>Repl.cpp</code> compiles into <code>librakupp_rt.a</code>. The REPL lives in the executable rather than the library on purpose: nothing about an interactive session should be linked into the standalone binaries the compiling modes produce.</p>
+<h2 id="what-each-file-is-for">What each file is for</h2>
+<p><strong>Front end</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Token.h</code></td><td>the token struct: kind, text, position, <code>spaceBefore</code></td></tr>
+<tr><td><code>Lexer.{h,cpp}</code></td><td>source text to a flat <code>vector&lt;Token&gt;</code></td></tr>
+<tr><td><code>Ast.h</code></td><td>every node type, and the <code>NK</code> tag enum</td></tr>
+<tr><td><code>Parser.{h,cpp}</code></td><td>tokens to a <code>Program</code>; the live user-operator tables</td></tr>
+<tr><td><code>Pod.{h,cpp}</code></td><td>the <code>$=pod</code> DOM</td></tr></table></div>
+<p><strong>Values</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Value.{h,cpp}</code></td><td>the fat tagged struct, <code>CowStr</code>, <code>ClassInfo</code>, <code>Callable</code></td></tr>
+<tr><td><code>IStr.h</code></td><td>the interned-string field</td></tr>
+<tr><td><code>MethodName.h</code></td><td><code>MName</code>, the packed method name used by the dispatch chain</td></tr>
+<tr><td><code>BigInt.{h,cpp}</code></td><td>arbitrary-precision integers, base 10^9</td></tr>
+<tr><td><code>IntOps.h</code></td><td>portable overflow-checked arithmetic and bit intrinsics</td></tr></table></div>
+<p><strong>Execution</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Interpreter.{h,cpp}</code></td><td>the tree walk and nearly everything it reaches</td></tr>
+<tr><td><code>Builtins.cpp</code></td><td>the built-in routine table and the method chain's head</td></tr>
+<tr><td><code>MethodCall*.cpp</code></td><td>the rest of the method chain</td></tr>
+<tr><td><code>BuiltinsShared.h</code></td><td>helpers the split forced out of file scope</td></tr>
+<tr><td><code>Runtime.{h,cpp}</code></td><td>the shared entry points, and the big-stack thread</td></tr>
+<tr><td><code>IOSpec.cpp</code></td><td><code>IO::Spec::*</code> path algorithms</td></tr></table></div>
+<p><strong>Engines</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Regex.{h,cpp}</code></td><td>regex compilation, the matcher, <code>GrammarMatcher</code></td></tr>
+<tr><td><code>LtmNfa.{h,cpp}</code></td><td>the declarative-prefix NFA for longest-token matching</td></tr>
+<tr><td><code>Unicode.{h,cpp}</code></td><td>normalization, grapheme segmentation, collation, properties</td></tr>
+<tr><td><code>unicode_*_gen.cpp</code></td><td>the generated tables those read</td></tr>
+<tr><td><code>unicode_names.cpp</code></td><td>character names — the single largest file in the tree</td></tr></table></div>
+<p><strong>Back ends and tooling</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Codegen.{h,cpp}</code></td><td><code>--exe</code>: AST to C++</td></tr>
+<tr><td><code>AstEmit.cpp</code></td><td><code>--aot</code>: C++ that rebuilds the AST</td></tr>
+<tr><td><code>AstSerial.{h,cpp}</code></td><td>the binary AST format behind the precompiled parse</td></tr>
+<tr><td><code>AstDump.cpp</code></td><td><code>--dump-ast</code></td></tr>
+<tr><td><code>Lint.{h,cpp}</code></td><td><code>--lint</code>, static analysis over the parsed tree</td></tr>
+<tr><td><code>Highlight.{h,cpp}</code></td><td><code>--highlight</code>, parse-aware syntax colouring</td></tr>
+<tr><td><code>Profiler.{h,cpp}</code></td><td><code>--profile</code>, the routine-level wall-time profiler</td></tr>
+<tr><td><code>Repl.{h,cpp}</code></td><td>the interactive session</td></tr></table></div>
+<p><strong>Boundaries</strong></p>
+<div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Ffi.{h,cpp}</code></td><td>the libffi backend: loader, ABI probe, type registry</td></tr>
+<tr><td><code>rakupp_ext.h</code></td><td>the C ABI extension modules compile against</td></tr>
+<tr><td><code>ExtApi.cpp</code></td><td>the host side of that ABI</td></tr>
+<tr><td><code>Platform.h</code></td><td>the Windows/POSIX split, in one place</td></tr></table></div>
+<h2 id="reading-conventions-in-the-source">Reading conventions in the source</h2>
+<p>Three habits recur, and knowing them saves a lot of confusion.</p>
+<p>*<em>Comments explain </em>why<em>, and often carry the measurement.</em>* A comment in this tree is rarely a restatement of the code. It is much more often the reason the obvious version was rejected, sometimes with a number attached:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h — the CowStr rationale, trimmed
+// Value is copied by value everywhere ... so holding a bare std::string
+// meant a long string was memcpy'd on each of those. The cost is
+// O(length) per OPERATION, which makes any pure-Raku tokenizer O(n^2):
+// JSON::Fast spent 13.9 s on a 421 KB document that Rakudo parses in
+// 50 ms, and the profile was all copying, not parsing.</code></pre>
+<p>When this book explains a decision, it is usually expanding a comment like that one.</p>
+<p><strong>A "decided once" field is a fact about the syntax, not a cached result.</strong> Several node types carry a small mutable field that starts at a sentinel and is written on first evaluation:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Ast.h
+template &lt;typename T&gt; struct DecidedOnce {
+    std::atomic&lt;T&gt; v;
+    operator T() const { return v.load(std::memory_order_relaxed); }
+    DecidedOnce&amp; operator=(T x) {
+        v.store(x, std::memory_order_relaxed); return *this;
+    }
+};</code></pre>
+<p>The atomic is not for synchronisation. It is there because a node is shared between threads, every writer computes the same idempotent answer, and a plain field would make that a data race that ThreadSanitizer correctly reports. Relaxed atomics make it defined at plain-load cost on the architectures that matter. <a href="/book/node-specialization/">Chapter 18</a> is entirely about what these fields hold and, more importantly, what they must never hold.</p>
+<p><strong><code>rt*</code> functions are the compiled backend's vocabulary.</strong> Anything named <code>rtAdd</code>, <code>rtIndexRef</code>, <code>rtAttrGet</code>, <code>rtCallB</code> is a runtime entry point that <code>Codegen</code> emits calls to. They are declared in <code>Interpreter.h</code> and are the contract between the transpiler and the runtime — which is why they are <code>inline</code> where the fast path matters. <a href="/book/codegen/">Chapters 25</a> to <a href="/book/dispatch-compiled/">27</a> are about them.</p>
+<h2 id="building-it">Building it</h2>
+<pre class="native-code"><code class="lang-sh">cmake -S . -B build
+cmake --build build -j</code></pre>
+<p><code>CMakeLists.txt</code> builds <code>librakupp_rt</code> from all of <code>src/</code> except <code>main.cpp</code>, then the <code>rakupp</code> executable. The glob is <code>CONFIGURE_DEPENDS</code>, but CMake caches it, so re-run the configure step after adding a source file.</p>
+<p>The compiler matters more than usual here. Clang produces a binary between 1.2 and 2 times faster than GCC's on this codebase — the method dispatch chain and the tree walk are both inlining-sensitive in ways GCC handles less well — so Clang is what ships and GCC is kept as a portability gate. Link-time optimisation and <code>-mcpu=native</code> were both measured and both did nothing.</p>
+<h2 id="the-test-surface">The test surface</h2>
+<div class="tablewrap"><table><tr><th>Where</th><th>What</th></tr><tr><td>Roast</td><td>the Raku specification suite, run by <code>tools/run-roast.raku</code></td></tr>
+<tr><td><code>t/run.raku</code></td><td>the local suite: examples and showcases, byte-compared to golden output</td></tr>
+<tr><td><code>t/regression/</code></td><td>one file per fixed bug</td></tr>
+<tr><td><code>t/stress/</code></td><td>concurrency and memory stress, also run under TSan and ASan</td></tr>
+<tr><td><code>tools/perf-guard.raku</code></td><td>the performance gate, compared against a recorded baseline</td></tr>
+<tr><td>the showcase interpreters</td><td>JavaScript, Perl, Python and Lisp, written in Raku</td></tr></table></div>
+<p>The release checklist in <code>docs/dev/RELEASING.md</code> gates on all of them. <a href="/book/measuring/">Chapter 35</a> is about why the performance gate is there and what happens when it is skipped.</p><nav class="ch-nav"><a class="prev" href="/book/what-it-is/"><span>Previous</span>What Raku++ Is</a><a class="next" href="/book/lexer/"><span>Next</span>The Lexer</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

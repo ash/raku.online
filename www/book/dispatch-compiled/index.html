@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispatch Cost in Compiled Code — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 27</p><h1>Dispatch Cost in Compiled Code</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-four-shapes">The four shapes</a></li><li><a href="#what-dispatch-itself-costs">What dispatch itself costs</a></li><li><a href="#cut-1-cached-builtin-pointers">Cut 1 — cached builtin pointers</a></li><li><a href="#cut-2-inline-string-comparisons">Cut 2 — inline string comparisons</a></li><li><a href="#cut-3-true-named-builtins-and-the-analysis-that-was-wrong">Cut 3 — true named builtins, and the analysis that was wrong</a></li><li><a href="#the-interpreter-got-the-same-treatment">The interpreter got the same treatment</a></li><li><a href="#what-is-deliberately-not-done">What is deliberately not done</a></li><li><a href="#the-general-lesson">The general lesson</a></li></ul></nav>
+<p>A compiled Raku++ program reaches code four different ways, and they are not equally fast. This chapter measures each, describes the three cuts made to them, and — because it is the more useful part — records the analysis that turned out to be wrong.</p>
+<p>Method: micro-benchmarks against the built runtime, 2 million iterations per shape, seven repetitions, first discarded, minimum reported.</p>
+<h2 id="the-four-shapes">The four shapes</h2>
+<p>For <code>sub square($n) { $n * $n }</code> plus <code>say square(5)</code>, the generated C++ contains all four:</p>
+<div class="tablewrap"><table><tr><th>Raku</th><th>Generated C++</th><th>Dispatch</th></tr><tr><td><code>square(5)</code></td><td><code>u_square(ValueList{…})</code></td><td>direct C++ call; inlinable</td></tr>
+<tr><td><code>say …</code></td><td><code>rtCallB(RT, __bfp0, "say", …)</code></td><td>cached pointer</td></tr>
+<tr><td><code>$n * $n</code></td><td><code>applyArith("*", …)</code>, or <code>rtMul</code> under <code>-O</code></td><td>string-dispatch chain, or inline</td></tr>
+<tr><td><code>$x.method</code></td><td><code>RT.methodCall(inv, "m", …)</code></td><td>name-keyed <code>if</code>-ladder</td></tr></table></div>
+<h2 id="what-dispatch-itself-costs">What dispatch itself costs</h2>
+<p>Trivial function body, identical <code>ValueList</code> construction in every variant, so the differences are pure dispatch:</p>
+<div class="tablewrap"><table><tr><th>Shape</th><th>ns/call</th><th></th></tr><tr><td>direct C++ call</td><td>46.3</td><td>the floor</td></tr>
+<tr><td>cached <code>BuiltinFn*</code> call</td><td>47.4</td><td><strong>+1.1 — dispatch eliminated</strong></td></tr>
+<tr><td>by-name: hash, <code>find</code>, <code>std::function</code></td><td>55.0</td><td>+8.7 vs direct</td></tr>
+<tr><td><code>RT.callBuiltin("chr", …)</code> end to end</td><td>66.0</td><td>the pre-change path</td></tr></table></div>
+<p>Two readings. The by-name lookup tax is real but modest, and caching the pointer recovers essentially all of it.</p>
+<p><strong>The more important reading is that the floor itself is high.</strong> About 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — a heap-allocating <code>std::vector</code> built per call. Dispatch was a quarter of the overhead; the argument vector was the rest.</p>
+<p>Operators are a different story, because <code>applyArith</code> has integer and number fast paths at the top of its chain:</p>
+<div class="tablewrap"><table><tr><th>Op shape</th><th>ns/call</th></tr><tr><td><code>applyArith("+", int, int)</code> — early fast path</td><td>7.8</td></tr>
+<tr><td><code>rtAdd(int, int)</code> — the <code>-O</code> lane</td><td>5.6</td></tr>
+<tr><td><code>applyArith("~", str, str)</code> — <strong>late in the chain</strong></td><td><strong>118.1</strong></td></tr>
+<tr><td><code>rtConcat(str, str)</code> — direct</td><td>9.6</td></tr></table></div>
+<p>The late-chain operators pay for everything they walk past: the mixin-delegation check, negated-operator handling, set operations, junction autothreading, <code>Whatever</code> currying, the <code>Version</code> branch — about 110 nanoseconds of "is this something special?" before the actual string work.</p>
+<h2 id="cut-1-cached-builtin-pointers">Cut 1 — cached builtin pointers</h2>
+<p>Every <code>RT.callBuiltin("name", …)</code> site now routes through a per-name pointer resolved once at program startup:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+const BuiltinFn* builtinPtr(const std::string&amp; name) const;
+
+inline Value rtCallB(Interpreter&amp; I, const BuiltinFn* f, const char* name,
+                     ValueList args) {
+    if (f) return (*f)(I, args);
+    return I.callBuiltin(name, std::move(args));   // by-name fallback
+}</code></pre>
+<p>The generated call <code>rtCallB(RT, __bfp0, "say", ValueList{…})</code> <strong>is</strong> the cached call, not a lookup: <code>rtCallB</code> is a three-line <code>inline</code> shim whose hot path is one indirect call through the already-resolved pointer, and the <code>"say"</code> literal is touched only on the fallback branch — nothing is hashed or searched.</p>
+<p>The shim also does a required mechanical job. <code>BuiltinFn</code> takes <code>ValueList&amp;</code>, which a temporary cannot bind to; <code>rtCallB</code>'s by-value parameter materialises it into an lvalue.</p>
+<p>This cut is <strong>not <code>-O</code>-gated</strong>: it is plumbing rather than speculation, so plain <code>--exe</code> gets it too. The fallback keeps semantics byte-identical for names that are not registered builtins.</p>
+<p>One portability landmine, recorded because it cost an afternoon: the cached pointer names were originally <code>__bfN</code>, so the seventeenth builtin in a program emitted <code>__bf16</code> — which is a <strong>reserved built-in type</strong> (bfloat16) on arm64 clang. Hence the <code>__bfpN</code> spelling.</p>
+<h2 id="cut-2-inline-string-comparisons">Cut 2 — inline string comparisons</h2>
+<p><code>eq ne lt gt le ge</code> get the <code>rtEqS</code> family: two <em>plain</em> <code>Str</code>s compare byte-wise inline, which is exactly what <code>applyArith</code>'s tail does for them. Anything tagged falls back to the full chain.</p>
+<p>Value-context forms sit in the <code>-O</code> table; <strong>bool-context forms join the always-on condition table</strong>, beside the existing integer <code>rtLtB</code> family.</p>
+<p>End to end, 2 to 3 million iteration loops:</p>
+<div class="tablewrap"><table><tr><th>Loop</th><th>Before</th><th>After</th><th></th></tr><tr><td>builtin-heavy (<code>ord(chr(…))</code>), <code>--exe</code></td><td>407.8 ms</td><td>383.5 ms</td><td>1.06×</td></tr>
+<tr><td><code>$c++ if $a eq $b</code>, <code>--exe</code></td><td>712.0 ms</td><td>129.2 ms</td><td><strong>5.5×</strong></td></tr>
+<tr><td><code>$c++ if $a eq $b</code>, <code>--exe -O</code></td><td>621.7 ms</td><td>29.0 ms</td><td><strong>21×</strong></td></tr></table></div>
+<p>The string-compare cut is the headline. An <code>eq</code> in a condition used to compile to a boolified <code>applyArith</code> call: build a <code>Bool</code> <code>Value</code>, walk the whole dispatch chain, then read the truthiness back out. It now compiles to an inline <code>l.s == r.s</code>.</p>
+<h2 id="cut-3-true-named-builtins-and-the-analysis-that-was-wrong">Cut 3 — true named builtins, and the analysis that was wrong</h2>
+<p>An earlier revision of this analysis claimed that a <em>symbol</em> call like <code>b_say(…)</code> had a measured ceiling of about 1 nanosecond per call, and therefore was not worth building.</p>
+<p><strong>That figure was correct only for renaming the same call shape</strong> — an out-of-line call still taking a <code>ValueList</code>. What a real named function unlocks is different in kind:</p>
+<ul><li><strong>direct <code>Value</code> arguments</strong>, so no per-call <code>ValueList</code> allocation — which is the actual floor;</li><li><strong>an inlinable hot path</strong>, because a <code>std::function</code> is an opaque wall to the optimizer and an <code>inline</code> function is not.</li></ul>
+<p>Worse, some builtin lambdas hid extra cost. <code>abs</code>'s delegated to <code>methodCall</code> — the full method-name ladder on every call, about 370 nanoseconds per iteration in an <code>abs</code> loop.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+inline Value rtBAbs(Interpreter&amp; I, const Value&amp; v) {
+    if (v.t == VT::Int &amp;&amp; !v.big &amp;&amp; I.builtinExt_.empty())
+        return Value::integer(v.i &lt; 0 ? -v.i : v.i);
+    return rtBAbsSlow(I, v);
+}</code></pre>
+<p><code>abs</code>, <code>chr</code> and <code>ord</code> became real functions. The interpreter's map entries wrap them, <strong>so the interpreter and the generic compiled path get the win too</strong>, and <code>-O</code> emits direct calls when a single plain positional argument lines up.</p>
+<p>Note the <code>builtinExt_.empty()</code> guard: the inline fast path switches itself off the moment a program <code>augment</code>s a built-in type, so an augmented <code>.abs</code> still wins (<a href="/book/objects/">Chapter 16</a>).</p>
+<div class="tablewrap"><table><tr><th>Loop</th><th>cached pointer</th><th>named function</th><th></th></tr><tr><td><code>abs</code>, <code>--exe -O</code></td><td>1112.9 ms</td><td>198.3 ms</td><td><strong>5.6×</strong></td></tr>
+<tr><td><code>abs</code>, plain <code>--exe</code></td><td>1120.5 ms</td><td>363.9 ms</td><td>3.1×</td></tr>
+<tr><td><code>chr</code>+<code>ord</code>, <code>--exe -O</code></td><td>393.6 ms</td><td>200.8 ms</td><td>2.0×</td></tr></table></div>
+<p>The recipe then swept the rest of the viable set — <strong>36 names</strong>: the numeric family, the string family, the twelve trigonometric and hyperbolic functions, and the I/O quartet.</p>
+<p>The I/O quartet is worth its own sentence, because it disproved an assumption. A <em>buffered</em> one-argument <code>say</code> costs about 125 nanoseconds, so the call plumbing was roughly 45% of it: the <code>say</code> loop went from 124.9 to 69.6 milliseconds, with byte-identical output. "I/O dominates, so the call cost does not matter" was simply false at this scale.</p>
+<p>Each named function is the old registered lambda's one-argument case <strong>verbatim</strong>. Delegators keep their <code>methodCall</code>, so <code>augment</code>, user objects and junctions are untouched; only <code>abs</code> and <code>sign</code> have bypassing fast paths, and both are guarded.</p>
+<p>Additional measurements: a <code>sqrt</code>+<code>sin</code>+<code>floor</code> loop went 731.5 to 363.6 milliseconds under <code>-O</code>; <code>uc</code>+<code>chars</code> went 672.5 to 574.3 — a smaller win, because the real work in <code>mapCase</code> and <code>graphemeCount</code> dominates, as it should.</p>
+<h2 id="the-interpreter-got-the-same-treatment">The interpreter got the same treatment</h2>
+<p>A follow-up the same day: <code>applyArith</code> gained a character-dispatched <code>Str</code>/<code>Str</code> fast path at the top of its chain, beside the existing integer and number ones, so the <em>interpreter</em> also skips the late-chain walk for plain-string comparisons and concatenation.</p>
+<p>Interpreted <code>streq</code> went from 909.7 to 547.9 milliseconds. The remaining gap to Rakudo there is per-node tree-walk cost, which no operator fast path can remove.</p>
+<h2 id="what-is-deliberately-not-done">What is deliberately not done</h2>
+<ul><li><strong>The <code>ValueList</code> per call</strong> — the dominant cost of the calling convention, about 40 of the 46-nanosecond floor. <code>-O</code>'s direct-arity pass removes it for fixed-arity user subs, and cut 3 removes it for the named builtins, but the other ~165 builtins still take <code>ValueList&amp;</code> by contract. A wholesale change — small-buffer or span arguments — is a runtime-wide refactor with interpreter implications.</li><li><strong><code>methodCall</code>'s <code>if</code>-ladder.</strong> After the <code>MName</code> fix (<a href="/book/interning/">Chapter 9</a>) name comparison is 8.5% of the profile. A dispatch table would be chasing that 8.5%, and it is not a drop-in: the ladder is not a pure dispatch on the name.</li><li><strong>The remaining late-chain operators</strong> — <code>x</code>, <code>xx</code>, <code>gcd</code>/<code>lcm</code>, bitwise, <code>min</code>/<code>max</code>, <code>leg</code>/<code>cmp</code> — still walk the chain. Same recipe as <code>rtEqS</code> if any shows up hot; none of the current benchmarks exercise them.</li></ul>
+<h2 id="the-general-lesson">The general lesson</h2>
+<p>Three cuts, and the third one contradicted the written analysis of the first two. What made the difference was not better reasoning — it was measuring the <em>right thing</em>: the earlier figure benchmarked a rename, not the change that a rename enables.</p>
+<p>That is the recurring failure mode in performance work, and the defence is the same one used throughout this book: benchmark the full proposal, not the piece of it that is easy to isolate, and keep a control kernel that the change cannot touch.</p><nav class="ch-nav"><a class="prev" href="/book/optimizer/"><span>Previous</span>The <code>-O</code> Optimizer</a><a class="next" href="/book/astserial/"><span>Next</span>AST Serialization and the Precompiled Parse</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

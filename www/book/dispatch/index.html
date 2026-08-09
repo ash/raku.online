@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispatch — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 15</p><h1>Dispatch</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#named-calls">Named calls</a></li><li><a href="#multiple-dispatch">Multiple dispatch</a></li><li><a href="#method-dispatch-two-worlds">Method dispatch: two worlds</a></li><li><a href="#re-dispatch">Re-dispatch</a></li><li><a href="#private-methods-qualified-calls-indirect-calls">Private methods, qualified calls, indirect calls</a></li><li><a href="#builtin-as-a-value"><code>&amp;builtin</code> as a value</a></li><li><a href="#where-the-time-goes">Where the time goes</a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>Raku has more dispatch than most languages: named subs, multiple dispatch on argument types, method dispatch on an invocant, private methods, meta-object calls, and a re-dispatch protocol (<code>callsame</code>, <code>nextsame</code>, <code>callwith</code>, <code>nextwith</code>, <code>samewith</code>) that lets a routine hand control to the next candidate.</p>
+<p>Raku++ implements them as <strong>three distinct mechanisms</strong> that meet at the edges, and knowing which one is in play explains most of the surprises.</p>
+<h2 id="named-calls">Named calls</h2>
+<p><code>evalCall</code> resolves every named call the same way:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — evalCall, abridged
+if (Value* f = tctx_.cur-&gt;find("&amp;" + c-&gt;name))
+    return callCallable(*f, std::move(args), &amp;c-&gt;args, false, …);
+…
+auto it = builtins_.find(c-&gt;name);        // built-in fallback</code></pre>
+<p>The environment first, walking the parent chain; the builtin table second. That order is the whole rule, and it has three consequences worth spelling out.</p>
+<p><strong>A lexical <code>my sub</code> shadows a builtin.</strong> That is Raku's semantics and it comes for free.</p>
+<p><strong>A module's exported sub also shadows a builtin</strong>, because the loader copies it into the global environment, which is the last link of the chain (<a href="/book/modules/">Chapter 29</a>).</p>
+<p><strong>A compiled program must reproduce this order</strong>, which it cannot do by resolving names against the builtin table at compile time. That is a real bug that happened — <code>--exe</code> printed the built-in <code>val</code>'s answer where the interpreter called a module's exported <code>val</code> — and <a href="/book/dispatch-compiled/">Chapter 27</a> describes the fix.</p>
+<p>The argument <em>expressions</em> are passed alongside the values (<code>&amp;c-&gt;args</code>) so that <code>is rw</code> write-back can re-resolve them.</p>
+<h2 id="multiple-dispatch">Multiple dispatch</h2>
+<p>A <code>multi sub</code> or <code>multi method</code> is one <code>Callable</code> with <code>isMultiDispatcher</code> set and a <code>candidates</code> vector; each <code>multi</code> declaration pushes its <code>Code</code> onto it. A <code>proto</code> declares the group without being a candidate.</p>
+<p>At call time, <code>scoreCandidate</code> scores every candidate against the actual arguments, returning <code>-1</code> for "does not apply" or a non-negative <strong>specificity</strong>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — scoreCandidate, per positional parameter
+if (subsets_.count(p-&gt;type)) {
+    if (!subsetMatches(p-&gt;type, pos[i])) return -1;
+    score += 2;
+} else if (!typeMatchesArg(pos[i], p-&gt;type)) return -1;
+if (p-&gt;defConstraint == 1 &amp;&amp; !isDefined(pos[i])) return -1;   // :D
+if (p-&gt;defConstraint == 2 &amp;&amp;  isDefined(pos[i])) return -1;   // :U
+if (p-&gt;defConstraint) score++;
+if (!p-&gt;type.empty() &amp;&amp; p-&gt;type != "Any" &amp;&amp; p-&gt;type != "Mu") {
+    score++;                                    // constrained beats not
+    if (p-&gt;type == pos[i].typeName()) score++;  // exact beats supertype
+}</code></pre>
+<p>Arity gates run first — too few required arguments, or too many for a non-slurpy signature, is an immediate <code>-1</code>. Literal parameters (<code>multi fact(0)</code>) and sub-signature destructuring are treated as very specific. A required named parameter that was not supplied is <code>-1</code>.</p>
+<p>The winner is the highest score:</p>
+<pre class="native-code"><code class="lang-cpp">const Value* best = nullptr; int bestScore = -1;
+for (auto&amp; cand : c.candidates) {
+    int s = scoreCandidate(cand, args);
+    if (s &gt; bestScore) { bestScore = s; best = &amp;cand; }   // strict &gt;
+}
+if (!best || bestScore &lt; 0) throw /* X::Multi::NoMatch */;</code></pre>
+<p><strong>Two honest notes.</strong> The comparison is a strict <code>&gt;</code>, so on equal scores the <em>first-declared</em> candidate wins and there is no <code>X::Multi::Ambiguous</code> diagnostic. And a genuine no-match does throw <code>X::Multi::NoMatch</code>, with the candidate list in the message.</p>
+<h3>Subsets</h3>
+<p>A <code>subset</code> is a refinement type that participates in dispatch:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct SubsetInfo { std::string base; const Expr* where = nullptr; };
+std::unordered_map&lt;std::string, SubsetInfo&gt; subsets_;
+bool subsetMatches(const std::string&amp; name, const Value&amp; v, int depth = 0);</code></pre>
+<p><code>subsetMatches</code> checks the base type and then evaluates the <code>where</code> expression with the value as the topic. The <code>depth</code> parameter is a recursion guard, because a subset can be defined in terms of another subset and nothing prevents a cycle.</p>
+<p>A subset match scores <code>+2</code>, above a plain nominal match, which is what makes <code>multi f(Even $n)</code> beat <code>multi f(Int $n)</code>.</p>
+<h2 id="method-dispatch-two-worlds">Method dispatch: two worlds</h2>
+<p>An <code>Int</code>, a <code>Str</code> or an <code>Array</code> is a native <code>Value</code> — it has no <code>ClassInfo</code> and no method table. A user class instance is a <code>VT::Object</code> with both. So there are two dispatch worlds.</p>
+<p><strong>User objects</strong> go through <code>ClassInfo::findMethod</code>, which <em>is</em> the method resolution order:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+Value* findMethod(const std::string&amp; m, ClassInfo** owner) {
+    auto it = methods.find(m);
+    if (it != methods.end()) { if (owner) *owner = this; return &amp;it-&gt;second; }
+    if (parent) { if (Value* r = parent-&gt;findMethod(m, owner)) return r; }
+    for (auto&amp; p : extraParents) if (p)
+        { if (Value* r = p-&gt;findMethod(m, owner)) return r; }
+    if (owner) *owner = nullptr;
+    return nullptr;
+}</code></pre>
+<p>Own methods, then the first parent recursively, then each extra parent. It is a depth-first walk, <strong>not C3 linearisation</strong>, and for the diamond hierarchies where the two differ it can pick a different method than Rakudo. The <code>owner</code> out-parameter reports which class the method was found in, so re-dispatch can resume from that class's parent.</p>
+<p><strong>Built-in values</strong> go through <code>methodCall</code>, a very long cascade of branches keyed on the method name and, inside each branch, on the invocant's tag:</p>
+<pre class="native-code"><code class="lang-cpp">if (m == "uc")       return Value::str(mapCase(inv.toStr(), true, 0));
+if (m == "chars")    return Value::integer(graphemeCount(inv.toStr()));
+if (m == "is-prime") { /* Miller–Rabin on inv.toInt() */ }
+// … some 1,640 more …</code></pre>
+<p>The C++ <code>if</code>-ladder <em>is</em> the built-in method set. That is the pragmatic counterpart to the fat <code>Value</code>: since every native value is the same struct, its methods are one dispatch function rather than per-type classes.</p>
+<p>The ladder is split across four files as ordered segments (<a href="/book/shape-of-source/">Chapter 2</a>), each returning <code>std::optional&lt;Value&gt;</code>. The name is wrapped in an <code>MName</code> at the top so the comparisons are integer compares (<a href="/book/interning/">Chapter 9</a>).</p>
+<h3>What runs before the ladder</h3>
+<p>Two things are consulted first, and both are bridges between the two worlds.</p>
+<p><strong>Junction autothreading.</strong> If the invocant is a junction, a small allow-list of methods (<code>Bool</code>, <code>gist</code>, <code>new</code>, …) act on the whole junction; everything else autothreads, returning a junction of the per-eigenstate results.</p>
+<p><strong><code>augment</code> on a built-in type.</strong> Methods a program adds to a built-in with <code>augment class Int { … }</code> are parked in a map of maps and consulted before the native branches, so they can override built-ins:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — before the native branches
+if (!builtinExt_.empty() &amp;&amp; inv.t != VT::Object) {
+    std::string tn = inv.t == VT::Type ? inv.s : inv.typeName();
+    if (Value* f = lookup(tn))
+        return invokeMethod(*f, inv, std::move(args), rwArgs);
+    for (const std::string&amp; anc : typeAncestry(tn))
+        if (anc != tn) if (Value* f = lookup(anc))
+            return invokeMethod(*f, inv, …);
+}</code></pre>
+<p>The ancestry walk is what makes <code>augment class Cool { … }</code> reach an <code>Int</code> and a <code>Str</code>. The guard on <code>builtinExt_.empty()</code> is why a program that never augments anything pays one branch.</p>
+<p>This is also why two of the inline built-in fast paths in <a href="/book/dispatch-compiled/">Chapter 27</a> are <code>builtinExt_</code>-guarded: an inlined <code>abs</code> must stop inlining the moment a program augments <code>Int</code>.</p>
+<h2 id="re-dispatch">Re-dispatch</h2>
+<p><code>callsame</code>, <code>nextsame</code>, <code>callwith</code>, <code>nextwith</code> and <code>samewith</code> need to know what the <em>next</em> candidate is, and that differs by context: the next-less-specific multi candidate, the same method on the owning class's parent, or a built-in that a user method shadowed.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct RedispatchCtx {
+    std::function&lt;Value(ValueList)&gt; next;      // callsame / nextsame / …with
+    std::function&lt;Value(ValueList)&gt; restart;   // samewith
+    ValueList sameArgs;
+    bool lastcall = false; bool fromChain = false;
+};
+static thread_local std::vector&lt;RedispatchCtx&gt; redispatchStack_;</code></pre>
+<p>Each dispatch site that can be re-entered pushes a context knowing how to invoke the next thing, and the original arguments for the <code>*same</code> variants. <code>invokeMethodChain</code> is the method version: it invokes a method found from a given class and pushes a context that resumes from that class's parent, recursively.</p>
+<p>One field guards a subtle case:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+size_t redispatchFloor = 0;   // frames below this are another routine's</code></pre>
+<p>Without it, a <code>callsame</code> inside a routine could reach a re-dispatch context belonging to a <em>caller</em>, and dispatch into something unrelated.</p>
+<p>The stack is <code>static thread_local</code> for the reason given in <a href="/book/calls/">Chapter 13</a>: as a plain member it was written by every dispatching call on every thread.</p>
+<h2 id="private-methods-qualified-calls-indirect-calls">Private methods, qualified calls, indirect calls</h2>
+<p>The <code>MethodCall</code> node carries the variants as flags:</p>
+<div class="tablewrap"><table><tr><th>Written</th><th>Flag</th><th>Meaning</th></tr><tr><td><code>$o.m</code></td><td>—</td><td>ordinary dispatch</td></tr>
+<tr><td><code>$o.?m</code></td><td><code>maybe</code></td><td>return <code>Nil</code> rather than dying when absent</td></tr>
+<tr><td><code>$o!m</code></td><td><code>bang</code></td><td>private method, reachable only through <code>self!m</code></td></tr>
+<tr><td><code>$o.Class::m</code></td><td><code>methodQual</code></td><td>dispatch to a specific class's method, past overrides</td></tr>
+<tr><td><code>$o."$name"()</code></td><td><code>methodExpr</code></td><td>the name is computed at run time</td></tr>
+<tr><td><code>$o.=m</code></td><td><code>mutate</code></td><td>call and assign back to the invocant</td></tr>
+<tr><td><code>$o&gt;&gt;.m</code></td><td><code>hyper</code></td><td>apply to each element</td></tr>
+<tr><td><code>$o.^m</code></td><td><code>meta</code></td><td>a meta-object call</td></tr></table></div>
+<p><code>.^</code> calls go to the meta-object. Most are answered directly — <code>.^name</code>, <code>.^methods</code>, <code>.^attributes</code>, <code>.^parents</code>, <code>.^roles</code> — but <code>.HOW</code> must return a <em>persistent</em> object, because <code>T.HOW does SomeRole</code> mixins have to stick. So <code>ClassInfo</code> carries its meta-object rather than building one per call:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h — ClassInfo
+Value howObj;   // the persistent .HOW metaobject</code></pre>
+<h2 id="builtin-as-a-value"><code>&amp;builtin</code> as a value</h2>
+<p><code>&amp;say</code> must be a <code>Callable</code> value, and <code>&amp;dir.wrap({…})</code> must mutate <em>the</em> <code>Callable</code> the call path consults — that is exactly how <code>File::Find</code>'s test suite mocks <code>dir</code>. So a reference to a builtin is memoised:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+std::map&lt;std::string, Value&gt; builtinRefs_;</code></pre>
+<p>populated lazily, and empty for programs that never take a builtin reference — which keeps the check on the call path free.</p>
+<h2 id="where-the-time-goes">Where the time goes</h2>
+<p>After the two fixes in <a href="/book/interning/">Chapters 9</a> and <a href="/book/numbers/">10</a>, a method call on a built-in costs roughly three times what Rakudo charges, down from about twenty. The profile of <code>for ^6000000 { "ab".uc }</code>:</p>
+<div class="tablewrap"><table><tr><th></th><th>share</th></tr><tr><td>heap allocate and free</td><td>31%</td></tr>
+<tr><td><code>Value</code> copy and destroy</td><td>11%</td></tr>
+<tr><td>method-name comparison</td><td>8.5%</td></tr>
+<tr><td>the dispatch function's own body</td><td>6.1%</td></tr></table></div>
+<p>The 42% in allocation and value churn is the remaining target, and it has a known shape: both <code>methodCall</code> and <code>methodCallInner</code> take their invocant and argument list <strong>by value</strong>, so every call copies a <code>Value</code> — with its eleven <code>shared_ptr</code> members — and heap-allocates a <code>ValueList</code>.</p>
+<p>Switching both to <code>const&amp;</code> is mechanically small: eighteen compile errors, each either "make a local copy here" or "let this helper take <code>const&amp;</code>". It has not been done because it trades away the accidental safety that copying provides against a callee mutating the container its own invocant lives in. That wants an aliasing audit of 178 call sites, not a quick pass.</p>
+<h2 id="honest-limitations">Honest limitations</h2>
+<ul><li><strong>The method resolution order is depth-first, not C3.</strong> Diamond hierarchies can resolve differently from Rakudo.</li><li><strong>No <code>X::Multi::Ambiguous</code>.</strong> Equal-specificity candidates resolve silently to the first declared.</li><li><strong>Role composition is last-writer-wins.</strong> Composing two roles that define the same method copies both into the table with no conflict diagnostic.</li><li><strong>The ladder's order is load-bearing and undocumented in the code beyond a warning.</strong> An arm moved for readability is a behaviour change.</li></ul><nav class="ch-nav"><a class="prev" href="/book/control-flow/"><span>Previous</span>Cooperative Control Flow</a><a class="next" href="/book/objects/"><span>Next</span>The Object System</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

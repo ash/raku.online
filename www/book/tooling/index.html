@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tooling Built on the AST — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 34</p><h1>Tooling Built on the AST</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#lint-static-analysis-that-runs-nothing"><code>--lint</code>: static analysis that runs nothing</a></li><li><a href="#highlight-colouring-with-the-compiler-s-own-knowledge"><code>--highlight</code>: colouring with the compiler's own knowledge</a></li><li><a href="#profile-a-routine-level-wall-time-profiler"><code>--profile</code>: a routine-level wall-time profiler</a></li><li><a href="#the-repl">The REPL</a></li><li><a href="#pod-and-doc">Pod and <code>--doc</code></a></li><li><a href="#dump-ast-and-the-tool-built-on-it"><code>--dump-ast</code>, and the tool built on it</a></li><li><a href="#the-tools-that-are-not-in-the-binary">The tools that are not in the binary</a></li></ul></nav>
+<p>Once a program is a tree, several useful things become short. This chapter covers the five tools that are built on the front end rather than on the runtime, and one that is built on the call path.</p>
+<h2 id="lint-static-analysis-that-runs-nothing"><code>--lint</code>: static analysis that runs nothing</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Lint.h
+struct LintFinding {
+    int line = 0;
+    char severity = 'W';        // 'W' warning, 'N' note
+    std::string rule;           // a stable id, e.g. "unused-variable"
+    std::string message;
+};
+std::vector&lt;LintFinding&gt; lintProgram(Program&amp; prog);</code></pre>
+<p>It walks an already-parsed tree and reports findings sorted by line and rule. It does not execute the program.</p>
+<p>The design constraint is stated in the header and is the whole reason the rule set is small:</p>
+<blockquote class="note"><p>Rules are deliberately conservative — a missed warning is acceptable, a false one is not.</p></blockquote>
+<p>Raku's dynamism is why. Interpolation, dynamic variables, <code>EVAL</code>, symbolic references and introspection all mean that a variable which <em>looks</em> unused may be reached by name at run time. An over-eager analyser in this language produces warnings people learn to ignore, at which point the tool is worse than nothing.</p>
+<p>Every finding carries a <strong>machine-readable rule id</strong> as well as prose, so a project can suppress or gate on a specific rule without matching message text.</p>
+<h2 id="highlight-colouring-with-the-compiler-s-own-knowledge"><code>--highlight</code>: colouring with the compiler's own knowledge</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Highlight.h
+std::string highlight(const std::string&amp; source, const std::string&amp; format);</code></pre>
+<p>Two renderers: <code>html</code> produces the same CSS token classes Pygments uses, so existing stylesheets apply unchanged; <code>ansi</code> produces terminal escapes.</p>
+<p>The class names are borrowed, but the classification is not. A regex-based highlighter has to guess; this one knows. <code>$obj.role</code> is coloured as a method call rather than as the keyword <code>role</code>, because the lexer and parser already established which it is.</p>
+<p>That is the general advantage of building a highlighter inside the compiler, and it is why the output is worth the coupling.</p>
+<h2 id="profile-a-routine-level-wall-time-profiler"><code>--profile</code>: a routine-level wall-time profiler</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Profiler.h
+namespace prof {
+    extern bool on;              // read on the hot path
+    void setDest(const std::string&amp; dest);
+    void enter(const void* key, const char* name, const char* file);
+    void leave();
+    void report();
+}</code></pre>
+<p>Two hooks — <code>callCallableRaw</code> for routines with a frame boundary, and <code>invokeMethod</code> — feed a per-thread shadow stack. Per routine it aggregates call count, inclusive and exclusive wall time.</p>
+<p>Three decisions worth naming.</p>
+<p><strong>Builtins are attributed to their caller</strong>, because the hooks are on <em>user code</em> routine entry rather than on the builtin dispatch chain. That is a deliberate simplification: it keeps the hot path to one branch, and a profile that says "this routine spent 40% of its time in built-ins" is usually the answer you wanted anyway.</p>
+<p><strong>Recursion is handled the standard way</strong>: only the outermost active frame of a routine adds to its inclusive time, so a recursive function's inclusive figure does not count the same seconds many times.</p>
+<p><strong>The off-cost is one predicted branch on a plain <code>bool</code> per call</strong>, measured at zero against the noise band before it was built. A profiler that cannot be compiled in unconditionally is a profiler people forget to use.</p>
+<p>The destination follows Rakudo's convention — the extension selects the format: <code>-</code> writes a table to standard error, a path writes the table there, and a path ending in <code>.json</code> writes a machine-readable dump.</p>
+<p>One portability note is recorded in the header: everything in it is portable C++17, with no <code>__builtin_expect</code> and no attributes, because the prototype's GCC-isms broke the MSVC build once already.</p>
+<h2 id="the-repl">The REPL</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Repl.h
+int rakuppRepl(const std::string&amp; exePath,
+               const std::vector&lt;std::string&gt;&amp; libPaths);
+bool stdinIsTerminal();
+bool replForced();</code></pre>
+<p>The REPL is entered <strong>only</strong> by a bare <code>rakupp</code> attached to a terminal. Anything arriving on a pipe or a redirect is a complete program and keeps running as one; the terminal test in <code>main</code> is the whole of that decision.</p>
+<p>It lives in the executable rather than the runtime library, so nothing about an interactive session is linked into the binaries the compiling modes produce.</p>
+<p>A REPL never calls <code>run()</code>. It keeps <strong>one</strong> <code>Interpreter</code> alive and feeds it <code>evalString</code> per line, so the mainline scope <em>is</em> the session. Two functions cover what <code>run()</code> would otherwise have done at either end:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+void replStart(std::vector&lt;std::string&gt; args);  // define @*ARGS, arm `state`
+void replFinish();                              // run END phasers, once
+std::vector&lt;std::string&gt; replNames() const;     // for tab completion</code></pre>
+<p>The nicest detail is how an incomplete line is recognised. A parse that dies on end-of-input is a request for more input, not a syntax error:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h — ParseError
+bool atEof = false;</code></pre>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+Value evalString(const std::string&amp; src, bool mainlinePH = false,
+                 bool* incompleteOut = nullptr);</code></pre>
+<p>The flag is set by the lexer's runaway-construct diagnostics and by the parser when it fails on the end token, so typing <code>sub f {</code> at the prompt asks for a continuation line while <code>sub f )</code> reports an error. One boolean, threaded from the lexer to the prompt.</p>
+<h2 id="pod-and-doc">Pod and <code>--doc</code></h2>
+<pre class="native-code"><code class="lang-cpp">// src/Pod.h
+std::vector&lt;Value&gt; parsePod(const std::string&amp; src);</code></pre>
+<p>Pod blocks are parsed into the <code>$=pod</code> DOM — a list of <code>Pod::Block</code> values, each a <code>Hash</code> tagged <code>"Pod"</code> with a class, a name, a level, a configuration and contents. Delimited (<code>=begin</code>/<code>=end</code>), paragraph (<code>=for</code>) and abbreviated (<code>=head1 …</code>) forms, nested blocks, and whitespace-collapsed paragraphs.</p>
+<p>Note the representation: a Pod block is not a new <code>VT</code> or a C++ class. It is a tagged <code>Hash</code>, which is the same technique <code>Set</code>, <code>Proxy</code> and <code>DateTime</code> use (<a href="/book/value/">Chapter 7</a>). The Raku program manipulating it sees an ordinary object.</p>
+<p>Declarator documentation — <code>#|</code> above a declaration, <code>#=</code> beside or below it — is collected by the lexer keyed by line and attached by the parser, answering <code>.WHY</code> on routines, classes and attributes.</p>
+<p><code>--doc</code> runs <code>DOC</code> phasers and prints the rendered content, and <code>=finish</code> data travels from the lexer to <code>$=finish</code>.</p>
+<h2 id="dump-ast-and-the-tool-built-on-it"><code>--dump-ast</code>, and the tool built on it</h2>
+<pre class="native-code"><code class="lang-sh">rakupp --dump-ast prog.raku
+RAKUPP_DUMPTOKENS=1 rakupp prog.raku</code></pre>
+<p><code>AstDump.cpp</code> prints the tree as an indented outline. It is the first thing to reach for when a parse produces something unexpected.</p>
+<p>It is also an <strong>interface</strong>, not just a debugging aid. <code>tools/ast-opportunity.raku</code> reads its output and counts syntactic patterns across a corpus — which is the tool that measured, in two minutes, that constant folding had almost nothing to fold in real Raku and that operand shapes were 25 per thousand nodes (<a href="/book/node-specialization/">Chapter 18</a>). A textual tree dump turned out to be a perfectly good static analysis substrate.</p>
+<h2 id="the-tools-that-are-not-in-the-binary">The tools that are not in the binary</h2>
+<p>A standing rule of the project: <strong>build the ecosystem tooling in Raku, run it with rakupp.</strong> Not because it is elegant, but because it is the largest available body of real-program testing.</p>
+<div class="tablewrap"><table><tr><th>Tool</th><th>What it does</th></tr><tr><td><code>tools/run-roast.raku</code></td><td>the Roast harness</td></tr>
+<tr><td><code>tools/run-bench.raku</code></td><td>the benchmark harness, three engines</td></tr>
+<tr><td><code>tools/perf-guard.raku</code></td><td>the release performance gate</td></tr>
+<tr><td><code>tools/run-optbench.raku</code></td><td>compiles each optimiser showcase twice, checks byte-identical output, then times</td></tr>
+<tr><td><code>tools/gen-unicode.raku</code></td><td>generates Unicode tables</td></tr>
+<tr><td><code>tools/ast-opportunity.raku</code></td><td>counts AST patterns</td></tr>
+<tr><td><code>tools/doc-examples-diff.raku</code></td><td>runs every documented example on both engines</td></tr>
+<tr><td><code>tools/recheck-divergences.raku</code></td><td>re-tests the recorded divergence list</td></tr></table></div>
+<p>Each of these is a substantial Raku program that runs on every release. When one of them breaks, it has usually found a bug in the compiler rather than in itself — which is exactly the point of the rule.</p>
+<p>The showcase programs go further. Interpreters for JavaScript, Perl 5, Python 3, Lisp and Forth, each written in Raku, each producing byte-identical output to the real implementation on its examples. Writing one is the single most productive bug-finding activity in the project's history: each of them, on first completion, yielded a list of genuine defects — grammar mis-parses, a lost <code>return</code>, dynamic-variable restore, slip flattening, precedence traps.</p>
+<p>An interpreter for another language exercises grammars, recursion, closures, string handling and dispatch simultaneously and at a scale no unit test reaches. It is a test suite that writes itself, and it has an oracle: the language it implements already has one.</p><nav class="ch-nav"><a class="prev" href="/book/concurrency/"><span>Previous</span>Concurrency</a><a class="next" href="/book/measuring/"><span>Next</span>Measuring, and Proving</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

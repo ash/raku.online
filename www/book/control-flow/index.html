@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cooperative Control Flow — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 14</p><h1>Cooperative Control Flow</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-insight">The insight</a></li><li><a href="#the-same-trick-three-more-times">The same trick, three more times</a></li><li><a href="#the-rest-of-the-control-exceptions">The rest of the control exceptions</a></li><li><a href="#catch-and-where-it-lives"><code>CATCH</code>, and where it lives</a></li><li><a href="#backtraces">Backtraces</a></li><li><a href="#what-was-gained-and-one-bug-it-cost">What was gained, and one bug it cost</a></li></ul></nav>
+<p>The natural way to implement <code>return</code> in a tree-walker is to throw a C++ exception and catch it at the routine boundary. It is correct, it is short, and it is what Raku++ did first.</p>
+<p>It is also slow. On macOS a C++ throw walks the dynamic loader's unwind information under a lock, costing tens of microseconds. In the WebAssembly build, where C++ exceptions run through JavaScript trampolines, it is very much worse. And <code>return</code> is not rare — it is on the exit path of a large fraction of all routines.</p>
+<h2 id="the-insight">The insight</h2>
+<p>A <code>return</code> only needs to unwind C++ frames if there is a <strong>callable boundary</strong> between it and its routine. If the <code>return</code> executes directly inside its routine's own statements, or inside a native <code>for</code> loop in the interpreter, then no C++ frame between them belongs to another Raku routine — and "unwinding" is just a matter of <em>stopping the statement loop</em>.</p>
+<p>Distinguishing those two cases needs a way to ask "has a callable been entered since my routine started?", and the answer is two counters.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+bool returning = false;  Value returnV;
+uint64_t frameTop = 0;         // incremented per callCallableRaw activation
+uint64_t curRoutineFrame = 0;  // frameTop at the enclosing ROUTINE entry</code></pre>
+<p>Every activation bumps <code>frameTop</code>. A routine records the value at its own entry. So the test is an equality:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — return
+if (tctx_.curRoutineFrame != 0 &amp;&amp; tctx_.frameTop == tctx_.curRoutineFrame) {
+    tctx_.returning = true; tctx_.returnV = std::move(v);
+    return Value::any();                       // set a flag, do not throw
+}
+throw ReturnEx{v};                             // a boundary was crossed</code></pre>
+<p>The statement loops check the flag after each statement and bail out, and <code>callCallableRaw</code> consumes it at the routine boundary:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — after each statement in the activation loop
+if (tctx_.returning) {
+    if (isRoutine) { tctx_.returning = false; last = std::move(tctx_.returnV); }
+    break;               // a bare block just propagates it to its routine
+}</code></pre>
+<p>A bare block does <em>not</em> consume the flag — it breaks out and lets it propagate — because a <code>return</code> inside <code>if { … }</code> returns from the enclosing routine, not from the block.</p>
+<h2 id="the-same-trick-three-more-times">The same trick, three more times</h2>
+<p><code>next</code>, <code>last</code> and <code>redo</code> use an identical mechanism with their own register and frame counter:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+int loopCtl = 0;              // 0 none, 1 next, 2 last, 3 redo
+uint64_t curLoopFrame = 0;    // frameTop of the innermost native loop</code></pre>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — LastStmt
+if (t.empty() &amp;&amp; tctx_.curLoopFrame != 0 &amp;&amp;
+    tctx_.frameTop == tctx_.curLoopFrame) {
+    tctx_.loopCtl = 2; return Value::any();
+}
+throw LastEx{t};              // labelled, or across a frame: unwind</code></pre>
+<p><code>when</code>, <code>default</code> and <code>succeed</code> got the same treatment, and for a specific measured reason. <code>given $v { when Int {…} when Str {…} … }</code> executed per row of a data set means a throw per row:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+int givenCtl = 0;             // 1 = a when matched; break the given
+Value givenV;
+uint64_t curGivenFrame = 0;</code></pre>
+<p>In each case the rule is the same: <strong>same frame, set a flag; different frame or a label, throw.</strong> Labelled control always throws, because a labelled <code>last</code> targets a specific enclosing loop that may be several frames up, and walking to it is exactly what unwinding is for.</p>
+<h2 id="the-rest-of-the-control-exceptions">The rest of the control exceptions</h2>
+<p>Everything that genuinely has to cross frames is still an exception, and they are all tiny structs:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct ReturnEx { Value v; };
+struct ExitEx { int code = 0; };
+struct LastEx { std::string label; };
+struct NextEx { std::string label; };
+struct RedoEx { std::string label; };
+struct DoneEx {};                    // exits a whenever/supply/react body
+struct BreakGivenEx { Value v; bool hasVal = false; };
+struct LeaveEx { Value v; bool hasVal = false; };
+struct ResumeEx {};                  // .resume inside a CATCH
+struct StopGatherEx {};              // a lazy gather has enough
+struct ProceedEx {};                 // leave a when, keep matching later ones
+struct RakuError { Value payload; std::string message; };
+struct WorkerAbortEx {};             // unwind a background worker at shutdown</code></pre>
+<p><code>RakuError</code> is the user-visible one: every Raku exception is a <code>RakuError</code> carrying a payload <code>Value</code> — normally an exception object — and a message. <code>WorkerAbortEx</code> is deliberately <em>not</em> a <code>RakuError</code>, so a user's <code>CATCH</code> cannot accidentally swallow a shutdown (<a href="/book/concurrency/">Chapter 33</a>).</p>
+<h2 id="catch-and-where-it-lives"><code>CATCH</code>, and where it lives</h2>
+<p>A <code>CATCH</code> block is a <code>Block</code> statement with <code>isCatch</code> set, sitting inside the block it guards. Finding it means scanning the body — so the answer is cached on the <code>Callable</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h — Callable
+DecidedOnce&lt;signed char&gt; catchScan{-1};   // 1 = the body holds an inline CATCH
+Stmt* catchBlkCache = nullptr;            // …and which one</code></pre>
+<p>When a <code>RakuError</code> reaches a block that has one, the handler runs with <code>$_</code> and <code>$!</code> bound to an exception instance. <code>exceptionFor</code> guarantees that instance is always <em>defined</em>, whatever was actually thrown, because a <code>when X::Foo</code> inside the handler needs something to smartmatch against.</p>
+<p><code>.resume</code> throws <code>ResumeEx</code>, caught at the throw point. Because a bare <code>ResumeEx</code> with nothing to absorb it would reach <code>std::terminate</code>, the interpreter tracks how many <code>CATCH</code> handlers are live and turns a <code>.resume</code> outside any of them into a catchable Raku error:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+int catchDepth_ = 0;</code></pre>
+<p>Typed exceptions are built rather than hard-coded:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+[[noreturn]] void throwTyped(const std::string&amp; type,
+        std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; attrs,
+        const std::string&amp; message);
+Value makeTypedEx(const std::string&amp; type,
+        std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; attrs,
+        const std::string&amp; message);</code></pre>
+<p>so <code>X::TypeCheck::Binding</code> arrives with its <code>got</code> and <code>expected</code> attributes populated and can be matched on class rather than on message text. That distinction matters: the project's rule is that error <em>message</em> wording is only copied from Rakudo where Roast or the documentation actually asserts it — the behaviour is what must match, not the prose.</p>
+<h2 id="backtraces">Backtraces</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+struct CallSite { int line; const Value* code; };
+std::vector&lt;CallSite&gt; callFrames;</code></pre>
+<p>One entry per live routine activation: the line the <em>call</em> was written on, and the routine itself. It is pushed next to <code>dynStack</code>, which every call already pays for, so it costs a vector append.</p>
+<p>That is what <code>callframe(N)</code> walks — <code>Log::Async</code> stamps every message with <code>callframe(1)</code> — and what <code>Exception.throw</code> turns into a <code>BacktraceFrame</code> list. The routine's declaring file comes from <code>Callable::declFile</code>, recorded when the routine was declared, because by the time a backtrace is taken the module that declared it is long gone from the current scope.</p>
+<h2 id="what-was-gained-and-one-bug-it-cost">What was gained, and one bug it cost</h2>
+<p>The cooperative path removes a C++ throw from the exit of most routines and the body of most loops and <code>given</code> blocks. On macOS, where a throw is expensive, and in WebAssembly, where it is much worse, that is the difference between a tolerable and an intolerable tree-walker.</p>
+<p>The mechanism has one hazard, and it bit: <strong>the counters must be maintained consistently across every activation kind.</strong> Methods go through <code>invokeMethod</code> rather than <code>callCallableRaw</code>, and for a period that path did not establish the routine frame boundary the same way. The symptom was specific and baffling — a method lost an early <code>return</code> when the <code>return</code> was inside a loop, but only in some call contexts. The cooperative flag was set, and the frame that should have consumed it did not recognise itself as a routine boundary, so the return value evaporated.</p>
+<p>The fix was to establish the boundary in <code>invokeMethod</code> exactly as <code>callCallableRaw</code> does, and the regression test is a method with a <code>return</code> inside a loop, called every way the language allows.</p>
+<p>The general lesson is worth stating: <strong>an optimisation that replaces a language-level mechanism with a hand-maintained invariant is only as correct as the least careful place that maintains it.</strong> C++ unwinding could not be got wrong this way, because the compiler maintained it. Frame counters can.</p><nav class="ch-nav"><a class="prev" href="/book/calls/"><span>Previous</span>Calls and Parameter Binding</a><a class="next" href="/book/dispatch/"><span>Next</span>Dispatch</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Raku++ Is — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 1</p><h1>What Raku++ Is</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-pipeline">The pipeline</a></li><li><a href="#the-four-modes-in-one-paragraph-each">The four modes, in one paragraph each</a></li><li><a href="#what-the-design-is-optimised-for">What the design is optimised for</a></li><li><a href="#what-it-deliberately-is-not">What it deliberately is not</a></li><li><a href="#the-ecosystem-around-the-compiler">The ecosystem around the compiler</a></li><li><a href="#a-map-of-this-book">A map of this book</a></li></ul></nav>
+<p>Raku++ is a Raku implementation written from scratch in C++17. It has no third-party dependencies: no parser generator, no regex library, no bignum library, no ICU, no libffi at link time, no garbage collector. The binary it produces is one file, and the same source builds it on macOS, Linux, the BSDs, Windows, and — compiled to WebAssembly — inside a browser tab.</p>
+<p>That constraint is not asceticism for its own sake. It has a specific consequence which shapes almost every chapter of this book: <strong>when something is slow or wrong, the code responsible is in the tree</strong>, and it can be changed. A good deal of what follows is the story of doing exactly that.</p>
+<h2 id="the-pipeline">The pipeline</h2>
+<pre class="native-code"><code>                            ┌─ interpret ─► tree-walk (Interpreter)
+                            │
+ source ─► Lexer ─► Parser ─┼─ --aot ─► AstEmit ─► cc ─► binary
+                  (─► AST)  │              (rebuilds the tree, walks it)
+                            │
+                            └─ --exe ─► Codegen ─► cc ─► binary
+                                           (native; no interpreter inside)
+
+ source ─────────── --bundle ─► embed the bytes ─► cc ─► binary
+                                   (parses and walks at run time)</code></pre>
+<p>A single front end feeds four back ends. The front end is a hand-written character-level lexer and a recursive-descent parser with a precedence-climbing core for expressions; it produces a <code>Program</code>, which is a vector of statement nodes. Everything downstream consumes that one artifact.</p>
+<p>Everything except the command-line driver is compiled into a static library, <strong><code>librakupp_rt.a</code></strong> — "the runtime". The <code>rakupp</code> executable links against it, and so does every binary the compiling modes produce. That is why a feature implemented once behaves identically whether a program is interpreted or natively compiled: there is one implementation of <code>Value</code> semantics, one set of built-ins, one method dispatcher, one regex engine, one Unicode subsystem.</p>
+<h2 id="the-four-modes-in-one-paragraph-each">The four modes, in one paragraph each</h2>
+<p><strong>Interpret</strong> (the default) lexes, parses, and tree-walks. Startup is about two milliseconds; throughput pays the per-node dispatch cost. This is the mode the language is developed against, because it is the only one that can run every construct.</p>
+<p><strong><code>--bundle</code></strong> embeds the source bytes in a generated C++ stub and links it against the runtime. The result is standalone, but at run time it still lexes, parses and tree-walks — it is the interpreter in a box. The win is distribution, not speed.</p>
+<p><strong><code>--aot</code></strong> parses at build time and emits C++ that <em>rebuilds the identical AST</em> at startup, then interprets it. Parse errors surface at build time rather than run time; execution speed is the same as bundling, because it is the same tree walk. It emits one builder function per AST node, so the generated code grows with the program.</p>
+<p><strong><code>--exe</code></strong> parses at build time and transpiles the tree into C++ that implements the program directly: native control flow, native calls, with the runtime called only for value semantics. With <code>-O</code> it additionally runs its own optimizer before the C++ compiler sees anything. Anything it cannot transpile throws a <code>CodegenError</code>, which the driver catches and answers by bundling the whole program instead — so <code>--exe</code> never refuses a program.</p>
+<p><a href="/book/run-modes/">Chapter 24</a> works one small program through all four.</p>
+<h2 id="what-the-design-is-optimised-for">What the design is optimised for</h2>
+<p>Three decisions dominate everything else, and each gets a full chapter later.</p>
+<p><strong>One value type.</strong> Every Raku value at runtime is the same C++ struct, <code>Value</code>, carrying a one-byte tag and a field for every kind of payload. Not a union, not a <code>std::variant</code>, not a class hierarchy — a <em>fat struct</em>. <a href="/book/value/">Chapter 7</a> argues the case, which is stronger than it first looks, and prices the memory it costs.</p>
+<p><strong>The C++ stack is the Raku stack.</strong> There is no bytecode and no separate operand stack. <code>eval(Expr*)</code> returns a <code>Value</code>; <code>exec(Stmt*)</code> runs a statement. This makes the implementation small and makes native recursion depth the Raku recursion budget, which is why the entry point runs the program on a thread with a very large stack.</p>
+<p><strong>Compile time runs nothing.</strong> The parser executes no user code. <code>BEGIN</code> becomes a tagged block that the interpreter schedules after the parse; <code>constant</code> is not folded; <code>use</code> does not load anything during parsing. There is exactly one parse-time side effect — registering a user-declared operator in the parser's own tables — and <a href="/book/user-operators/">Chapter 5</a> is about why that one is enough to support custom operators with real precedence in a single forward pass, and why it is also the reason macros and slangs are not supported.</p>
+<h2 id="what-it-deliberately-is-not">What it deliberately is not</h2>
+<p>It is not the reference implementation. Rakudo is, and Raku++ is measured against Rakudo and against the Roast suite continuously rather than aspirationally. The current position is roughly ninety per cent of declared Roast assertions.</p>
+<p>It has no JIT and no garbage collector. Lifetime is <code>shared_ptr</code> reference counting, which means a reference cycle leaks; the interpreter breaks the specific cycle that a self-closured nested sub would create, and otherwise the process is short-lived enough for this to be a real but tolerable limitation.</p>
+<p>It does not implement compile-time metaprogramming. <code>macro</code>, <code>quasi</code>, <code>RakuAST</code>, and swapping the grammar for a lexical scope are all absent, for the structural reason given above. What <em>is</em> supported is everything that can be done by adding an entry to a table during a single forward pass: all six custom-operator categories with precedence and associativity traits, plus the whole runtime meta-object surface (<code>augment</code>, <code>.^add_method</code>, <code>does</code>/<code>but</code> mixins, <code>&amp;routine.wrap</code>).</p>
+<h2 id="the-ecosystem-around-the-compiler">The ecosystem around the compiler</h2>
+<p>Several things in this book are not in the <code>rakupp</code> binary but are load-bearing for it, and appear where they are relevant:</p>
+<div class="tablewrap"><table><tr><th>Thing</th><th>What it is</th></tr><tr><td><strong>Raku.js</strong></td><td>the same runtime compiled to WebAssembly — the interpreter in a browser</td></tr>
+<tr><td><strong>the Roast harness</strong></td><td><code>tools/run-roast.raku</code>, written in Raku, run by rakupp against the spec suite</td></tr>
+<tr><td><strong><code>perf-guard</code></strong></td><td><code>tools/perf-guard.raku</code>, the release gate that fails a regression instead of eyeballing one</td></tr>
+<tr><td><strong>the showcase interpreters</strong></td><td>JavaScript, Perl 5, Python 3 and Lisp interpreters <em>written in Raku</em>, used as beyond-Roast tests</td></tr>
+<tr><td><strong><code>Rakupp::JSON</code></strong></td><td>the first native extension module, and the proof the extension ABI works</td></tr></table></div>
+<p>The showcase programs deserve a note here because they recur. An interpreter for another language, written in Raku and run by Raku++, exercises grammars, recursion, string handling, closures and dispatch simultaneously and at a scale no unit test reaches. Each of them, when first written, produced a list of genuine bugs in Raku++; several fixes in later chapters were found that way.</p>
+<h2 id="a-map-of-this-book">A map of this book</h2>
+<div class="tablewrap"><table><tr><th>Part</th><th>Covers</th></tr><tr><td>I</td><td>this chapter, and the layout of the source</td></tr>
+<tr><td>II</td><td>lexer, parser, user-defined operators, the AST</td></tr>
+<tr><td>III</td><td><code>Value</code>, strings, interning, numbers, containers</td></tr>
+<tr><td>IV</td><td>the tree walk, calls, control flow, dispatch, objects, laziness</td></tr>
+<tr><td>V</td><td>the regex engine, the grammar engine, longest-token matching</td></tr>
+<tr><td>VI</td><td>Unicode: graphemes, normalization, collation</td></tr>
+<tr><td>VII</td><td>the four run modes, the C++ code generator, <code>-O</code>, serialization</td></tr>
+<tr><td>VIII</td><td>modules, <code>use nqp</code>, NativeCall, the extension ABI, concurrency</td></tr>
+<tr><td>IX</td><td>tooling built on the AST, and how any of this is proved</td></tr></table></div><nav class="ch-nav"><a class="prev" href="/book/preface/"><span>Previous</span>Preface</a><a class="next" href="/book/shape-of-source/"><span>Next</span>The Shape of the Source</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

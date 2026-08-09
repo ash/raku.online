@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Extension ABI — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 32</p><h1>The Extension ABI</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#extension-or-nativecall">Extension or NativeCall?</a></li><li><a href="#the-one-rule">The one rule</a></li><li><a href="#hello-world">Hello, world</a></li><li><a href="#the-value-vocabulary">The value vocabulary</a></li><li><a href="#lifetime-handles-belong-to-the-call">Lifetime: handles belong to the call</a></li><li><a href="#errors">Errors</a></li><li><a href="#versioning">Versioning</a></li><li><a href="#writing-a-module-that-also-runs-on-rakudo">Writing a module that also runs on Rakudo</a></li><li><a href="#packaging">Packaging</a></li><li><a href="#the-naming-convention">The naming convention</a></li><li><a href="#current-limits">Current limits</a></li><li><a href="#the-other-direction">The other direction</a></li></ul></nav>
+<p>Raku++ walks an AST. It does not JIT, so a tight loop written in Raku costs it roughly an order of magnitude more than it costs Rakudo — and some jobs, like tokenizing a 300 KB JSON document, are nothing <em>but</em> a tight loop.</p>
+<p>An extension module is the escape hatch. A distribution ships C source alongside its Raku, the build step compiles it against a published ABI at install time, and the compiled routines become ordinary Raku subs. Perl calls this XS; Python calls it a C extension. The point is the same, and so is the most important property: <strong>the module versions independently of the compiler.</strong> A faster JSON parser should not require a new release of the language implementation.</p>
+<h2 id="extension-or-nativecall">Extension or NativeCall?</h2>
+<p>They solve different problems and the wrong choice is painful.</p>
+<div class="tablewrap"><table><tr><th></th><th>NativeCall</th><th>extension module</th></tr><tr><td>calls</td><td>an <strong>existing</strong> C library you did not write</td><td>C <strong>you</strong> write for this module</td></tr>
+<tr><td>data</td><td>C types: ints, nums, pointers, structs</td><td>Raku values: Hash, Array, Int, Rat, Str</td></tr>
+<tr><td>build</td><td>none; the shared object already exists</td><td>compiled at install time</td></tr>
+<tr><td>use when</td><td>wrapping libcurl, sqlite3, libgit2</td><td>a hot loop in your own module is the bottleneck</td></tr></table></div>
+<p>If you need to return a <em>Hash of Rats</em>, NativeCall cannot express it and an extension can. If you need to call <code>curl_easy_perform</code>, use NativeCall.</p>
+<h2 id="the-one-rule">The one rule</h2>
+<p><strong>An extension never sees <code>Value</code>.</strong> Every Raku value crosses the boundary as an opaque handle.</p>
+<pre class="native-code"><code class="lang-c">/* src/rakupp_ext.h */
+typedef struct RkValueOpaque* RkValue;
+typedef struct RkCtxOpaque*   RkCtx;</code></pre>
+<p>This is not fastidiousness. <code>sizeof(Value)</code> moved from 392 to 376 to 344 bytes in a single afternoon of ordinary optimisation work, and the representation plan intends roughly 204 next. An ABI that exposed the struct would have to freeze the interpreter's internals forever, or silently miscompile every extension built against an older header — the failure mode where a module reads a <code>Str</code> out of a field that is now an <code>Int</code> and nothing crashes until much later.</p>
+<p>Handles cost an indirection. They buy the ability to install a module today and keep it working across compiler releases, which is the entire point.</p>
+<p>The corollary: <strong>this is plain C.</strong> No C++ types cross the boundary, no exceptions cross it, and nothing received needs freeing. A binding from Rust or Zig would need nothing beyond the header.</p>
+<h2 id="hello-world">Hello, world</h2>
+<pre class="native-code"><code class="lang-c">#include &lt;rakupp/rakupp_ext.h&gt;
+
+static RkValue answer(RkCtx c) { return rk_int(c, 42); }
+
+static const RkSubDef subs[] = { {"answer", answer}, {0, 0} };
+static const RkModule mod = { RAKUPP_EXT_ABI, "Hello::Ext", subs };
+
+RAKUPP_EXT_EXPORT const RkModule* rakupp_ext_init(unsigned host_abi) {
+    return host_abi == RAKUPP_EXT_ABI ? &amp;mod : 0;
+}</code></pre>
+<pre class="native-code"><code class="lang-raku">use Rakupp::Ext;
+rakupp-ext-load('./libhello.dylib');
+say answer();      # 42</code></pre>
+<p><code>rakupp-ext-load</code> installs each of the extension's subs into the <strong>calling scope</strong>, so inside a module they land exactly where an <code>our sub</code> would, and that module's <code>is export</code> carries them onward.</p>
+<h2 id="the-value-vocabulary">The value vocabulary</h2>
+<pre class="native-code"><code class="lang-c">/* constructing */
+RkValue rk_any  (RkCtx c);
+RkValue rk_bool (RkCtx c, int truthy);
+RkValue rk_int  (RkCtx c, long long v);
+RkValue rk_int_s(RkCtx c, const char* decimal);       /* arbitrary precision */
+RkValue rk_num  (RkCtx c, double v);
+RkValue rk_rat_s(RkCtx c, const char* n, const char* d); /* a Rat, normalised */
+RkValue rk_str  (RkCtx c, const char* utf8, size_t len); /* copied */
+RkValue rk_array(RkCtx c);   void rk_push(RkCtx c, RkValue a, RkValue v);
+RkValue rk_hash (RkCtx c);   void rk_set (RkCtx c, RkValue h,
+                                          const char* k, size_t kl, RkValue v);
+void    rk_list (RkCtx c, RkValue array);   /* mark it a List, not an Array */
+void    rk_map  (RkCtx c, RkValue hash);    /* mark it a Map,  not a Hash  */</code></pre>
+<p><code>rk_int_s</code> and <code>rk_rat_s</code> take <strong>decimal strings</strong> rather than integers on purpose: Raku's <code>Int</code> has no width, and a document may carry a 40-digit number that no C integer type can hold. <code>rk_rat_s("1", "7")</code> gives exactly one seventh, not <code>0.14285714285714285</code>.</p>
+<pre class="native-code"><code class="lang-c">/* inspecting */
+RkType      rk_type   (RkCtx c, RkValue v);
+long long   rk_int_get(RkCtx c, RkValue v);
+const char* rk_str_get(RkCtx c, RkValue v, size_t* len);   /* borrowed */
+size_t      rk_elems  (RkCtx c, RkValue v);
+RkValue     rk_at_pos (RkCtx c, RkValue array, size_t i);
+const char* rk_key_at (RkCtx c, RkValue hash, size_t i, size_t* keylen);
+RkValue     rk_val_at (RkCtx c, RkValue hash, size_t i);</code></pre>
+<p><code>RkType</code> is deliberately coarse:</p>
+<pre class="native-code"><code class="lang-c">typedef enum {
+    RK_ANY = 0, RK_BOOL, RK_INT, RK_NUM, RK_RAT, RK_STR,
+    RK_ARRAY, RK_HASH, RK_OTHER
+} RkType;</code></pre>
+<p>It describes <strong>what an extension can do with a value</strong>, not where the value sits in Raku's type hierarchy. Anything the ABI has no vocabulary for arrives as <code>RK_OTHER</code>, and the advice is to stringify it. A coarse enum is a deliberate choice: a fine one would have to track the language's type system, which is exactly the coupling this design exists to avoid.</p>
+<pre class="native-code"><code class="lang-c">/* arguments */
+size_t  rk_argc (RkCtx c);                    /* positionals only */
+RkValue rk_arg  (RkCtx c, size_t i);          /* NULL if absent */
+RkValue rk_named(RkCtx c, const char* name);  /* NULL if not passed */</code></pre>
+<p><code>rk_named</code> returning <code>NULL</code> means <em>not passed</em>, which is distinct from being passed an undefined value — so <code>:immutable</code> and <code>:!immutable</code> remain distinguishable.</p>
+<h2 id="lifetime-handles-belong-to-the-call">Lifetime: handles belong to the call</h2>
+<p>Everything an extension creates is allocated in the context's <strong>arena</strong> and released when the sub returns; the single value it returns is copied out first.</p>
+<p>So an extension never frees anything, cannot leak, and — the rule that has to be stated because it is invisible until it bites — <strong>a handle stored in a global and used on the next call is dangling.</strong> There is no reference counting to save you. State that must persist across calls belongs in C, not in handles.</p>
+<p>Borrowed pointers from <code>rk_str_get</code> and <code>rk_key_at</code> are valid until the call returns, which is long enough to copy out of them and no longer.</p>
+<p>The arena is what makes the boundary safe in both directions: the host cannot be made to leak by a careless extension, and an extension cannot hold a reference into a value model that is free to change underneath it.</p>
+<h2 id="errors">Errors</h2>
+<pre class="native-code"><code class="lang-c">void rk_die(RkCtx c, const char* message);</code></pre>
+<p>Call it and <strong>return <code>NULL</code></strong>. The host raises a Raku exception at the call site, catchable with <code>try</code>/<code>CATCH</code> like any other. A second <code>rk_die</code> keeps the first message, so an error deep in a recursive parse survives the unwind.</p>
+<p>Never throw a C++ exception across the boundary. The host did not compile the extension's code and cannot catch it.</p>
+<h2 id="versioning">Versioning</h2>
+<pre class="native-code"><code class="lang-c">#define RAKUPP_EXT_ABI 1u
+typedef const RkModule* (*RkInitFn)(unsigned host_abi);</code></pre>
+<p>One integer, bumped whenever the meaning or order of anything in the header changes. The host looks up one symbol, <code>rakupp_ext_init</code>, and passes its own version. <strong>Return <code>NULL</code> if you do not recognise it</strong> rather than guessing; the host then reports a clean mismatch instead of calling through a wrong-shaped table.</p>
+<p>All three failure modes report themselves and none corrupt:</p>
+<pre class="native-code"><code>'…/thing.dylib' was built for a different extension ABI (host is 1)
+cannot load extension '/nope.dylib'
+'/bin/ls' is not a rakupp extension (no rakupp_ext_init)</code></pre>
+<p>The host side is one function:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+Value extLoadModule(const std::string&amp; path, std::string&amp; errOut,
+                    std::vector&lt;std::pair&lt;std::string, Value&gt;&gt;&amp; subsOut);</code></pre>
+<p>which <code>dlopen</code>s the path, checks the ABI, and hands back the subs it declares.</p>
+<h2 id="writing-a-module-that-also-runs-on-rakudo">Writing a module that also runs on Rakudo</h2>
+<p>A module that <em>only</em> works on Raku++ is a poor citizen. The pattern that works everywhere is a compiled fast path with a pure-Raku fallback, chosen at load time — and the load-bearing detail is how the loader is reached:</p>
+<pre class="native-code"><code class="lang-raku">my &amp;ext-load = try &amp;::('rakupp-ext-load');</code></pre>
+<p><strong>Why not call <code>rakupp-ext-load(...)</code> directly?</strong> Because Raku resolves sub names at <em>compile</em> time. On Rakudo the name does not exist, so the file fails to compile and the fallback never gets the chance to run.</p>
+<p><code>&amp;::('...')</code> is a <strong>symbolic lookup</strong>: the name is a string, resolved at run time. The line is valid Raku either way, so the <em>same source file</em> compiles on both engines and simply finds nothing on Rakudo.</p>
+<pre class="native-code"><code class="lang-raku">unit module My::Thing;
+
+my &amp;ext-load = try &amp;::('rakupp-ext-load');
+my &amp;fast;
+
+sub load-native(--&gt; Bool) {
+    return False unless &amp;ext-load;
+    for libraries() -&gt; $lib {
+        next unless $lib.IO.e;
+        next unless try ext-load($lib.Str);
+        &amp;fast = try &amp;::('my-thing-native');
+        return True if &amp;fast;
+    }
+    False
+}
+my Bool $native = load-native();
+
+our sub do-the-thing($x) is export {
+    $native ?? fast($x) !! pure-raku-version($x)
+}</code></pre>
+<p><code>use Rakupp::Ext</code> is accepted too and is the discoverable spelling for code that is Raku++-only by design — but it is a <code>use</code> statement, so writing it makes the file uncompilable on Rakudo.</p>
+<p>Note that <code>&amp;fast</code> and <code>&amp;ext-load</code> keep their sigil at every mention. Writing <code>fast.defined</code> would <em>call</em> <code>fast</code> and ask the result, producing a baffling <code>No such method 'CALL-ME'</code>.</p>
+<h2 id="packaging">Packaging</h2>
+<pre class="native-code"><code>My-Thing/
+├── META6.json          "resources": [ "libraries/thing" ]
+├── Build.rakumod       compiles src/ at install time
+├── src/thing.c
+├── lib/My/Thing.rakumod
+└── resources/libraries/</code></pre>
+<p>Raku maps the logical resource name to the platform spelling, so <strong>the build must emit <code>libthing.dylib</code>, not <code>thing.dylib</code></strong>, or <code>%?RESOURCES</code> will not find it.</p>
+<p><code>Build.rakumod</code> should <strong>never abort an install</strong>. If the compiler is missing, or the headers are not there, or the engine is Rakudo, warn and return true: the module then runs on its fallback. A build hook that fails turns an optimisation into a hard dependency.</p>
+<p>Find the library through <code>%?RESOURCES</code>, falling back to a working-directory path. <strong>Do not derive it from <code>$?FILE</code></strong> — under Raku++ a module's <code>$?FILE</code> is the <em>main program's</em> path, not the module's, so anything computed from it lands somewhere unrelated. That is a recorded bug, not a design.</p>
+<h2 id="the-naming-convention">The naming convention</h2>
+<p>A module whose behaviour depends on Raku++ should say so in its name. <code>Rakupp::JSON</code> tells a reader at the point of <code>use</code> that this is not a portable choice — better than a footnote in a README, and better than discovering it when the deploy target turns out to be Rakudo.</p>
+<p>Two rules follow. A <code>Rakupp::</code> module is still a normal distribution: installed by zef, carrying a <code>META6.json</code>, degrading gracefully elsewhere. And <strong>the compiler must not special-case a module name.</strong> An early draft of <code>Rakupp::JSON</code> was built into the interpreter, and <code>use Rakupp::JSON</code> intercepted the name before module loading — so the real distribution's tests silently exercised the built-in copy instead of the extension they were written for. If a name can be a module, it must <em>only</em> be a module.</p>
+<h2 id="current-limits">Current limits</h2>
+<ul><li><strong>There is a per-value cost.</strong> Each value crosses as an arena-allocated handle and is then copied into its container — roughly one extra <code>Value</code> copy per node. Measured on <code>Rakupp::JSON</code>: 5.7 ms against 2.7 ms for the same parser compiled into the interpreter. Still 6.6 times faster than Rakudo on that workload, but it means an extension is worth it for <strong>bulk</strong> work, not for a routine called once with two integers.</li><li><strong>Hash iteration is index-based</strong>, so <code>rk_key_at</code> is O(i) and walking a whole hash is quadratic. A cursor is the obvious version-2 addition, and it is why <code>Rakupp::JSON</code> implements only the parser natively and leaves serialisation in Raku.</li><li><strong>No <code>--exe</code> bundling.</strong> A program using a native extension cannot be compiled into a standalone binary; the shared library is loaded at run time and is not part of the module graph the bundler walks.</li><li><strong>One context per call, single-threaded within it.</strong> Handles are not safe to pass between threads.</li></ul>
+<h2 id="the-other-direction">The other direction</h2>
+<p>Extensions are <strong>native code called from Raku</strong>. Embedding is <strong>Raku called from native code</strong>. Same boundary, opposite direction — and the observation that shapes the current plan is that the harder half is already built:</p>
+<blockquote class="note"><p>The extension ABI has the value vocabulary, the opaque-handle discipline, version negotiation, an error model, and the rule that makes all of it survivable.</p></blockquote>
+<p>So an embedding API does not get a second value vocabulary. <code>RkValue</code> is the value type, <code>rk_int</code>/<code>rk_str</code>/<code>rk_hash</code>/<code>rk_at_pos</code> are the accessors, and an earlier proposal for a separate opaque type with its own free function was retracted on exactly that ground.</p>
+<p>That is worth stating as a design principle rather than a project note: <strong>when you publish a boundary, publish one.</strong> Two vocabularies for the same values is twice the surface to keep stable, and the whole reason for the handle discipline was to have as little of that surface as possible.</p><nav class="ch-nav"><a class="prev" href="/book/nativecall/"><span>Previous</span>NativeCall and the libffi Backend</a><a class="next" href="/book/concurrency/"><span>Next</span>Concurrency</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

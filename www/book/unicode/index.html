@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graphemes, Normalization, Collation — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 23</p><h1>Graphemes, Normalization, Collation</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#storage-utf-8-bytes-grapheme-semantics">Storage: UTF-8 bytes, grapheme semantics</a></li><li><a href="#the-fast-answer-when-a-byte-index-is-a-grapheme-index">The fast answer: when a byte index is a grapheme index</a></li><li><a href="#the-slow-answer-graphememap">The slow answer: <code>GraphemeMap</code></a></li><li><a href="#the-subsystems">The subsystems</a></li><li><a href="#the-tables-are-generated-and-one-generator-is-written-in-raku">The tables are generated, and one generator is written in Raku</a></li><li><a href="#where-unicode-shows-up-elsewhere">Where Unicode shows up elsewhere</a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>Raku specifies strings at the level of <strong>graphemes</strong> — what a reader would call a character — not codepoints and certainly not bytes. <code>"e\c[COMBINING ACUTE ACCENT]".chars</code> is 1. Sorting respects the Unicode Collation Algorithm. <code>"\c[LATIN SMALL LETTER E WITH ACUTE]".uniname</code> answers a real name from the character database.</p>
+<p>None of that is optional, and Raku++ implements all of it from the pinned Unicode 17.0 data with no external library.</p>
+<h2 id="storage-utf-8-bytes-grapheme-semantics">Storage: UTF-8 bytes, grapheme semantics</h2>
+<p>A <code>Str</code> holds UTF-8 bytes in its <code>CowStr</code>. Raku's <em>indices</em> are grapheme indices. Those two facts have to be reconciled on every string operation, and how that reconciliation is made cheap is the most consequential engineering decision in this part of the system.</p>
+<p>Strings are normalised to <strong>NFC</strong> on the way in — Raku's NFG storage model — so a literal is normalised once, in place, on first evaluation:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Ast.h — StrLit
+bool nfcDone = false;   // NFC-normalized in place on first eval</code></pre>
+<h2 id="the-fast-answer-when-a-byte-index-is-a-grapheme-index">The fast answer: when a byte index is a grapheme index</h2>
+<p>Most strings in most programs are ASCII. For those, byte index, codepoint index and grapheme index are all the same number, and every conversion is a no-op — if you can establish it cheaply.</p>
+<pre class="native-code"><code class="lang-cpp">// src/BuiltinsShared.h
+size_t asciiRun(const std::string&amp; s, size_t limit);
+bool allAscii(const std::string&amp; s);
+bool byteIsGraphemeIndex(const std::string&amp; s);
+bool cowAllAscii(const CowStr&amp; s);
+bool cowByteIsGraphemeIndex(const CowStr&amp; s);
+long long cowGraphemeCount(const CowStr&amp; s);</code></pre>
+<p>The <code>cow*</code> forms are the memoised ones. They read the flags cached on the promoted string body (<a href="/book/strings/">Chapter 8</a>), so the answer is computed once per string rather than once per character examined.</p>
+<p>The condition is narrow and exact: <strong>all bytes below 0x80, and no carriage return.</strong> CR LF is the one ASCII sequence that forms a single grapheme cluster under UAX #29, so an ASCII string containing a CR can still cluster.</p>
+<p>Getting this wrong is not a correctness bug — it is a <em>complexity</em> bug. The scanning operations call these once per character examined, so the difference between memoised and not is the difference between a linear tokenizer and a quadratic one.</p>
+<h2 id="the-slow-answer-graphememap">The slow answer: <code>GraphemeMap</code></h2>
+<p>When a string can genuinely cluster, the translation between codepoint indices and grapheme indices is built explicitly:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Unicode.h
+class GraphemeMap {
+public:
+    explicit GraphemeMap(const std::vector&lt;uint32_t&gt;&amp; cps);
+    bool trivial() const { return starts_.empty(); }
+    size_t count() const;                  // graphemes
+    size_t cpAt(size_t g) const;           // codepoint index where g starts
+    size_t graphemeAt(size_t cp) const;    // grapheme containing codepoint cp
+private:
+    size_t ncps_;
+    std::vector&lt;size_t&gt; starts_;           // empty when 1 grapheme == 1 cp
+};</code></pre>
+<p>The class exists because <code>substr</code>, <code>index</code> and <code>flip</code> each used to re-derive the translation — or, worse, skip it entirely and index codepoints, which is silently wrong for any text carrying a combining mark.</p>
+<p>The common case costs one linear scan and no allocation: a string with no codepoint above U+02FF and no CR cannot cluster, so <code>starts_</code> stays empty and <code>trivial()</code> is true. Only a string that can actually cluster pays the full UAX #29 walk.</p>
+<h2 id="the-subsystems">The subsystems</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Unicode.h — the interface, abridged
+std::vector&lt;uint32_t&gt; uniNormalize(const std::vector&lt;uint32_t&gt;&amp;, int mode);
+size_t uniGraphemeCount(const std::vector&lt;uint32_t&gt;&amp; cps);
+std::vector&lt;size_t&gt; uniGraphemeStarts(const std::vector&lt;uint32_t&gt;&amp; cps);
+size_t uniClusterEndUtf8(const std::string&amp; s, size_t pos, size_t len);
+int uniCollate(const std::vector&lt;uint32_t&gt;&amp; a, const std::vector&lt;uint32_t&gt;&amp; b);
+int32_t uniCharByName(const std::string&amp; name);
+std::string uniNameOf(uint32_t cp);
+bool uniNumValue(uint32_t cp, long long&amp; num, long long&amp; den);
+std::string uniGeneralCategory(uint32_t cp);
+std::string uniScript(uint32_t cp);
+bool uniMatchesProp(uint32_t cp, const std::string&amp; prop);
+uint32_t uniSimpleUpper(uint32_t cp);
+std::vector&lt;uint32_t&gt; uniCaseMap(uint32_t cp, int kind); // 0lo 1up 2ti 3fold
+std::string uniBlockOf(uint32_t cp);
+int uniBinaryProp(uint32_t cp, const std::string&amp; prop);</code></pre>
+<p><strong>Normalization</strong> implements all four forms — NFD, NFC, NFKD, NFKC — over codepoint sequences: canonical decomposition, canonical ordering by combining class, and canonical composition.</p>
+<p><strong>Grapheme segmentation</strong> is UAX #29 extended grapheme clusters, which is more than "base plus combining marks": it covers Hangul syllable composition, regional indicator pairs (flag emoji), emoji modifier sequences and zero-width joiner sequences, and the CR LF rule.</p>
+<p><strong>Collation</strong> is the Unicode Collation Algorithm against the default table, producing a three-way comparison. That is what <code>coll</code> and <code>.collate</code> use, and it is why sorting Raku strings is not <code>strcmp</code>.</p>
+<p><strong>Names</strong> go both ways: name to codepoint for <code>\c[NAME]</code>, codepoint to name for <code>.uniname</code>. This is the single largest file in the tree at 41,174 lines, and it is a binary search plus a hash lookup at run time.</p>
+<p><strong>Properties</strong> cover general category, script, block, numeric value, bidi class, mirroring, and the binary and enumerated properties. <code>uniMatchesProp</code> is what backs <code>&lt;:Nd&gt;</code> and <code>&lt;:L&gt;</code> inside a regex character class — which is why a regex class with a Unicode property in it is a <code>Class</code> node with a <code>uprop</code> string rather than a byteset (<a href="/book/regex-compile/">Chapter 19</a>).</p>
+<p><strong>Case mapping</strong> has two tiers: simple 1:1 mappings from <code>UnicodeData</code>, and full 1:N mappings from <code>SpecialCasing</code> and <code>CaseFolding</code>. The second is not optional: uppercasing the German sharp s produces two characters, and Turkish dotted and dotless i are language-sensitive.</p>
+<h2 id="the-tables-are-generated-and-one-generator-is-written-in-raku">The tables are generated, and one generator is written in Raku</h2>
+<pre class="native-code"><code>tools/ucd/                 pinned UCD + UCA 17.0 data files
+tools/gen_unicode_*.py     table generators
+tools/gen-unicode.raku     …and the ones written in Raku
+src/unicode_*_gen.cpp      the output: 79,400 lines</code></pre>
+<p>The tables are checked in rather than generated at build time, which keeps the build free of a data dependency and makes the Unicode version a reviewable part of the source tree.</p>
+<p>Two of the generators — the names and one of the property tables — are written in <strong>Raku and run by rakupp itself</strong>. That is not a stunt. It is a load-bearing test: generating a 41,000-line table exercises string handling, hashing, sorting and file I/O at a scale no unit test reaches, and a bug in any of them shows up as a table that does not compile or does not match.</p>
+<p>It is also the project's standing rule for tooling: build the ecosystem tools in Raku, run them with rakupp, and let the compiler eat its own output.</p>
+<h2 id="where-unicode-shows-up-elsewhere">Where Unicode shows up elsewhere</h2>
+<p><strong>In the lexer.</strong> Identifiers may contain Unicode letters and combining marks, so <code>consumeIdentChars</code> decodes codepoints rather than reading bytes. Superscript digit runs fold into a <code>**</code> operator.</p>
+<p><strong>In the regex engine.</strong> A character class carries three parallel representations for three ranges of complexity: a 256-bit byteset for bytes, codepoint ranges for anything above 255, and a list of whole cluster strings for multi-codepoint grapheme members. <code>:i</code> folds through <code>uniCaseMap</code>; <code>:m</code> (ignoremark) compares NFD first-starter base codepoints and consumes the rest of the cluster.</p>
+<p><strong>In the longest-token automaton.</strong> Its transition predicates reuse the regex <code>Class</code> node's data rather than reimplementing any of this — the single most important structural decision in <a href="/book/ltm/">Chapter 22</a>, because two Unicode implementations that disagreed would produce rankings that could not be debugged.</p>
+<p><strong>In collation-sensitive built-ins.</strong> <code>cmp</code>, <code>leg</code>, <code>unicmp</code>, <code>coll</code>, <code>.sort</code> and the ordering operators each pick their comparison from this layer.</p>
+<h2 id="honest-limitations">Honest limitations</h2>
+<ul><li><strong>Language-sensitive casing is not exposed.</strong> The full case mappings are implemented, but there is no locale parameter, so the Turkish <code>i</code> rules are not reachable.</li><li><strong>Collation is the default table</strong>, with no tailoring and no locale.</li><li><strong>Normalization is by codepoint sequence</strong>, so a caller that has bytes pays a decode and an encode around it.</li><li><strong>The Unicode version is pinned in the source tree</strong>, so updating it is a regeneration and a review rather than a dependency bump — deliberate, but it does mean the tables age.</li></ul><nav class="ch-nav"><a class="prev" href="/book/ltm/"><span>Previous</span>Longest-Token Matching</a><a class="next" href="/book/run-modes/"><span>Next</span>Four Ways to Run a Program</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

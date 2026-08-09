@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laziness, Junctions, and the Wilder Values — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 17</p><h1>Laziness, Junctions, and the Wilder Values</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#lazy-and-infinite-sequences">Lazy and infinite sequences</a></li><li><a href="#gather-and-take-without-coroutines"><code>gather</code> and <code>take</code>, without coroutines</a></li><li><a href="#junctions">Junctions</a></li><li><a href="#whatever-and-whatevercode"><code>Whatever</code> and <code>WhateverCode</code></a></li><li><a href="#hyper-operators">Hyper operators</a></li><li><a href="#flip-flops">Flip-flops</a></li></ul></nav>
+<p>Three parts of Raku resist a straightforward tree-walker: infinite lists, values that are several values at once, and <code>gather</code>/<code>take</code>, which wants a coroutine. None of the three gets a new <code>VT</code>. All three are an existing tag plus some state.</p>
+<h2 id="lazy-and-infinite-sequences">Lazy and infinite sequences</h2>
+<p>An infinite list like <code>1, 2, 4 ... *</code> or <code>(1..Inf).map(*²)</code> obviously cannot be a materialised <code>ValueList</code>. Raku++ attaches a generator to an otherwise ordinary array value.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct LazySeqState {
+    std::function&lt;bool(ValueList&amp;)&gt; appendNext;  // one more; false = exhausted
+    bool infinite = false;   // truly unbounded: elems/pop/[*-1] must die
+};</code></pre>
+<p>The already-computed <strong>prefix</strong> lives in the <code>Value</code>'s <code>arr</code>; the generator lives in the opaque <code>ext</code> slot — the same slot a <code>Promise</code> or a <code>Channel</code> would use. <code>appendNext</code> appends exactly one element and reports whether more exist.</p>
+<h3>Building one</h3>
+<p><code>seqOp</code> implements the <code>...</code> operator. It splits the left side into a seed list — a trailing <code>Code</code> seed becomes the <em>generator</em> — and classifies the right endpoint. A bounded endpoint (<code>1 ... 10</code>) is computed eagerly in a loop, capped at a million. An infinite endpoint builds a <code>LazySeqState</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — seqOp
+if (infinite) {
+    auto st = std::make_shared&lt;LazySeqState&gt;();
+    st-&gt;infinite = true;
+    st-&gt;appendNext = [...](ValueList&amp; cache) -&gt; bool {
+        /* feed the last `arity` cached elements to the generator, or step
+           the detected progression; push the next value */
+    };
+    out.ext = st;
+}</code></pre>
+<p>When there is no explicit generator, the operator <em>detects the progression</em> from the seed: a constant arithmetic difference, a constant geometric ratio, or — for strings — repeated <code>succ</code>/<code>pred</code>. That is Raku's rule, and it is why <code>1, 3, 5 ... 99</code> and <code>'a', 'b' ... 'z'</code> both work with no closure written.</p>
+<p><code>...</code> is also <strong>list-associative</strong>: <code>1 ... 5 ... 1</code> and <code>'A'...'Z', 'a'...'z'</code> are one operator over a list of lists, where each group's first element closes the previous segment. That is <code>seqOpGroups</code>, shared with the compiled backend.</p>
+<p>A bare <code>1..Inf</code> assigned to an array builds a simpler counting generator, in <code>coerceArray</code>:</p>
+<pre class="native-code"><code class="lang-cpp">auto st = std::make_shared&lt;LazySeqState&gt;(); st-&gt;infinite = true;
+auto next = std::make_shared&lt;long long&gt;(start);
+st-&gt;appendNext = [next](ValueList&amp; cache) -&gt; bool {
+    cache.push_back(Value::integer((*next)++)); return true;
+};
+a.ext = st;</code></pre>
+<h3>Forcing elements</h3>
+<p>Consumers grow the prefix on demand:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp
+void Interpreter::materializeLazy(const Value&amp; v, size_t n) {
+    auto st = std::static_pointer_cast&lt;LazySeqState&gt;(v.ext);
+    while (v.arr-&gt;size() &lt; n &amp;&amp; v.arr-&gt;size() &lt; CAP)
+        if (!st-&gt;appendNext(*v.arr)) break;
+}</code></pre>
+<p>So <code>@lazy[5]</code> materialises six elements and then indexes; <code>.head(3)</code> materialises three; <code>.first(&amp;pred)</code> pulls one at a time until the predicate matches.</p>
+<p>Operations that need the <em>end</em> of an infinite list cannot complete, and say so:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp
+if (m == "elems" || m == "end" || m == "pop" || m == "tail" ||
+    m == "reverse" || m == "sort" || m == "sum" || m == "min" ||
+    m == "max" || m == "join" || m == "Str" || m == "gist")
+    throw RakuError{Value::typeObj("X::Cannot::Lazy"),
+                    "Cannot " + m + " a lazy list onto an Array"};</code></pre>
+<p>A <em>finite</em> lazy value — a <code>gather</code> that outgrew its probe — instead forces full materialisation, which is the right answer for it.</p>
+<h3>Lazy <code>.map</code> and <code>.grep</code></h3>
+<p><code>.map</code> over a lazy source builds a <strong>new</strong> <code>LazySeqState</code> that pulls from the source on demand, which is what makes <code>(1..Inf).grep(*.is-prime).head(5)</code> terminate:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — .map over a lazy source
+st-&gt;appendNext = [self, src, fn](ValueList&amp; cache) -&gt; bool {
+    size_t si = cache.size();
+    self-&gt;materializeLazy(src, si + 1);          // pull one more
+    if (si &gt;= src.arr-&gt;size()) return false;
+    cache.push_back(self-&gt;callCallable(fn, { (*src.arr)[si] }));
+    return true;
+};</code></pre>
+<p><code>.grep</code> loops pulling source elements until its predicate matches; <code>.skip</code> builds a shifted view.</p>
+<h3>The cap</h3>
+<p>Every materialisation path shares a hard ceiling of <strong>one million elements</strong>. It is a runaway safety net, not a semantic limit, and it means "infinite" is bounded in practice. A consumer that genuinely needs the millionth element of a generated sequence will get it; one that needs the ten-millionth will not.</p>
+<h2 id="gather-and-take-without-coroutines"><code>gather</code> and <code>take</code>, without coroutines</h2>
+<p><code>gather { … take … }</code> should suspend the block at each <code>take</code> and resume it when another element is demanded. That is a coroutine, and a tree-walker built on the C++ stack does not have one.</p>
+<p>The strategy is <strong>probe and double</strong>. The collector and a per-gather element cap live on the execution context:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+std::vector&lt;std::shared_ptr&lt;ValueList&gt;&gt; gatherStack;
+std::vector&lt;size_t&gt; gatherLimits;   // 0 = unlimited</code></pre>
+<p>The block is first run under a small cap of 64. If it finishes within the cap it was finite, and the result is returned eagerly. If the cap was <em>hit</em>, the result becomes a <code>LazySeqState</code> that grows by <strong>re-running the block</strong> with a larger cap:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp
+st-&gt;appendNext = [this, runGather](ValueList&amp; out) -&gt; bool {
+    ValueList grown;
+    bool more = runGather(out.size() + std::max&lt;size_t&gt;(64, out.size()), grown);
+    for (size_t i = out.size(); i &lt; grown.size(); i++) out.push_back(grown[i]);
+    return more;
+};</code></pre>
+<p>Doubling keeps the re-run cost amortised linear. A <code>take</code> that pushes past the current cap unwinds the block with an empty marker exception:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — take
+auto&amp; coll = *tctx_.gatherStack.back();
+for (auto&amp; x : a) coll.push_back(x);
+if (lim &amp;&amp; coll.size() &gt;= lim) throw StopGatherEx{};</code></pre>
+<p>So an infinite <code>gather</code> runs its block only far enough to satisfy each demand, stops, and re-enters later for more.</p>
+<p>The honest cost of this design: <strong>the block runs more than once, from the start.</strong> A <code>gather</code> whose block has side effects — printing, or mutating a counter — will repeat them. That is a genuine divergence from a coroutine implementation, and the reason the initial probe cap is generous enough that most real <code>gather</code>s never re-run at all.</p>
+<h2 id="junctions">Junctions</h2>
+<p>A junction has no <code>VT</code> of its own. <code>any(1, 2, 3)</code> is a <code>VT::Array</code> whose elements are the eigenstates, tagged by <code>enumName</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.cpp — typeName(), the VT::Array case
+if (enumName == "any" || enumName == "all" ||
+    enumName == "one" || enumName == "none") return "Junction";</code></pre>
+<p>They are built by the <code>any</code>/<code>all</code>/<code>one</code>/<code>none</code> routines, the matching methods, and the <code>|</code>, <code>&amp;</code>, <code>^</code> infix operators.</p>
+<p><strong>Autothreading</strong> — distributing an operation over the eigenstates and recombining — happens at each place a value is consumed, and there are four such places.</p>
+<p><strong>Operators.</strong> A comparison <em>collapses</em> to a single <code>Bool</code> according to the junction type; any other operator produces a <strong>new</strong> junction of the per-eigenstate results:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — applyArith
+Value out = Value::array(); out.enumName = j.enumName;
+for (auto&amp; e : *j.arr)
+    out.arr-&gt;push_back(applyArith(op, jleft ? e : l, jleft ? r : e));
+return out;                       // any(1,2) + 10  ==&gt;  any(11, 12)</code></pre>
+<p><strong>Method calls</strong>, with a small allow-list that acts on the whole junction. <strong>Callable invocation</strong>, in <code>callCallableRaw</code>. <strong>Smartmatch</strong>, in <code>~~</code>.</p>
+<p>That is why <code>if 3 == any(1, 2, 3)</code> works: the <code>==</code> sees a junction on the right, threads the comparison across the eigenstates, and collapses <code>any</code> to <code>True</code>.</p>
+<p>One escape hatch exists, because <code>Junction.THREAD</code> must pass each eigenstate — junctions included — through whole:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+static thread_local bool noAutothread_;   // one-shot, consumed by the next call</code></pre>
+<h2 id="whatever-and-whatevercode"><code>Whatever</code> and <code>WhateverCode</code></h2>
+<p><code>*</code> is <code>VT::Whatever</code>. An expression containing one <em>curries</em> into a <code>WhateverCode</code> — a <code>Callable</code> with a flag and an arity:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h — Callable
+bool isWhateverCode = false;
+long long whateverArity = 0;   // `* + *` consumes 2</code></pre>
+<p>so <code>* + 1</code> becomes a one-argument closure and <code>* + *</code> a two-argument one. Composition works because currying an expression that already contains a <code>WhateverCode</code> produces another one.</p>
+<p>Deciding whether to curry is a syntactic question, answered by walking the expression for a literal <code>*</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+static bool exprHasWhateverLit(const Expr* e);</code></pre>
+<p>In <em>subscript</em> position <code>*</code> means something else entirely — <code>@a[*-1]</code>, <code>@a[*]</code> — and is handled by a dedicated path, <code>idxW</code>, rather than by currying.</p>
+<h2 id="hyper-operators">Hyper operators</h2>
+<p><code>»op«</code> and friends apply an operator element-wise, with rules about which side may be extended. All spellings — <code>&gt;&gt;op&lt;&lt;</code>, <code>»op«</code>, <code>&gt;&gt;[&amp;op]&lt;&lt;</code> — funnel into one core:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+Value hyperCore(Value&amp; l, Value&amp; r, bool strictL, bool strictR,
+                const std::function&lt;Value(const Value&amp;, const Value&amp;,
+                                          Value*, Value*)&gt;&amp; apply,
+                Value* lroot = nullptr, Value* rroot = nullptr,
+                bool wantSlots = false);
+Value hyperUnary(const std::string&amp; op, Value v);         // -«(…)
+Value hyperPostfixApply(const std::string&amp; op, Value v);  // @a»++</code></pre>
+<p>The <code>strictL</code>/<code>strictR</code> flags are the dwimmy-versus-strict distinction Raku draws between <code>&lt;&lt;</code> and <code>&gt;&gt;</code> on each side; the slot parameters exist because <code>@a»++</code> must write <em>through</em> to the elements, which is the same write-back problem as an <code>is rw</code> parameter and uses the same one-shot register.</p>
+<h2 id="flip-flops">Flip-flops</h2>
+<p><code>ff</code> and <code>fff</code> need per-<em>site</em> state — the same operator at two places in a program has two independent latches:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct FlipFlop { bool on = false; long long seq = 0; };
+std::unordered_map&lt;const void*, FlipFlop&gt; ffState_;</code></pre>
+<p>keyed on the AST node's address, which is stable for the life of the program. The <code>seq</code> counter is there because the result while the latch is on is the <em>count of elements since it fired</em>, not a plain <code>Bool</code>.</p>
+<p>This is the one place in the interpreter where a map keyed on a node pointer is the right answer rather than a hazard. It works here because AST nodes are never freed. <a href="/book/ltm/">Chapter 22</a> describes a case where the same idea failed for exactly the opposite reason — freed addresses being recycled.</p><nav class="ch-nav"><a class="prev" href="/book/objects/"><span>Previous</span>The Object System</a><a class="next" href="/book/node-specialization/"><span>Next</span>Node Specialization</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

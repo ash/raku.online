@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flags and Environment Variables — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Appendix B</p><h1>Flags and Environment Variables</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#command-line-flags-that-select-a-mode">Command-line flags that select a mode</a></li><li><a href="#inspection-and-tooling-flags">Inspection and tooling flags</a></li><li><a href="#environment-variables">Environment variables</a></li><li><a href="#build-time-switches">Build-time switches</a></li><li><a href="#a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</a></li></ul></nav>
+<p>Everything that changes what the compiler does from the outside. This is a reference for the internals; the user-facing command line is documented in <code>docs/guide/CLI.md</code>.</p>
+<h2 id="command-line-flags-that-select-a-mode">Command-line flags that select a mode</h2>
+<div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><em>(none)</em></td><td>lex, parse, interpret</td></tr>
+<tr><td><code>-e 'code'</code></td><td>interpret the argument</td></tr>
+<tr><td><code>--bundle</code></td><td>embed the source bytes in a standalone binary</td></tr>
+<tr><td><code>--aot</code></td><td>parse at build time, emit C++ that rebuilds the AST</td></tr>
+<tr><td><code>--exe</code></td><td>transpile to C++ and compile natively</td></tr>
+<tr><td><code>--cpp</code>, <code>--emit-cpp</code></td><td>print the generated C++ instead of compiling it</td></tr>
+<tr><td><code>-O</code>, <code>-O2</code>, <code>-O3</code>, <code>-Os</code>, <code>-O0</code></td><td>run the codegen optimizer; the level is forwarded to the C++ compiler</td></tr></table></div>
+<h2 id="inspection-and-tooling-flags">Inspection and tooling flags</h2>
+<div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>--ast</code>, <code>--dump-ast</code></td><td>print the parsed tree as an indented outline</td></tr>
+<tr><td><code>--ast-roundtrip</code></td><td>serialise and deserialise the tree, then run it — the cache format's own test</td></tr>
+<tr><td><code>--lint</code></td><td>static analysis; does not run the program</td></tr>
+<tr><td><code>--highlight</code></td><td>syntax-highlight the source</td></tr>
+<tr><td><code>--html</code>, <code>--ansi</code>, <code>--terminal</code></td><td>pick the highlighter's renderer</td></tr>
+<tr><td><code>--doc</code></td><td>run <code>DOC</code> phasers and print rendered Pod</td></tr>
+<tr><td><code>--profile[=dest]</code></td><td>the routine-level wall-time profiler</td></tr>
+<tr><td><code>--ffi-info</code></td><td>which FFI backend is live, or why none is</td></tr>
+<tr><td><code>--precomp-info</code></td><td>what the parse cache holds</td></tr>
+<tr><td><code>--precomp-clean</code></td><td>empty it</td></tr>
+<tr><td><code>--precomp-modules=on|off</code>, <code>--precomp-files=on|off</code></td><td>the two cache switches</td></tr>
+<tr><td><code>--version</code>, <code>--help</code>, <code>--quiet</code></td><td>as expected</td></tr></table></div>
+<p>Flags are position-independent, and the perl-compatible one-liner family (<code>-n</code>, <code>-p</code>, <code>-a</code>, <code>-F</code>, <code>-i</code>, <code>-0777</code>, <code>-M</code>) is documented in the CLI guide.</p>
+<h2 id="environment-variables">Environment variables</h2>
+<h3>Search and loading</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKULIB</code></td><td>extra module search paths; <strong>both</strong> <code>,</code> and <code>:</code> separate</td></tr>
+<tr><td><code>ROAST</code></td><td>adds the specification suite's test-helper library</td></tr>
+<tr><td><code>RAKUPP_HOME</code></td><td>where the binary considers itself installed</td></tr>
+<tr><td><code>RAKUPP_CONFIG</code></td><td>override the settings file location</td></tr>
+<tr><td><code>XDG_CONFIG_HOME</code>, <code>XDG_CACHE_HOME</code></td><td>the settings and cache directories</td></tr></table></div>
+<h3>The parse cache</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_PRECOMP_MODULES</code></td><td>override the module-cache switch for one run</td></tr>
+<tr><td><code>RAKUPP_PRECOMP_FILES</code></td><td>override the file-cache switch</td></tr>
+<tr><td><code>RAKUPP_NO_PRECOMP=1</code></td><td>force both off</td></tr>
+<tr><td><code>RAKUPP_PRECOMP_DIR</code></td><td>where cache entries live</td></tr></table></div>
+<h3>The foreign-function interface</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_FFI=0</code></td><td>force the no-libffi fallback path — the second CI leg</td></tr>
+<tr><td><code>RAKUPP_FFI=/path</code></td><td>use <em>only</em> that library; if it fails to load, report and fall back rather than silently substituting the system copy</td></tr>
+<tr><td><code>RAKUPP_FFI_TRACE=1</code></td><td>log every crossing, with marshalled arguments and raw returns</td></tr></table></div>
+<h3>Concurrency</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_PARALLEL=1</code></td><td>true parallelism: workers run interpreter compute concurrently instead of serialising on the GIL</td></tr>
+<tr><td><code>RAKUPP_GIL</code></td><td>control the lock explicitly</td></tr>
+<tr><td><code>RAKUPP_FREEZE_TRACE=1</code></td><td>report any symbol-table mutation after concurrency engaged, and which thread did it</td></tr></table></div>
+<h3>The regex engine</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_LTM=1</code></td><td>use the NFA ranker for longest-token matching where it is gap-free</td></tr>
+<tr><td><code>RAKUPP_LTM_DEBUG=1</code></td><td>rank both ways and print every disagreement — works without <code>RAKUPP_LTM</code></td></tr>
+<tr><td><code>RAKUPP_LTM_RANKDUMP=1</code></td><td>print each decided alternation's ranking</td></tr></table></div>
+<h3>Diagnostics</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_TRACE=1</code></td><td>the module search path and every resolution</td></tr>
+<tr><td><code>RAKUPP_DUMPTOKENS=1</code></td><td>the token stream</td></tr>
+<tr><td><code>RAKUPP_ACTTRACE=1</code></td><td>grammar action firing</td></tr>
+<tr><td><code>RAKUPP_TAP_TRACE=1</code></td><td>the test harness's own emission</td></tr>
+<tr><td><code>RAKUPP_KEEPGEN=1</code></td><td>keep the generated C++ from a compiling mode</td></tr>
+<tr><td><code>RAKUPP_DEBUG_MAKE</code>, <code>RAKUPP_DEBUG_REPLAY</code></td><td>grammar <code>make</code> and replay diagnostics</td></tr></table></div>
+<h3>The interactive session</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_REPL=1</code></td><td>force a session even when standard input is not a terminal</td></tr>
+<tr><td><code>RAKUPP_HISTORY</code></td><td>the history file</td></tr></table></div>
+<h3>Test-harness variables</h3>
+<p><code>RAKU_TEST_DIE_ON_FAIL</code> stops a suite after a real failure; <code>RAKU_EXCEPTIONS_HANDLER=JSON</code> serialises uncaught exceptions as JSON. Both follow Rakudo's spelling because test harnesses set them.</p>
+<h2 id="build-time-switches">Build-time switches</h2>
+<div class="tablewrap"><table><tr><th>Define</th><th>Effect</th></tr><tr><td><code>RAKUPP_PTR_CENSUS</code></td><td>count which combinations of <code>Value</code>'s eleven pointers are actually live together — the empirical input to shrinking the struct</td></tr>
+<tr><td><code>_GLIBCXX_USE_CXX11_ABI</code></td><td>relevant only because it is the ABI break copy-on-write strings caused (<a href="/book/strings/">Chapter 8</a>)</td></tr></table></div>
+<p>The pointer census is a good example of the project's habit: before collapsing <code>Value</code>'s pointers into tag-dispatched slots, a special build <strong>counts</strong> which sets are live simultaneously, rather than reasoning about what the type tags suggest.</p>
+<h2 id="a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</h2>
+<p>Two of the variables above change <em>results</em> rather than speed: <code>RAKUPP_LTM</code> and <code>RAKUPP_PARALLEL</code>. Both are off by default, and the policy for both is the same: the old path stays available for at least one release after the default changes, so a regression can be bisected to the switch rather than to the release.</p>
+<p>Everything else here either reports something or selects a code path that is required to produce identical output.</p><nav class="ch-nav"><a class="prev" href="/book/appendix-a/"><span>Previous</span>The Tag Sets</a><a class="next" href="/book/appendix-c/"><span>Next</span>Source Map and Glossary</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

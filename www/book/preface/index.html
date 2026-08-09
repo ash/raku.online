@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preface — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<h1>Preface</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#who-this-is-for">Who this is for</a></li><li><a href="#what-this-book-is-not">What this book is not</a></li><li><a href="#how-to-read-it">How to read it</a></li><li><a href="#conventions">Conventions</a></li><li><a href="#a-word-about-honesty">A word about honesty</a></li></ul></nav>
+<p>This is a book about the inside of a compiler.</p>
+<p>Raku++ is a hand-written implementation of the Raku programming language, written in C++17, with no third-party dependencies. It lexes, parses, interprets, and — in one of its four run modes — transpiles Raku to C++ and compiles it to a native binary. It carries its own regular-expression and grammar engine, its own Unicode subsystem built from the pinned UCD tables, its own arbitrary-precision arithmetic, a foreign-function interface that loads libffi at run time rather than linking it, a C ABI for native extension modules, and a concurrency runtime with a global interpreter lock that can be switched off.</p>
+<p>None of that is unusual for a language implementation. What is unusual is that all of it fits in about fifty thousand lines of source that one person can read, and that almost every non-obvious decision in it was made against a measurement. This book is an attempt to write down both: the mechanisms, and the reasons.</p>
+<h2 id="who-this-is-for">Who this is for</h2>
+<p>You should be comfortable reading C++ and comfortable reading Raku, but you do not need to be an expert in either, and you certainly do not need to have implemented a language before. Where a piece of compiler folklore is load-bearing — precedence climbing, Thompson construction, packrat memoisation, copy-on-write — it is explained where it is used rather than assumed.</p>
+<p>Three kinds of reader were in mind:</p>
+<ul><li>Someone who wants to <strong>work on Raku++</strong> and needs a map before they can usefully change anything.</li><li>Someone building <strong>their own interpreter or compiler</strong>, who wants a worked example of a dynamic language implemented in a static one — including the parts that went wrong.</li><li>Someone who writes <strong>Raku</strong> and wants to know what the machine underneath is actually doing when they write <code>given</code>/<code>when</code>, or a grammar, or <code>is native</code>.</li></ul>
+<h2 id="what-this-book-is-not">What this book is not</h2>
+<p>It is not a manual for the language, and not a manual for the <code>rakupp</code> command. Those exist: the guide in <code>docs/guide/</code> covers using Raku++, and <code>docs/guide/REFERENCE.md</code> is the exhaustive per-routine lookup sheet. Nor is it a specification of Raku; the reference implementation, Rakudo, and the Roast test suite hold that role, and this book is careful to say <em>where Raku++ diverges from them</em> rather than pretending it does not.</p>
+<p>It is also not a tour of every function. The source is the normative reference, and it moves. What is written down here is the <strong>shape</strong> — the data structures that everything else is built on, the invariants they rely on, and the reasons a particular design was chosen over the obvious alternative.</p>
+<h2 id="how-to-read-it">How to read it</h2>
+<p>The nine parts are ordered the way a program flows through the system: source text, then the tree, then the values, then execution, then the specialised engines, then the back ends, then the boundaries with the outside world. Read straight through and it is a narrative. Read a single part and it should still stand on its own; cross-references say where the rest of a thread lives.</p>
+<p>If you are here for one thing in particular:</p>
+<div class="tablewrap"><table><tr><th>You want</th><th>Start at</th></tr><tr><td>the overall map</td><td><a href="/book/what-it-is/">Chapter 1</a>, then <a href="/book/run-modes/">Chapter 24</a></td></tr>
+<tr><td>how source becomes a tree</td><td>Part II</td></tr>
+<tr><td>what a runtime value <em>is</em></td><td><a href="/book/value/">Chapter 7</a></td></tr>
+<tr><td>how a Raku call actually happens</td><td><a href="/book/calls/">Chapters 13</a> to <a href="/book/dispatch/">15</a></td></tr>
+<tr><td>regexes and grammars</td><td>Part V</td></tr>
+<tr><td>the native compiler</td><td>Part VII</td></tr>
+<tr><td>calling C, or being called from it</td><td><a href="/book/nativecall/">Chapters 31</a> and <a href="/book/extension-abi/">32</a></td></tr></table></div>
+<h2 id="conventions">Conventions</h2>
+<p>Source excerpts are tagged with the <strong>file</strong> they come from:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+static Value integer(long long x) { Value v; v.t = VT::Int; v.i = x; return v; }</code></pre>
+<p>They are lightly trimmed for the page — an ellipsis, a dropped comment, an elided error string — but are otherwise verbatim. <strong>File names, not line numbers, are the anchors.</strong> The code moves; grep for the function or for the quoted line.</p>
+<p>Raku code is shown as Raku:</p>
+<pre class="native-code"><code class="lang-raku">my @primes = (2..*).grep(*.is-prime);
+say @primes.head(5);          # (2 3 5 7 11)</code></pre>
+<p>Measured numbers carry their conditions. Unless a chapter says otherwise, they were taken on arm64 macOS with Apple clang, using the project's benchmark policy: interleaved A/B runs, a discarded warm-up, medians or minima of several repetitions, and a <em>control</em> kernel that the change under test cannot affect. A number without a control is an anecdote, and this book tries not to print anecdotes.</p>
+<p>Sections headed <strong>What went wrong</strong> are not decoration. Several of the designs here are the second or third attempt, and the discarded attempts are usually more instructive than the surviving one.</p>
+<h2 id="a-word-about-honesty">A word about honesty</h2>
+<p>Raku is a very large language, and Raku++ does not implement all of it. About ninety per cent of the declared Roast suite passes. The method resolution order is a depth-first walk rather than C3 linearisation. Multiple dispatch resolves ties by declaration order instead of raising an ambiguity error. Modules publish their whole environment to the global scope rather than only their exports. Macros, <code>RakuAST</code>, and slangs are not implemented at all.</p>
+<p>Every one of those is stated in the chapter where it belongs, under a heading that says so. A book about compiler internals that only described the parts that work would be a brochure.</p><nav class="ch-nav"><a class="next" href="/book/what-it-is/"><span>Next</span>What Raku++ Is</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

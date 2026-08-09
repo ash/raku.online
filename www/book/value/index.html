@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Value: the Fat Tagged Struct — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 7</p><h1><code>Value</code>: the Fat Tagged Struct</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#why-not-a-union-a-variant-or-a-class-hierarchy">Why not a union, a variant, or a class hierarchy</a></li><li><a href="#what-the-fat-struct-buys">What the fat struct buys</a></li><li><a href="#clever-reuse-of-fields">Clever reuse of fields</a></li><li><a href="#ext-the-opaque-slot"><code>ext</code>: the opaque slot</a></li><li><a href="#the-identity-problem-and-how-ext-solves-it">The identity problem, and how <code>ext</code> solves it</a></li><li><a href="#ranges-remember-what-they-were-written-with">Ranges remember what they were written with</a></li><li><a href="#the-rendering-hook">The rendering hook</a></li><li><a href="#what-it-costs">What it costs</a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>Raku is dynamically typed. A variable holds an <code>Int</code> now and a <code>Hash</code> later, routines dispatch on the runtime types of their arguments, lists can be infinite, and an object can grow a role while the program runs. Raku++ is written in statically-typed C++17 with no garbage collector. One data structure carries the entire distance between those two facts.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+enum class VT { Nil, Any, Bool, Int, Num, Str, Array, Hash, Code, Range,
+                Pair, Type, Whatever, Object, Rat, Regex, Match, Complex };
+
+struct Value {
+    VT t = VT::Any;              // the discriminator
+    bool b; long long i; double n, im;    // Bool / Int / Num / Complex imag
+    CowStr s;                    // Str; also the Type name, the Pair key
+    IStr hashKind, enumName, enumType;    // interned secondary tags
+    bool isList, itemized, readonly, namedArg, fatRat, objKeyed;
+    std::shared_ptr&lt;ValueList&gt; arr;                    // Array / List / Seq
+    std::shared_ptr&lt;std::map&lt;std::string, Value&gt;&gt; hash;
+    std::shared_ptr&lt;Callable&gt; code;
+    std::shared_ptr&lt;Value&gt; pairVal, pairKey;
+    std::shared_ptr&lt;ObjectData&gt; obj;
+    std::shared_ptr&lt;void&gt; ext;   // opaque: Promise, Channel, lazy-seq state
+    std::shared_ptr&lt;BigInt&gt; big, ratN, ratD;
+    std::shared_ptr&lt;std::vector&lt;long long&gt;&gt; shape;
+    long long rFrom, rTo; bool rExFrom, rExTo, rNum;   // Range
+    std::string ofType; int natBits; bool natSigned, natFloat;
+};</code></pre>
+<p>Eighteen tags, eleven <code>shared_ptr</code>s, and a pile of flags. It looks indefensible. It is not, and the case for it is the most important argument in this book.</p>
+<h2 id="why-not-a-union-a-variant-or-a-class-hierarchy">Why not a union, a variant, or a class hierarchy</h2>
+<p>The instinct is: a value is one of <em>N</em> types, therefore a sum type. All three standard spellings of that instinct are wrong here, each for a different reason.</p>
+<p><strong>A <code>Value</code> is frequently several fields at once.</strong> A union models mutual exclusivity — one active member, selected by the tag — and that is simply not what a Raku value is:</p>
+<ul><li>a <strong><code>Match</code></strong> sets the subject string <code>s</code>, the span <code>rFrom</code>/<code>rTo</code>, the positional captures in <code>arr</code>, <em>and</em> the named captures in <code>hash</code>, all live together;</li><li>a <strong><code>Pair</code></strong> is the key in <code>s</code> plus <code>pairVal</code>;</li><li>an <strong>enum value</strong> is the ordinal in <code>i</code> plus <code>enumName</code> and <code>enumType</code>;</li><li>a <strong><code>Rat</code></strong> is <code>ratN</code> plus <code>ratD</code> plus the <code>fatRat</code> flag;</li><li>and the cross-cutting flags — <code>isList</code>, <code>itemized</code>, <code>readonly</code>, <code>namedArg</code>, <code>ofType</code>, <code>natBits</code> — are set <em>regardless of the tag</em>. A <code>readonly</code> <code>Int</code> and an <code>itemized</code> <code>Array</code> are both ordinary.</li></ul>
+<p>So <code>VT t</code> does not mean "which one field is valid". It means "how to read a bag of fields, several of them set". That is a struct.</p>
+<p><strong>A raw union of these members is undefined behaviour.</strong> They are non-trivial C++ types — a string, eleven <code>shared_ptr</code>s. Making it legal means hand-written placement-<code>new</code>, a tag-switched copy constructor, move constructor, both assignment operators and destructor. At that point you have rebuilt <code>std::variant</code>, which re-imposes the one-active-member model <em>and</em> forces <code>std::get</code>/<code>std::visit</code> on the roughly sixteen thousand lines of interpreter and built-ins that today just read <code>v.i</code>, <code>v.s</code>, <code>v.arr</code>.</p>
+<p><strong>The memory a union would save is smaller than it looks.</strong> The overlappable members are mostly <code>shared_ptr</code>, which is null and therefore allocation-free when unused, and by the first point many of them cannot be overlapped at all.</p>
+<p><strong>A class hierarchy</strong> would put a virtual call on every field access and a heap allocation on every integer. For a tree-walker whose values are overwhelmingly transient scalars, that is the worst of the three.</p>
+<h2 id="what-the-fat-struct-buys">What the fat struct buys</h2>
+<p><strong>No virtual dispatch and no allocation for scalars.</strong> An <code>Int</code> is a <code>Value</code> with <code>t == VT::Int</code> and <code>i</code> set. Building one is a stack operation:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+static Value integer(long long x) { Value v; v.t = VT::Int; v.i = x; return v; }</code></pre>
+<p><strong>Uniform copy and move.</strong> Passing a <code>Value</code> by value, returning it from <code>eval</code>, storing it in a vector — all use the compiler-generated operations. The <code>shared_ptr</code> members make copies of arrays, hashes and objects a refcount bump, and give them <strong>shared identity</strong>, which is exactly what Raku's container semantics need. Mutating an object attribute through a copied <code>self</code> handle works for this reason and no other.</p>
+<p><strong>Coercion is a method, not a cast.</strong></p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+bool truthy() const;      long long toInt() const;   double toNum() const;
+std::string toStr() const;  std::string gist() const;
+std::string typeName() const;</code></pre>
+<p><code>~$x</code> calls <code>toStr</code>, <code>+$x</code> calls <code>toNum</code>, boolean context calls <code>truthy</code>. There is no C++ inheritance making <code>Int</code> "be a" <code>Cool</code>; these six functions encode the numeric and string towers directly, each a <code>switch</code> on <code>t</code> in <code>Value.cpp</code>.</p>
+<h2 id="clever-reuse-of-fields">Clever reuse of fields</h2>
+<p>Several Raku types have no <code>VT</code> of their own. They are an existing tag plus a tag-like marker, and knowing which is which explains a lot of otherwise puzzling code.</p>
+<p><strong>A <code>Junction</code> is an <code>Array</code> tagged by <code>enumName</code>.</strong> <code>any(1,2,3)</code> is a <code>VT::Array</code> whose elements are the eigenstates, with <code>enumName</code> set to one of <code>any</code>, <code>all</code>, <code>one</code>, <code>none</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.cpp — typeName(), the VT::Array case
+if (enumName == "any" || enumName == "all" ||
+    enumName == "one" || enumName == "none") return "Junction";</code></pre>
+<p><strong>Set, Bag and Mix are Hashes tagged by <code>hashKind</code>.</strong> So are <code>Proxy</code>, <code>Failure</code>, <code>Date</code>, <code>DateTime</code>, <code>Scalar</code> and several more; <code>hashKind</code> is a secondary type tag drawn from a closed vocabulary.</p>
+<p><strong>An allomorph is a number that is also its own string.</strong> <code>&lt;42&gt;</code> is <code>VT::Int</code> with <code>s</code> holding <code>"42"</code> and <code>hashKind</code> naming <code>IntStr</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+bool isAllomorph() const {
+    return (t == VT::Int || t == VT::Rat || t == VT::Num || t == VT::Complex) &amp;&amp;
+           (hashKind == "IntStr" || hashKind == "RatStr" ||
+            hashKind == "NumStr" || hashKind == "ComplexStr");
+}</code></pre>
+<p><strong>An <code>Int</code> grows a bignum only when it must.</strong></p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+static Value bigint(const BigInt&amp; b) {
+    Value v; v.t = VT::Int;
+    if (b.fitsLL()) v.i = b.toLL();
+    else v.big = std::make_shared&lt;BigInt&gt;(b);
+    return v;
+}</code></pre>
+<p><strong>A <code>FatRat</code> is a <code>Rat</code> with a flag.</strong> Same storage, but the flag carries the type identity — contagious through arithmetic — and exempts the value from the denominator spill described in <a href="/book/numbers/">Chapter 10</a>.</p>
+<p><strong>A native integer container is a <code>Value</code> with a width.</strong> <code>my uint8 $b</code> sets <code>natBits = 8</code>, <code>natSigned = false</code>, and every assignment masks to that width.</p>
+<h2 id="ext-the-opaque-slot"><code>ext</code>: the opaque slot</h2>
+<p>One member is deliberately untyped:</p>
+<pre class="native-code"><code class="lang-cpp">std::shared_ptr&lt;void&gt; ext;</code></pre>
+<p>It carries whatever state a value needs that has no business in the struct: a <code>PromiseState</code>, a <code>Channel</code>, a <code>TapHandle</code>, a <code>LazySeqState</code>, a <code>CueState</code>, or the endpoint objects of a <code>Range</code>. Each consumer knows what it parked there and static-casts it back.</p>
+<p>That is not as loose as it sounds, because the tag plus <code>hashKind</code> always determine which kind of state can be present. But it is the one place in the value model where the type system has been switched off on purpose, and it is worth being aware of when adding a case.</p>
+<h2 id="the-identity-problem-and-how-ext-solves-it">The identity problem, and how <code>ext</code> solves it</h2>
+<p>Some Raku types are <em>reference</em> types: two of them are the same one only when they are the same object. <code>Buf</code>, <code>Instant</code> and <code>Duration</code> are three. Here they are plain tagged scalars — a <code>Buf</code> is a <code>Str</code> with <code>hashKind = "Buf"</code>, an <code>Instant</code> a <code>Num</code> — and with no address to compare, <code>===</code> fell through to comparing the <em>rendering</em> and declared two independently built buffers identical.</p>
+<p>That is not academic. It made <code>@!outstanding-writes .= grep({ $_ !=== $p })</code> unemptiable for Promises, and it was worse for <code>Buf</code>, which is mutable: dropping one buffer from a list by <code>!=== $buf</code> threw away every buffer that happened to hold the same bytes.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+inline bool identityScalar(const Value&amp; v) {
+    return (v.t == VT::Str &amp;&amp; v.hashKind == "Buf") ||
+           (v.t == VT::Num &amp;&amp; (v.hashKind == "Instant" ||
+                               v.hashKind == "Duration"));
+}
+inline Value&amp; identify(Value&amp; v) { v.ext = std::make_shared&lt;char&gt;(); return v; }</code></pre>
+<p>Each freshly built one stamps a unique token into <code>ext</code>. A plain <code>Value</code> copy carries the token along — which is precisely what "the same object" means for these types — and <code>===</code> compares it. <code>Blob</code> stays out: it is immutable and compares by value in Rakudo too.</p>
+<p>The same trick answers a smaller question. <code>$*INIT-INSTANT</code> is one <code>Instant</code> read many times, and <code>$*INIT-INSTANT === $*INIT-INSTANT</code> must be <code>True</code>, so both reader sites go through one function that hands back the same stored token.</p>
+<h2 id="ranges-remember-what-they-were-written-with">Ranges remember what they were written with</h2>
+<p>A <code>Range</code> iterates over integers in <code>rFrom</code>/<code>rTo</code>, or over doubles in <code>n</code>/<code>im</code> when it is fractional. But <code>1/2 .. 1/3</code> must keep its <code>Rat</code>s and <code>True .. False</code> its <code>Bool</code>s for <code>.min</code>, <code>.max</code>, <code>.bounds</code> and rendering.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+struct RangeEnds { Value from, to; };
+inline void setRangeEnds(Value&amp; r, const Value&amp; from, const Value&amp; to) {
+    auto keep = [](const Value&amp; v) {
+        return v.t == VT::Rat || v.t == VT::Num || v.t == VT::Bool ||
+               v.t == VT::Nil || v.t == VT::Any || v.t == VT::Type;
+    };
+    auto renders = [&amp;](const Value&amp; v) { return keep(v) || v.t == VT::Int; };
+    if (!keep(from) &amp;&amp; !keep(to)) return;
+    if (!renders(from) || !renders(to)) return;
+    attachRangeEnds(r, from, to);
+}</code></pre>
+<p>The endpoints are parked in <code>ext</code>, and only when they would actually render differently. <code>..</code> numifies a <code>Str</code> endpoint (<code>"2"</code> becomes <code>2</code>) and a list endpoint (its element count), so those must <em>not</em> be carried; and an <code>Int</code> renders identically either way, so carrying it would only cost an allocation on the very hot <code>1..n</code> path.</p>
+<p>That last clause is the pattern to notice. Almost every field in <code>Value</code> is guarded by a test that keeps the common case free.</p>
+<h2 id="the-rendering-hook">The rendering hook</h2>
+<p><code>Value.h</code> cannot call into <code>Builtins.cpp</code>, but a <code>Range</code>'s endpoints must render with <code>.raku</code>, which lives there. The solution is a function pointer:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+using RakuReprFn = std::string (*)(const Value&amp;);
+extern RakuReprFn g_rakuRepr;</code></pre>
+<p>A raw pointer is zero-initialised before any dynamic initialisation runs, so installing it from another translation unit is order-safe — unlike a <code>std::function</code>, which would have its own construction order. There are a handful of these hooks in the runtime (<code>g_objListItems</code>, <code>g_deproxy</code>), each solving the same layering problem the same way.</p>
+<h2 id="what-it-costs">What it costs</h2>
+<div class="tablewrap"><table><tr><th></th><th>bytes</th></tr><tr><td><code>long long</code></td><td>8</td></tr>
+<tr><td><code>std::string</code> (libc++)</td><td>24</td></tr>
+<tr><td><code>CowStr</code></td><td>40</td></tr>
+<tr><td><strong><code>Value</code></strong></td><td><strong>392</strong>, on the build these numbers were taken from</td></tr></table></div>
+<p>Every <code>Value</code> carries every field, live or not. A <code>ValueList</code> of integers is about fifty times the size of a <code>vector&lt;int64_t&gt;</code>. That is the price of branch-free field access and trivial copyability, and it is a real price: the profile of a method-call-heavy loop puts 31% of the time in heap allocation and 11% in <code>Value</code> copy and destruction.</p>
+<p>The number moves. It was 392, then 376, then 344 in the course of ordinary optimisation work, and the representation plan intends roughly 204 next. Two of the reductions are already in this chapter: <code>hashKind</code>, <code>enumName</code> and <code>enumType</code> became interned 8-byte handles instead of 24-byte strings (<a href="/book/interning/">Chapter 9</a>), and the string payload became a copy-on-write type (<a href="/book/strings/">Chapter 8</a>).</p>
+<p>That instability is also the single most important input to the extension ABI in <a href="/book/extension-abi/">Chapter 32</a>, which is why an extension module never sees this struct at all.</p>
+<h2 id="honest-limitations">Honest limitations</h2>
+<ul><li><strong>Memory per value</strong>, as above. It is the accepted cost of the design, not an oversight, but it is the thing to attack first if the design is ever revisited.</li><li><strong><code>ext</code> is untyped.</strong> Nothing but convention stops two subsystems from parking incompatible state in it for the same tag.</li><li><strong>Reference semantics are emulated.</strong> The identity-token trick covers the three scalar types that needed it; a fourth would need the same treatment added by hand.</li><li><strong>The tag set is closed.</strong> Adding a <code>VT</code> means auditing every <code>switch</code> over it in the interpreter, the code generator, the serialiser and the dumper — which is exactly why new Raku types are added as an existing tag plus a marker instead.</li></ul><nav class="ch-nav"><a class="prev" href="/book/ast/"><span>Previous</span>The AST</a><a class="next" href="/book/strings/"><span>Next</span>Strings: <code>CowStr</code></a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

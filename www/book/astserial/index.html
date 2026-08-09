@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AST Serialization and the Precompiled Parse — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 28</p><h1>AST Serialization and the Precompiled Parse</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-format">The format</a></li><li><a href="#two-independent-switches">Two independent switches</a></li><li><a href="#what-invalidates-an-entry">What invalidates an entry</a></li><li><a href="#where-it-lives-and-what-it-reports">Where it lives, and what it reports</a></li><li><a href="#what-is-not-cached">What is <em>not</em> cached</a></li><li><a href="#the-other-consumer-embedded-modules">The other consumer: embedded modules</a></li><li><a href="#the-aot-emitter-and-where-it-differs">The AOT emitter, and where it differs</a></li></ul></nav>
+<p>Raku++ executes by walking a tree, so <strong>the tree already is the compiled form</strong>; there is nothing further to compile it into. That makes caching straightforward in one sense — store the tree — and delicate in another, because a stored tree must be indistinguishable from a freshly parsed one.</p>
+<h2 id="the-format">The format</h2>
+<pre class="native-code"><code class="lang-cpp">// src/AstSerial.h
+inline constexpr uint32_t kAstSerialVersion = 5;
+struct AstSerialError { std::string msg; };
+std::string serializeAst(const Program&amp; prog);
+void deserializeAst(const std::string&amp; blob, Program&amp; out);</code></pre>
+<p>A self-describing byte string with a header. The version constant is bumped whenever the encoding or the AST changes shape, and an entry carrying a different version is <strong>ignored, never reinterpreted</strong>.</p>
+<p>Two properties of the design are load-bearing.</p>
+<p><strong>Both directions are driven by one visitor per node type.</strong> A field cannot be written but not read, which is the failure mode that makes a format like this quietly wrong rather than loudly broken. Adding a field to <code>SubDecl</code> and forgetting the reader is not possible; the single visitor handles both.</p>
+<p><strong>The mutable per-node caches are deliberately not stored.</strong></p>
+<pre class="native-code"><code>Binary::simpleOp, fastShape, litVal
+Index::fastShape, litIdx
+NumLit::cacheN, cacheD
+Block::hoistNeed
+StrLit::nfcDone</code></pre>
+<p>Each has an "undecided" sentinel and is rebuilt lazily on first evaluation (<a href="/book/node-specialization/">Chapter 18</a>), so a loaded tree behaves identically to a freshly parsed one — it just has not warmed up yet. Storing them would be both larger and more fragile, since <code>litVal</code> is a pointer.</p>
+<p>Everything else round-trips, <strong>including <code>line</code> and <code>label</code></strong>, because diagnostics depend on them.</p>
+<h2 id="two-independent-switches">Two independent switches</h2>
+<pre class="native-code"><code class="lang-sh">rakupp --precomp-modules=on    # cache the parse of `use`d modules
+rakupp --precomp-files=on      # cache the main program's own parse
+rakupp --precomp-info          # what is on, where it lives, what it holds
+rakupp --precomp-clean         # empty it (always safe)</code></pre>
+<p>Both are <strong>off by default</strong> — nothing is written to disk until asked — and they are separate because they are worth very different amounts.</p>
+<p><strong>Modules.</strong> A dependency tree is a lot of source and none of it changes between runs:</p>
+<div class="tablewrap"><table><tr><th></th><th>no cache</th><th>cached</th></tr><tr><td><code>use XML</code> (10 files, 1,110 lines)</td><td>16.0 ms</td><td><strong>5.7 ms</strong></td></tr></table></div>
+<p><strong>Files.</strong> A script's own parse is already sub-millisecond, and the few- millisecond floor of a small program is process startup, not parsing:</p>
+<div class="tablewrap"><table><tr><th>bare file</th><th>no cache</th><th>cached</th><th>saved</th></tr><tr><td>50 lines</td><td>2.8 ms</td><td>2.4 ms</td><td>0.4 ms</td></tr>
+<tr><td>1,000 lines</td><td>10.0 ms</td><td>5.1 ms</td><td>4.9 ms</td></tr>
+<tr><td>20,000 lines</td><td>158.8 ms</td><td>66.5 ms</td><td><strong>92.3 ms</strong></td></tr></table></div>
+<p>Across the twenty-two fastest example programs, turning <code>files</code> on made <strong>no measurable difference at all</strong>. There is also a cost on the run that <em>writes</em> an entry — about 22 milliseconds at 20,000 lines — so for a script run once, <code>files</code> caching is a small net loss.</p>
+<p>If you enable one, enable <strong>modules</strong>. That asymmetry is precisely why these are two switches rather than one.</p>
+<h2 id="what-invalidates-an-entry">What invalidates an entry</h2>
+<p>This is the interesting part, and it is where the naive design would be wrong.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+bool precompLoadProgram(const std::string&amp; srcPath, const std::string&amp; src,
+                        const std::vector&lt;std::string&gt;&amp; searchPath,
+                        Program&amp; out, std::string&amp; finishOut);
+void precompStoreProgram(const std::string&amp; srcPath, const std::string&amp; src,
+                         const std::vector&lt;std::string&gt;&amp; searchPath,
+                         const Program&amp; prog, const std::string&amp; finish,
+                         const std::vector&lt;std::pair&lt;std::string,
+                                                     std::string&gt;&gt;&amp; deps);</code></pre>
+<p>An entry is valid only while <strong>four</strong> things still hold.</p>
+<p><strong>The source has not changed.</strong> Content-validated, not timestamp-validated.</p>
+<p><strong>The rakupp binary is the same one.</strong> A tree from another build may not match this build's node shapes.</p>
+<p><strong>The search path is the same.</strong> This is the one people do not expect, and it is in the signature for a reason: the search path decides which <em>file</em> a <code>use</code> resolves to for operator scanning, so the same source under a different <code>-I</code> can legitimately parse differently.</p>
+<p><strong>The operators of everything it <code>use</code>s are unchanged.</strong> This is the deepest one. A module that gains or loses an operator declaration changes how <em>this</em> file parses, without this file changing at all (<a href="/book/user-operators/">Chapter 5</a>). So the parser records every source it scanned:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h
+std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; opScanned_;</code></pre>
+<p>and those pairs go into the entry as dependencies. It is the same list the parser needed anyway; making it a cache key was nearly free.</p>
+<h2 id="where-it-lives-and-what-it-reports">Where it lives, and what it reports</h2>
+<p>Settings persist in a small config file under the user's config directory; <code>RAKUPP_PRECOMP_MODULES</code> and <code>RAKUPP_PRECOMP_FILES</code> override for one invocation, and <code>RAKUPP_NO_PRECOMP=1</code> forces both off.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct PrecompEntry {
+    std::string source; unsigned long long bytes; bool usable; bool orphan;
+};
+std::vector&lt;PrecompEntry&gt; precompCacheList();
+std::pair&lt;size_t, unsigned long long&gt; precompCacheClear();</code></pre>
+<p>The <code>orphan</code> flag distinguishes the one cache state that is <em>pure garbage</em> from the ones that are merely misses waiting to happen: the source file is gone, so the entry can never be reused <strong>or</strong> rewritten. Everything else is derived data, which is why clearing the cache is always safe.</p>
+<h2 id="what-is-not-cached">What is <em>not</em> cached</h2>
+<p>Only the parse. A module's top-level declarations and its <code>BEGIN</code> blocks still execute on every run, which is roughly the 30% of module load time that is not parsing.</p>
+<p>Rakudo goes further: its <code>.precomp</code> serialises the <em>objects</em> that compile-time code produced, so <code>BEGIN</code> runs once per compile rather than once per run. Matching that would mean serialising live runtime state — class registries, closures, whatever a <code>BEGIN</code> block built — which is a different and much larger project.</p>
+<p>Compared with the neighbours:</p>
+<div class="tablewrap"><table><tr><th></th><th>what it stores</th><th>where</th></tr><tr><td>Raku++</td><td>the AST</td><td>a central content-validated directory</td></tr>
+<tr><td>Rakudo <code>.precomp</code></td><td>bytecode plus compile-time objects</td><td>beside the source</td></tr>
+<tr><td>Python <code>__pycache__</code></td><td>bytecode</td><td>beside the source</td></tr></table></div>
+<p>Storing entries centrally rather than beside the source is what makes caching the <strong>main program</strong> defensible at all. Python never caches <code>__main__</code>, and the usual objection is that it would litter the source tree; that objection does not apply here.</p>
+<h2 id="the-other-consumer-embedded-modules">The other consumer: embedded modules</h2>
+<p>The same serialisation carries modules inside a compiled binary (<a href="/book/run-modes/">Chapter 24</a>):</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct BundledModule { std::string name, blob, finish, src; };
+void rakuppRegisterModule(const std::string&amp; name, const char* blob,
+                          size_t blobLen, const std::string&amp; finish);</code></pre>
+<p><code>collectModuleGraph</code> resolves the transitive <code>use</code> graph at build time and serialises each module, dependencies first. <code>loadModule</code> consults the embedded table before the disk.</p>
+<p>That the cache format and the embedding format are the <em>same</em> format is not a coincidence — it is why a bug in either is found twice as fast.</p>
+<h2 id="the-aot-emitter-and-where-it-differs">The AOT emitter, and where it differs</h2>
+<p><code>--aot</code> solves a similar problem in a completely different way: instead of a byte encoding, it emits <strong>C++ source that rebuilds the tree</strong>.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Ast.h
+struct AstEmitError { std::string msg; };
+void emitAstProgram(const Program&amp; prog, std::ostream&amp; out,
+                    const std::string&amp; fileName, const std::string&amp; finish,
+                    const std::vector&lt;BundledModule&gt;&amp; mods);</code></pre>
+<p>The trade-offs are opposite. The serialiser is compact and fast to read but needs its own reader; the emitter needs no reader at all — the C++ compiler is the reader — but produces one function per node, so a few hundred lines of Raku become tens of thousands of lines of C++.</p>
+<p>Both fail <em>soft</em>. An unserialisable module is left out of the binary and loaded from disk; an unemittable node makes <code>--aot</code> fall back to bundling. Neither produces a wrong tree.</p>
+<p>That shared property is the design rule worth taking away: <strong>a derived-data mechanism should degrade to recomputation, never to a guess.</strong> Every failure mode in this chapter — a version mismatch, a changed dependency, a missing source, an unhandled node — ends in "parse it again", which is slower and correct.</p><nav class="ch-nav"><a class="prev" href="/book/dispatch-compiled/"><span>Previous</span>Dispatch Cost in Compiled Code</a><a class="next" href="/book/modules/"><span>Next</span>Modules</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

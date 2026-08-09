@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longest-Token Matching — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 22</p><h1>Longest-Token Matching</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#two-rankers">Two rankers</a></li><li><a href="#what-ends-a-declarative-prefix">What ends a declarative prefix</a></li><li><a href="#the-gap-aware-hybrid-contract">The gap-aware hybrid contract</a></li><li><a href="#the-automaton">The automaton</a></li><li><a href="#the-cache-and-an-address-reuse-bug">The cache, and an address-reuse bug</a></li><li><a href="#subrule-expansion-three-routes">Subrule expansion: three routes</a></li><li><a href="#proto-dispatch">Proto dispatch</a></li><li><a href="#the-tie-break-must-be-per-path">The tie-break must be per-path</a></li><li><a href="#oracle-notes">Oracle notes</a></li><li><a href="#debugging-and-measured-results">Debugging and measured results</a></li></ul></nav>
+<p>Raku's <code>|</code> alternation does not try its branches left to right. Each branch is ranked by how far its <strong>declarative prefix</strong> can reach into the input — the leading part of the pattern made of literals, character classes and quantifiers, up to the first procedural construct. The branch with the longest reachable prefix is committed first; ties break by more-literal-first, then by declaration order. <code>||</code> is the opt-out: sequential first match, no ranking.</p>
+<pre class="native-code"><code class="lang-raku">say ("abcd" ~~ / [ ab { } cd ] | abc /).Str;   # abc</code></pre>
+<p>The first branch <em>could</em> match four characters, but its declarative prefix ends at the code block, at length 2. <code>abc</code>'s prefix is 3, so <code>abc</code> wins.</p>
+<p>Two properties of that example matter and pull in opposite directions. The ranking is by <strong>prefix</strong> length, not by greedy match length. And ranking must run <strong>no user code</strong> — the <code>{ }</code> above must not fire for a branch that loses.</p>
+<h2 id="two-rankers">Two rankers</h2>
+<p><strong>The probe</strong> (the default) runs each branch once for its greedy full-match end, snapshotting and rolling back side effects through the <code>saveState</code>/<code>restoreState</code> hooks, and commits branches in longest-end-first order.</p>
+<p>It is cheap and it is wrong twice: it ranks by the wrong length, and it descends into user-code paths that true longest-token matching never visits.</p>
+<p><strong>The NFA</strong> (<code>RAKUPP_LTM=1</code>) builds a Thompson automaton per alternation, lazily, from the compiled node tree, and answers "how far could each branch's declarative prefix reach?" in one linear scan of the input. No code execution, no backtracking. The commit phase then runs the real engine on the ranked branches, so captures, assertions and side effects behave exactly as before.</p>
+<p>An automaton cannot execute code. That is not a limitation here — it is precisely what makes it the structurally correct ranking oracle.</p>
+<h2 id="what-ends-a-declarative-prefix">What ends a declarative prefix</h2>
+<p>Two very different reasons a prefix stops, and the distinction is the whole correctness argument.</p>
+<p><strong>Spec enders</strong> — the prefix genuinely ends here, and ranking at this point is <em>correct</em>: a bare <code>{…}</code> code block, a back-reference (<code>$0</code>, <code>$&lt;name&gt;</code>), a <code>||</code> tail (the first branch's prefix continues, per the specification), runtime quantifier bounds <code>** {$n}</code>, and <code>&amp;</code> conjunction.</p>
+<p><strong>Model gaps</strong> — the <em>builder</em> could not model the construct, so ranking might unfairly demote this branch: an unexpandable subrule, Unicode-property and grapheme-cluster classes, <code>:m</code> on a character <em>class</em>, non-ASCII <code>:i</code> folding, lookarounds, and a blown build bound (200 depth or 4,000 states).</p>
+<p>Zero-width assertions are <strong>transparent</strong>: anchors, word boundaries, <code>:my</code> declarations, and the code assertions <code>&lt;?{…}&gt;</code> / <code>&lt;!{…}&gt;</code> are epsilon transitions for ranking purposes. Roast checks this — <code>a &lt;?{ 1 }&gt; .+ | aa</code> against <code>"aaa"</code> matches <code>aaa</code>, so the assertion does not end the prefix.</p>
+<p>Over-permissiveness is safe: the commit engine enforces assertions for real, and a branch whose assertion fails simply fails at commit and hands over to the next ranked branch.</p>
+<h2 id="the-gap-aware-hybrid-contract">The gap-aware hybrid contract</h2>
+<p><code>RAKUPP_LTM=1</code> must never be <em>less</em> correct than the default. So:</p>
+<blockquote class="note"><p>The NFA decides an alternation only when <strong>every</strong> branch's prefix ended for a spec reason. If any branch hit a model gap, that alternation falls back to the probe.</p></blockquote>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+bool anyModelGap() const { return anyGap_; }</code></pre>
+<p>Each expansion route closed converts more alternations from probe fallback to NFA ranking. A branch whose prefix cannot reach any accept state on the given input is not a candidate at all — the commit never tries it, matching Rakudo's own pruning.</p>
+<h2 id="the-automaton">The automaton</h2>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+struct Pred {
+    char kind = 'A';   // 'L' literal cp, 'C' class node, 'A' any,
+                       // 'S' whitespace (&lt;ws&gt;), 'F' builtin flag class
+    const void* node = nullptr;
+    uint32_t lit = 0;
+    bool icase = false;
+};
+struct State {
+    std::vector&lt;std::pair&lt;int,int&gt;&gt; eps;
+    std::vector&lt;std::pair&lt;int,int&gt;&gt; edges;
+    int acceptBranch = -1;
+    int litDepth = 0;
+};</code></pre>
+<p>Transitions are codepoint predicates that <strong>reuse the <code>Class</code> node's own match data</strong> — byte ranges, codepoint ranges, negation, folding. There is no second Unicode implementation, which is both less code and structurally safer: the ranker cannot disagree with the matcher about what a class contains.</p>
+<p>The <code>Pred</code> borrows the <code>Regex</code>'s <code>Node</code>, relying on the regex outliving its cached automaton — the same lifetime the byteset cache already assumes.</p>
+<p>Every branch gets its <strong>own</strong> entry epsilon-edge from state 0. Sharing entry states once let a sibling branch's <code>a*</code> loop re-anchor other branches, which produced ranks that were not merely wrong but incoherent.</p>
+<h2 id="the-cache-and-an-address-reuse-bug">The cache, and an address-reuse bug</h2>
+<p>The automaton is cached <strong>on the <code>Alt</code> node</strong>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h — Node
+mutable std::unique_ptr&lt;LtmNfa&gt; ltmNfa;</code></pre>
+<p>The first implementation used a side map keyed on <code>Node*</code>, which is the obvious thing and was wrong. A process compiles many regexes, freed node addresses get recycled by the allocator, and the map handed out an automaton built for a completely different pattern. The symptom, found by the phase-1 harness on a Roast alternation file, was empty or nonsense ranks.</p>
+<p>That is the exact opposite of the flip-flop state map in <a href="/book/lazy/">Chapter 17</a>, which <em>is</em> keyed on a node address and <em>is</em> correct — because AST nodes are never freed while regex nodes are. The rule to extract: <strong>a pointer is only a valid key when its target's lifetime is at least the map's.</strong></p>
+<p>For expanded subrules there is a second staleness axis. Named regexes register last-wins, so a re-declared token changes what the same compiled node resolves to. The stored pattern text doubles as a staleness stamp:</p>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+bool stillValid(const GrammarHooks* hooks) const;
+std::map&lt;std::string, std::string&gt; expandStamps_;   // name → pattern text used</code></pre>
+<h2 id="subrule-expansion-three-routes">Subrule expansion: three routes</h2>
+<p>A <code>&lt;name&gt;</code> inside a branch resolves through an expansion context:</p>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+struct LtmExpand {
+    const GrammarHooks* hooks = nullptr;
+    std::function&lt;int(const std::string&amp; name, const void*&amp; regexOut,
+                      char&amp; flagOut)&gt; grammar;
+};</code></pre>
+<p><strong>Lexical.</strong> Interpreter-registered <code>my token/rule/regex</code> bodies, handed over as text plus the match path's exact flag spelling (<code>rule</code> becomes <code>sr</code>, <code>token</code> becomes <code>r</code>). The automaton compiles and <strong>owns</strong> the callee, inlining its prefix recursively. Recursion is treated as a spec prefix end.</p>
+<p><strong>Grammar.</strong> Already-compiled rule bodies from the grammar's own table, so nothing is recompiled and the automaton borrows the <code>Regex</code>'s nodes. The resolver answers with a small integer: refuse, here is a compiled body, this is <code>&lt;ws&gt;</code>, or this is a single-character built-in class. Protos, parameterised rules and dynamically-dependent bodies refuse, which becomes a model gap and therefore a probe fallback.</p>
+<p><strong><code>&lt;sym&gt;</code></strong> inlines as the current candidate's <code>:sym&lt;…&gt;</code> literal, for proto dispatch.</p>
+<p><code>&lt;ws&gt;</code> is modelled as <code>\s*</code> for ranking. That is deliberately approximate — the commit engine enforces the real <code>&lt;!ww&gt;</code> word-boundary gate — and it is ranking-grade rather than semantics-grade, which is all the ranker needs.</p>
+<h3>The composed character class</h3>
+<p>A class written <code>&lt;[\-+.] +uri_alpha +digit&gt;</code> is parsed into a synthesised first-match <code>Alt</code>. Semantically it is a <strong>one-character union</strong>, so the builder must union its members:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h — Node
+bool classCombo = false;   // a SYNTHESIZED Alt for a composed char class</code></pre>
+<p>Without the tag those nodes were modelled like a user <code>||</code>, which takes only the first member. That under-matched the prefix and pruned whole branches — the symptom was a URI grammar failing on its <code>scheme</code> rule.</p>
+<h2 id="proto-dispatch">Proto dispatch</h2>
+<p>Protoregex candidates are ranked by the same machinery:</p>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+static std::unique_ptr&lt;LtmNfa&gt; buildForBranches(
+    const std::vector&lt;const void*&gt;&amp; regexes,
+    const std::vector&lt;std::string&gt;&amp; syms, const LtmExpand* ctx);</code></pre>
+<p>One union automaton over all candidates' bodies, one branch per candidate, with <code>&lt;sym&gt;</code> inlined per branch. It is cached on the <code>GrammarRuleMeta</code>, and since the matcher is per-parse, that cache dies with the parse and needs no staleness management at all. Any model gap in any candidate discards the automaton and the probe dispatch stands.</p>
+<h2 id="the-tie-break-must-be-per-path">The tie-break must be per-path</h2>
+<p>Equal prefix length breaks by "more literal wins", and that count must be computed <strong>per path during the scan</strong>, not stored per state.</p>
+<p>The builder originally kept a static literal depth on each state, max-merged at join states. In:</p>
+<pre class="native-code"><code class="lang-raku">token TOP { &lt;foo&gt; | &lt;bar&gt; }
+token foo { \w\w }
+token bar { aa | &lt;foo&gt; }</code></pre>
+<p>on input <code>"bb"</code>, <code>bar</code>'s dead <code>aa</code> path — two literals — leaked its count onto the join state that <code>bar</code>'s live <code>&lt;foo&gt;</code> path — zero literals — also reaches. So <code>bar</code> stole the tie from the earlier-declared <code>foo</code>.</p>
+<p><code>rank()</code> now carries, per live state, the length of the leading literal run along the path that reached it, frozen at the first non-literal edge; accepts record the <em>path's</em> value, not the state's.</p>
+<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
+struct Ranked { int branch; long prefixEnd; long litPrefix; };
+std::vector&lt;Ranked&gt; rank(const std::string&amp; s, long pos) const;</code></pre>
+<p>sorted by prefix end descending, then literal prefix descending, then declaration order — the specification's tie-break chain.</p>
+<h2 id="oracle-notes">Oracle notes</h2>
+<p>Three behaviours confirmed against Rakudo while building this, each of which would otherwise have been guessed wrong:</p>
+<ul><li><strong><code>multi token</code> protos do not rank.</strong> Rakudo ranks proto candidates by declarative prefix only when they are declared <code>token t:sym&lt;x&gt;</code>; <code>multi token t:sym&lt;x&gt;</code> candidates dispatch in declaration order, and so does a direct <code>.subparse(:rule&lt;proto&gt;)</code>. Both rankers here rank <code>multi token</code> candidates too — a pre-existing divergence, deferred rather than hidden.</li><li><strong><code>||</code> continues through its first branch.</strong> <code>a || b</code>'s declarative prefix is <code>a</code>'s prefix: not empty, and not both.</li><li><strong>Code assertions are transparent</strong> to ranking, as above.</li></ul>
+<h2 id="debugging-and-measured-results">Debugging and measured results</h2>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_LTM=1</code></td><td>use the NFA ranker where it is gap-free</td></tr>
+<tr><td><code>RAKUPP_LTM_DEBUG=1</code></td><td>rank both ways and print disagreements</td></tr>
+<tr><td><code>RAKUPP_LTM_RANKDUMP=1</code></td><td>print each NFA-decided alternation's ranking</td></tr></table></div>
+<p>The debug flag works <em>without</em> the feature flag, and it was the phase-1 harness: before anything consulted the automaton's answer, the probe path computed both rankings and printed every disagreement with its pattern context, for classification against Rakudo. It is still the fastest way to classify a suspected ranking bug.</p>
+<p>Same binary, same machine, full Roast:</p>
+<div class="tablewrap"><table><tr><th>setting</th><th>assertions</th><th><code>longest-alternative.t</code></th><th><code>proto-token-ltm.t</code></th></tr><tr><td>default (probe)</td><td>197,116</td><td>45/62</td><td>10/10</td></tr>
+<tr><td><code>RAKUPP_LTM=1</code></td><td>197,117</td><td>47/62</td><td>10/10</td></tr></table></div>
+<p>The flag's failure set on the alternation file is a strict subset of the default's. A grammar benchmark — twenty compiles of a JSON grammar corpus — runs in 28 to 34 milliseconds in both settings, so automaton construction is fully amortised by the node cache. The twenty-eight grammar showcase runs are byte-identical across settings.</p>
+<p>The plan keeps the flag available for one release after the default changes, which is the general policy for a switch that changes behaviour rather than speed.</p><nav class="ch-nav"><a class="prev" href="/book/grammars/"><span>Previous</span>Grammars</a><a class="next" href="/book/unicode/"><span>Next</span>Graphemes, Normalization, Collation</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

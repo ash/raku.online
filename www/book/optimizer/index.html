@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The -O Optimizer — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 26</p><h1>The <code>-O</code> Optimizer</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#what-the-generated-code-looks-like-without-it">What the generated code looks like without it</a></li><li><a href="#pass-1-direct-arity-calls">Pass 1 — direct-arity calls</a></li><li><a href="#pass-2-inline-arithmetic">Pass 2 — inline arithmetic</a></li><li><a href="#pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</a></li><li><a href="#three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></a></li><li><a href="#forwarding-the-c-optimization-level">Forwarding the C++ optimization level</a></li><li><a href="#measured">Measured</a></li><li><a href="#the-box-stays-only-its-per-operation-cost-goes">The box stays; only its per-operation cost goes</a></li><li><a href="#correctness">Correctness</a></li><li><a href="#what-is-next">What is next</a></li></ul></nav>
+<p><code>--exe</code> and its inspection twin <code>--cpp</code> accept <code>-O</code>. Everything under it is <strong>semantics-preserving</strong>: it changes how the compiled program computes, never what it computes. It is opt-in and off by default.</p>
+<pre class="native-code"><code class="lang-sh">rakupp --exe    prog.raku -o prog     # no optimizer
+rakupp --exe -O prog.raku -o prog     # optimizer on
+rakupp --cpp -O prog.raku             # print the optimized C++</code></pre>
+<h2 id="what-the-generated-code-looks-like-without-it">What the generated code looks like without it</h2>
+<p>By default the transpiler is faithful but generic: every value is a boxed <code>Value</code>, operators in value position go through <code>applyArith</code>, and every user-sub call packs its arguments into a <code>ValueList</code> — a heap allocation per call.</p>
+<pre class="native-code"><code class="lang-cpp">// sub fib($n) { $n &lt; 2 ?? $n !! fib($n-1) + fib($n-2) }
+static Value u_fib(ValueList __a) {
+    Value v_sn = rtPos(__a, 0);
+    return rtLtB(v_sn, Value::integer(2LL))       // condition: always inline
+         ? v_sn
+         : applyArith("+",
+             u_fib(ValueList{applyArith("-", v_sn, Value::integer(1LL))}),
+             u_fib(ValueList{applyArith("-", v_sn, Value::integer(2LL))}));
+}</code></pre>
+<p>For a hot recursive function that is two costs on every one of about 1.6 million calls: a <code>ValueList</code> allocation, and value-position <code>applyArith</code> calls that dispatch on the operator <em>string</em> before touching the operands.</p>
+<h2 id="pass-1-direct-arity-calls">Pass 1 — direct-arity calls</h2>
+<p>A sub whose signature is entirely <strong>plain required positional scalars</strong> — no named, slurpy, optional, defaulted or destructured parameters — gets a direct-<code>Value</code> overload, plus a boxed adapter so any unusual call site still resolves. C++ overload resolution picks the right one.</p>
+<pre class="native-code"><code class="lang-cpp">static Value u_fib(Value v_sn) { … }                                // fast
+static Value u_fib(ValueList __a) { return u_fib(rtPos(__a, 0)); }  // adapter</code></pre>
+<p>A call site takes the fast overload when it passes exactly the right number of plain positional arguments — no <code>:name(…)</code> pairs, no <code>|@slurp</code>. Multi subs, indirect calls through <code>&amp;fib</code>, and method calls are untouched.</p>
+<p>The same idea covers <strong>37 named builtins</strong>, each of which has a real C++ function (<code>rtBAbs</code>, <code>rtBUc</code>, <code>rtBSin</code>, …) rather than a <code>std::function</code> in a map. <a href="/book/dispatch-compiled/">Chapter 27</a> tells that story, because the reason it works is not the one that was first assumed.</p>
+<h2 id="pass-2-inline-arithmetic">Pass 2 — inline arithmetic</h2>
+<p>For the common operators the generator emits inline helpers instead of <code>applyArith</code>:</p>
+<div class="tablewrap"><table><tr><th>ops</th><th>helper</th><th>fast path</th></tr><tr><td><code>+</code> <code>-</code> <code>*</code></td><td><code>rtAdd</code> / <code>rtSub</code> / <code>rtMul</code></td><td>native <code>int64</code>, overflow to bignum</td></tr>
+<tr><td><code>**</code></td><td><code>rtPow</code></td><td>integer power by squaring</td></tr>
+<tr><td><code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code> <code>==</code> <code>!=</code></td><td><code>rtLt</code> …</td><td><code>int64</code> compare</td></tr>
+<tr><td><code>%</code> <code>%%</code> <code>div</code></td><td><code>rtMod</code> / <code>rtDivides</code> / <code>rtDiv</code></td><td>floored <code>int64</code></td></tr>
+<tr><td><code>~</code></td><td><code>rtConcat</code></td><td>direct concat when both are <code>Str</code></td></tr>
+<tr><td><code>eq</code> <code>ne</code> <code>lt</code> <code>gt</code> <code>le</code> <code>ge</code></td><td><code>rtEqS</code> …</td><td>byte-wise when both are <strong>plain</strong> <code>Str</code></td></tr></table></div>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+inline Value rtAdd(const Value&amp; l, const Value&amp; r) {
+    long long z;
+    if (rtBothInt(l, r) &amp;&amp; !rakupp::add_ovf(l.i, r.i, &amp;z))
+        return Value::integer(z);
+    return applyArith("+", l, r);     // Rats, bignums, mixed types, coercions
+}</code></pre>
+<p><code>rtBothInt</code> tests that both operands are <code>VT::Int</code> and neither has grown a bignum. Overflow promotes to bignum exactly as <code>applyArith</code> does.</p>
+<p>The string comparisons matter more than the integer ones, because they sat <em>late</em> in <code>applyArith</code>'s dispatch chain — about 118 nanoseconds against 10 for a direct call. The guard is that both operands are <strong>plain</strong> <code>Str</code>: no <code>Version</code>/<code>IO</code>/<code>Buf</code> tag and no enum identity. A tagged value falls back to the full chain, which preserves <code>Version</code> part-comparison, enum stringification, junction autothreading and <code>Whatever</code> currying.</p>
+<p>With both passes plus pass 3's condition lane, <code>fib</code> becomes:</p>
+<pre class="native-code"><code class="lang-cpp">static Value u_fib(Value v_sn) {
+    return ([&amp;]() -&gt; bool {                        // condition lane
+        do { if (!(rtIntBox(v_sn))) break;         //   guard the box
+             return (v_sn.i &lt; 2LL); } while (0);   //   compare as raw int64
+        return rtLtB(v_sn, Value::integer(2LL));   //   guard failed
+    }())
+         ? v_sn
+         : rtAdd(u_fib(rtSub(v_sn, Value::integer(1LL))),
+                 u_fib(rtSub(v_sn, Value::integer(2LL))));
+}</code></pre>
+<p>No heap allocation, no string dispatch. Under a real C++ optimizer that collapses to tight native-integer recursion.</p>
+<h2 id="pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</h2>
+<p>Passes 1 and 2 still build a boxed <code>Value</code> for every intermediate result: <code>$sum += $_ * 2 - 1</code> constructs four of them per evaluation. Pass 3 removes them.</p>
+<p>A straight-line integer expression whose leaves are <strong>int literals and plain scalar variables</strong> is computed in raw <code>int64</code>. Each leaf is tag-guarded at run time, each operation is overflow-checked, and the result is stored <strong>into the target's existing box</strong> with no <code>Value</code> construction at all:</p>
+<pre class="native-code"><code class="lang-cpp">// $sum += $_ * 2 - 1     (inside a native range loop)
+{ bool __lok = false; do {
+    if (!(rtIntBox(v__t0) &amp;&amp; rtIntSlot(v_ssum))) break;
+    long long __t1; if (rakupp::mul_ovf(v__t0.i, 2LL, &amp;__t1)) break;
+    long long __t2; if (rakupp::sub_ovf(__t1, 1LL, &amp;__t2)) break;
+    long long __t3; if (rakupp::add_ovf(v_ssum.i, __t2, &amp;__t3)) break;
+    v_ssum.i = __t3; __lok = true;
+} while (0);
+if (!__lok) { v_ssum = rtAdd(v_ssum,
+                  rtSub(rtMul(v__t0, Value::integer(2LL)),
+                        Value::integer(1LL))); } }</code></pre>
+<p>Any guard failure, overflow, or domain failure falls through to the untouched boxed emission. That is sound because <strong>lane leaves are pure</strong> — literals and variable reads — so re-evaluating them on the slow path has no side effects.</p>
+<p>The lane applies to statement-position assignment to a plain scalar, statement- position <code>++</code>/<code>--</code>, and conditions. The store additionally requires <code>rtIntSlot</code>: not an enum-typed box, whose stringification is its name rather than its number.</p>
+<p>Operations covered: <code>+ - *</code> overflow-checked, unary minus, floored <code>%</code> mirroring <code>rtMod</code> bit for bit, <code>%%</code>, and the six comparisons. Everything else — <code>Num</code>s, strings, <code>Rat</code>s, bignums, array elements, method calls — fails the lane at compile time or its guards at run time.</p>
+<h2 id="three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></h2>
+<p>Three changes look like optimisations and are shipped as defaults in every mode, because each fixes a <strong>correctness wart</strong> rather than adding speed.</p>
+<p><strong>In-place <code>~=</code>.</strong> <code>$s ~= …</code> naively rebuilds the whole string each step, so <em>n</em> appends do quadratic work. The interpreter and Rakudo both build strings in linear time, so this was a wart:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+inline void rtCatAssign(Value&amp; l, const Value&amp; r) {
+    if (l.t == VT::Str &amp;&amp; r.t == VT::Str) { l.s += r.s; return; }
+    l = applyArith("~", l, r);
+}</code></pre>
+<p>The interpreter pairs it with sink context, so a loop body's assignment does not copy its growing result either.</p>
+<p><strong><code>.sort($key)</code> extracts the key once per element.</strong> <code>.sort</code> takes either a 2-ary comparator or a 1-ary key extractor, and the difference is asymptotic: a comparator is <em>supposed</em> to run per comparison, but a key extractor runs <strong>once per element</strong>. Raku++ used to call the 1-ary block inside the comparator:</p>
+<pre class="native-code"><code class="lang-cpp">// after — a Schwartzian transform: n calls, then compare the keys
+std::vector&lt;Value&gt; keys(items.size());
+for (size_t i = 0; i &lt; items.size(); i++)
+    keys[i] = callCallable(blk, {items[i]});
+std::stable_sort(order.begin(), order.end(), [&amp;](size_t x, size_t y) {
+    return valueCmp(keys[x], keys[y]) &lt; 0;
+});</code></pre>
+<p>Sorting codepoints by the length of their Unicode name:</p>
+<div class="tablewrap"><table><tr><th>N</th><th>before</th><th>after</th><th>Rakudo</th></tr><tr><td>8 K</td><td>5.70 s</td><td>0.29 s</td><td>0.34 s</td></tr>
+<tr><td>64 K</td><td>18.09 s</td><td>0.68 s</td><td>0.63 s</td></tr>
+<tr><td>128 K</td><td>still running at 95 s</td><td>1.33 s</td><td>1.09 s</td></tr></table></div>
+<p>The ratio grows with log <em>n</em>, which is the shape the change predicts.</p>
+<p><strong>Never numify a string by throwing</strong>, which is <a href="/book/numbers/">Chapter 10</a>'s <code>stod</code> story and was found while profiling the comparator case above.</p>
+<h2 id="forwarding-the-c-optimization-level">Forwarding the C++ optimization level</h2>
+<p><code>--exe</code> compiles the generated C++ at <code>-O2</code> by default; a level on the flag is passed through:</p>
+<div class="tablewrap"><table><tr><th>flag</th><th>codegen passes</th><th>C++ compile</th></tr><tr><td><em>(none)</em></td><td>off</td><td><code>-O2</code></td></tr>
+<tr><td><code>-O</code></td><td>on</td><td><code>-O2</code></td></tr>
+<tr><td><code>-O3</code> / <code>-Os</code> / <code>-O0</code></td><td>on</td><td>that level</td></tr></table></div>
+<p>*<em>The integer passes only pay off </em>with<em> C++ inlining.</em><em> At <code>-O0</code> the <code>rt*</code> helpers become real calls with no fast path, so <code>-O0</code> is </em>slower* than the default. It is for inspecting the generated C++, not for speed.</p>
+<p><code>-O</code> is a speed switch and not a size lever: the binary is dominated by the statically linked runtime, mostly the Unicode tables, not by the program's own code. <code>-Os</code> shrinks nothing that matters and costs 20 to 50% of the lane speed-up. Use <code>-O</code> for speed and <code>strip</code> if size matters.</p>
+<h2 id="measured">Measured</h2>
+<p><code>--exe</code>, best of six after a discarded warm-up, startup-inclusive:</p>
+<div class="tablewrap"><table><tr><th>Benchmark</th><th><code>--exe</code></th><th><code>--exe -O</code></th><th>speed-up</th><th>what <code>-O</code> reached</th></tr><tr><td>fib</td><td>166.5 ms</td><td><strong>47.0 ms</strong></td><td>3.5×</td><td>direct-arity calls, condition lane</td></tr>
+<tr><td>loopsum</td><td>27.1 ms</td><td><strong>8.6 ms</strong></td><td>3.2×</td><td>the <code>+=</code> lane</td></tr>
+<tr><td>streq</td><td>46.5 ms</td><td><strong>17.5 ms</strong></td><td>2.7×</td><td>int lanes atop inline <code>eq</code></td></tr>
+<tr><td>arrayops</td><td>102.0 ms</td><td><strong>77.8 ms</strong></td><td>1.3×</td><td>map/grep body boxing</td></tr>
+<tr><td>regex</td><td>61.9 ms</td><td>60.3 ms</td><td>1.0×</td><td>the regex engine dominates</td></tr>
+<tr><td>hash</td><td>15.3 ms</td><td>14.9 ms</td><td>1.0×</td><td>hash slots, not scalars</td></tr>
+<tr><td>sortnums</td><td>49.9 ms</td><td>48.6 ms</td><td>1.0×</td><td><code>.sort</code> dominates</td></tr>
+<tr><td>bigint</td><td>29.2 ms</td><td>29.2 ms</td><td>1.0×</td><td><code>BigInt</code> multiply</td></tr>
+<tr><td>strcat</td><td>3.9 ms</td><td>4.8 ms</td><td>0.8×</td><td><code>~=</code> already linear by default</td></tr></table></div>
+<p>The pattern is clear and worth stating: <strong>where the time is inside a runtime method — the regex engine, bignum multiply, <code>.sort</code> — <code>-O</code> cannot reach it.</strong> What it removes is boxing and allocation in the program's own code.</p>
+<p>A dedicated showcase suite in <code>tools/optbench/</code>, each program written to lean on one pass, is compiled twice and checked byte-identical against the interpreter and Rakudo before being timed:</p>
+<div class="tablewrap"><table><tr><th>benchmark</th><th><code>--exe</code></th><th><code>--exe -O</code></th><th>speed-up</th><th>rakudo</th></tr><tr><td>sieve</td><td>1029.3 ms</td><td><strong>25.4 ms</strong></td><td><strong>40.6×</strong></td><td>994.5 ms</td></tr>
+<tr><td>powmod</td><td>531.5 ms</td><td><strong>50.6 ms</strong></td><td>10.5×</td><td>716.8 ms</td></tr>
+<tr><td>intsum</td><td>283.1 ms</td><td><strong>35.9 ms</strong></td><td>7.9×</td><td>624.0 ms</td></tr>
+<tr><td>fibcalls</td><td>701.3 ms</td><td><strong>190.9 ms</strong></td><td>3.7×</td><td>1353.3 ms</td></tr>
+<tr><td>stringbuild</td><td>22.3 ms</td><td>21.9 ms</td><td>1.0×</td><td>204.7 ms</td></tr></table></div>
+<p><code>sieve</code>'s whole inner loop — <code>while $d * $d &lt;= $n</code>, <code>if $n %% $d</code>, <code>$d++</code> — runs as raw <code>int64</code> under pass 3, taking it from a tie with Rakudo at plain <code>--exe</code> to far ahead. <code>stringbuild</code> is flat because in-place <code>~=</code> is default in both.</p>
+<h2 id="the-box-stays-only-its-per-operation-cost-goes">The box stays; only its per-operation cost goes</h2>
+<p>A common question: does a native-compiled <code>my int $x</code> become a bare C++ <code>long long</code>? <strong>No.</strong> The generated code keeps one uniform representation at every optimization level. <code>my int $s</code> compiles to <code>Value v_ss</code>.</p>
+<ul><li><strong>Default <code>--exe</code>:</strong> <code>$s = $s + $i</code> is <code>rtAdd</code>, which constructs a fresh <code>Value</code> for the result.</li><li><strong><code>-O</code> pass 3:</strong> the arithmetic runs as raw <code>int64</code> in registers and the result is written into the existing box's <code>.i</code> slot. No <code>Value</code> is constructed per operation — but the <em>storage</em> is unchanged, and loops still copy full <code>Value</code>s.</li></ul>
+<p>Why keep the box? Because the transpile is uniform: any expression must be able to flow anywhere — into a runtime function, an array element, <code>say()</code>, an untyped assignment — and Raku's <code>my int</code> is readable in <code>Any</code> context while a non-native <code>Int</code> can hold <code>Nil</code> or promote to bignum. Emitting a bare <code>long long</code> local is only sound once an analysis proves the variable never escapes into a <code>Value</code> context, which is a genuine escape-analysis pass and the natural successor to pass 3.</p>
+<h2 id="correctness">Correctness</h2>
+<p><code>-O</code> is validated to produce output byte-for-byte identical to the interpreter:</p>
+<ul><li>every benchmark program matches with <code>-O</code> on;</li><li>every deterministic example compiles with <code>--exe -O</code> and matches its golden output;</li><li>the arithmetic fallbacks are checked directly — int64 overflow to bignum, <code>Int</code>/<code>Num</code> mixes, string coercion, <code>&lt;=&gt;</code> (left on the general path), and <code>+=</code> at the int64 boundary;</li><li>the lane fallbacks likewise: <code>+=</code>/<code>++</code>/<code>*=</code> crossing int64, floored <code>%</code> with negative operands, <code>%= 0</code>, and comparisons whose intermediates overflow.</li></ul>
+<p>The design leans on the fallback. Anything the fast path does not recognise routes to the same runtime code the non-<code>-O</code> build uses, which is why "identical output" is a checkable claim rather than a hope.</p>
+<h2 id="what-is-next">What is next</h2>
+<ul><li><strong>value-position lanes</strong> — laneable integer expressions inside larger expressions (call arguments, list elements) still box;</li><li><strong><code>Num</code> lanes</strong> — the same trick for <code>double</code>, with tag guards and no overflow checks;</li><li><strong>array-element lanes</strong> — <code>@a[$i]</code> inside the lane, with a bounds and tag guard;</li><li><strong>native int locals</strong> — the big one, and a real escape-analysis pass: prove a typed local never escapes into a <code>Value</code> context and never leaves <code>Int</code>, then emit a raw <code>long long</code> with no box at all, eliminating both the storage and the per-iteration copies.</li></ul><nav class="ch-nav"><a class="prev" href="/book/codegen/"><span>Previous</span>The Code Generator</a><a class="next" href="/book/dispatch-compiled/"><span>Next</span>Dispatch Cost in Compiled Code</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

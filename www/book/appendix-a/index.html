@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Tag Sets — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Appendix A</p><h1>The Tag Sets</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#vt-runtime-value-tags"><code>VT</code> — runtime value tags</a></li><li><a href="#nk-ast-node-kinds"><code>NK</code> — AST node kinds</a></li><li><a href="#k-regex-node-kinds"><code>K</code> — regex node kinds</a></li><li><a href="#nqpopc-the-use-nqp-subset"><code>NqpOpc</code> — the <code>use nqp</code> subset</a></li><li><a href="#exception-and-control-structs">Exception and control structs</a></li></ul></nav>
+<p>The three closed enumerations everything else switches on.</p>
+<h2 id="vt-runtime-value-tags"><code>VT</code> — runtime value tags</h2>
+<p><code>src/Value.h</code>. Eighteen tags. Several Raku types are an existing tag plus a marker rather than a tag of their own; those are listed in the second table.</p>
+<div class="tablewrap"><table><tr><th>Tag</th><th>Live fields</th><th>Notes</th></tr><tr><td><code>Nil</code></td><td>—</td><td>the absent value</td></tr>
+<tr><td><code>Any</code></td><td>—</td><td>the default undefined value</td></tr>
+<tr><td><code>Bool</code></td><td><code>b</code></td><td></td></tr>
+<tr><td><code>Int</code></td><td><code>i</code>, or <code>big</code> when it overflows</td><td><code>enumName</code>/<code>enumType</code> make it an enum value</td></tr>
+<tr><td><code>Num</code></td><td><code>n</code></td><td></td></tr>
+<tr><td><code>Str</code></td><td><code>s</code></td><td></td></tr>
+<tr><td><code>Array</code></td><td><code>arr</code>, <code>isList</code>, <code>itemized</code>, <code>shape</code>, <code>ext</code></td><td>List, Seq, Junction and lazy sequences all live here</td></tr>
+<tr><td><code>Hash</code></td><td><code>hash</code>, <code>hashKind</code>, <code>objKeyed</code></td><td>Set, Bag, Mix, Proxy, Failure, Date and more</td></tr>
+<tr><td><code>Code</code></td><td><code>code</code></td><td>sub, block, method, builtin, WhateverCode</td></tr>
+<tr><td><code>Range</code></td><td><code>rFrom</code>, <code>rTo</code>, <code>rExFrom</code>, <code>rExTo</code>, <code>rNum</code>, <code>ext</code></td><td><code>ext</code> holds the original endpoint objects</td></tr>
+<tr><td><code>Pair</code></td><td><code>s</code> or <code>pairKey</code>, <code>pairVal</code>, <code>namedArg</code></td><td></td></tr>
+<tr><td><code>Type</code></td><td><code>s</code></td><td>a type object; <code>s</code> is the type name</td></tr>
+<tr><td><code>Whatever</code></td><td>—</td><td><code>*</code></td></tr>
+<tr><td><code>Object</code></td><td><code>obj</code></td><td>a user class instance</td></tr>
+<tr><td><code>Rat</code></td><td><code>ratN</code>, <code>ratD</code>, <code>fatRat</code></td><td>normalised, denominator positive</td></tr>
+<tr><td><code>Regex</code></td><td><code>s</code> (pattern), <code>hashKind</code> (flags)</td><td></td></tr>
+<tr><td><code>Match</code></td><td><code>s</code>, <code>rFrom</code>, <code>rTo</code>, <code>arr</code>, <code>hash</code></td><td>five fields live at once</td></tr>
+<tr><td><code>Complex</code></td><td><code>n</code> (real), <code>im</code> (imaginary)</td><td></td></tr></table></div>
+<h3>Types with no tag of their own</h3>
+<div class="tablewrap"><table><tr><th>Raku type</th><th>Representation</th></tr><tr><td><code>List</code>, <code>Seq</code></td><td><code>Array</code> with <code>isList</code></td></tr>
+<tr><td>an itemized array</td><td><code>Array</code> with <code>itemized</code></td></tr>
+<tr><td><code>Junction</code></td><td><code>Array</code> with <code>enumName</code> in <code>any</code>/<code>all</code>/<code>one</code>/<code>none</code></td></tr>
+<tr><td>a lazy or infinite sequence</td><td><code>Array</code> with a <code>LazySeqState</code> in <code>ext</code></td></tr>
+<tr><td><code>Set</code>, <code>Bag</code>, <code>Mix</code>, and their mutable forms</td><td><code>Hash</code> with <code>hashKind</code></td></tr>
+<tr><td><code>Proxy</code></td><td><code>Hash</code> with <code>hashKind == "Proxy"</code>, holding <code>FETCH</code>/<code>STORE</code></td></tr>
+<tr><td><code>Failure</code></td><td><code>Hash</code> with <code>hashKind == "Failure"</code></td></tr>
+<tr><td><code>Date</code>, <code>DateTime</code></td><td><code>Hash</code> with <code>hashKind</code></td></tr>
+<tr><td><code>Buf</code></td><td><code>Str</code> with <code>hashKind == "Buf"</code> and an identity token in <code>ext</code></td></tr>
+<tr><td><code>Blob</code></td><td><code>Str</code> with <code>hashKind</code>, compared by value</td></tr>
+<tr><td><code>Instant</code>, <code>Duration</code></td><td><code>Num</code> with <code>hashKind</code> and an identity token</td></tr>
+<tr><td><code>IntStr</code>, <code>RatStr</code>, <code>NumStr</code>, <code>ComplexStr</code></td><td>the numeric tag plus <code>s</code> and <code>hashKind</code></td></tr>
+<tr><td>an enum value</td><td><code>Int</code> with <code>enumName</code> and <code>enumType</code></td></tr>
+<tr><td><code>FatRat</code></td><td><code>Rat</code> with <code>fatRat</code></td></tr>
+<tr><td>a native integer container</td><td>any numeric tag with <code>natBits</code> and <code>natSigned</code></td></tr>
+<tr><td><code>Promise</code>, <code>Channel</code>, <code>Supply</code>, <code>Tap</code>, <code>Lock</code></td><td>a tag plus state in <code>ext</code></td></tr></table></div>
+<h2 id="nk-ast-node-kinds"><code>NK</code> — AST node kinds</h2>
+<p><code>src/Ast.h</code>. Forty-nine kinds.</p>
+<p><strong>Expressions.</strong> <code>IntLit</code>, <code>NumLit</code>, <code>StrLit</code>, <code>InterpStr</code>, <code>BoolLit</code>, <code>VarExpr</code>, <code>ListExpr</code>, <code>Assign</code>, <code>Binary</code>, <code>Unary</code>, <code>Call</code>, <code>MethodCall</code>, <code>Index</code>, <code>Ternary</code>, <code>Range</code>, <code>Pair</code>, <code>BlockExpr</code>, <code>ArrayLit</code>, <code>HashLit</code>, <code>NameTerm</code>, <code>RegexLit</code>, <code>SubstLit</code>, <code>ChainExpr</code>, <code>SymbolicRef</code>, <code>AllomorphLit</code>, <code>NqpOp</code>, <code>Whatever</code>, <code>SelfTerm</code>.</p>
+<p><strong>Statements.</strong> <code>ExprStmt</code>, <code>VarDecl</code>, <code>SubDecl</code>, <code>IfStmt</code>, <code>WhileStmt</code>, <code>ForStmt</code>, <code>LoopStmt</code>, <code>Block</code>, <code>ReturnStmt</code>, <code>LastStmt</code>, <code>NextStmt</code>, <code>RedoStmt</code>, <code>UseStmt</code>, <code>EmptyStmt</code>, <code>GivenStmt</code>, <code>WhenStmt</code>, <code>RepeatStmt</code>, <code>ClassDecl</code>, <code>EnumDecl</code>, <code>NamedRegexDecl</code>, <code>SubsetDecl</code>.</p>
+<p>A great deal of Raku's surface syntax lowers into a few of these. Every operator — built-in, meta, hyper, set, and every user-declared one — is a <code>Binary</code>, <code>Unary</code> or <code>Call</code>. <code>class</code>, <code>role</code>, <code>grammar</code>, <code>module</code> and <code>package</code> are all <code>ClassDecl</code>. A phaser is a <code>Block</code> with a name.</p>
+<h2 id="k-regex-node-kinds"><code>K</code> — regex node kinds</h2>
+<p><code>src/Regex.h</code>. Nineteen kinds.</p>
+<div class="tablewrap"><table><tr><th>Kind</th><th>Construct</th></tr><tr><td><code>Lit</code></td><td>a literal string</td></tr>
+<tr><td><code>Any</code></td><td><code>.</code></td></tr>
+<tr><td><code>Class</code></td><td><code>&lt;[…]&gt;</code>, <code>\d</code>, <code>&lt;:Nd&gt;</code>, a named class</td></tr>
+<tr><td><code>Seq</code></td><td>concatenation</td></tr>
+<tr><td><code>Alt</code></td><td><code>|</code> (ranked) and <code>||</code> (first match)</td></tr>
+<tr><td><code>Conj</code></td><td><code>&amp;</code></td></tr>
+<tr><td><code>Rep</code></td><td><code>*</code>, <code>+</code>, <code>?</code>, <code>** N..M</code>, with <code>%</code> separators</td></tr>
+<tr><td><code>Group</code></td><td><code>[ ]</code>, <code>( )</code>, <code>$&lt;x&gt;=[…]</code></td></tr>
+<tr><td><code>AnchorStart</code>, <code>AnchorEnd</code></td><td><code>^</code>, <code>$</code>, <code>^^</code>, <code>$$</code></td></tr>
+<tr><td><code>WBLeft</code>, <code>WBRight</code></td><td><code>&lt;&lt;</code>, <code>&gt;&gt;</code> word boundaries</td></tr>
+<tr><td><code>Nop</code></td><td>an empty branch</td></tr>
+<tr><td><code>Subrule</code></td><td><code>&lt;name&gt;</code>, <code>&lt;.name&gt;</code>, <code>&lt;alias=rule&gt;</code>, <code>&lt;r($x)&gt;</code></td></tr>
+<tr><td><code>Look</code></td><td><code>&lt;?…&gt;</code>, <code>&lt;!…&gt;</code>, <code>&lt;?after …&gt;</code></td></tr>
+<tr><td><code>Code</code></td><td><code>{…}</code>, <code>&lt;?{…}&gt;</code>, <code>&lt;!{…}&gt;</code>, <code>:my</code></td></tr>
+<tr><td><code>VarMatch</code></td><td>a <code>$var</code> atom evaluated at match time</td></tr>
+<tr><td><code>CapStart</code>, <code>CapEnd</code></td><td><code>&lt;(</code> and <code>)&gt;</code></td></tr></table></div>
+<h2 id="nqpopc-the-use-nqp-subset"><code>NqpOpc</code> — the <code>use nqp</code> subset</h2>
+<p><code>src/Ast.h</code>. About fifty operation codes in seven groups: lazy control forms, 64-bit integer operations, codepoint-indexed string operations, list and hash primitives, object and attribute helpers, buffer read and write, and folded constants. The full list is in <a href="/book/nqp/">Chapter 30</a>.</p>
+<h2 id="exception-and-control-structs">Exception and control structs</h2>
+<p><code>src/Interpreter.h</code>.</p>
+<div class="tablewrap"><table><tr><th>Struct</th><th>Meaning</th></tr><tr><td><code>RakuError</code></td><td>every user-visible Raku exception: payload plus message</td></tr>
+<tr><td><code>ReturnEx</code></td><td><code>return</code> across a callable boundary</td></tr>
+<tr><td><code>LastEx</code>, <code>NextEx</code>, <code>RedoEx</code></td><td>labelled or cross-frame loop control</td></tr>
+<tr><td><code>BreakGivenEx</code></td><td><code>when</code> / <code>succeed</code> across a boundary</td></tr>
+<tr><td><code>ProceedEx</code></td><td><code>proceed</code></td></tr>
+<tr><td><code>LeaveEx</code></td><td><code>leave</code></td></tr>
+<tr><td><code>ResumeEx</code></td><td><code>.resume</code> inside a <code>CATCH</code></td></tr>
+<tr><td><code>DoneEx</code></td><td><code>done</code> in a supply, whenever or react body</td></tr>
+<tr><td><code>StopGatherEx</code></td><td>a lazy <code>gather</code> has produced enough</td></tr>
+<tr><td><code>ExitEx</code></td><td><code>exit</code></td></tr>
+<tr><td><code>WorkerAbortEx</code></td><td>unwind a background worker at shutdown — deliberately <strong>not</strong> a <code>RakuError</code></td></tr>
+<tr><td><code>ParseError</code></td><td>a compile-time diagnostic, optionally typed</td></tr>
+<tr><td><code>CodegenError</code></td><td><code>--exe</code> cannot transpile this; bundle instead</td></tr>
+<tr><td><code>AstEmitError</code></td><td><code>--aot</code> cannot rebuild this; bundle instead</td></tr>
+<tr><td><code>AstSerialError</code></td><td>a cache entry is unreadable; parse instead</td></tr>
+<tr><td><code>StepLimitExceeded</code></td><td>a regex exceeded its backtracking budget</td></tr>
+<tr><td><code>ObsoleteEscape</code></td><td>a retired Perl 5 metacharacter in a pattern</td></tr></table></div><nav class="ch-nav"><a class="prev" href="/book/measuring/"><span>Previous</span>Measuring, and Proving</a><a class="next" href="/book/appendix-b/"><span>Next</span>Flags and Environment Variables</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

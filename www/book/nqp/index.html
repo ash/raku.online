@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>use nqp: a Compatibility Subset — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 30</p><h1><code>use nqp</code>: a Compatibility Subset</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#there-is-no-nqp-compiler-here">There is no NQP compiler here</a></li><li><a href="#zero-cost-when-unused">Zero cost when unused</a></li><li><a href="#how-the-ops-compile">How the ops compile</a></li><li><a href="#in-code">In code</a></li><li><a href="#the-argument-buffers">The argument buffers</a></li><li><a href="#native-compilation">Native compilation</a></li><li><a href="#what-is-covered">What is covered</a></li><li><a href="#scope-and-non-goals">Scope and non-goals</a></li><li><a href="#why-this-shape-is-the-right-one">Why this shape is the right one</a></li></ul></nav>
+<p>Some ecosystem modules — most importantly <code>JSON::Fast</code>, which sits under about 170 other distributions — are written in ordinary Raku but reach for <strong>NQP ops</strong> in their hot paths: <code>nqp::iseq_i</code>, <code>nqp::substr</code>, <code>nqp::push_s</code>.</p>
+<p>NQP is Rakudo's bootstrap language, and its <code>nqp::</code> operations are the low-level primitives the Raku runtime is built on. Rakudo documents them as <strong>internal and unspecified</strong>; every implementation provides whatever subset its ecosystem happens to need.</p>
+<p>Raku++ provides that subset. This chapter is about how, and — more interestingly — about why it costs <strong>nothing</strong> for the programs that do not use it.</p>
+<h2 id="there-is-no-nqp-compiler-here">There is no NQP compiler here</h2>
+<p>The single most important thing to understand: <strong><code>nqp::foo(...)</code> is already valid Raku syntax.</strong> It is a call to a package-qualified routine named <code>nqp::foo</code>. The normal parser reads it with no special help.</p>
+<p>There is no NQP grammar, no NQP compiler, and no QAST anywhere in Raku++. What is added is a <strong>semantic layer</strong>: when a program opts in with <code>use nqp</code>, the parser recognises those already-parsed calls and gives them meaning, compiling them to dedicated AST nodes instead of leaving them as calls to undefined routines.</p>
+<pre class="native-code"><code class="lang-raku">use nqp;                       # (or `use MONKEY-GUTS`)
+my int $x = nqp::add_i(2, 3);  # 5</code></pre>
+<p>Without <code>use nqp</code>, <code>nqp::add_i(...)</code> is exactly what it looks like — a call to a routine that does not exist — and running it gives the usual undefined-routine error.</p>
+<h2 id="zero-cost-when-unused">Zero cost when unused</h2>
+<p>This is a hard design constraint, not an aspiration, and it holds by <strong>construction</strong> rather than by optimisation.</p>
+<ul><li>The parser carries one boolean, <code>useNqp_</code>, that starts false and is set only by seeing <code>use nqp</code> or <code>MONKEY-GUTS</code>. Every recognition site is guarded by it, so in a normal program those checks are a single already-false branch on a token that begins with <code>nqp::</code> — which no ordinary identifier does.</li><li>The <code>NqpOp</code> node is <strong>only ever constructed</strong> inside that guarded path. A program without <code>use nqp</code> builds no such node, so the interpreter's <code>NqpOp</code> arm is never reached and the implementation is dead code for that run.</li><li>There are no new fields on any hot struct, no new work in any hot loop, and no change to how normal calls, strings or numbers are handled.</li></ul>
+<p>A regression test asserts the invariant directly: that <code>nqp::add_i</code> still reports "undefined routine" without <code>use nqp</code>.</p>
+<h2 id="how-the-ops-compile">How the ops compile</h2>
+<p>Inside a <code>use nqp</code> unit, a recognised <code>nqp::op(...)</code> becomes one of three things <strong>at parse time</strong>.</p>
+<p><strong>Constants fold to literals.</strong> <code>nqp::const::CCLASS_NUMERIC</code> is replaced by the integer <code>8</code> in the parser; it never exists as a call. All the character-class flags and normalization modes are handled this way.</p>
+<p><strong>Control forms become native or lazy nodes,</strong> because their arguments must not all evaluate eagerly. <code>nqp::if</code> and <code>nqp::unless</code> compile to Raku++'s own ternary node, so the untaken branch never runs. <code>nqp::while</code>, <code>nqp::until</code>, <code>nqp::stmts</code> and <code>nqp::ifnull</code> become <code>NqpOp</code> nodes whose evaluator drives its own argument evaluation.</p>
+<p><strong>Leaf ops become eager <code>NqpOp</code> nodes</strong> — integer maths, string and list primitives — which evaluate their arguments normally and then do the low-level operation over Raku++'s own <code>Value</code>s.</p>
+<p>An <code>nqp::</code> op <strong>outside</strong> the implemented subset is left as an ordinary call and fails loudly at run time rather than silently misbehaving. The subset grows by measured demand, never by guessing.</p>
+<h2 id="in-code">In code</h2>
+<p>The parser branch, condensed:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — the term is already lexed as the qualified name `nqp::add_i`
+if (useNqp_ &amp;&amp; name.compare(0, 5, "nqp::") == 0) {
+    if (name.compare(0, 12, "nqp::const::") == 0) {
+        long long cv;
+        if (nqpConstValue(name.substr(12), cv))
+            return std::make_unique&lt;IntLit&gt;(cv);      // folded here
+    }
+    if (ExprPtr n = makeNqpOp(name.substr(5), callArgs))
+        return n;                                     // an NqpOp, or a Ternary
+}</code></pre>
+<p>The node is deliberately tiny:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Ast.h
+enum class NqpOpc : uint16_t {
+    Stmts, While, Until, IseqI, AddI, Substr, /* … */ };
+struct NqpOp : Expr {
+    NqpOpc op;
+    std::vector&lt;ExprPtr&gt; args;
+};</code></pre>
+<p>and the evaluator handles the lazy forms <em>before</em> touching their arguments:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — condensed
+Value Interpreter::evalNqpOp(NqpOp* n) {
+    auto&amp; a = n-&gt;args;
+    switch (n-&gt;op) {                        // lazy forms drive their own args
+        case NqpOpc::While:
+            while (boolify(eval(a[0].get())))
+                for (size_t i = 1; i &lt; a.size(); i++) eval(a[i].get());
+            return Value::nil();
+        default: break;
+    }
+    ValueList v;                            // everything else: eval once
+    for (auto&amp; e : a) v.push_back(eval(e.get()));
+    auto I = [&amp;](size_t i){ return v[i].toInt(); };
+    switch (n-&gt;op) {
+        case NqpOpc::AddI:  return Value::integer(I(0) + I(1));   // int64
+        case NqpOpc::IseqI: return Value::integer(I(0) == I(1));
+        // … about 40 more leaf ops …
+    }
+}</code></pre>
+<h2 id="the-argument-buffers">The argument buffers</h2>
+<p>An nqp-heavy program is nqp-heavy in the extreme: a tokenizer written in Raku runs about 1.5 million operations on a 278 KB document. Building a fresh <code>ValueList</code> per operation is a malloc and a free per op, for a vector of one to four values.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+std::deque&lt;ValueList&gt; nqpArgs;   // one reusable buffer per nesting depth
+size_t nqpDepth = 0;</code></pre>
+<p>The buffers are kept, so their capacity is kept; the contents are still cleared on the way out, so argument lifetimes are exactly what they were.</p>
+<p>It is a <strong>deque</strong>, not a vector, and the comment says why: an argument's own evaluation can re-enter <code>evalNqpOp</code>, and growing a vector would reallocate under the outer frame's live reference. A deque never moves the elements it already holds.</p>
+<p>That is a small illustration of a recurring theme — the reusable-buffer optimisation is easy, and the container choice that makes it <em>correct</em> under re-entrancy is the part that takes thought.</p>
+<h2 id="native-compilation">Native compilation</h2>
+<p>The subset is a first-class part of the transpiler, not just the interpreter. A <code>use nqp</code> program native-compiles like any other; it does <strong>not</strong> fall back to bundling.</p>
+<pre class="native-code"><code class="lang-console">$ rakupp --cpp -e 'use nqp; say nqp::add_i(1, 2)'
+…
+rtCallB(RT, __bfp0, "say", ValueList{
+    ([&amp;]()-&gt;Value{ ValueList __na = ValueList{Value::integer(1LL),
+                                              Value::integer(2LL)};
+                   return rtNqpOp(NqpOpc(10), __na); }())});</code></pre>
+<p>Two emission strategies, mirroring how the ops evaluate:</p>
+<ul><li><strong>Eager leaf ops</strong> share their implementation with the interpreter through a free function <code>rtNqpOp(NqpOpc, ValueList&amp;)</code> in the runtime. <code>Interpreter::evalNqpOp</code> delegates to it and the generator emits a call to the <em>same</em> function, so there is exactly one copy of the op logic and the compiled binary cannot drift from the interpreted meaning.</li><li><strong>Lazy control forms</strong> do not route through a runtime call — they emit native C++ directly, a real <code>while</code> and a statement sequence, preserving their non-eager evaluation.</li></ul>
+<p>The zero-cost guarantee extends here too: a program without <code>use nqp</code> emits zero references to <code>rtNqpOp</code> or any nqp machinery.</p>
+<h2 id="what-is-covered">What is covered</h2>
+<p>Around fifty operations, chosen from the actual inventory of the modules in the ecosystem compatibility battery:</p>
+<div class="tablewrap"><table><tr><th>Group</th><th>Ops</th></tr><tr><td><strong>Control (lazy)</strong></td><td><code>if</code> <code>unless</code> <code>while</code> <code>until</code> <code>stmts</code> <code>ifnull</code></td></tr>
+<tr><td><strong>Integer</strong> (int64, no bignum promotion)</td><td><code>iseq_i</code> <code>isne_i</code> <code>islt_i</code> <code>isle_i</code> <code>isge_i</code> <code>isgt_i</code> <code>add_i</code> <code>sub_i</code> <code>mul_i</code> <code>bitand_i</code></td></tr>
+<tr><td><strong>String</strong> (codepoint-indexed)</td><td><code>ordat</code> <code>eqat</code> <code>substr</code> <code>chars</code> <code>concat</code> <code>join</code> <code>index</code> <code>chr</code> <code>strfromcodes</code> <code>strtocodes</code> <code>findnotcclass</code> <code>iscclass</code></td></tr>
+<tr><td><strong>List</strong></td><td><code>list</code> <code>list_i</code> <code>list_s</code> <code>elems</code> <code>atpos</code> <code>atpos_i</code> <code>bindpos</code> <code>push</code> <code>push_i</code> <code>push_s</code> <code>pop_s</code> <code>shift_i</code> <code>splice</code></td></tr>
+<tr><td><strong>Hash</strong></td><td><code>hash</code> <code>bindkey</code></td></tr>
+<tr><td><strong>Object / attr</strong></td><td><code>create</code> <code>istype</code> <code>getattr</code> <code>bindattr</code> <code>p6bindattrinvres</code> <code>null</code> <code>isnanorinf</code></td></tr>
+<tr><td><strong>Constants</strong></td><td><code>const::CCLASS_*</code>, <code>const::NORMALIZE_*</code></td></tr></table></div>
+<p>Integer ops use plain <code>int64</code> semantics, matching NQP's native integers — <strong>no overflow to bignum</strong> — and string ops index by codepoint rather than by grapheme. Both of those are deliberate: an NQP op is supposed to be the low-level primitive, and a module reaching for one is reaching past Raku's semantics on purpose.</p>
+<h2 id="scope-and-non-goals">Scope and non-goals</h2>
+<ul><li><strong>Not a general NQP runtime.</strong> This is a compatibility shim sized to the ecosystem. Operations nobody's modules use are not implemented until a module needs them.</li><li><strong>Semantics match Rakudo's observable behaviour, not its internal representation.</strong> <code>nqp::create(IterationBuffer)</code> gives back a plain Raku++ buffer, because what the calling module does with it is all that matters.</li><li><strong><code>use nqp</code> is an opt-in for module code</strong>, not an invitation for application code. There is no reason to reach for <code>nqp::</code> operations in a program you are writing, and no support commitment for operations beyond the measured subset.</li></ul>
+<h2 id="why-this-shape-is-the-right-one">Why this shape is the right one</h2>
+<p>The temptation with a compatibility layer is to implement the source language. That would have meant an NQP grammar, an NQP compiler, and a second execution model to keep in step with the first — for a feature whose entire purpose is to let a handful of modules load.</p>
+<p>Recognising that <code>nqp::foo(…)</code> is <em>already</em> valid syntax in the host language turned a compiler project into about 250 lines of parser branch and evaluator arm. The general principle generalises: <strong>before implementing a foreign language, check whether its surface syntax is already legal in yours.</strong></p><nav class="ch-nav"><a class="prev" href="/book/modules/"><span>Previous</span>Modules</a><a class="next" href="/book/nativecall/"><span>Next</span>NativeCall and the libffi Backend</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

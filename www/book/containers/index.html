@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Containers, Binding, and Copy Semantics — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 11</p><h1>Containers, Binding, and Copy Semantics</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#scopes-are-hash-maps-with-a-parent-pointer">Scopes are hash maps with a parent pointer</a></li><li><a href="#where-the-sharing-is-broken">Where the sharing is broken</a></li><li><a href="#binding-and-the-proxy">Binding: <code>:=</code> and the <code>Proxy</code></a></li><li><a href="#the-scalar-container-metaphor">The scalar-container metaphor</a></li><li><a href="#sigils-are-mostly-a-parse-time-fact">Sigils are mostly a parse-time fact</a></li><li><a href="#shaped-arrays-and-typed-containers">Shaped arrays and typed containers</a></li><li><a href="#is-rw-and-writing-back-to-the-caller"><code>is rw</code>, and writing back to the caller</a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>A <code>Value</code> copy shares its payload. Raku sometimes wants that and sometimes wants the opposite, and the rules for which are the subtlest part of the value model. This chapter is about where the sharing is broken on purpose, and how the things Raku calls <em>containers</em> are modelled without a container object.</p>
+<h2 id="scopes-are-hash-maps-with-a-parent-pointer">Scopes are hash maps with a parent pointer</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct Env {
+    std::unordered_map&lt;std::string, Value&gt; vars;   // "$x", "@a", "%h", "&amp;sub"
+    std::shared_ptr&lt;Env&gt; parent;
+    bool routineFrame = false;   // $/ scopes here
+    bool loopFrame = false;      // a loop's `state` frame
+    std::unique_ptr&lt;EnvExtras&gt; ex;
+
+    Value* find(const std::string&amp; name) {
+        auto it = vars.find(name);
+        if (it != vars.end()) return &amp;it-&gt;second;
+        return parent ? parent-&gt;find(name) : nullptr;
+    }
+    Value&amp; define(const std::string&amp; name, Value v) {
+        return vars[name] = std::move(v);
+    }
+};</code></pre>
+<p>The <strong>full sigilled name is the key</strong>. Subs live in the same map under a <code>&amp;</code>-prefixed key, so <code>&amp;foo</code> and <code>$foo</code> occupy different namespaces without a second table. Lexical scoping <em>is</em> the parent walk in <code>find</code>; there is no separate symbol table anywhere in the interpreter.</p>
+<p>Reading a variable returns a <strong>copy</strong> of the slot. Writing goes through <code>lvalue(Expr*)</code>, which hands back a <code>Value*</code> pointing straight into the owning <code>Env</code>'s map:</p>
+<pre class="native-code"><code class="lang-cpp">// read  $x
+if (Value* p = tctx_.cur-&gt;find(ve-&gt;name)) return *p;      // a COPY
+
+// my $x — make the slot here, hand back its address
+tctx_.cur-&gt;define(ve-&gt;name, std::move(init));
+return &amp;tctx_.cur-&gt;vars[ve-&gt;name];
+
+// $x = 5
+*lv = rhs;</code></pre>
+<p>The three declarators differ only in <em>which</em> <code>Env</code> holds the slot:</p>
+<div class="tablewrap"><table><tr><th>Declarator</th><th>Storage</th></tr><tr><td><code>my</code></td><td>the current lexical <code>Env</code></td></tr>
+<tr><td><code>our</code></td><td>the package env, ultimately the global one; also republished under a qualified name when the package block closes</td></tr>
+<tr><td><code>state</code></td><td>a per-<code>Callable</code> <code>stateEnv</code>, created exactly once and shared across calls</td></tr></table></div>
+<p><code>state</code> is the only one that needs care under concurrency, and it gets a <code>std::once_flag</code> on the <code>Callable</code> so the persistent environment is created exactly once even if two threads call the routine simultaneously.</p>
+<h3><code>EnvExtras</code>: the eight rarely-used maps</h3>
+<p>An <code>Env</code> is constructed for every routine call <strong>and every block</strong>. It also needs somewhere to keep <code>is rw</code> write-through links, <code>temp</code>/<code>let</code> restorations, <code>is default</code> values, and the set of names declared <code>is dynamic</code> — eight containers which are empty in the overwhelming majority of scopes.</p>
+<p>Constructing and destroying eight empty maps per block is pure overhead for the ordinary case, so they live behind one lazily-allocated pointer:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+EnvExtras&amp; x() { if (!ex) ex = std::make_unique&lt;EnvExtras&gt;(); return *ex; }
+const EnvExtras&amp; xr() const {
+    static const EnvExtras kEmpty;
+    return ex ? *ex : kEmpty;
+}</code></pre>
+<p>Writers call <code>x()</code> and materialise it; readers call <code>xr()</code> and get a shared empty instance, so a lookup never allocates. This is a small pattern but a recurring one: <strong>make the common case cost nothing, and pay only where the feature is actually used.</strong></p>
+<h2 id="where-the-sharing-is-broken">Where the sharing is broken</h2>
+<p>Copying a <code>Value</code> bumps refcounts on the <code>shared_ptr</code> members, so a raw copy of an <code>Array</code> shares its backing <code>ValueList</code>. Raku wants:</p>
+<pre class="native-code"><code class="lang-raku">my @a = 1, 2, 3;
+my @b = @a;      # a COPY
+@b[0] = 99;
+say @a;          # (1 2 3) — unchanged</code></pre>
+<p>So the interpreter deliberately breaks the sharing at <code>=</code> assignment, and <strong>only for the <code>@</code> and <code>%</code> sigils</strong>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — coerceArray
+if (v.t == VT::Array) {
+    if (v.itemized) { … }             // an itemized array is ONE element
+    if (v.ext) return v;              // a lazy seq stays lazy
+    Value r = Value::array(*v.arr);   // *v.arr copies the vector
+    r.isList = false; return r;
+}</code></pre>
+<p><code>*v.arr</code> dereferences the pointer and copies the underlying vector, so <code>@b</code> gets its own storage. Hashes copy the same way. Scalar assignment is a plain struct overwrite, so <code>my $x = @a</code> stores an <code>Array</code> value that <em>does</em> still share <code>@a</code>'s buffer — because an item container is a reference to one thing.</p>
+<p>Two consequences to keep straight:</p>
+<ul><li><strong>The copy is one level deep</strong>, matching Rakudo. <code>my @b = @a</code> copies the top-level buffer, but a nested itemized array inside is copied as a <code>Value</code> struct, so its <code>arr</code> pointer is still shared.</li><li><strong>A lazy sequence is not copied.</strong> The <code>if (v.ext) return v</code> line is what keeps <code>my @a = 1, 2, 4 ... *</code> from trying to drain an infinite list.</li></ul>
+<p>The compiled backend has its own mirror of this rule, <code>rtArrayVal</code>, with the same fresh-buffer semantics, so interpreted and compiled code agree.</p>
+<h2 id="binding-and-the-proxy">Binding: <code>:=</code> and the <code>Proxy</code></h2>
+<p><code>=</code> copies a value into an existing container. <code>:=</code> rebinds the container itself: after <code>$y := $x</code>, the two names <em>are</em> the same container and a write to either is seen by both.</p>
+<p>But <code>Env</code> stores <code>Value</code>s by value in a map, so two map slots cannot literally be the same storage. The alias is faked with a <code>Proxy</code>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — $y := $x, scalar case
+Value proxy = Value::makeHash(); proxy.hashKind = "Proxy";
+(*proxy.hash)["FETCH"] = fetch;    // a builtin Code closing over the owning Env
+(*proxy.hash)["STORE"] = store;
+*lvalue(target) = proxy;</code></pre>
+<p><code>$y</code>'s slot holds a <code>Hash</code> tagged <code>Proxy</code> whose two closures read and write <code>$x</code>'s slot in the environment that owns it. Reading a variable notices the tag and calls <code>FETCH</code> instead of returning the hash:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — reading a variable
+Value* p = tctx_.cur-&gt;find(ve-&gt;name);
+if (p) {
+    if (p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == "Proxy" &amp;&amp; p-&gt;hash) {
+        auto it = p-&gt;hash-&gt;find("FETCH");
+        if (it != p-&gt;hash-&gt;end())
+            return callCallable(it-&gt;second, { *p });
+    }
+    return *p;
+}</code></pre>
+<p>Binding chains dereference one extra level so <code>$z := $y := $x</code> works.</p>
+<p>This costs a call on every read of a bound variable, which is why the check is placed inside the <em>slow</em> half of the variable-read path and why the fast paths in <a href="/book/node-specialization/">Chapter 18</a> decline any value with a non-empty <code>hashKind</code>.</p>
+<p><strong>Array binding is much cheaper</strong>, because sharing a buffer is exactly what a <code>shared_ptr</code> copy already does:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — @a := @b
+if (a-&gt;op == ":=" &amp;&amp; rhs.t == VT::Array) {
+    Value b = rhs; b.isList = false; *lv = b;
+}</code></pre>
+<p><code>Value b = rhs</code> copies the struct and shares <code>rhs.arr</code>. This is the deliberate opposite of <code>@a = @b</code> above. <code>constant</code> reuses the binding path — a constant is <code>:=</code> in disguise.</p>
+<p>The user-visible <code>Proxy</code> type — <code>Proxy.new(:FETCH{…}, :STORE{…})</code> — is the same mechanism exposed, so a program can build one explicitly.</p>
+<h2 id="the-scalar-container-metaphor">The scalar-container metaphor</h2>
+<p>Raku's <code>$</code> variable is really a <em>Scalar container</em> holding a value, with introspectable machinery: <code>.VAR</code>, <code>is default</code>, type constraints. Raku++ models that without a separate container object, using flags on the <code>Value</code> plus per-<code>Env</code> side tables.</p>
+<p><strong><code>.VAR</code></strong> builds a <code>Hash</code> tagged <code>"Scalar"</code> reporting the variable's name, value and default.</p>
+<p><strong><code>is default(v)</code> and typed defaults</strong> live in <code>EnvExtras::varDefault</code>, a per-scope map. <code>my Int $x</code> stores <code>(Int)</code> as both the initial value and the reset default. Assigning <code>Nil</code> walks the chain to find it:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — $x = Nil restores the container's default
+for (Env* en = tctx_.cur.get(); en; en = en-&gt;parent.get()) {
+    auto di = en-&gt;varDefault.find(nm);
+    if (di != en-&gt;varDefault.end()) { dv = di-&gt;second; break; }
+    if (en-&gt;vars.count(nm)) break;   // owner scope, no declared default
+}
+*lv = dv;                             // else Any</code></pre>
+<p><strong>Type constraints</strong> on a scalar are enforced at assignment for the core nominal types, throwing <code>X::TypeCheck::Assignment</code> on a mismatch.</p>
+<p><strong><code>readonly</code></strong> is a flag on the <code>Value</code> itself, set when binding a plain <code>$</code> parameter. Mutating operations such as <code>s///</code> check it and die.</p>
+<p><strong><code>temp</code> and <code>let</code></strong> push restoration closures onto the scope's extras. <code>tempRestores</code> run whenever the scope leaves; <code>letRestores</code> run only on an <em>unsuccessful</em> exit, which is the distinction the language draws.</p>
+<h2 id="sigils-are-mostly-a-parse-time-fact">Sigils are mostly a parse-time fact</h2>
+<p>The runtime dispatches on the <code>VT</code> tag, not the sigil. The sigil — the first character of the name — is consulted exactly twice: to pick the empty container shape at declaration (<code>@</code> gives an empty <code>Array</code>, <code>%</code> an empty <code>Hash</code>, <code>$</code> an <code>Any</code>), and to choose the assignment coercion (<code>coerceArray</code>, <code>coerceHash</code>, or a scalar overwrite).</p>
+<p>After that, behaviour follows the tag and two flags:</p>
+<ul><li><strong><code>isList</code></strong> marks a <code>VT::Array</code> that is a <code>List</code> or <code>Seq</code> rather than an <code>Array</code>. It renders with parentheses instead of brackets and flattens in list context. Same storage, different behaviour.</li><li><strong><code>itemized</code></strong>, set by <code>$(...)</code> or <code>$[...]</code>, marks an array that counts as <em>one</em> element in list context rather than flattening.</li></ul>
+<p>That pair carries a surprising amount of Raku's list semantics, and most of the one-argument-rule subtleties in the built-ins reduce to testing them.</p>
+<h2 id="shaped-arrays-and-typed-containers">Shaped arrays and typed containers</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+std::shared_ptr&lt;std::vector&lt;long long&gt;&gt; shape;  // my @a[2;3]
+std::string ofType;                              // Array[Int], my Int @a</code></pre>
+<p>A shaped array is a fixed row-major structure with its dimensions recorded; an unshaped one leaves the pointer null. <code>makeShapedContainer</code> builds one, optionally filling it from a flat list.</p>
+<p><code>ofType</code> carries the element type for a typed container, comma-joined when there is more than one parameter (<code>Hash[Int,Str]</code> becomes <code>"Int,Str"</code>). It also drives native-width masking for <code>my uint8 @a</code>, through the same <code>natWidthOfType</code> table as scalars.</p>
+<h2 id="is-rw-and-writing-back-to-the-caller"><code>is rw</code>, and writing back to the caller</h2>
+<p>Because arguments are passed as <code>Value</code> copies, a mutated <code>is rw</code> parameter has to be written back into the caller's variable. The call site passes the argument <em>expressions</em> alongside the values, and the binder records the link:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — EnvExtras
+std::map&lt;std::string, std::pair&lt;Expr*, std::shared_ptr&lt;Env&gt;&gt;&gt; rwLinks;
+std::map&lt;std::string, Value&gt; rwSynced;
+std::map&lt;std::string, Value*&gt; rwDirect;
+std::set&lt;std::string&gt; rwDead;</code></pre>
+<p>There are two mechanisms because there are two situations. <code>rwLinks</code> holds the caller's argument expression and environment, so an assignment to the parameter can re-resolve the lvalue and push the value through <em>immediately</em> — the caller sees the change mid-call, which is what Raku specifies. <code>rwSynced</code> records what was last pushed, so the copy-out backstop at return can skip parameters that are already up to date; without it a late copy-out would re-apply stale values over the callee's own later edits.</p>
+<p><code>rwDirect</code> is the simpler case: a hyper-operator element call already has the caller's slot as a pointer, with no expression to re-evaluate. <code>rwDead</code> marks a raw or <code>rw</code> parameter bound to a literal, so assigning it dies with <code>X::Assignment::RO</code> rather than silently writing into a temporary.</p>
+<p>This works for <strong>direct</strong> calls, where the caller supplied the argument expressions. Multi-dispatched and indirect calls can lose that fidelity — a known limitation, documented rather than hidden.</p>
+<h2 id="honest-limitations">Honest limitations</h2>
+<ul><li><strong>A reference cycle leaks.</strong> Lifetime is refcounting. The interpreter breaks the one cycle it creates systematically — a nested sub whose closure points back at the frame that holds it — and otherwise relies on processes being short-lived.</li><li><strong><code>:=</code> on a scalar costs a call per read.</strong> The <code>Proxy</code> is correct and general, and it is not free.</li><li><strong><code>is rw</code> write-back is expression-based.</strong> Where the argument expression is not available or not re-resolvable, the write-back does not happen.</li><li><strong>The one-level copy rule</strong> matches Rakudo, but it surprises people regularly, and no amount of documentation seems to fix that.</li></ul><nav class="ch-nav"><a class="prev" href="/book/numbers/"><span>Previous</span>Numbers</a><a class="next" href="/book/tree-walk/"><span>Next</span>The Tree Walk</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

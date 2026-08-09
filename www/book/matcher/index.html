@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Backtracking Matcher — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 20</p><h1>The Backtracking Matcher</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#fnref-a-continuation-that-does-not-allocate"><code>FnRef</code>: a continuation that does not allocate</a></li><li><a href="#the-step-budget">The step budget</a></li><li><a href="#mstate-everything-one-match-frame-knows"><code>MState</code>: everything one match frame knows</a></li><li><a href="#two-subrule-paths">Two subrule paths</a></li><li><a href="#lookarounds">Lookarounds</a></li><li><a href="#the-hooks-running-raku-during-a-match">The hooks: running Raku during a match</a></li><li><a href="#when-side-effects-fire">When side effects fire</a></li><li><a href="#entry-points">Entry points</a></li><li><a href="#substitution">Substitution</a></li></ul></nav>
+<p>The matcher is continuation-passing. One function walks the node tree:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h
+bool matchNode(const Node* n, MState&amp; st, long pos, const FnRef&amp; k) const;</code></pre>
+<p>"Match node <code>n</code> at position <code>pos</code>; if it succeeds, call <code>k</code> with the position after it; return whether the whole thing ultimately succeeded."</p>
+<p>That signature is the entire design. Backtracking is the C++ stack unwinding when a continuation returns <code>false</code>, and every construct that has alternatives simply tries them in order:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.cpp
+case K::Seq: {
+    // match kids[0], and in its continuation match the rest
+}
+case K::Alt: {
+    // try each branch in ranked order; the first whose continuation
+    // succeeds wins
+}
+case K::Rep: {
+    // greedy: try one more repetition first, then k(pos)
+    // frugal: try k(pos) first, then one more repetition
+}</code></pre>
+<p>There is no explicit backtracking stack, no thread list, no bytecode. The continuation <em>is</em> "the rest of the pattern", and the C++ frame that holds it <em>is</em> the choice point.</p>
+<h2 id="fnref-a-continuation-that-does-not-allocate"><code>FnRef</code>: a continuation that does not allocate</h2>
+<p>A <code>std::function</code> for the continuation would heap-allocate on every node visit, which for a matcher is fatal. Continuations here live only for the duration of the match call chain — they are never stored — so the callable can be borrowed from the caller's stack:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h
+struct FnRef {
+    void* ctx;
+    bool (*fn)(void*, long);
+    template &lt;class F, class = std::enable_if_t&lt;
+                  !std::is_same_v&lt;std::decay_t&lt;F&gt;, FnRef&gt;&gt;&gt;
+    FnRef(F&amp;&amp; f)
+      : ctx((void*)&amp;f),
+        fn([](void* c, long v) {
+              return (*(std::remove_reference_t&lt;F&gt;*)c)(v); }) {}
+    bool operator()(long v) const { return fn(ctx, v); }
+};</code></pre>
+<p>Two words, no heap, one indirect call. The safety argument is the lifetime rule stated in the comment: continuations are never stored, so the borrowed lambda always outlives the call. Break that rule — store an <code>FnRef</code> anywhere — and the result is a dangling pointer.</p>
+<h2 id="the-step-budget">The step budget</h2>
+<p>Continuation-passing plus backtracking means a pathological pattern can recurse without bound. <code>/[a*]* b/</code> against a long non-matching string is the classic.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.cpp — the top of matchNode
+if (++st.steps &gt; 8000000) throw StepLimitExceeded{};</code></pre>
+<p>Eight million steps is far beyond any real match and trips in well under a second on the pathological cases. The exception is caught at each match entry point and reported as a failure to match:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h
+struct StepLimitExceeded {};</code></pre>
+<p>The budget is carried <em>across</em> the start positions of an unanchored search, so a quadratic scan cannot escape it by restarting.</p>
+<p>This is a blunt instrument and named as one: it prevents a hang, it does not prevent a pathological pattern from being slow, and a legitimate match that genuinely needs more than eight million steps would be reported as a non-match. No such match has appeared.</p>
+<h2 id="mstate-everything-one-match-frame-knows"><code>MState</code>: everything one match frame knows</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h — MState, abridged
+struct MState {
+    const std::string&amp; s;
+    std::vector&lt;std::pair&lt;long, long&gt;&gt; caps;                 // $0, $1, …
+    std::map&lt;std::string, std::pair&lt;long, long&gt;&gt; named;      // $&lt;x&gt;
+    std::map&lt;std::string, std::vector&lt;ParseNode&gt;&gt; children;  // subrule trees
+    const SubResolver* resolver = nullptr;   // plain-regex subrule path
+    class GrammarMatcher* grammar = nullptr; // grammar path
+    const std::set&lt;std::string&gt;* lexNames = nullptr;  // my regex NAME shadows
+    std::map&lt;int, std::vector&lt;std::pair&lt;long, long&gt;&gt;&gt; capReps;
+    long startPos = 0;
+    long capFrom = -1, capTo = -1;           // the &lt;( … )&gt; span
+    const GrammarHooks* hooks = nullptr;     // interpreter callbacks
+    const std::string* curSym = nullptr;     // the proto candidate's :sym&lt;…&gt;
+    long firstCode = -1;                     // where the LTM prefix ends
+    long litPrefix = -1;                     // leading literal run
+    long steps = 0;
+};</code></pre>
+<p>Captures are <strong>byte spans</strong>, not strings. Nothing is copied out of the subject until a <code>Match</code> object is built, which keeps backtracking cheap: undoing a capture is restoring a pair of integers.</p>
+<p><code>capFrom</code> and <code>capTo</code> implement <code>&lt;( … )&gt;</code>, which narrows what the <em>overall match</em> reports while matching continues outside it.</p>
+<h2 id="two-subrule-paths">Two subrule paths</h2>
+<p>A <code>&lt;name&gt;</code> call inside a pattern resolves one of two ways, and the difference is fundamental.</p>
+<p><strong>The grammar path</strong> threads the continuation <em>through</em> the callee:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.cpp — case K::Subrule
+if (st.grammar) {
+    if (!n-&gt;metaCache) n-&gt;metaCache = &amp;st.grammar-&gt;nameMeta(n-&gt;ruleName);
+    return st.grammar-&gt;matchSubMeta(*n-&gt;metaCache, n-&gt;ruleName, n-&gt;ruleArgs,
+                                    …, st, pos, k, …);
+}</code></pre>
+<p>Because <code>k</code> crosses the call, <code>&lt;a&gt; &lt;b&gt;</code> can backtrack <strong>into</strong> <code>&lt;a&gt;</code> when <code>&lt;b&gt;</code> fails. That is what Raku's grammars require and what most regex engines with "subroutine calls" do not provide.</p>
+<p><strong>The plain-regex path</strong> uses a <code>SubResolver</code>, which is atomic: it matches the named rule at a position and answers with a span. No continuation crosses, so no backtracking into the callee.</p>
+<p>Between them sit the built-in rules — <code>&lt;alpha&gt;</code>, <code>&lt;digit&gt;</code>, <code>&lt;ident&gt;</code>, <code>&lt;ws&gt;</code> and the rest — resolved directly by <code>builtinRuleMatch</code>, with one carve-out:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.cpp
+if (!(st.lexNames &amp;&amp; st.lexNames-&gt;count(n-&gt;ruleName))) { … }</code></pre>
+<p>A lexical <code>my regex ident { … }</code> shadows the built-in of that name. The check is a set lookup on a set that is usually null.</p>
+<p>The <code>metaCache</code> field is a per-node cache of the name resolution, so the hot path never re-resolves a rule name through a string-keyed map. It is safe because compiled regexes live in the matcher's own cache, so the node and the matcher share a lifetime.</p>
+<h2 id="lookarounds">Lookarounds</h2>
+<p>A zero-width assertion matches its inner pattern in an <strong>isolated capture state</strong>, so captures inside a lookahead do not leak:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.cpp — case K::Look
+MState sub{st.s, std::vector&lt;std::pair&lt;long,long&gt;&gt;(ncaps_, {-1,-1}),
+           {}, {}, st.resolver, st.grammar};
+sub.hooks = st.hooks; sub.startPos = pos;
+m = matchNode(child, sub, pos, [](long) { return true; });
+…
+return (m != n-&gt;negate) ? k(pos) : false;</code></pre>
+<p>The hooks are propagated into the sub-state, so an embedded code block or <code>$var</code> inside a lookahead still evaluates against the interpreter's live scope. The final line is the whole of positive-versus-negative: <code>negate</code> flips the sense, and either way the position does not advance.</p>
+<h2 id="the-hooks-running-raku-during-a-match">The hooks: running Raku during a match</h2>
+<p>A Raku regex can contain executable code — <code>{ … }</code> side effects, <code>&lt;?{ … }&gt;</code> assertions, <code>:my</code> declarations, <code>$var</code> atoms, and <code>** { … }</code> quantifier bounds. The matcher cannot evaluate Raku, so it calls back:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h — GrammarHooks, abridged
+std::function&lt;bool(const std::string&amp;)&gt; hasAction;
+std::function&lt;void(const ParseNode&amp;)&gt; onRule;
+std::function&lt;bool(const std::string&amp;, long, long,
+                   const NamedMap&amp;, const ParamMap&amp;)&gt; assertPass;   // &lt;?{…}&gt;
+std::function&lt;void(…)&gt; run;        // :my / {…}
+std::function&lt;void(…)&gt; runCaps;    // …with positional captures, so $0 works
+std::function&lt;std::string(…)&gt; str;                  // a $var atom
+std::function&lt;std::pair&lt;long,long&gt;(…)&gt; range;       // ** { … }
+std::function&lt;std::shared_ptr&lt;void&gt;()&gt; saveState;
+std::function&lt;void(std::shared_ptr&lt;void&gt;)&gt; restoreState;
+std::function&lt;bool(const std::string&amp;, std::string&amp;, std::string&amp;)&gt; namedRule;</code></pre>
+<p>Every hook is optional. A plain <code>Regex</code> with none of them set treats code constructs leniently rather than failing, which is what lets the same engine serve a simple <code>~~ /…/</code> and a full grammar parse.</p>
+<p>The current named and positional captures are passed <em>into</em> the hook, so the block's <code>$/</code> can offer <code>$&lt;x&gt;</code> and <code>$0</code> — the assertion in <code>/ (\d+) &lt;?{ $0 &gt; 10 }&gt; /</code> needs them, and they exist only inside the matcher.</p>
+<p><code>saveState</code> and <code>restoreState</code> exist for one specific purpose: the longest-token ranker in <a href="/book/ltm/">Chapter 22</a> measures branch lengths by <em>probing</em>, and a probe must not leave the interpreter's <code>:my</code> variables and deferred <code>make</code>s behind. They snapshot and roll back that state around a measurement pass.</p>
+<h2 id="when-side-effects-fire">When side effects fire</h2>
+<p>This is the subtlest semantic decision in the engine, and it differs between the two paths.</p>
+<p><strong>On the grammar path, blocks fire eagerly.</strong> A completed subrule fires its action method immediately, and a later backtrack does <strong>not</strong> unfire it. That sounds wrong, and it is what Rakudo does: <code>HTTP::Header</code> sets header fields from the actions of a parse whose <code>TOP</code> ultimately fails on a missing trailing newline, and expects the fields to be there. A later <code>&lt;?{ … }&gt;</code> assertion also needs to see what an earlier <code>{ … }</code> set.</p>
+<p><strong>On the plain-regex path, bare blocks are queued.</strong> The matcher is continuation-passing and backtracking, so a block sitting on a branch that is later abandoned would otherwise fire anyway — and fire again on every retry. So the plain entry points queue them, unwind the queue when a branch fails, and run them in order only once the overall match is accepted.</p>
+<p>The gating flag is why: only the plain-regex entry points turn queuing on and drain it. The grammar path wants eager.</p>
+<p><code>hasAction</code> exists so that rules with no action method cost nothing. Assembling a <code>ParseNode</code> for a completed rule is not free, so the matcher asks first whether anyone is listening.</p>
+<h2 id="entry-points">Entry points</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Regex.h
+bool search(const std::string&amp; subject, long startPos, RxMatch&amp; out) const;
+bool matchAt(const std::string&amp; subject, long pos, RxMatch&amp; out,
+             const SubResolver&amp; r, const std::set&lt;std::string&gt;* lexNames) const;
+std::vector&lt;RxMatch&gt; searchExhaustive(const std::string&amp; subject,
+             const SubResolver&amp; r, const std::set&lt;std::string&gt;* lexNames) const;</code></pre>
+<p><code>search</code> is the unanchored scan: try each start position in turn. <code>matchAt</code> is anchored, used by grammar subrule calls. <code>searchExhaustive</code> implements <code>:exhaustive</code> — every match at every start position and every length — which is the only mode that does not stop at the first success.</p>
+<p>The result is a <code>RxMatch</code>: spans, capture arrays, named spans, the child <code>ParseNode</code> trees for subrules, and the shared frozen sets that record which captures are list-valued. The interpreter turns that into a Raku <code>Match</code> object, which is a <code>VT::Match</code> <code>Value</code> carrying the subject in <code>s</code>, the span in <code>rFrom</code>/<code>rTo</code>, positional captures in <code>arr</code> and named ones in <code>hash</code> — the canonical example of a <code>Value</code> with four fields live at once (<a href="/book/value/">Chapter 7</a>).</p>
+<h2 id="substitution">Substitution</h2>
+<p><code>s///</code>, <code>.subst</code> and <code>tr///</code> share one entry point on the interpreter, because the occurrence-selection adverbs are the complicated part:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+std::string substSelect(const std::string&amp; subj, const std::string&amp; pat,
+                        Value* replArg, ValueList&amp; args, long&amp; nsub,
+                        bool literal = false,
+                        const std::string* tmplRepl = nullptr,
+                        Value* matchResult = nullptr);
+Value substApply(Value* target, const std::string&amp; pattern,
+                 const std::string&amp; repl, bool nonMut);</code></pre>
+<p><code>substSelect</code> handles <code>:g</code>, <code>:x</code>, <code>:nth</code>, <code>:p</code>, <code>:c</code> and the <code>same</code>-family adverbs (<code>:samecase</code>, <code>:samespace</code>, <code>:samemark</code>), which adjust the replacement to match the case, spacing or marks of what it replaced.</p>
+<p><code>substApply</code> is the single call the compiled backend emits, so a compiled <code>s///</code> and an interpreted one run the same code — including the <code>readonly</code> check that makes <code>s///</code> on a bound parameter die.</p><nav class="ch-nav"><a class="prev" href="/book/regex-compile/"><span>Previous</span>Compiling a Regex</a><a class="next" href="/book/grammars/"><span>Next</span>Grammars</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

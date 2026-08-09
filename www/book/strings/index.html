@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strings: CowStr — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 8</p><h1>Strings: <code>CowStr</code></h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-problem">The problem</a></li><li><a href="#what-it-is">What it is</a></li><li><a href="#does-c-have-this-already-it-did-and-removed-it">Does C++ have this already? It did, and removed it</a></li><li><a href="#what-it-costs">What it costs</a></li><li><a href="#rules-for-working-with-it">Rules for working with it</a></li><li><a href="#deliberately-left-on-the-table">Deliberately left on the table</a></li><li><a href="#checking-that-it-is-working">Checking that it is working</a></li></ul></nav>
+<p><code>Value</code> holds its <code>Str</code> payload in a <code>CowStr</code>, not a <code>std::string</code>. This chapter is about why that class had to be written rather than reached for, and it is the clearest example in the project of a design forced entirely by measurement.</p>
+<h2 id="the-problem">The problem</h2>
+<p>A <code>Value</code> is copied by value everywhere: every argument pass, every operand evaluation, every list element, every return from <code>eval</code>. With a <code>std::string</code> member, a long string was <code>memcpy</code>'d on every one of those.</p>
+<p>That is O(length) <strong>per operation</strong>, which makes any tokenizer written in Raku quadratic. <code>JSON::Fast</code> needed 13.9 seconds on a 421 KB document that Rakudo parses in 51 milliseconds, and the profile was copying, not parsing.</p>
+<p>Measured, 20,000 operations on a 200 KB string:</p>
+<div class="tablewrap"><table><tr><th></th><th><code>std::string</code></th><th><code>CowStr</code></th></tr><tr><td>pass the string to a sub, no work done</td><td>142 ms</td><td>24 ms</td></tr>
+<tr><td><code>nqp::ordat</code> on a global</td><td>79 ms</td><td>11 ms</td></tr></table></div>
+<h2 id="what-it-is">What it is</h2>
+<p>Two arms, exactly one live:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+class CowStr {
+    std::string s_;                        // short: inline
+    std::shared_ptr&lt;const StrBody&gt; p_;     // long: shared, immutable
+    static constexpr size_t kPromote = 64;
+
+    void take(std::string x) {
+        if (x.size() &gt;= kPromote) {
+            p_ = std::make_shared&lt;const StrBody&gt;(std::move(x)); s_.clear();
+        } else { s_ = std::move(x); p_.reset(); }
+    }
+public:
+    const std::string&amp; str() const { return p_ ? p_-&gt;text : s_; }
+    std::string&amp; mut() { if (p_) { s_ = p_-&gt;text; p_.reset(); } return s_; }
+};</code></pre>
+<p>Short strings stay inline, where <code>std::string</code>'s own small-buffer optimisation already makes a copy free and sharing would cost an allocation to save nothing. Long strings are promoted once into a shared immutable body, after which copying is a refcount bump.</p>
+<p>Three decisions inside that deserve their own paragraphs.</p>
+<h3>Promotion is eager</h3>
+<p>At construction, not lazily on first copy. Raku++ runs work in parallel, and a lazy promotion would have to mutate the source from a <code>const</code> copy constructor — two threads copying the same <code>Value</code> would race on it.</p>
+<p>Eager promotion means <strong>a <code>const CowStr</code> is never written to at all</strong>, which is what makes the type safe to share without a lock. That single property is what lets everything else here be lock-free.</p>
+<h3>The threshold is 64</h3>
+<p>Above every mainstream small-buffer capacity, measured:</p>
+<div class="tablewrap"><table><tr><th>standard library</th><th><code>sizeof(std::string)</code></th><th>SSO capacity</th></tr><tr><td>libc++ (clang)</td><td>24</td><td>22</td></tr>
+<tr><td>libstdc++ (g++ 14, 16)</td><td>32</td><td>15</td></tr></table></div>
+<p>So 64 leaves a band in which a copy is a couple of words and no allocation happens either way, and only promotes when copying is the thing being paid for. It is not a tuned number; it is a deliberately safe one.</p>
+<h3>The body caches string properties</h3>
+<p>This is the part no general-purpose string type can do, and the real reason <code>CowStr</code> exists rather than a third-party copy-on-write string.</p>
+<pre class="native-code"><code class="lang-cpp">// src/Value.h
+struct StrBody {
+    std::string text;
+    mutable std::atomic&lt;signed char&gt; allAscii{-1};
+    mutable std::atomic&lt;signed char&gt; crFree{-1};
+    mutable std::atomic&lt;long long&gt;   nGraphemes{-1};
+};</code></pre>
+<p>Raku string positions are <strong>grapheme</strong> positions, and Raku++ stores UTF-8 bytes. So every indexing operation must first establish whether a byte index is also a grapheme index. Establishing that by scanning is O(position) per character examined — which is the <em>other</em> half of the quadratic, independent of copying.</p>
+<p>Because the promoted body is immutable, the answer can be computed once and cached on it. Three flags suffice:</p>
+<ul><li><code>allAscii</code>: every byte below 0x80, so a byte index is a codepoint index;</li><li><code>crFree</code>: no carriage return which, together with <code>allAscii</code>, means a byte index is a <strong>grapheme</strong> index — CR LF is the one ASCII sequence that clusters under UAX #29;</li><li><code>nGraphemes</code>: the answer to <code>.chars</code>.</li></ul>
+<p>They are reached through <code>cowAllAscii</code>, <code>cowByteIsGraphemeIndex</code> and <code>cowGraphemeCount</code> in <code>BuiltinsShared.h</code>.</p>
+<p>The caches need no lock. Two threads may each compute one, but the text is immutable, so they compute the same answer and the store is idempotent. They live on the body, so they exist only for promoted strings — which is exactly the case that needs them; short strings are cheap to rescan.</p>
+<h2 id="does-c-have-this-already-it-did-and-removed-it">Does C++ have this already? It did, and removed it</h2>
+<p><strong>libstdc++'s pre-C++11 <code>basic_string</code> was refcounted copy-on-write.</strong> C++11 made that non-conforming. The string requirements added contiguous storage, O(1) non-<code>const</code> <code>operator[]</code> and <code>data()</code>, and iterator-invalidation rules under which one copy's mutation must not disturb another copy's references. Copy-on-write cannot satisfy all of them at once: non-<code>const</code> element access would have to detach, and detaching is O(n). GCC 5's dual ABI (<code>_GLIBCXX_USE_CXX11_ABI</code>, <code>std::__cxx11::basic_string</code>) exists to carry that break. libc++ was never copy-on-write.</p>
+<p>C++11's replacement answer was <strong>move semantics</strong>, which solves "stop copying temporaries" and not this problem. Every copy in the list at the top of this chapter is a genuine copy, not a move: an argument passed to a function that keeps it, an element stored into a list.</p>
+<p><strong>None of the reasons copy-on-write was banned apply to <code>CowStr</code>,</strong> because it is not trying to be a <code>std::string</code>. Its <code>operator[]</code>, <code>data()</code>, <code>begin()</code> and <code>substr</code> are <code>const</code>-only; the single mutation door is <code>mut()</code>, which detaches explicitly and hands back a real <code>std::string&amp;</code>. What C++11 outlawed was copy-on-write <em>hiding behind</em> an interface that promises O(1) non-<code>const</code> element access. <code>CowStr</code> promises no such thing.</p>
+<h3>The alternatives, and why each is not it</h3>
+<div class="tablewrap"><table><tr><th></th><th>why not</th></tr><tr><td><code>std::string_view</code></td><td>non-owning; <code>Value</code> owns its string</td></tr>
+<tr><td>small-buffer optimisation</td><td>already the short arm — that is what <code>s_</code> relies on</td></tr>
+<tr><td><code>shared_ptr&lt;const std::string&gt;</code></td><td>already the long arm; <code>CowStr</code> is mostly the <em>policy</em> for choosing between the two</td></tr>
+<tr><td><code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code></td><td>only needed if the pointer were rebound concurrently, which eager promotion guarantees it never is</td></tr></table></div>
+<p>Outside the standard the pattern is thoroughly proven and lives attached to frameworks: <code>folly::fbstring</code> is the closest relative — a drop-in <code>basic_string</code> with three tiers, the top one copy-on-write with an atomic refcount; Qt has done "implicit sharing" across its whole container library for about twenty-five years; <code>absl::Cord</code> is a tree of refcounted immutable chunks, which wins when <em>concatenating</em> large strings rather than copying them; Rust's <code>Cow&lt;'_, str&gt;</code> makes the same idea explicit in the type system. LLVM went the other way entirely, with <code>StringRef</code> and <code>Twine</code> and no copy-on-write anywhere.</p>
+<p><strong>Why not adopt one?</strong> Folly and Qt are large dependencies for a subset of what is needed, and this project vendors nothing it can write in a page. But the deciding reason is the property cache: <code>fbstring</code>, <code>QString</code> and <code>Cord</code> would all give the copy elision and none of the <code>allAscii</code>/<code>crFree</code>/<code>nGraphemes</code> caching, which is the half of the fix that removed the <em>scanning</em> quadratic. Bolting that onto a third-party string means a side table keyed on the buffer address, with its own lifetime and thread-safety problem — strictly worse than owning forty lines.</p>
+<p>The threshold difference makes the same argument from the other end. <code>fbstring</code> promotes at 255 because copy avoidance is all it buys. <code>CowStr</code> promotes at 64 because promotion also buys the cache.</p>
+<h2 id="what-it-costs">What it costs</h2>
+<div class="tablewrap"><table><tr><th></th><th>bytes</th></tr><tr><td><code>std::string</code> (libc++)</td><td>24</td></tr>
+<tr><td><code>std::shared_ptr</code></td><td>16</td></tr>
+<tr><td><strong><code>CowStr</code></strong></td><td><strong>40</strong></td></tr>
+<tr><td><code>StrBody</code></td><td>40</td></tr></table></div>
+<p>Both arms are stored side by side even though only one is ever live, so <code>CowStr</code> is the sum rather than the maximum. That is a 16-byte, 4% growth of <code>Value</code>, paid on every <code>Value</code> everywhere. The performance gate passed and Roast came out marginally up, so it is bought and paid for — but it is a real tax and should be named as one. On libstdc++ the same layout is 48 bytes, because <code>sizeof(std::string)</code> is 32 there.</p>
+<p>A promoted string also costs <strong>two</strong> allocations: <code>make_shared</code> fuses the control block with <code>StrBody</code>, but <code>StrBody::text</code> heap-allocates its own buffer for anything past the small-buffer capacity.</p>
+<h2 id="rules-for-working-with-it">Rules for working with it</h2>
+<p>The type forwards about 1,100 read sites unchanged, which is the point. The places where it does not behave like a <code>std::string</code> are worth knowing.</p>
+<ul><li><strong><code>mut()</code> is the only write door, and it detaches.</strong> After <code>mut()</code> the string is inline again and stays inline until it is next <em>assigned</em>, which is where promotion happens. A long string mutated in a loop is therefore unpromoted for the whole loop; if that ever shows up in a profile, build into a local <code>std::string</code> and assign once at the end.</li><li><strong>References from <code>str()</code> do not survive an assignment.</strong> The same rule as <code>std::string</code>, but easier to forget through the implicit conversion.</li><li><strong>Both converting constructors are <code>explicit</code> on purpose.</strong> With an implicit <code>std::string</code> to <code>CowStr</code> conversion alongside the <code>CowStr</code> to <code>const std::string&amp;</code> one, every <code>cond ? value.s : someString</code> became ambiguous in both directions.</li><li><strong>Comparisons and <code>+</code> are spelled out by hand.</strong> Two real reasons: no conversion is considered for a built-in operator when neither operand is a class type with a candidate, so <code>CowStr == CowStr</code> needs its own overload; and <code>std::string</code>'s comparisons are templates, and template deduction never considers a user-defined conversion, so <code>value.s == "Int"</code> needs a real candidate too. A macro generates the twenty-four resulting overloads.</li><li><strong>Do not add a non-<code>const</code> <code>operator[]</code>, <code>begin()</code> or <code>data()</code>.</strong> That is exactly the interface that made copy-on-write non-conforming for <code>std::string</code>. Reach for <code>mut()</code>.</li><li><strong>Do not cache <code>body()</code> across an assignment.</strong> It is the raw <code>StrBody*</code>, and the <code>shared_ptr</code> that owns it can be replaced.</li></ul>
+<h2 id="deliberately-left-on-the-table">Deliberately left on the table</h2>
+<p>Both are real, both unmeasured, and neither should be done on faith — the project's rule is that a performance change is an interleaved A/B against <code>perf-guard</code> under the same conditions.</p>
+<ul><li><strong>A union instead of two side-by-side members.</strong> <code>fbstring</code> is a union and stays at <code>sizeof(std::string)</code>; the same here returns 16 bytes per <code>CowStr</code>. It costs the very readable <code>p_ ? p_-&gt;text : s_</code> and needs hand-written copy, move and destroy. Worth it only if <code>Value</code>'s size shows up in a measurement — and one attempt to blame <code>Value</code>'s size has already been measured and rejected.</li><li><strong>One allocation instead of two</strong> for a promoted string, by storing the refcount and the caches inline ahead of the characters. Only matters if the promotion <em>rate</em> is high.</li></ul>
+<h2 id="checking-that-it-is-working">Checking that it is working</h2>
+<p>The failure mode is silent: a change that puts a hot string back on the copying path costs time and nothing else. Two cheap checks.</p>
+<p><strong>Measure scaling, not speed.</strong> Time the operation over inputs of <em>n</em>, 2<em>n</em>, 4<em>n</em>, 8<em>n</em>. Doubling per doubling is fine; quadrupling is the bug this class exists to prevent. That is the test which found <code>findnotcclass</code> after four other sites had already been fixed.</p>
+<p><strong>Confirm promotion is actually happening.</strong> A string that never crosses 64 bytes is never promoted and caches nothing — which is correct, but means a benchmark built from short strings proves nothing about either mechanism.</p><nav class="ch-nav"><a class="prev" href="/book/value/"><span>Previous</span><code>Value</code>: the Fat Tagged Struct</a><a class="next" href="/book/interning/"><span>Next</span>Interning and Comparison: <code>IStr</code> and <code>MName</code></a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

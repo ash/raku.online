@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User-Defined Operators in a Single Pass — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 5</p><h1>User-Defined Operators in a Single Pass</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-tables">The tables</a></li><li><a href="#registration-happens-mid-parse">Registration happens mid-parse</a></li><li><a href="#how-5-parses">How <code>5!</code> parses</a></li><li><a href="#precedence-traits-and-the-gaps-of-ten">Precedence traits and the gaps of ten</a></li><li><a href="#custom-brackets">Custom brackets</a></li><li><a href="#operators-are-lexically-scoped-and-roll-back">Operators are lexically scoped, and roll back</a></li><li><a href="#two-escape-hatches">Two escape hatches</a></li><li><a href="#use-foo-and-imported-operators"><code>use Foo</code> and imported operators</a></li><li><a href="#the-line-this-draws">The line this draws</a></li></ul></nav>
+<p>Raku lets a program add operators to the language it is written in:</p>
+<pre class="native-code"><code class="lang-raku">sub postfix:&lt;!&gt;($n) { [*] 1..$n }
+say 5!;                                   # 120
+
+sub infix:&lt;avg&gt;($a, $b) is tighter(&amp;infix:&lt;+&gt;) { ($a + $b) / 2 }
+say 4 avg 6 + 10;                         # 15 — (4 avg 6) + 10
+
+sub circumfix:&lt;⟦ ⟧&gt;(*@x) { @x.sum }
+say ⟦1, 2, 3⟧;                            # 6</code></pre>
+<p>That looks like it needs a parser that can rewrite its own grammar. It does not. It needs a parser that keeps a mutable table and reads the file exactly once.</p>
+<h2 id="the-tables">The tables</h2>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h — mutated during the parse, consulted at every operator site
+std::map&lt;std::string, int&gt; userInfix_;    // name → left binding power
+std::set&lt;std::string&gt; userInfixRight_;    // declared `is assoc&lt;right&gt;`
+std::set&lt;std::string&gt; userPrefix_, userPostfix_;
+std::map&lt;std::string, std::string&gt; userCircumfix_, userPostcircumfix_;</code></pre>
+<p>Five containers, all keyed by the operator's spelling. <code>userInfix_</code> maps to a binding power so a user infix can sit at any level; the bracket maps go from opening delimiter to closing delimiter.</p>
+<h2 id="registration-happens-mid-parse">Registration happens mid-parse</h2>
+<p>When <code>parseSub</code> reads a sub whose name is one of the operator categories followed by a colon, it pulls the operator's spelling out of the <code>&lt;…&gt;</code> and writes it into the tables <strong>on the spot</strong>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — parseSub, operator declaration
+if ((s-&gt;name == "infix" || s-&gt;name == "prefix" || s-&gt;name == "postfix" ||
+     s-&gt;name == "circumfix" || s-&gt;name == "postcircumfix") &amp;&amp; isOp(":")) {
+    std::string cat = s-&gt;name; advance();               // ':'
+    std::vector&lt;std::string&gt; w;
+    if (isOp("&lt;")) { advance(); w = readAngleWords("&gt;"); }
+    std::string opname = w.empty() ? "" : w[0];
+    s-&gt;name = cat + ":&lt;" + opname + "&gt;";
+    if (cat == "infix") { userInfix_[opname] = BP_ADD; declInfix = opname; }
+    else if (cat == "prefix")  userPrefix_.insert(opname);
+    else if (cat == "postfix") userPostfix_.insert(opname);
+}</code></pre>
+<p>From that token onward, the operator is live. Everything <em>later</em> in the file sees it; everything earlier does not. That asymmetry is not a limitation invented here — it is Raku's own rule, and it falls out of the single pass for free.</p>
+<p>The declaration is otherwise an ordinary sub. Its name becomes the string <code>"postfix:&lt;!&gt;"</code>, and subs live in the environment under a <code>&amp;</code>-prefixed key, so at run time it is found exactly like any other routine.</p>
+<h2 id="how-5-parses">How <code>5!</code> parses</h2>
+<p>Take <code>sub postfix:&lt;!&gt;($n) { [*] 1..$n }; say 5!;</code>.</p>
+<p>The declaration runs the branch above and does <code>userPostfix_.insert("!")</code>. Later, parsing <code>5!</code>: <code>parseExpr</code> calls <code>parsePrefix</code>, which calls <code>parsePostfix(parsePrimary())</code>. <code>parsePrimary</code> returns the <code>5</code>. <code>parsePostfix</code> loops and reaches the user-postfix arm:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — parsePostfix
+} else if ((cur().kind == Tok::Op ||
+            (cur().kind == Tok::Ident &amp;&amp; !cur().spaceBefore)) &amp;&amp;
+           userPostfix_.count(cur().text)) {
+    std::string opname = advance().text;
+    auto call = std::make_unique&lt;Call&gt;();
+    call-&gt;name = "postfix:&lt;" + opname + "&gt;";
+    call-&gt;args.push_back(std::move(base));
+    base = std::move(call);
+}</code></pre>
+<p><code>5!</code> becomes a <code>Call</code> node named <code>postfix:&lt;!&gt;</code> with one argument. The runtime never learns that an operator was involved; it dispatches a named call. Infixes work the same way through a branch at the top of the <code>parseExpr</code> loop, building a two-argument <code>Call</code> named <code>infix:&lt;op&gt;</code> and honouring the recorded binding power and associativity.</p>
+<p>That is the whole trick, and it is worth stating plainly: <strong>a user-defined operator is a parse-time spelling for an ordinary sub call.</strong> Every mechanism that works on subs — closures, multi dispatch, <code>&amp;infix:&lt;avg&gt;</code> as a value, passing one to <code>.reduce</code> — works on operators without further effort.</p>
+<h2 id="precedence-traits-and-the-gaps-of-ten">Precedence traits and the gaps of ten</h2>
+<p>A user infix registers at <code>BP_ADD</code> by default. A precedence trait resolves the referenced operator's level and slots the new one five away:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — parseSub, `is tighter/looser/equiv(&amp;infix:&lt;+&gt;)`
+int refBp = infixBpOf(refOp);
+userInfix_[declInfix] = trait == "equiv"   ? refBp
+                      : trait == "tighter" ? refBp + 5
+                      :                      refBp - 5;
+if (kind == "right") userInfixRight_.insert(declInfix);</code></pre>
+<p>This is what the by-ten spacing in the binding-power enum was reserved for. <code>is tighter(&amp;infix:&lt;+&gt;)</code> yields 125: tighter than <code>+</code> at 120, looser than <code>*</code> at 130. <code>infixBpOf</code> resolves the referenced operator whether it is built in or itself user-declared, so traits chain.</p>
+<p>The obvious question is what happens when someone declares eight operators each tighter than the last. The answer is that they collide at the same level after the gap is exhausted — the levels are integers with a fixed spacing, not a rational ordering. It has not come up in practice, and the alternative (a real partial order rebuilt on each declaration) has not been worth building.</p>
+<h2 id="custom-brackets">Custom brackets</h2>
+<p>A <code>circumfix:&lt;「 」&gt;</code> or <code>postcircumfix</code> declaration registers an open-to-close mapping. <code>parsePrimary</code> consults <code>userCircumfix_</code> when it meets an unrecognised opening token, and <code>parsePostfix</code> consults <code>userPostcircumfix_</code> after a term. The token classifiers that decide "does this start a term?" and "does this start a list-operator argument?" consult the tables too:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — startsTermToken / startsListopArg, the Tok::Op case ends:
+userPrefix_.count(t.text) || userCircumfix_.count(t.text);</code></pre>
+<p>so a custom bracket can open an argument to a list operator, not just a standalone term.</p>
+<p>One guard is needed: <code>pcfxClose_</code> holds the active postcircumfix's closing bracket while its content is parsed, so a bracket pair spelled with the same character on both sides does not re-open itself inside its own contents.</p>
+<h2 id="operators-are-lexically-scoped-and-roll-back">Operators are lexically scoped, and roll back</h2>
+<p>A declaration inside a block must not leak out of it. If it did, a <code>sub postfix:&lt;!!&gt;</code> in some helper block would eat every later ternary's <code>!!</code>.</p>
+<p>So every registration is logged, and <code>parseBlock</code> rewinds to its entry mark:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h
+struct OpUndo {
+    char table; std::string name; bool existed; int oldBp; std::string oldClose;
+};
+std::vector&lt;OpUndo&gt; opUndo_;
+
+void opRollback(size_t mark) {
+    while (opUndo_.size() &gt; mark) {
+        OpUndo&amp; u = opUndo_.back();
+        switch (u.table) {
+            case 'i': if (u.existed) userInfix_[u.name] = u.oldBp;
+                      else userInfix_.erase(u.name); break;
+            case 'p': if (!u.existed) userPrefix_.erase(u.name); break;
+            // … 'P' postfix, 'r' right-assoc, 'c'/'C' the bracket maps …
+        }
+        opUndo_.pop_back();
+    }
+}</code></pre>
+<p>The undo record keeps the <em>previous</em> value, not just the fact of insertion, so a block that shadows an outer operator at a different precedence restores the outer one on exit rather than deleting it.</p>
+<p>This is an undo log rather than a stack of scopes because registration is scattered across <code>parseSub</code> and the trait handling, and a single mark-and-rewind call at one place in <code>parseBlock</code> is much harder to get wrong than a matched push and pop at each registration site.</p>
+<h2 id="two-escape-hatches">Two escape hatches</h2>
+<p>The single-pass rule has exactly two ways out, and both are about <em>another</em> parse seeing the current one's tables.</p>
+<p><strong><code>EVAL</code>.</strong> A snippet is parsed by a fresh <code>Parser</code>, which would know nothing about the enclosing program's operators. So the evaluator pre-seeds them:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h
+void declareUserOp(const std::string&amp; kind, const std::string&amp; name) {
+    if (kind == "infix") userInfix_[name] = 120;
+    else if (kind == "prefix")  userPrefix_.insert(name);
+    else if (kind == "postfix") userPostfix_.insert(name);
+}</code></pre>
+<p>which is why this works:</p>
+<pre class="native-code"><code class="lang-raku">use MONKEY-SEE-NO-EVAL;
+sub infix:&lt;z&gt;($a, $b) { $a * 10 + $b }
+say EVAL("40 z 2");                    # 402</code></pre>
+<p><strong>String interpolation</strong>, shown at the end of the previous chapter, copies the live tables wholesale into the sub-parser.</p>
+<h2 id="use-foo-and-imported-operators"><code>use Foo</code> and imported operators</h2>
+<p>A module that declares an operator changes how the <em>importing file</em> parses. Nothing else about a module does. So <code>use Foo</code> triggers exactly one compile-time action, and it is not a parse:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h
+void scanModuleOps(const std::string&amp; module);
+void scanOpsIn(const std::string&amp; src, const std::string&amp; srcPath);</code></pre>
+<p><code>scanModuleOps</code> resolves the module's <em>source file</em> through the same search path the loader uses and <strong>text-scans</strong> it — a substring search over raw bytes, no lexing, no parsing — for <code>sub</code>, <code>multi</code>, <code>proto</code> and <code>only</code> declarations of the five operator categories, registering what it finds.</p>
+<p>Two consequences worth knowing:</p>
+<ul><li>An operator spelled only in ASCII operator characters is <strong>skipped</strong>. A <code>multi infix:&lt;*&gt;(Color, Real)</code> is almost always extending a built-in, and registering it as a user operator would give it the default precedence and silently reshape every expression in the importing file.</li><li>The scan can in principle be fooled by an operator declaration inside a string or a comment. Nothing has tripped on it yet.</li></ul>
+<p>Every source the scan read is recorded in <code>opScanned_</code> as a (path, content) pair. That is not for the parse; it is for the cache. A file's parse is only valid while the modules it scanned still declare what they declared — an imported module that gains or loses an operator changes how <em>this</em> file parses, without this file changing at all. <a href="/book/astserial/">Chapter 28</a> uses that list as a cache key.</p>
+<h2 id="the-line-this-draws">The line this draws</h2>
+<p>Everything above is table manipulation: cheap, local, and reversible. That is why all six operator categories work, with precedence and associativity, in a parser that runs no user code.</p>
+<p>The features on the other side of the line — <code>macro</code>, <code>quasi</code>, <code>RakuAST</code>, slangs — need the parser to <em>execute user code mid-parse and then rewrite its own grammar with the result</em>. None of them are implemented, and the reason is structural rather than a matter of effort.</p>
+<p>There is a compensation. Because the language Raku++ accepts stays static enough to know in full at build time, the whole program can be compiled ahead of time — which is what the <code>--aot</code> and <code>--exe</code> modes exploit. The one remaining genuinely dynamic construct, a runtime-constructed grammar, is exactly what those modes fall back to bundling.</p><nav class="ch-nav"><a class="prev" href="/book/parser/"><span>Previous</span>The Parser</a><a class="next" href="/book/ast/"><span>Next</span>The AST</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Ways to Run a Program — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=b03cd3a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
+<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 24</p><h1>Four Ways to Run a Program</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#mode-1-interpret">Mode 1 — interpret</a></li><li><a href="#mode-2-bundle">Mode 2 — <code>--bundle</code></a></li><li><a href="#mode-3-aot">Mode 3 — <code>--aot</code></a></li><li><a href="#mode-4-exe">Mode 4 — <code>--exe</code></a></li><li><a href="#comparing-them">Comparing them</a></li><li><a href="#the-fallback-that-makes-exe-total">The fallback that makes <code>--exe</code> total</a></li><li><a href="#what-every-mode-shares">What every mode shares</a></li><li><a href="#carrying-modules-inside-a-binary">Carrying modules inside a binary</a></li><li><a href="#a-fifth-target">A fifth target</a></li></ul></nav>
+<p>One front end, four back ends. This chapter takes one small program through all four and shows exactly what each produces.</p>
+<pre class="native-code"><code class="lang-raku"># demo.raku
+sub square($n) { $n * $n }
+my $total = 0;
+for 1..5 { $total += square($_) }
+say $total;</code></pre>
+<p>The CLI in <code>main.cpp</code> picks a mode from the flags and calls one of four drivers.</p>
+<h2 id="mode-1-interpret">Mode 1 — interpret</h2>
+<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program (AST)
+          ─► Interpreter.run(Program)  ─► walk the tree, node by node</code></pre>
+<p><code>main</code> reads the source and calls <code>rakuppRunBigStack</code>, which lexes, parses, and hands the <code>Program</code> to <code>Interpreter::run</code>. Evaluation is the recursive <code>eval</code>/<code>exec</code> of <a href="/book/tree-walk/">Chapter 12</a>: the <code>for</code> loop iterates and re-executes its body block, <code>square($_)</code> looks the sub up in the environment chain and calls it, <code>$total += …</code> re-dispatches through <code>applyArith</code>.</p>
+<p>Nothing is cached or compiled — the same AST nodes are re-interpreted on every iteration. Startup is about two milliseconds. This is the only mode that runs every construct in the language, so it is the one the language is developed against.</p>
+<h2 id="mode-2-bundle">Mode 2 — <code>--bundle</code></h2>
+<pre class="native-code"><code>demo.raku ─► (embedded verbatim as bytes) ─► generated stub.cpp
+          ─► cc stub.cpp librakupp_rt.a ─► ./demo</code></pre>
+<p>The driver does <strong>not</strong> parse the program at build time. It emits a small stub that embeds the source as a byte array and calls the runtime:</p>
+<pre class="native-code"><code class="lang-cpp">static const unsigned char SRC[] = { 115,117,98,32,… };
+int main(int argc, char** argv) {
+    std::string src(reinterpret_cast&lt;const char*&gt;(SRC), SRC_LEN);
+    /* … collect argv … */
+    return rakupp::rakuppRunBigStack(src, args, "demo.raku", exe);
+}</code></pre>
+<p>then compiles it and links against the runtime. The result is standalone — no <code>rakupp</code> needed on the target machine — but at run time it still lexes, parses and tree-walks. It <em>is</em> the interpreter in a box. The win is distribution and a roughly ten-millisecond start; run time equals interpreting.</p>
+<h2 id="mode-3-aot">Mode 3 — <code>--aot</code></h2>
+<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program        ← parsed at BUILD time
+          ─► AstEmit.emitAstProgram(Program) ─► C++ that rebuilds the AST
+          ─► cc gen.cpp librakupp_rt.a ─► ./demo</code></pre>
+<p>This is genuine ahead-of-time work: the program is <strong>parsed at build time</strong>, so parse errors are reported then rather than at run time, and <code>AstEmit</code> emits one small builder function per AST node:</p>
+<pre class="native-code"><code class="lang-cpp">static ExprPtr e0() { auto n = std::make_unique&lt;IntLit&gt;(1LL); return n; }
+static StmtPtr s3() { auto n = std::make_unique&lt;ExprStmt&gt;(); n-&gt;e = e2();
+                      return n; }
+// … one builder per node …
+int main(int argc, char** argv) {
+    Program prog;
+    prog.stmts.push_back(s3());  /* … */
+    return rakupp::rakuppRunProgramBigStack(prog, args, "demo.raku", exe, "");
+}</code></pre>
+<p>The generated <code>main</code> reconstructs the identical <code>Program</code> and hands it to <code>rakuppRunProgram</code>, which interprets it with <strong>no lexing or parsing at run time</strong>.</p>
+<p>Because the interpreter runs the embedded tree, <code>--aot</code> handles the <strong>whole language, grammars included</strong>. If <code>AstEmit</code> ever meets a node it cannot rebuild, it throws <code>AstEmitError</code> and the driver falls back to mode 2.</p>
+<p>The trade-off is the generated code size: one builder function per node means a few hundred lines of Raku become tens of thousands of lines of C++, and it builds about ten times slower than bundling. Since both tree-walk at the same speed, <code>--bundle</code> is the practical bundler; <code>--aot</code>'s only real edge is catching parse errors at build time.</p>
+<h2 id="mode-4-exe">Mode 4 — <code>--exe</code></h2>
+<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program
+          ─► Codegen.transpileToCpp(Program) ─► C++ source
+          ─► cc gen.cpp librakupp_rt.a ─► ./demo   (no interpreter inside)</code></pre>
+<p><code>Codegen</code> walks the tree and emits C++ that <strong>implements the program directly</strong> — native control flow, native calls — calling the runtime only for <code>Value</code> operations. For <code>demo.raku</code>, abridged:</p>
+<pre class="native-code"><code class="lang-cpp">#include "Interpreter.h"
+using namespace rakupp;
+static Interpreter RT;
+static Value v_stotal = Value::any();     // top-level `my $total`
+static const BuiltinFn* __bfp0 = nullptr; // say — resolved once at startup
+
+static Value u_square(ValueList __a) {
+    Value v_sn = rtPos(__a, 0);
+    return applyArith("*", v_sn, v_sn);
+}
+static void __rakupp_register() { __bfp0 = RT.builtinPtr("say"); }
+
+int main(int argc, char** argv) {
+    __rakupp_register();
+    try {
+        v_stotal = Value::integer(0LL);
+        {                                        // for 1..5 — a real C++ loop
+            long long __lo = Value::integer(1LL).toInt();
+            long long __hi = Value::integer(5LL).toInt();
+            for (long long __i = __lo; __i &lt;= __hi; __i++) {
+                Value v__t0 = Value::integer(__i);           // $_
+                try { v_stotal = applyArith("+", v_stotal,
+                                            u_square(ValueList{v__t0})); }
+                catch (const NextEx&amp;) { continue; }
+                catch (const LastEx&amp;) { break; }
+            }
+        }
+        rtCallB(RT, __bfp0, "say", ValueList{v_stotal});
+    } catch (const RakuError&amp; e) { std::cerr &lt;&lt; e.message &lt;&lt; "\n"; return 1; }
+    return 0;
+}</code></pre>
+<p>The loop is a native <code>for</code>, the sub call is a direct C++ call, and only value semantics dip into the runtime. This is the only mode whose runtime performance differs, and the only one the optimizer touches.</p>
+<h2 id="comparing-them">Comparing them</h2>
+<div class="tablewrap"><table><tr><th></th><th>parse when</th><th>runs how</th><th>whole language</th><th>speed</th></tr><tr><td>interpret</td><td>run time</td><td>tree walk</td><td>yes</td><td>baseline</td></tr>
+<tr><td><code>--bundle</code></td><td>run time</td><td>tree walk</td><td>yes</td><td>baseline</td></tr>
+<tr><td><code>--aot</code></td><td>build time</td><td>tree walk</td><td>yes</td><td>baseline</td></tr>
+<tr><td><code>--exe</code></td><td>build time</td><td>native C++</td><td>falls back</td><td>several times faster on hot loops</td></tr></table></div>
+<p>The important row is the last column of the third row: <strong>three of the four modes run at the same speed</strong>, because three of them are the same tree walk. Bundling and AOT buy distribution and build-time error reporting, not throughput.</p>
+<h2 id="the-fallback-that-makes-exe-total">The fallback that makes <code>--exe</code> total</h2>
+<p><code>Codegen</code> throws on any construct it cannot transpile:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Codegen.h
+struct CodegenError { std::string msg; };</code></pre>
+<p>mainly grammars, and a handful of NativeCall shapes that need copy-back the generated call site cannot express. The driver catches it and <strong>transparently bundles the whole program instead</strong>.</p>
+<p>So <code>--exe</code> never refuses a program. It native-compiles what it can and bundles the rest, always producing a correct binary. The user is told which happened.</p>
+<h2 id="what-every-mode-shares">What every mode shares</h2>
+<p><strong>One runtime.</strong> Everything except the CLI is in <code>librakupp_rt.a</code>, so a feature implemented once behaves identically in all four. <code>Value</code> is the shared currency, <code>callBuiltin</code>/<code>callCallable</code> the shared calling convention, <code>rtIndexRef</code>/<code>rtAttrRef</code>/<code>rtArrayVal</code> the shared container operations, and <code>callNative</code> the shared FFI.</p>
+<p><strong>One big stack.</strong> Every entry point runs the program body on a thread with a large reserved stack, including a compiled binary's <code>main</code>, so the recursion budget matches across modes.</p>
+<p><strong>Modules are always interpreted.</strong> <code>Codegen</code> emits a call to <code>Interpreter::rtUse</code>, a thin mirror of the interpreter's <code>use</code> handling, which calls the same <code>loadModule</code>. Only the <em>main program</em> is compiled; a compiled binary still loads and interprets its modules (<a href="/book/modules/">Chapter 29</a>) — though it can carry their serialised ASTs inside itself, which is the next section.</p>
+<h2 id="carrying-modules-inside-a-binary">Carrying modules inside a binary</h2>
+<p>A standalone binary that needs its modules' source files on the target machine is not very standalone. So the compiling modes resolve the <code>use</code> graph at build time and embed each module's serialised AST:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+struct BundledModule { std::string name, blob, finish, src; };
+std::vector&lt;BundledModule&gt; collectModuleGraph(
+    const Program&amp; prog, const std::vector&lt;std::string&gt;&amp; searchPath,
+    std::set&lt;std::string&gt;* exportsOut = nullptr);
+void rakuppRegisterModule(const std::string&amp; name, const char* blob,
+                          size_t blobLen, const std::string&amp; finish);</code></pre>
+<p>Registration happens once at startup, and <code>loadModule</code> consults the embedded table before it looks at the disk.</p>
+<p>A module that cannot be found, parsed or serialised is <strong>simply left out</strong> rather than failing the build — the binary falls back to loading it from disk, which is also what has to happen for anything only a running program can name (<code>require ::($x)</code>, a computed <code>use lib</code>).</p>
+<p><code>--bundle</code> needs one extra thing, and it is a subtle one. It parses the main program at <em>run</em> time, and that parse has to scan each <code>use</code>d module for the operators it declares (<a href="/book/user-operators/">Chapter 5</a>) — otherwise a program using an imported operator stops parsing once the module tree is gone. So bundled binaries also carry the module <strong>sources</strong>:</p>
+<pre class="native-code"><code class="lang-cpp">// src/Parser.h
+void rakuppRegisterModuleSource(const std::string&amp; name,
+                                const char* src, size_t len);
+const std::string* rakuppEmbeddedModuleSource(const std::string&amp; name);</code></pre>
+<p><code>--exe</code> and <code>--aot</code> parse at build time and never need it.</p>
+<h2 id="a-fifth-target">A fifth target</h2>
+<p>The same runtime compiled to <strong>WebAssembly</strong> is Raku.js: the interpreter running in a browser tab, with the same <code>Value</code> semantics and no server. It is mode 1 with a different host, and the two places it changes the engineering are noted where they arise — C++ exceptions are very expensive there, which is part of why control flow is cooperative (<a href="/book/control-flow/">Chapter 14</a>), and there is no shared library to <code>dlopen</code>, so NativeCall always takes its fallback path (<a href="/book/nativecall/">Chapter 31</a>).</p><nav class="ch-nav"><a class="prev" href="/book/unicode/"><span>Previous</span>Graphemes, Normalization, Collation</a><a class="next" href="/book/codegen/"><span>Next</span>The Code Generator</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+</body>
+</html>

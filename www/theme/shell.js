@@ -18,7 +18,8 @@
     { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
-    { href: '/faq/',    label: 'FAQ',    hue: 'faq'    }
+    { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
+    { href: '/book/',   label: 'Book',   hue: 'book'   }
   ];
 
   // Deliberately not stamped at build time. The version that matters is the one
