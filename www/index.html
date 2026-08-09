@@ -468,9 +468,10 @@ say so "Ωμέγα" ~~ /^&lt;:Script&lt;Greek&gt;&gt;+$/;</pre>
   <p class="sr-intro">
     <code>start</code> and <code>await</code>, promises, supplies, channels and
     <code>react { whenever … }</code> — the same shapes as the reference
-    implementation. By default worker threads coordinate under a global lock,
-    which keeps shared state honest; <code>RAKUPP_PARALLEL=1</code> lifts it and
-    lets independent work actually run at once.
+    implementation. Since v3.0.0 worker threads use every core <em>by
+    default</em> — independent work runs at once with no env var to remember;
+    <code>RAKUPP_GIL=1</code> is the escape hatch back to the cooperative
+    global lock.
   </p>
 
   <div class="sr-code">
@@ -484,19 +485,23 @@ say so "Ωμέγα" ~~ /^&lt;:Script&lt;Greek&gt;&gt;+$/;</pre>
   <div class="table-wrap">
   <table class="sr-table narrow">
     <tr>
-      <th>Threads</th>
-      <th class="num"><code>RAKUPP_PARALLEL=1</code></th>
-      <th class="num">default (locked)</th>
+      <th>Workers</th>
+      <th class="num">Wall</th>
+      <th class="num">Speed-up</th>
     </tr>
-    <tr><td>1</td><td class="num">1.00×</td><td class="num">0.96×</td></tr>
-    <tr><td>2</td><td class="num win">1.95×</td><td class="num">0.96×</td></tr>
-    <tr><td>4</td><td class="num win">3.72×</td><td class="num">0.99×</td></tr>
-    <tr><td>8</td><td class="num win">4.22×</td><td class="num">0.95×</td></tr>
+    <tr><td>1</td><td class="num">996 ms</td><td class="num">1.00×</td></tr>
+    <tr><td>2</td><td class="num">494 ms</td><td class="num win">2.02×</td></tr>
+    <tr><td>4</td><td class="num">258 ms</td><td class="num win">3.86×</td></tr>
+    <tr><td>8</td><td class="num">192 ms</td><td class="num win">5.19×</td></tr>
   </table>
   </div>
 
   <p class="sr-fine">
-    Speed-up over the same work in a plain loop, on a contention-free fan-out.
+    Total work held constant, on a contention-free fan-out, measured with no
+    env var — this is the shipping default. The 8-worker row spills onto the
+    efficiency cores of a 4P+4E machine, which is why the gain past 4 stays
+    sub-linear. One worker costs the same as the locked mode (996 vs 1005 ms),
+    because the safety machinery engages only while workers are live.
     Change the shape and the number changes with it: four threads hammering one
     shared counter give 1.45×, because the process is in the kernel arbitrating
     rather than computing — which is exactly why
@@ -757,10 +762,10 @@ rakupp -ne '.say if /error/' server.log</code></pre>
 
   <div class="sr-grid three" style="margin-top:1.6rem">
     <div class="sr-card">
-      <h3>50 of the 59 most depended-on</h3>
+      <h3>48 of the 59 most depended-on</h3>
       <p>
         The working set is the ecosystem's top distributions, ranked by how many
-        other distributions depend on them. Fifty of the fifty-nine pass
+        other distributions depend on them. Forty-eight of the fifty-nine pass
         <em>their own</em> install-time test suites &mdash; their tests, not ours.
       </p>
     </div>
