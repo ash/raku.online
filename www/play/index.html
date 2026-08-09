@@ -1099,17 +1099,26 @@ function liveTimedOut() {
            + "Press ▶ Run to run it in full.\n", "meta");
   }
 }
-function setLive(on) {
+function setLive(on, persist = true) {
   live = on;
   liveChk.checked = on;
   liveLbl.classList.toggle('on', on);
-  try { localStorage.setItem(LIVE_KEY, on ? '1' : '0'); } catch (e) {}
+  // `persist` is false when a LINK turned Live on: that visitor came from a page
+  // about Live mode, which is not the same as choosing it for every future visit.
+  if (persist) { try { localStorage.setItem(LIVE_KEY, on ? '1' : '0'); } catch (e) {} }
   clearTimeout(liveTimer);
   if (on) { liveStalls = 0; lastSrc = null; scheduleLive(); }   // run what's there now
 }
 liveChk.addEventListener('change', () => setLive(liveChk.checked));
 stdinEl.addEventListener('input', scheduleLive);   // the program's input is part of the program
-try { if (localStorage.getItem(LIVE_KEY) === '1') setLive(true); } catch (e) {}
+// `?live=1` turns it on for a visitor arriving from a link that is about Live
+// mode, without touching what they chose for themselves next time: the stored
+// preference is still what decides on every other visit.
+{
+  const q = new URLSearchParams(location.search);
+  if (q.get('live') === '1' || q.has('live')) setLive(true, false);
+  else { try { if (localStorage.getItem(LIVE_KEY) === '1') setLive(true); } catch (e) {} }
+}
 
 // Click the button to run; while running it shows Stop and clicking halts.
 runBtn.onclick = () => running ? stop() : run();
