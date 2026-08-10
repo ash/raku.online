@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Numbers — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -26,24 +26,24 @@
 <p>Raku's numeric tower is exact where it can be. <code>1/3</code> is a rational, not a float. <code>2**200</code> is an integer, not an overflow. <code>0.1 + 0.2 == 0.3</code> is <code>True</code>, because a decimal literal is a <code>Rat</code>. Implementing that on a machine with 64-bit registers means three layers, each with a boundary the previous one falls through.</p>
 <h2 id="layer-0-native-integers-with-overflow-as-a-signal">Layer 0: native integers, with overflow as a signal</h2>
 <p>Most integers in most programs fit in a <code>long long</code>, so that is the representation: <code>Value</code> with <code>t == VT::Int</code> and the value in <code>i</code>. Promotion to bignum happens exactly when an operation overflows, which means overflow must be <em>detected</em> rather than avoided.</p>
-<pre class="native-code"><code class="lang-cpp">// src/IntOps.h
-inline bool add_ovf(long long a, long long b, long long* r) {
-#if defined(__GNUC__) || defined(__clang__)
-    return __builtin_add_overflow(a, b, r);
-#else
-    unsigned long long u = (unsigned long long)a + (unsigned long long)b;
-    long long s = (long long)u; *r = s;
-    return ((a ^ s) &amp; (b ^ s)) &lt; 0;   // both operands' sign differs from result
-#endif
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/IntOps.h</span>
+<span class="k">inline</span> <span class="kt">bool</span> add_ovf(<span class="kt">long</span> <span class="kt">long</span> a, <span class="kt">long</span> <span class="kt">long</span> b, <span class="kt">long</span> <span class="kt">long</span>* r) {
+<span class="cp">#if defined(__GNUC__) || defined(__clang__)</span>
+    <span class="k">return</span> __builtin_add_overflow(a, b, r);
+<span class="cp">#else</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span> u = (<span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span>)a + (<span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span>)b;
+    <span class="kt">long</span> <span class="kt">long</span> s = (<span class="kt">long</span> <span class="kt">long</span>)u; *r = s;
+    <span class="k">return</span> ((a ^ s) &amp; (b ^ s)) &lt; <span class="mi">0</span>;   <span class="c1">// both operands' sign differs from result</span>
+<span class="cp">#endif</span>
 }</code></pre>
 <p><code>IntOps.h</code> exists because MSVC has neither <code>__builtin_*_overflow</code> nor <code>__int128</code>. It provides <code>add_ovf</code>, <code>sub_ovf</code>, <code>mul_ovf</code>, <code>ctzll</code>, <code>clzll</code> and a <code>RAKUPP_HAS_INT128</code> flag, mapping each onto intrinsics where they exist and a hand-written fallback where they do not. The multiply fallback for MSVC on ARM64 computes the wrapped product and then verifies it by division, which is slow and correct; the x64 path uses <code>_mul128</code> and checks that the high half is the low half's sign extension.</p>
 <p>This header is what makes the arithmetic fast paths in <a href="/book/optimizer/">Chapters 26</a> and <a href="/book/dispatch-compiled/">27</a> possible: <code>rtAdd</code> can inline the native case precisely because the overflow test is one instruction on the compilers that matter.</p>
 <h2 id="layer-1-bigint">Layer 1: <code>BigInt</code></h2>
-<pre class="native-code"><code class="lang-cpp">// src/BigInt.h
-struct BigInt {
-    int sign = 0;                  // -1, 0, +1
-    std::vector&lt;uint32_t&gt; mag;     // little-endian limbs, base 1e9
-    static const uint32_t BASE = 1000000000u;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.h</span>
+<span class="k">struct</span> BigInt {
+    <span class="kt">int</span> sign = <span class="mi">0</span>;                  <span class="c1">// -1, 0, +1</span>
+    std::vector&lt;<span class="kt">uint32_t</span>&gt; mag;     <span class="c1">// little-endian limbs, base 1e9</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="kt">uint32_t</span> BASE = <span class="mi">1000000000u</span>;
 };</code></pre>
 <p>Base 10^9 rather than a power of two. That choice trades some arithmetic density for the thing a language runtime does constantly: <strong>decimal conversion is free</strong>. <code>toString</code> walks the limbs and prints nine digits each; <code>fromString</code> parses in nine-digit chunks from the right. A binary base would make printing a repeated division by 10, which for a language where every integer is eventually stringified is the wrong trade.</p>
 <p>Multiplication is schoolbook, O(n·m). There is no Karatsuba and no FFT: the sizes that appear in practice are small, and the workloads where they are not are dominated by other costs.</p>
@@ -51,65 +51,65 @@ struct BigInt {
 <h3>The 64-bit fast path</h3>
 <p>Almost every bignum operation in real Raku code is on values that are not, in fact, big. They arrive as <code>BigInt</code> because a <code>Rat</code> stores its numerator and denominator as <code>BigInt</code>s unconditionally — and <em>every</em> <code>Rat</code> construction calls <code>gcd</code> and then two <code>divmod</code>s.</p>
 <p>Measured on values that fit in 64 bits, <code>divmod</code> cost 2.1 microseconds and <code>gcd</code> — which is Euclid over <code>divmod</code> — cost 15.8 microseconds. So every decimal literal and every <code>p/q</code> in a program cost roughly 10 microseconds to build.</p>
-<pre class="native-code"><code class="lang-cpp">// src/BigInt.cpp — divmod, the fast path
-// One hardware divide instead of the base-1e9 long division below, whose
-// per-limb BINARY SEARCH costs ~30 BigInt multiplications.
-if (a.fitsU64() &amp;&amp; b.fitsU64()) { /* two 64-bit divides, rebuild */ }</code></pre>
-<pre class="native-code"><code class="lang-cpp">// src/BigInt.cpp — gcd
-// Euclid entirely in registers when both fit — the general loop below
-// builds two BigInts per step and calls divmod, and Value::rat() calls
-// this on EVERY Rat it constructs.</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.cpp — divmod, the fast path</span>
+<span class="c1">// One hardware divide instead of the base-1e9 long division below, whose</span>
+<span class="c1">// per-limb BINARY SEARCH costs ~30 BigInt multiplications.</span>
+<span class="k">if</span> (a.fitsU64() &amp;&amp; b.fitsU64()) { <span class="cm">/* two 64-bit divides, rebuild */</span> }</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.cpp — gcd</span>
+<span class="c1">// Euclid entirely in registers when both fit — the general loop below</span>
+<span class="c1">// builds two BigInts per step and calls divmod, and Value::rat() calls</span>
+<span class="c1">// this on EVERY Rat it constructs.</span></code></pre>
 <p>The guard is <code>fitsU64()</code>, which is a three-limb comparison against the base-10^9 digits of 2^64 − 1:</p>
-<pre class="native-code"><code class="lang-cpp">// src/BigInt.h
-bool fitsU64() const {
-    if (mag.size() &gt; 3) return false;
-    if (mag.size() &lt; 3) return true;
-    if (mag[2] != 18u)        return mag[2] &lt; 18u;
-    if (mag[1] != 446744073u) return mag[1] &lt; 446744073u;
-    return mag[0] &lt;= 709551615u;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.h</span>
+<span class="kt">bool</span> fitsU64() <span class="k">const</span> {
+    <span class="k">if</span> (mag.size() &gt; <span class="mi">3</span>) <span class="k">return</span> <span class="kc">false</span>;
+    <span class="k">if</span> (mag.size() &lt; <span class="mi">3</span>) <span class="k">return</span> <span class="kc">true</span>;
+    <span class="k">if</span> (mag[<span class="mi">2</span>] != <span class="mi">18u</span>)        <span class="k">return</span> mag[<span class="mi">2</span>] &lt; <span class="mi">18u</span>;
+    <span class="k">if</span> (mag[<span class="mi">1</span>] != <span class="mi">446744073u</span>) <span class="k">return</span> mag[<span class="mi">1</span>] &lt; <span class="mi">446744073u</span>;
+    <span class="k">return</span> mag[<span class="mi">0</span>] &lt;= <span class="mi">709551615u</span>;
 }</code></pre>
 <p><code>Rat</code> construction became about nineteen times faster.</p>
 <h3>Two conversions to 64 bits, deliberately different</h3>
-<pre class="native-code"><code class="lang-cpp">// src/BigInt.h
-long long toLL() const;                    // SATURATES on overflow
-unsigned long long toU64Wrap() const;      // WRAPS, two's complement</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.h</span>
+<span class="kt">long</span> <span class="kt">long</span> toLL() <span class="k">const</span>;                    <span class="c1">// SATURATES on overflow</span>
+<span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span> toU64Wrap() <span class="k">const</span>;      <span class="c1">// WRAPS, two's complement</span></code></pre>
 <p><code>toLL</code> saturates because its callers are indices, codepoints and range bounds, where a silent wrap produces garbage rather than a wrong-but-defined answer. <code>toU64Wrap</code> wraps because its caller is a native <code>uint64</code>/<code>int64</code> container, which is <em>defined</em> to keep the low bits — and saturating there turned every 64-bit digest word into <code>0x7FFF_FFFF_FFFF_FFFF</code>.</p>
 <p>Two functions with the same signature and opposite policies is a smell in general. Here it is the correct answer, and the comment in the header says so at length precisely because the next person will want to merge them.</p>
 <h2 id="layer-2-rat">Layer 2: <code>Rat</code></h2>
 <p>A <code>Rat</code> is a normalised pair of <code>BigInt</code>s:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-static Value rat(BigInt n, BigInt d) {
-    if (d.sign == 0) return ratZ(std::move(n), std::move(d));
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">static</span> Value rat(BigInt n, BigInt d) {
+    <span class="k">if</span> (d.sign == <span class="mi">0</span>) <span class="k">return</span> ratZ(std::move(n), std::move(d));
     Value v; v.t = VT::Rat;
-    if (d.sign &lt; 0) { n = -n; d = -d; }          // sign lives in the numerator
+    <span class="k">if</span> (d.sign &lt; <span class="mi">0</span>) { n = -n; d = -d; }          <span class="c1">// sign lives in the numerator</span>
     BigInt g = BigInt::gcd(n, d);
-    if (!g.isZero()) { /* divide both by g */ }
+    <span class="k">if</span> (!g.isZero()) { <span class="cm">/* divide both by g */</span> }
     v.ratN = std::make_shared&lt;BigInt&gt;(n);
     v.ratD = std::make_shared&lt;BigInt&gt;(d);
-    return v;
+    <span class="k">return</span> v;
 }</code></pre>
 <p>Normalisation is eager: the denominator is positive and the pair is reduced at construction. That is what makes <code>==</code> on <code>Rat</code>s a component-wise comparison rather than a cross-multiplication, and it is why <code>gcd</code>'s speed matters.</p>
 <p>A decimal literal is a <code>Rat</code>, built by the parser as a numerator and denominator pair (<code>NumLit::ratNum</code>, <code>ratDen</code>, with decimal-string fields for the cases that overflow <code>long long</code>). The node caches the constructed <code>BigInt</code> parts, because a literal in a hot loop would otherwise re-allocate and re-reduce on every evaluation.</p>
 <h3>The spill, and the type that is exempt</h3>
 <p>Raku caps a plain <code>Rat</code>'s denominator at 64 bits. Arithmetic that would produce a larger one degrades to <code>Num</code>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — applyArith, the Rat result
-bool fat = (l.t == VT::Rat &amp;&amp; l.fatRat) || (r.t == VT::Rat &amp;&amp; r.fatRat);
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — applyArith, the Rat result</span>
+<span class="kt">bool</span> fat = (l.t == VT::Rat &amp;&amp; l.fatRat) || (r.t == VT::Rat &amp;&amp; r.fatRat);
 Value v = Value::rat(std::move(n), std::move(d)); v.fatRat = fat;
-if (!fat &amp;&amp; v.ratD &amp;&amp; !v.ratD-&gt;fitsU64()) return Value::number(v.toNum());
-return v;</code></pre>
+<span class="k">if</span> (!fat &amp;&amp; v.ratD &amp;&amp; !v.ratD-&gt;fitsU64()) <span class="k">return</span> Value::number(v.toNum());
+<span class="k">return</span> v;</code></pre>
 <p><code>FatRat</code> is the same storage with a flag, and the flag does two things: it carries the type identity, and it exempts the value from the spill so a <code>FatRat</code> stays an arbitrary-precision rational forever. The flag is <strong>contagious</strong> — one <code>FatRat</code> operand makes the result a <code>FatRat</code> — which is the semantics Raku specifies and also the only way a chain of operations can stay exact.</p>
 <p><code>Rat.new</code> is subtly different from the <code>/</code> operator: a zero denominator must be <em>preserved</em> rather than treated as an error, normalised to ±1/0 with 0/0 kept as 0/0. That is <code>ratZ</code>, and taking <code>Str</code> or <code>Num</code> of such a value throws.</p>
 <h2 id="native-integer-containers">Native integer containers</h2>
 <p><code>my int8 $x</code> is not a different type at runtime; it is a <code>Value</code> carrying a width:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-int natBits = 0;       // 0 = not native
-bool natSigned = false;
-bool natFloat = false; // num32: truncate to float32 on assignment</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="kt">int</span> natBits = <span class="mi">0</span>;       <span class="c1">// 0 = not native</span>
+<span class="kt">bool</span> natSigned = <span class="kc">false</span>;
+<span class="kt">bool</span> natFloat = <span class="kc">false</span>; <span class="c1">// num32: truncate to float32 on assignment</span></code></pre>
 <p>Every assignment masks to the declared width, so <code>my uint8 $b = 300</code> stores 44. The width is derived from the declared type name once and cached, because deriving it involved a <code>substr</code> and therefore an allocation per typed parameter per call:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-static int natWidthOfType(const std::string&amp; ofType, bool&amp; sign);</code></pre>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Param
-mutable DecidedOnce&lt;int&gt; natSpec{-1};   // bits&lt;&lt;1 | signed, decided once</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">static</span> <span class="kt">int</span> natWidthOfType(<span class="k">const</span> std::string&amp; ofType, <span class="kt">bool</span>&amp; sign);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Param</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">int</span>&gt; natSpec{-<span class="mi">1</span>};   <span class="c1">// bits&lt;&lt;1 | signed, decided once</span></code></pre>
 <p>Typed arrays and hashes use the same table through <code>ofType</code>, so <code>my uint32 @a</code> stores masked elements.</p>
 <h2 id="complex">Complex</h2>
 <p><code>VT::Complex</code> reuses <code>n</code> for the real part and <code>im</code> for the imaginary one — the only tag that uses <code>im</code> at all, apart from a fractional <code>Range</code>'s upper bound. Coercing a <code>Complex</code> back to a real checks the imaginary part against <code>$*TOLERANCE</code>, which defaults to 1e-15 and is looked up dynamically first, then lexically.</p>
@@ -121,12 +121,12 @@ mutable DecidedOnce&lt;int&gt; natSpec{-1};   // bits&lt;&lt;1 | signed, decided
 <p><code>Value::toNum()</code> numified a <code>Str</code> with <code>std::stod</code>, which <strong>throws <code>std::invalid_argument</code></strong> when the string does not begin with a number. The result was caught and turned into <code>0.0</code> — the right answer, arrived at by raising, unwinding and catching a C++ exception.</p>
 <p>Speculatively numifying a string that turns out not to be one is completely routine in an interpreter; the invocant of every <code>"ab".method</code> call reached that code. So the language's slowest control-transfer mechanism sat on its hottest path, at roughly 7 microseconds per method call.</p>
 <p><code>std::strtod</code> reports the same failure by leaving its end pointer at the start of the input, and costs nothing:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.cpp
-static double strToNumOr0(const std::string&amp; s) {
-    if (s.empty()) return 0.0;
-    const char* p = s.c_str(); char* end = nullptr;
-    double d = std::strtod(p, &amp;end);
-    return end == p ? 0.0 : d;      // stod would have thrown here
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.cpp</span>
+<span class="k">static</span> <span class="kt">double</span> strToNumOr0(<span class="k">const</span> std::string&amp; s) {
+    <span class="k">if</span> (s.empty()) <span class="k">return</span> <span class="mf">0.0</span>;
+    <span class="k">const</span> <span class="kt">char</span>* p = s.c_str(); <span class="kt">char</span>* end = <span class="kc">nullptr</span>;
+    <span class="kt">double</span> d = std::strtod(p, &amp;end);
+    <span class="k">return</span> end == p ? <span class="mf">0.0</span> : d;      <span class="c1">// stod would have thrown here</span>
 }</code></pre>
 <p>Measured over 300,000 iterations:</p>
 <div class="tablewrap"><table><tr><th></th><th>before</th><th>after</th><th>Rakudo</th></tr><tr><td><code>'ab'.chars</code></td><td>2.23 s</td><td><strong>0.73 s</strong></td><td>0.34 s</td></tr>
@@ -139,6 +139,6 @@ static double strToNumOr0(const std::string&amp; s) {
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

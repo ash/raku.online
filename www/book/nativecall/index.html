@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NativeCall and the libffi Backend — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -23,48 +23,48 @@
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 32</p><h1>NativeCall and the libffi Backend</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#libffi-is-loaded-at-run-time-and-its-abi-is-restated-by-hand">libffi is loaded at run time, and its ABI is restated by hand</a></li><li><a href="#what-happens-with-no-libffi">What happens with no libffi</a></li><li><a href="#how-a-call-is-made">How a call is made</a></li><li><a href="#variadics">Variadics</a></li><li><a href="#the-type-map">The type map</a></li><li><a href="#callbacks">Callbacks</a></li><li><a href="#your-declaration-is-a-promise-nothing-can-check">Your declaration is a promise nothing can check</a></li><li><a href="#tracing">Tracing</a></li><li><a href="#in-compiled-code">In compiled code</a></li><li><a href="#not-supported">Not supported</a></li></ul></nav>
-<pre class="native-code"><code class="lang-raku">use NativeCall;
-sub strlen(Str --&gt; size_t) is native {*}
-sub hypot(num64, num64 --&gt; num64) is native {*}
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> NativeCall;
+<span class="k">sub</span> strlen(Str --&gt; size_t) <span class="k">is</span> native {*}
+<span class="k">sub</span> hypot(num64, num64 --&gt; num64) <span class="k">is</span> native {*}
 
-say strlen("hello");     # 5
-say hypot(3e0, 4e0);     # 5</code></pre>
+say strlen(<span class="s2">"hello"</span>);     <span class="c1"># 5</span>
+say hypot(<span class="mi">3e0</span>, <span class="mi">4e0</span>);     <span class="c1"># 5</span></code></pre>
 <p><code>is native</code> calls a C function directly. This chapter is about how that works inside, which is a more interesting story than the syntax: Raku++ ships as one portable binary with no third-party dependencies, and it would like to keep that property — so it does not link libffi and does not vendor it.</p>
 <h2 id="libffi-is-loaded-at-run-time-and-its-abi-is-restated-by-hand">libffi is loaded at run time, and its ABI is restated by hand</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Ffi.h — the header comment, condensed
-// Raku++ ships as ONE portable binary with no third-party dependencies, so
-// it does not link libffi and does not vendor it. Instead the library is
-// loaded at RUNTIME with dlopen ... and the handful of ABI declarations we
-// need are restated here.</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ffi.h — the header comment, condensed</span>
+<span class="c1">// Raku++ ships as ONE portable binary with no third-party dependencies, so</span>
+<span class="c1">// it does not link libffi and does not vendor it. Instead the library is</span>
+<span class="c1">// loaded at RUNTIME with dlopen ... and the handful of ABI declarations we</span>
+<span class="c1">// need are restated here.</span></code></pre>
 <p>Two things make hand-declaring another project's ABI safe, and they are worth stating because the technique generalises.</p>
 <p><strong>We never touch <code>ffi_cif</code>'s fields.</strong> Its size and layout are target-dependent, so the code hands libffi an over-sized zeroed buffer and only ever passes the pointer back:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ffi.h
-struct Cif { alignas(16) unsigned char buf[512] = {}; };</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ffi.h</span>
+<span class="k">struct</span> Cif { <span class="k">alignas</span>(<span class="mi">16</span>) <span class="kt">unsigned</span> <span class="kt">char</span> buf[<span class="mi">512</span>] = {}; };</code></pre>
 <p>512 bytes is far past any target's real size. <code>ffi_type</code>'s layout, by contrast, <em>is</em> stable public ABI — callers have always had to build struct types by hand — so it is declared normally:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ffi.h
-struct Type {
-    size_t         size;
-    unsigned short alignment;
-    unsigned short type;
-    Type**         elements;   // null-terminated, for T_STRUCT
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ffi.h</span>
+<span class="k">struct</span> Type {
+    <span class="kt">size_t</span>         size;
+    <span class="kt">unsigned</span> <span class="kt">short</span> alignment;
+    <span class="kt">unsigned</span> <span class="kt">short</span> type;
+    Type**         elements;   <span class="c1">// null-terminated, for T_STRUCT</span>
 };</code></pre>
 <p><strong>The calling-convention constant is probed, not tabulated.</strong> <code>FFI_DEFAULT_ABI</code> is an enum whose value differs per target <em>and</em> per libffi release. On the machine this was developed on, the arm64 library wanted one value while the x86-64 build of the same program wanted another — neither matching what current libffi headers imply.</p>
 <p>So the loader tries candidates until one passes a <strong>self-test of real calls</strong> — <code>strlen</code>, <code>abs</code>, <code>ldexp</code>, <code>ldexpf</code> — and disables the backend entirely if none does:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ffi.h
-struct Lib {
-    bool ok = false;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ffi.h</span>
+<span class="k">struct</span> Lib {
+    <span class="kt">bool</span> ok = <span class="kc">false</span>;
     std::string path, why;
-    int abi = 0;                 // FFI_DEFAULT_ABI for this target, probed
-    int (*prep)(void*, int, unsigned, Type*, Type**);
-    int (*prep_var)(void*, int, unsigned, unsigned, Type*, Type**);
-    void (*call)(void*, void (*)(void), void*, void**);
-    void* (*closure_alloc)(size_t, void**);
-    int (*prep_closure_loc)(void*, void*,
-                            void (*)(void*, void*, void**, void*),
-                            void*, void*);
-    Type *t_void, *t_uint8, /* … */ *t_pointer;
+    <span class="kt">int</span> abi = <span class="mi">0</span>;                 <span class="c1">// FFI_DEFAULT_ABI for this target, probed</span>
+    <span class="kt">int</span> (*prep)(<span class="kt">void</span>*, <span class="kt">int</span>, <span class="kt">unsigned</span>, Type*, Type**);
+    <span class="kt">int</span> (*prep_var)(<span class="kt">void</span>*, <span class="kt">int</span>, <span class="kt">unsigned</span>, <span class="kt">unsigned</span>, Type*, Type**);
+    <span class="kt">void</span> (*call)(<span class="kt">void</span>*, <span class="kt">void</span> (*)(<span class="kt">void</span>), <span class="kt">void</span>*, <span class="kt">void</span>**);
+    <span class="kt">void</span>* (*closure_alloc)(<span class="kt">size_t</span>, <span class="kt">void</span>**);
+    <span class="kt">int</span> (*prep_closure_loc)(<span class="kt">void</span>*, <span class="kt">void</span>*,
+                            <span class="kt">void</span> (*)(<span class="kt">void</span>*, <span class="kt">void</span>*, <span class="kt">void</span>**, <span class="kt">void</span>*),
+                            <span class="kt">void</span>*, <span class="kt">void</span>*);
+    Type *t_void, *t_uint8, <span class="cm">/* … */</span> *t_pointer;
 };
-const Lib&amp; lib();          // loads and self-tests on first call; never retries</code></pre>
+<span class="k">const</span> Lib&amp; lib();          <span class="c1">// loads and self-tests on first call; never retries</span></code></pre>
 <p>The rule that makes this defensible: <strong>a failed probe disables the backend rather than guessing.</strong> Miscalling through a wrong-shaped interface would produce plausible wrong answers, which is the worst possible failure mode for an FFI.</p>
 <pre class="native-code"><code class="lang-sh">rakupp --ffi-info      # libffi: libffi.dylib (abi 1)</code></pre>
 <h2 id="what-happens-with-no-libffi">What happens with no libffi</h2>
@@ -79,26 +79,26 @@ const Lib&amp; lib();          // loads and self-tests on first call; never retr
 <h2 id="how-a-call-is-made">How a call is made</h2>
 <ol><li><strong>Resolve.</strong> The library is <code>dlopen</code>ed — the name as written, then the  platform-decorated forms — and the symbol <code>dlsym</code>ed.</li><li><strong>Marshal.</strong> Each argument is converted once, at its <em>declared</em> width, into a  slot libffi reads directly.</li><li><strong>Describe.</strong> The signature becomes a call interface, prepared once per sub —  with the variadic form when the signature is variadic.</li><li><strong>Call</strong>, then box the return: a pointer becomes a live <code>Pointer</code> or  <code>CArray</code>, a <code>Str</code> return is read as a C string, a narrow integer is truncated  and sign-extended, and <code>is rw</code> out-parameters and mutated buffers are copied  back.</li></ol>
 <p>Steps 1 and 3 are cached <strong>on the <code>Callable</code></strong>, and the reason is measured:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h — Callable, the native fields
-bool isNative = false;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — Callable, the native fields</span>
+<span class="kt">bool</span> isNative = <span class="kc">false</span>;
 std::string nativeLib, nativeSym, nativeLibSub;
-const Expr* nativeLibExpr = nullptr;
-void* nativeSymCache = nullptr;   // dlopen/dlsym once, not per call:
-                                  // 5 dlopen candidates cost a flat ~67 µs
-void* nativeCifCache = nullptr;   // ffi_prep_cif is ~80 ns — 20% of a whole
-                                  // crossing — so it must not run per call</code></pre>
+<span class="k">const</span> Expr* nativeLibExpr = <span class="kc">nullptr</span>;
+<span class="kt">void</span>* nativeSymCache = <span class="kc">nullptr</span>;   <span class="c1">// dlopen/dlsym once, not per call:</span>
+                                  <span class="c1">// 5 dlopen candidates cost a flat ~67 µs</span>
+<span class="kt">void</span>* nativeCifCache = <span class="kc">nullptr</span>;   <span class="c1">// ffi_prep_cif is ~80 ns — 20% of a whole</span>
+                                  <span class="c1">// crossing — so it must not run per call</span></code></pre>
 <p>The cost of going through libffi rather than calling blind is about <strong>23 nanoseconds per crossing</strong> — 157 milliseconds against 150 for 300,000 calls of <code>abs</code>. On a crossing that costs about 490 nanoseconds end to end, that is under 5%, which is why there is one code path rather than a fast one and a general one.</p>
 <p><code>nativeLibExpr</code> handles a genuinely awkward case: <code>is native(EXPR)</code> where the expression could not be evaluated at declaration time. It is retried once at the first call, and the raw <code>Expr*</code> is safe to keep because the AST outlives the interpreter.</p>
 <h2 id="variadics">Variadics</h2>
 <p>Variadic C functions are the easiest thing in an FFI to get quietly wrong.</p>
 <p>C's <code>...</code> is not a formality. On the SysV AMD64 ABI a variadic argument goes in a register but the callee is told how many; on the Apple ARM64 ABI it goes on the <strong>stack</strong>, while a fixed argument in the same position would go in a register. A caller that does not know which arguments are variadic cannot place them, and the failure is silent — you get a number, it is just the wrong one.</p>
 <p>Raku++ spells it with a <strong>slurpy marking the position where C's <code>...</code> begins</strong>, which is the same spelling Rakudo uses:</p>
-<pre class="native-code"><code class="lang-raku">use NativeCall;
-sub snprintf(Buf, size_t, Str, *@args --&gt; int32) is native {*}
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> NativeCall;
+<span class="k">sub</span> snprintf(Buf, size_t, Str, *<span class="nv">@args</span> --&gt; int32) <span class="k">is</span> native {*}
 
-my $buf = buf8.allocate(64);
-my $n = snprintf($buf, 64, "%s scored %d at %.1f%%", "Ada", 97, 99.5e0);
-say $buf.decode('latin-1').substr(0, $n);   # Ada scored 97 at 99.5%</code></pre>
+<span class="k">my</span> <span class="nv">$buf</span> = buf8.allocate(<span class="mi">64</span>);
+<span class="k">my</span> <span class="nv">$n</span> = snprintf(<span class="nv">$buf</span>, <span class="mi">64</span>, <span class="s2">"%s scored %d at %.1f%%"</span>, <span class="s2">"Ada"</span>, <span class="mi">97</span>, <span class="mf">99.5e0</span>);
+say <span class="nv">$buf</span>.decode(<span class="s1">'latin-1'</span>).substr(<span class="mi">0</span>, <span class="nv">$n</span>);   <span class="c1"># Ada scored 97 at 99.5%</span></code></pre>
 <p>Everything beyond the declared parameters is variadic and is typed from the value itself, following C's <strong>default argument promotions</strong>:</p>
 <div class="tablewrap"><table><tr><th>You pass</th><th>C receives</th></tr><tr><td><code>Int</code></td><td>a 64-bit integer</td></tr>
 <tr><td><code>Num</code> / <code>Rat</code></td><td><code>double</code> — never a bare <code>float</code></td></tr>
@@ -121,29 +121,29 @@ say $buf.decode('latin-1').substr(0, $n);   # Ada scored 97 at 99.5%</code></pre
 <tr><td><code>&amp;callback (…)</code></td><td>a C function pointer</td><td>pointer</td></tr></table></div>
 <p>The table lives in <code>Interpreter.cpp</code> and <code>ffi::scalar(width, sign, isFloat)</code> maps into it, deliberately keeping the Raku type names in one place.</p>
 <p>Structs are laid out with natural alignment; <code>.new</code> allocates zeroed native memory, and field reads and writes go to that memory, so a C function can fill one in. <code>nativesizeof</code> answers from the same layout code.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — the pointer helpers
-Value ncMakePointer(const std::string&amp; type, void* p);
-Value ncMakeLiveCArray(const std::string&amp; type, void* p);
-static Value ncReadElem(long long addr, const std::string&amp; ofType, long long i);
-static void ncWriteElem(long long addr, const std::string&amp; ofType,
-                        long long i, const Value&amp; val);
-static long long ncFieldOffset(ClassInfo* ci, const std::string&amp; field,
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — the pointer helpers</span>
+Value ncMakePointer(<span class="k">const</span> std::string&amp; type, <span class="kt">void</span>* p);
+Value ncMakeLiveCArray(<span class="k">const</span> std::string&amp; type, <span class="kt">void</span>* p);
+<span class="k">static</span> Value ncReadElem(<span class="kt">long</span> <span class="kt">long</span> addr, <span class="k">const</span> std::string&amp; ofType, <span class="kt">long</span> <span class="kt">long</span> i);
+<span class="k">static</span> <span class="kt">void</span> ncWriteElem(<span class="kt">long</span> <span class="kt">long</span> addr, <span class="k">const</span> std::string&amp; ofType,
+                        <span class="kt">long</span> <span class="kt">long</span> i, <span class="k">const</span> Value&amp; val);
+<span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncFieldOffset(ClassInfo* ci, <span class="k">const</span> std::string&amp; field,
                                std::string&amp; type);
-static long long ncStructSize(ClassInfo* ci);</code></pre>
+<span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructSize(ClassInfo* ci);</code></pre>
 <h2 id="callbacks">Callbacks</h2>
 <p>A <code>Callable</code> handed to C becomes a real C function pointer built with an <code>ffi_closure</code>. Parameters are typed from the block's own signature:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-long runCallback(int slot, long a0, long a1, long a2,
-                 long a3, long a4, long a5);
-void runFfiClosure(void* closure, void* ret, void** args);
-bool onRakuThread() const { return (bool)tctx_.cur; }</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="kt">long</span> runCallback(<span class="kt">int</span> slot, <span class="kt">long</span> a0, <span class="kt">long</span> a1, <span class="kt">long</span> a2,
+                 <span class="kt">long</span> a3, <span class="kt">long</span> a4, <span class="kt">long</span> a5);
+<span class="kt">void</span> runFfiClosure(<span class="kt">void</span>* closure, <span class="kt">void</span>* ret, <span class="kt">void</span>** args);
+<span class="kt">bool</span> onRakuThread() <span class="k">const</span> { <span class="k">return</span> (<span class="kt">bool</span>)tctx_.cur; }</code></pre>
 <p>The last one is the guard that matters. A callback must fire <strong>during</strong> the native call — <code>qsort</code>, <code>bsearch</code>, an iteration callback. A callback that C stores and fires later from a thread of its own has no Raku scope to run in, so <code>onRakuThread()</code> detects it and the callback is ignored with a warning rather than run against a thread the interpreter never entered.</p>
 <p>Note what that predicate actually tests: whether this thread has a current lexical scope. A thread the C library made for itself has none.</p>
 <h2 id="your-declaration-is-a-promise-nothing-can-check">Your declaration is a promise nothing can check</h2>
 <p>A C library exports addresses, not types. Nothing — not Raku++, not Rakudo, not any FFI in any language — can compare a declaration against the real prototype, because that information does not exist at run time. A wrong declaration does not fail; it produces a plausible answer.</p>
-<pre class="native-code"><code class="lang-raku">sub abs(num64 --&gt; num64) is native {*}   # WRONG — C's abs is int abs(int)
-say abs(-3.34e0);   # -3.34
-say abs(-99.5e0);   # -99.5</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> abs(num64 --&gt; num64) <span class="k">is</span> native {*}   <span class="c1"># WRONG — C's abs is int abs(int)</span>
+say abs(-<span class="mf">3.34e0</span>);   <span class="c1"># -3.34</span>
+say abs(-<span class="mf">99.5e0</span>);   <span class="c1"># -99.5</span></code></pre>
 <p>Every answer is the argument, unchanged, and that is the tell. libffi put the <code>num64</code> in the first <em>floating-point</em> register, but <code>int abs(int)</code> reads the first <em>integer</em> register and returns an integer in the integer return register. The floating-point return register is never written, so it still holds what was passed. The call really happened; the wrong question was asked.</p>
 <p>Rakudo prints exactly the same three lines. This is not an implementation quirk to work around — it is what an FFI is.</p>
 <h2 id="tracing">Tracing</h2>
@@ -164,6 +164,6 @@ say abs(-99.5e0);   # -99.5</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

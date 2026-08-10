@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calls and Parameter Binding — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -26,115 +26,115 @@
 <p>A call happens in three phases: build the argument list, activate the callee, bind the parameters. Each has a fast path, and each fast path exists because something measurable was in the way.</p>
 <h2 id="building-the-argument-list">Building the argument list</h2>
 <p><code>evalArgs</code> evaluates the argument expressions into one flat <code>ValueList</code>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — evalArgs, abridged
-} else if (a-&gt;kind == NK::Unary &amp;&amp; ((Unary*)a.get())-&gt;op == "|") {
-    Value v = eval(…);                                  // a Slip: |@a / |%h
-    if (v.t == VT::Array || v.t == VT::Range)
-        for (auto&amp; x : v.flatten()) args.push_back(x);
-    else if (v.t == VT::Hash &amp;&amp; v.hash)
-        for (auto&amp; kv : *v.hash) {                      // |%h → named args
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — evalArgs, abridged</span>
+} <span class="k">else</span> <span class="k">if</span> (a-&gt;kind == NK::Unary &amp;&amp; ((Unary*)a.get())-&gt;op == <span class="s2">"|"</span>) {
+    Value v = eval(…);                                  <span class="c1">// a Slip: |@a / |%h</span>
+    <span class="k">if</span> (v.t == VT::Array || v.t == VT::Range)
+        <span class="k">for</span> (<span class="k">auto</span>&amp; x : v.flatten()) args.push_back(x);
+    <span class="k">else</span> <span class="k">if</span> (v.t == VT::Hash &amp;&amp; v.hash)
+        <span class="k">for</span> (<span class="k">auto</span>&amp; kv : *v.hash) {                      <span class="c1">// |%h → named args</span>
             Value p = Value::pair(kv.first, kv.second);
-            p.namedArg = true; args.push_back(p);
+            p.namedArg = <span class="kc">true</span>; args.push_back(p);
         }
-} else {
+} <span class="k">else</span> {
     Value v = eval(a.get());
-    if (v.t == VT::Pair &amp;&amp; a-&gt;kind == NK::Pair &amp;&amp;
+    <span class="k">if</span> (v.t == VT::Pair &amp;&amp; a-&gt;kind == NK::Pair &amp;&amp;
         !((PairExpr*)a.get())-&gt;quotedKey &amp;&amp; ident)
-        v.namedArg = true;
+        v.namedArg = <span class="kc">true</span>;
     args.push_back(std::move(v));
 }</code></pre>
 <p>Two things to notice.</p>
 <p><strong>An argument list is just a <code>ValueList</code>.</strong> Named arguments are ordinary <code>Pair</code> values carrying a <code>namedArg</code> flag; the positional/named split happens later, at bind time. That is why spreading (<code>|@a</code>), slurping (<code>*@rest</code>) and flattening are all vector operations rather than a separate protocol.</p>
 <p>*<em>Only a </em>syntactic<em> pair is a named argument.</em><em> <code>f(k =&gt; 1)</code> and <code>f(:k(1))</code> pass a named argument; <code>f($pair)</code> and <code>f(3 =&gt; 4)</code> pass a positional one, even though all four produce a <code>Pair</code>. The test is on the </em>expression* kind, and it also excludes a quoted key — <code>f('a' =&gt; 1)</code> is positional, per Raku's rule. Getting this wrong makes every module that passes pairs around behave subtly differently, so the check is deliberately narrow.</p>
 <h2 id="activating-the-callee">Activating the callee</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-Value callCallable(const Value&amp; codeVal, ValueList args,
-                   const std::vector&lt;ExprPtr&gt;* rwArgs = nullptr,
-                   bool ownFrame = false, bool arityCheck = false);
-Value callCallableRaw(const Value&amp; codeVal, ValueList args,
-                      const std::vector&lt;ExprPtr&gt;* rwArgs,
-                      bool ownFrame = false, bool arityCheck = false);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+Value callCallable(<span class="k">const</span> Value&amp; codeVal, ValueList args,
+                   <span class="k">const</span> std::vector&lt;ExprPtr&gt;* rwArgs = <span class="kc">nullptr</span>,
+                   <span class="kt">bool</span> ownFrame = <span class="kc">false</span>, <span class="kt">bool</span> arityCheck = <span class="kc">false</span>);
+Value callCallableRaw(<span class="k">const</span> Value&amp; codeVal, ValueList args,
+                      <span class="k">const</span> std::vector&lt;ExprPtr&gt;* rwArgs,
+                      <span class="kt">bool</span> ownFrame = <span class="kc">false</span>, <span class="kt">bool</span> arityCheck = <span class="kc">false</span>);</code></pre>
 <p><code>callCallable</code> is a thin <strong>wrapper layer</strong>: if the routine has been <code>&amp;r.wrap({…})</code>'d, it runs the wrapper stack, each level able to <code>callsame</code> into the next; otherwise it passes straight through:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — callCallable
-if (codeVal.code &amp;&amp; !codeVal.code-&gt;wrappers.empty()) { /* run the stack */ }
-return callCallableRaw(codeVal, std::move(args), rwArgs);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — callCallable</span>
+<span class="k">if</span> (codeVal.code &amp;&amp; !codeVal.code-&gt;wrappers.empty()) { <span class="cm">/* run the stack */</span> }
+<span class="k">return</span> callCallableRaw(codeVal, std::move(args), rwArgs);</code></pre>
 <p><code>callCallableRaw</code> handles the special callables first — a native FFI sub, a <code>Format</code>, junction autothreading, a multi-dispatcher, a builtin — and then activates a user routine:</p>
-<pre class="native-code"><code class="lang-cpp">auto env = std::make_shared&lt;Env&gt;();                    // fresh per-call frame
-c.stateEnv-&gt;parent = c.closure ? c.closure : global_;  // once
-env-&gt;parent = c.stateEnv;         // frame → stateEnv → closure → … → global
-tctx_.dynStack.push_back(caller_scope);                // the OTHER chain</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="k">auto</span> env = std::make_shared&lt;Env&gt;();                    <span class="c1">// fresh per-call frame</span>
+c.stateEnv-&gt;parent = c.closure ? c.closure : global_;  <span class="c1">// once</span>
+env-&gt;parent = c.stateEnv;         <span class="c1">// frame → stateEnv → closure → … → global</span>
+tctx_.dynStack.push_back(caller_scope);                <span class="c1">// the OTHER chain</span></code></pre>
 <p>Two facts are established here and everything else depends on them.</p>
 <p><strong>The callee's parent is its lexical closure, not its caller.</strong> Free variables resolve through the scope the routine was <em>written</em> in. The caller's scope goes on <code>dynStack</code>, used only for <code>$*foo</code>.</p>
 <p><strong>Each activation bumps <code>frameTop</code></strong>, and a routine — as opposed to a bare block — records its own frame number as <code>curRoutineFrame</code>. Those two counters drive the cooperative control flow in the next chapter.</p>
 <h3>The call registers</h3>
 <p>A handful of one-shot parameters are passed to the next activation without widening every signature:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-static thread_local Value* topicWriteback_;
-static thread_local Value* builtinTopicWB_;
-static thread_local bool noAutothread_;
-static thread_local int loopPhaserCtl_;
-static thread_local const std::vector&lt;Value*&gt;* pendingRwSlots_;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">static</span> <span class="k">thread_local</span> Value* topicWriteback_;
+<span class="k">static</span> <span class="k">thread_local</span> Value* builtinTopicWB_;
+<span class="k">static</span> <span class="k">thread_local</span> <span class="kt">bool</span> noAutothread_;
+<span class="k">static</span> <span class="k">thread_local</span> <span class="kt">int</span> loopPhaserCtl_;
+<span class="k">static</span> <span class="k">thread_local</span> <span class="k">const</span> std::vector&lt;Value*&gt;* pendingRwSlots_;</code></pre>
 <p>Each is set immediately before a call and consumed at the top of <code>callCallableRaw</code>. <code>topicWriteback_</code> is how <code>@a.grep({ $_++; True })</code> writes into <code>@a</code>'s element: the driver points it at the element, and the mutated implicit <code>$_</code> is copied back after the call.</p>
 <p>They are <code>static thread_local</code> and the comment in the header explains why in one sentence: as plain members they were written by <em>every</em> call on <em>every</em> thread, and they were ThreadSanitizer's top report — 2,761 lines on a program with no sharing in it at all. The set-then-consume window is contiguous within one thread, so thread-local is not a workaround, it is exactly their semantics.</p>
 <h2 id="binding-parameters">Binding parameters</h2>
 <p><code>bindParams</code> maps the argument list onto the signature. There is a fast path and a general path.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — bindParams
-if (simple) {                       // all plain positional $ params, no nameds
-    for (size_t i = 0; i &lt; params.size(); i++) {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — bindParams</span>
+<span class="k">if</span> (simple) {                       <span class="c1">// all plain positional $ params, no nameds</span>
+    <span class="k">for</span> (<span class="kt">size_t</span> i = <span class="mi">0</span>; i &lt; params.size(); i++) {
         Value v = i &lt; args.size() ? args[i]
-                                  : typedDefault(params[i].type, '$');
-        v.readonly = true;
+                                  : typedDefault(params[i].type, <span class="s1">'$'</span>);
+        v.readonly = <span class="kc">true</span>;
         env-&gt;define(params[i].name, std::move(v));
     }
-    return;
+    <span class="k">return</span>;
 }
-for (auto&amp; a : args)                // general: split named from positional
-    if (isNamedArg(a)) named[a.s] = a.pairVal ? *a.pairVal : Value::any();
-    else positional.push_back(a);</code></pre>
+<span class="k">for</span> (<span class="k">auto</span>&amp; a : args)                <span class="c1">// general: split named from positional</span>
+    <span class="k">if</span> (isNamedArg(a)) named[a.s] = a.pairVal ? *a.pairVal : Value::any();
+    <span class="k">else</span> positional.push_back(a);</code></pre>
 <p>Whether a signature qualifies for the fast path is a static property of the signature, so it is decided once and stored on the <em>first</em> parameter:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Param
-mutable DecidedOnce&lt;signed char&gt; sigSimple{-1};   // only element [0] is read</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Param</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; sigSimple{-<span class="mi">1</span>};   <span class="c1">// only element [0] is read</span></code></pre>
 <p>The general path covers everything else:</p>
 <ul><li><strong>positional parameters with defaults</strong>, evaluated in the parameter scope so <code>sub f($g, $a = $g/2)</code> can see earlier parameters;</li><li><p><strong>readonly, <code>is rw</code>, <code>is copy</code>, <code>is raw</code></strong> — a plain <code>$</code> parameter is marked readonly unless it is one of those or the invocant:</p>
-<pre class="native-code"><code class="lang-cpp">if (p.sigil == '$' &amp;&amp; !p.isRw &amp;&amp; !p.isCopy &amp;&amp; !p.invocant)
-    v.readonly = true;</code></pre></li><li><strong>slurpies</strong>: <code>*@rest</code> flattens, <code>**@rest</code> does not, <code>+@rest</code> applies the single-argument rule, <code>*%named</code> collects the rest;</li><li><strong>named parameters</strong>, including the alias forms <code>:a(:$b)</code> and nested <code>:x(:y(:z($a)))</code>, where every layer's key answers;</li><li><strong>sub-signature destructuring</strong>, <code>sub f([$a, $b])</code>, recursing through <code>Param::subSig</code>;</li><li>the implicit <strong><code>$_</code></strong> topic, and placeholder parameters <code>$^a</code>, <code>$^b</code>, bound in sorted order.</li></ul>
+<pre class="native-code"><code class="lang-cpp"><span class="k">if</span> (p.sigil == <span class="s1">'$'</span> &amp;&amp; !p.isRw &amp;&amp; !p.isCopy &amp;&amp; !p.invocant)
+    v.readonly = <span class="kc">true</span>;</code></pre></li><li><strong>slurpies</strong>: <code>*@rest</code> flattens, <code>**@rest</code> does not, <code>+@rest</code> applies the single-argument rule, <code>*%named</code> collects the rest;</li><li><strong>named parameters</strong>, including the alias forms <code>:a(:$b)</code> and nested <code>:x(:y(:z($a)))</code>, where every layer's key answers;</li><li><strong>sub-signature destructuring</strong>, <code>sub f([$a, $b])</code>, recursing through <code>Param::subSig</code>;</li><li>the implicit <strong><code>$_</code></strong> topic, and placeholder parameters <code>$^a</code>, <code>$^b</code>, bound in sorted order.</li></ul>
 <h3>What is <em>not</em> checked here</h3>
 <p><strong>Type constraints, <code>where</code> clauses and <code>:D</code>/<code>:U</code> smileys are not enforced for an ordinary, non-multi call.</strong> Single dispatch is largely duck-typed at the bind boundary. Those checks live in <code>scoreCandidate</code>, which is multi dispatch's business (<a href="/book/dispatch/">Chapter 15</a>).</p>
 <p>There is one exception, <code>typeCheckBind</code>, used when a lone candidate is being bound and a mismatch should raise <code>X::TypeCheck::Binding</code>. It caches its verdict on the parameter — but <strong>only once true</strong>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Param
-mutable DecidedOnce&lt;signed char&gt; typeKnown{0};</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Param</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; typeKnown{<span class="mi">0</span>};</code></pre>
 <p>The asymmetry is important and the header says why: a type name that is unresolvable now can become resolvable later, when a class further down the file is declared or a module is loaded. Caching the <em>positive</em> answer is safe; caching the negative one is a bug that would only show up in a program whose declarations are ordered a particular way.</p>
 <h2 id="the-callable-and-what-it-caches">The <code>Callable</code>, and what it caches</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h — Callable, abridged
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — Callable, abridged</span>
 std::string pkg, name;
-const std::vector&lt;Param&gt;* params;      // borrowed from the AST
-const std::vector&lt;StmtPtr&gt;* body;      // borrowed from the AST
+<span class="k">const</span> std::vector&lt;Param&gt;* params;      <span class="c1">// borrowed from the AST</span>
+<span class="k">const</span> std::vector&lt;StmtPtr&gt;* body;      <span class="c1">// borrowed from the AST</span>
 std::shared_ptr&lt;Env&gt; closure;
-std::shared_ptr&lt;Env&gt; stateEnv;         // persistent `state` storage
+std::shared_ptr&lt;Env&gt; stateEnv;         <span class="c1">// persistent `state` storage</span>
 std::once_flag stateInit;
-BuiltinFn builtin;                     // set ⇒ this is a builtin
-std::vector&lt;Value&gt; candidates;         // multi-dispatch candidates
-std::vector&lt;Value&gt; wrappers;           // .wrap stack, outermost last
-DecidedOnce&lt;signed char&gt; hoistNeed{-1};
-DecidedOnce&lt;signed char&gt; arityShape{-1};
-int arityMaxPos = 0, arityReqPos = 0; bool arityUnbounded = false;
-DecidedOnce&lt;signed char&gt; catchScan{-1};
-Stmt* catchBlkCache = nullptr;</code></pre>
+BuiltinFn builtin;                     <span class="c1">// set ⇒ this is a builtin</span>
+std::vector&lt;Value&gt; candidates;         <span class="c1">// multi-dispatch candidates</span>
+std::vector&lt;Value&gt; wrappers;           <span class="c1">// .wrap stack, outermost last</span>
+DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; hoistNeed{-<span class="mi">1</span>};
+DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; arityShape{-<span class="mi">1</span>};
+<span class="kt">int</span> arityMaxPos = <span class="mi">0</span>, arityReqPos = <span class="mi">0</span>; <span class="kt">bool</span> arityUnbounded = <span class="kc">false</span>;
+DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; catchScan{-<span class="mi">1</span>};
+Stmt* catchBlkCache = <span class="kc">nullptr</span>;</code></pre>
 <p>The four decided-once fields are all static properties of the routine's AST that <code>callCallableRaw</code> used to recompute <strong>on every call</strong>: whether anything needs hoisting, whether an arity pre-check applies and what its bounds are, and whether the body contains an inline <code>CATCH</code> block. Each is cheap once and worthless repeated — a parse that calls a routine 73,603 times paid for them 73,603 times.</p>
 <p><code>stateEnv</code> is created exactly once, under a <code>std::once_flag</code>, and chained between the per-call frame and the closure. That is the whole implementation of <code>state</code>: the variable lives in a scope that is created once per routine rather than once per call.</p>
 <h2 id="is-rw-write-back"><code>is rw</code> write-back</h2>
 <p>Because arguments are <code>Value</code> copies, a mutated <code>is rw</code> parameter must be written back. The call site passes the argument <em>expressions</em> alongside the values, and on a normal return each such parameter's final value is written back by re-resolving its expression:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — copyOutRw
-if ((p.isRw || p.sigil == '\\') &amp;&amp; pi &lt; rwArgs-&gt;size())
-    if (Value* lv = lvalue((*rwArgs)[pi].get()))
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — copyOutRw</span>
+<span class="k">if</span> ((p.isRw || p.sigil == <span class="s1">'\\'</span>) &amp;&amp; pi &lt; rwArgs-&gt;size())
+    <span class="k">if</span> (Value* lv = lvalue((*rwArgs)[pi].get()))
         *lv = env-&gt;vars[p.name];</code></pre>
 <p><code>setupRwLinks</code> additionally arranges for an assignment <em>inside</em> the callee to push through immediately, so the caller sees the change mid-call. The bookkeeping that keeps those two mechanisms from fighting is described in <a href="/book/containers/">Chapter 11</a>.</p>
 <p>The whole thing is guarded by a sticky flag, <code>anyRwLinks_</code>, so a program that never uses <code>is rw</code> never runs the per-assignment hook at all.</p>
 <h2 id="lvalue-mode-method-calls">Lvalue-mode method calls</h2>
 <p><code>$obj[$i] = $v</code> on a class whose <code>AT-POS</code> is <code>return-rw @!arr[$i]</code> must write the <em>real</em> element, not a returned copy. That needs a channel from the subscript site into the routine's <code>return-rw</code>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
-int wantLvalue = 0;      // 0 off, else the callFrames depth being served
-Value* lvalueOut = nullptr;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
+<span class="kt">int</span> wantLvalue = <span class="mi">0</span>;      <span class="c1">// 0 off, else the callFrames depth being served</span>
+Value* lvalueOut = <span class="kc">nullptr</span>;</code></pre>
 <p>The subscript-lvalue path sets <code>wantLvalue</code> to the current frame depth plus one before invoking <code>AT-POS</code>; a <code>return-rw</code> executing at exactly that depth fills <code>lvalueOut</code> with the address of its operand. The pointer survives the frame because its target lives in the object's shared containers.</p>
 <p>Matching on depth rather than on a plain flag is what keeps an inner call from accidentally answering an outer call's request.</p>
 <h2 id="what-a-call-costs">What a call costs</h2>
@@ -150,6 +150,6 @@ Value* lvalueOut = nullptr;</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Graphemes, Normalization, Collation — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -28,53 +28,53 @@
 <h2 id="storage-utf-8-bytes-grapheme-semantics">Storage: UTF-8 bytes, grapheme semantics</h2>
 <p>A <code>Str</code> holds UTF-8 bytes in its <code>CowStr</code>. Raku's <em>indices</em> are grapheme indices. Those two facts have to be reconciled on every string operation, and how that reconciliation is made cheap is the most consequential engineering decision in this part of the system.</p>
 <p>Strings are normalised to <strong>NFC</strong> on the way in — Raku's NFG storage model — so a literal is normalised once, in place, on first evaluation:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — StrLit
-bool nfcDone = false;   // NFC-normalized in place on first eval</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — StrLit</span>
+<span class="kt">bool</span> nfcDone = <span class="kc">false</span>;   <span class="c1">// NFC-normalized in place on first eval</span></code></pre>
 <h2 id="the-fast-answer-when-a-byte-index-is-a-grapheme-index">The fast answer: when a byte index is a grapheme index</h2>
 <p>Most strings in most programs are ASCII. For those, byte index, codepoint index and grapheme index are all the same number, and every conversion is a no-op — if you can establish it cheaply.</p>
-<pre class="native-code"><code class="lang-cpp">// src/BuiltinsShared.h
-size_t asciiRun(const std::string&amp; s, size_t limit);
-bool allAscii(const std::string&amp; s);
-bool byteIsGraphemeIndex(const std::string&amp; s);
-bool cowAllAscii(const CowStr&amp; s);
-bool cowByteIsGraphemeIndex(const CowStr&amp; s);
-long long cowGraphemeCount(const CowStr&amp; s);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BuiltinsShared.h</span>
+<span class="kt">size_t</span> asciiRun(<span class="k">const</span> std::string&amp; s, <span class="kt">size_t</span> limit);
+<span class="kt">bool</span> allAscii(<span class="k">const</span> std::string&amp; s);
+<span class="kt">bool</span> byteIsGraphemeIndex(<span class="k">const</span> std::string&amp; s);
+<span class="kt">bool</span> cowAllAscii(<span class="k">const</span> CowStr&amp; s);
+<span class="kt">bool</span> cowByteIsGraphemeIndex(<span class="k">const</span> CowStr&amp; s);
+<span class="kt">long</span> <span class="kt">long</span> cowGraphemeCount(<span class="k">const</span> CowStr&amp; s);</code></pre>
 <p>The <code>cow*</code> forms are the memoised ones. They read the flags cached on the promoted string body (<a href="/book/strings/">Chapter 8</a>), so the answer is computed once per string rather than once per character examined.</p>
 <p>The condition is narrow and exact: <strong>all bytes below 0x80, and no carriage return.</strong> CR LF is the one ASCII sequence that forms a single grapheme cluster under UAX #29, so an ASCII string containing a CR can still cluster.</p>
 <p>Getting this wrong is not a correctness bug — it is a <em>complexity</em> bug. The scanning operations call these once per character examined, so the difference between memoised and not is the difference between a linear tokenizer and a quadratic one.</p>
 <h2 id="the-slow-answer-graphememap">The slow answer: <code>GraphemeMap</code></h2>
 <p>When a string can genuinely cluster, the translation between codepoint indices and grapheme indices is built explicitly:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Unicode.h
-class GraphemeMap {
-public:
-    explicit GraphemeMap(const std::vector&lt;uint32_t&gt;&amp; cps);
-    bool trivial() const { return starts_.empty(); }
-    size_t count() const;                  // graphemes
-    size_t cpAt(size_t g) const;           // codepoint index where g starts
-    size_t graphemeAt(size_t cp) const;    // grapheme containing codepoint cp
-private:
-    size_t ncps_;
-    std::vector&lt;size_t&gt; starts_;           // empty when 1 grapheme == 1 cp
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Unicode.h</span>
+<span class="k">class</span> GraphemeMap {
+<span class="k">public</span>:
+    <span class="k">explicit</span> GraphemeMap(<span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp; cps);
+    <span class="kt">bool</span> trivial() <span class="k">const</span> { <span class="k">return</span> starts_.empty(); }
+    <span class="kt">size_t</span> count() <span class="k">const</span>;                  <span class="c1">// graphemes</span>
+    <span class="kt">size_t</span> cpAt(<span class="kt">size_t</span> g) <span class="k">const</span>;           <span class="c1">// codepoint index where g starts</span>
+    <span class="kt">size_t</span> graphemeAt(<span class="kt">size_t</span> cp) <span class="k">const</span>;    <span class="c1">// grapheme containing codepoint cp</span>
+<span class="k">private</span>:
+    <span class="kt">size_t</span> ncps_;
+    std::vector&lt;<span class="kt">size_t</span>&gt; starts_;           <span class="c1">// empty when 1 grapheme == 1 cp</span>
 };</code></pre>
 <p>The class exists because <code>substr</code>, <code>index</code> and <code>flip</code> each used to re-derive the translation — or, worse, skip it entirely and index codepoints, which is silently wrong for any text carrying a combining mark.</p>
 <p>The common case costs one linear scan and no allocation: a string with no codepoint above U+02FF and no CR cannot cluster, so <code>starts_</code> stays empty and <code>trivial()</code> is true. Only a string that can actually cluster pays the full UAX #29 walk.</p>
 <h2 id="the-subsystems">The subsystems</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Unicode.h — the interface, abridged
-std::vector&lt;uint32_t&gt; uniNormalize(const std::vector&lt;uint32_t&gt;&amp;, int mode);
-size_t uniGraphemeCount(const std::vector&lt;uint32_t&gt;&amp; cps);
-std::vector&lt;size_t&gt; uniGraphemeStarts(const std::vector&lt;uint32_t&gt;&amp; cps);
-size_t uniClusterEndUtf8(const std::string&amp; s, size_t pos, size_t len);
-int uniCollate(const std::vector&lt;uint32_t&gt;&amp; a, const std::vector&lt;uint32_t&gt;&amp; b);
-int32_t uniCharByName(const std::string&amp; name);
-std::string uniNameOf(uint32_t cp);
-bool uniNumValue(uint32_t cp, long long&amp; num, long long&amp; den);
-std::string uniGeneralCategory(uint32_t cp);
-std::string uniScript(uint32_t cp);
-bool uniMatchesProp(uint32_t cp, const std::string&amp; prop);
-uint32_t uniSimpleUpper(uint32_t cp);
-std::vector&lt;uint32_t&gt; uniCaseMap(uint32_t cp, int kind); // 0lo 1up 2ti 3fold
-std::string uniBlockOf(uint32_t cp);
-int uniBinaryProp(uint32_t cp, const std::string&amp; prop);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Unicode.h — the interface, abridged</span>
+std::vector&lt;<span class="kt">uint32_t</span>&gt; uniNormalize(<span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp;, <span class="kt">int</span> mode);
+<span class="kt">size_t</span> uniGraphemeCount(<span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp; cps);
+std::vector&lt;<span class="kt">size_t</span>&gt; uniGraphemeStarts(<span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp; cps);
+<span class="kt">size_t</span> uniClusterEndUtf8(<span class="k">const</span> std::string&amp; s, <span class="kt">size_t</span> pos, <span class="kt">size_t</span> len);
+<span class="kt">int</span> uniCollate(<span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp; a, <span class="k">const</span> std::vector&lt;<span class="kt">uint32_t</span>&gt;&amp; b);
+<span class="kt">int32_t</span> uniCharByName(<span class="k">const</span> std::string&amp; name);
+std::string uniNameOf(<span class="kt">uint32_t</span> cp);
+<span class="kt">bool</span> uniNumValue(<span class="kt">uint32_t</span> cp, <span class="kt">long</span> <span class="kt">long</span>&amp; num, <span class="kt">long</span> <span class="kt">long</span>&amp; den);
+std::string uniGeneralCategory(<span class="kt">uint32_t</span> cp);
+std::string uniScript(<span class="kt">uint32_t</span> cp);
+<span class="kt">bool</span> uniMatchesProp(<span class="kt">uint32_t</span> cp, <span class="k">const</span> std::string&amp; prop);
+<span class="kt">uint32_t</span> uniSimpleUpper(<span class="kt">uint32_t</span> cp);
+std::vector&lt;<span class="kt">uint32_t</span>&gt; uniCaseMap(<span class="kt">uint32_t</span> cp, <span class="kt">int</span> kind); <span class="c1">// 0lo 1up 2ti 3fold</span>
+std::string uniBlockOf(<span class="kt">uint32_t</span> cp);
+<span class="kt">int</span> uniBinaryProp(<span class="kt">uint32_t</span> cp, <span class="k">const</span> std::string&amp; prop);</code></pre>
 <p><strong>Normalization</strong> implements all four forms — NFD, NFC, NFKD, NFKC — over codepoint sequences: canonical decomposition, canonical ordering by combining class, and canonical composition.</p>
 <p><strong>Grapheme segmentation</strong> is UAX #29 extended grapheme clusters, which is more than "base plus combining marks": it covers Hangul syllable composition, regional indicator pairs (flag emoji), emoji modifier sequences and zero-width joiner sequences, and the CR LF rule.</p>
 <p><strong>Collation</strong> is the Unicode Collation Algorithm against the default table, producing a three-way comparison. That is what <code>coll</code> and <code>.collate</code> use, and it is why sorting Raku strings is not <code>strcmp</code>.</p>
@@ -102,6 +102,6 @@ src/unicode_*_gen.cpp      the output: 79,400 lines</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

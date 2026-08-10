@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Code Generator — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -24,11 +24,11 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 25</p><h1>The Code Generator</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-mapping">The mapping</a></li><li><a href="#what-is-emitted">What is emitted</a></li><li><a href="#control-flow">Control flow</a></li><li><a href="#closures">Closures</a></li><li><a href="#classes-and-multis">Classes and multis</a></li><li><a href="#signatures">Signatures</a></li><li><a href="#sub-language-pieces-the-generator-hands-back-to-the-runtime">Sub-language pieces the generator hands back to the runtime</a></li><li><a href="#what-it-refuses">What it refuses</a></li><li><a href="#the-correctness-constraint-on-resolving-names-at-compile-time">The correctness constraint on resolving names at compile time</a></li><li><a href="#inspecting-the-output">Inspecting the output</a></li></ul></nav>
 <p><code>--exe</code> transpiles the AST into a self-contained C++ program. The interface is one function:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Codegen.h
-std::string transpileToCpp(Program&amp; prog, bool optimize = false,
-                           const std::string&amp; srcPath = "",
-                           const std::set&lt;std::string&gt;&amp; moduleExports = {});
-struct CodegenError { std::string msg; };</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Codegen.h</span>
+std::string transpileToCpp(Program&amp; prog, <span class="kt">bool</span> optimize = <span class="kc">false</span>,
+                           <span class="k">const</span> std::string&amp; srcPath = <span class="s2">""</span>,
+                           <span class="k">const</span> std::set&lt;std::string&gt;&amp; moduleExports = {});
+<span class="k">struct</span> CodegenError { std::string msg; };</code></pre>
 <p>The design principle is stated in one sentence and everything follows from it: <strong>the generator never reimplements the runtime.</strong> It emits C++ that calls the same functions the interpreter calls. That is why the two produce byte-identical output, and why a feature implemented once works in both.</p>
 <h2 id="the-mapping">The mapping</h2>
 <div class="tablewrap"><table><tr><th>Raku</th><th>Generated C++</th></tr><tr><td><code>$a + $b</code>, <code>$a eqv $b</code></td><td><code>applyArith("op", a, b)</code>, or an inline <code>rt*</code> helper</td></tr>
@@ -45,46 +45,46 @@ struct CodegenError { std::string msg; };</code></pre>
 <tr><td>phasers, <code>CATCH</code></td><td>reordered emission, a C++ <code>try</code> and a <code>when</code> chain</td></tr>
 <tr><td><code>use Foo</code></td><td><code>RT.rtUse("Foo")</code> — the module is still interpreted</td></tr></table></div>
 <p>The <code>rt*</code> family in <code>Interpreter.h</code> is the generator's vocabulary — about sixty functions, each the runtime's implementation of one construct:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — a sample
-Value  rtIndexGet(const Value&amp; base, const Value&amp; key, bool isHash);
-Value&amp; rtIndexRef(Value&amp; base, const Value&amp; key, bool isHash);
-Value  rtArrayVal(const Value&amp; v);       // list-assignment semantics
-Value  rtSlipVal(const Value&amp; v);        // |x as a list element
-Value  rtHashLit(const ValueList&amp; items);
-Value  rtNamedPair(const std::string&amp; k, Value v);
-Value  rtReduce(const std::string&amp; op, const Value&amp; list);
-Value  rtTypedDefault(const char* type, char sigil);
-ValueList rtMainArgs(const std::vector&lt;std::string&gt;&amp; argv);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — a sample</span>
+Value  rtIndexGet(<span class="k">const</span> Value&amp; base, <span class="k">const</span> Value&amp; key, <span class="kt">bool</span> isHash);
+Value&amp; rtIndexRef(Value&amp; base, <span class="k">const</span> Value&amp; key, <span class="kt">bool</span> isHash);
+Value  rtArrayVal(<span class="k">const</span> Value&amp; v);       <span class="c1">// list-assignment semantics</span>
+Value  rtSlipVal(<span class="k">const</span> Value&amp; v);        <span class="c1">// |x as a list element</span>
+Value  rtHashLit(<span class="k">const</span> ValueList&amp; items);
+Value  rtNamedPair(<span class="k">const</span> std::string&amp; k, Value v);
+Value  rtReduce(<span class="k">const</span> std::string&amp; op, <span class="k">const</span> Value&amp; list);
+Value  rtTypedDefault(<span class="k">const</span> <span class="kt">char</span>* type, <span class="kt">char</span> sigil);
+ValueList rtMainArgs(<span class="k">const</span> std::vector&lt;std::string&gt;&amp; argv);</code></pre>
 <p>Several of them exist <em>only</em> because the interpreter had the same logic inline and the two would otherwise have drifted. <code>rtArrayVal</code> is the compiled twin of <code>coerceArray</code>, with the same fresh-buffer rule (<a href="/book/containers/">Chapter 11</a>), and it was factored out precisely so there is one definition of what <code>@a = expr</code> means.</p>
 <h2 id="what-is-emitted">What is emitted</h2>
 <p>A generated file has five sections.</p>
 <p><strong>A prologue</strong> including <code>Interpreter.h</code> and defining one static <code>Interpreter RT</code> — the runtime object that owns the builtin table, the class registry and the method dispatcher.</p>
 <p><strong>Static globals</strong> for top-level variables. <code>my $total</code> becomes <code>static Value v_stotal;</code>, with the sigil encoded into the name (<code>$</code> becomes <code>s</code>) so that <code>$x</code> and <code>@x</code> do not collide.</p>
 <p><strong>Functions</strong>, one per user sub. Their parameters arrive as a <code>ValueList</code>, and positionals are pulled out by index:</p>
-<pre class="native-code"><code class="lang-cpp">static Value u_square(ValueList __a) {
-    Value v_sn = rtPos(__a, 0);
-    return applyArith("*", v_sn, v_sn);
+<pre class="native-code"><code class="lang-cpp"><span class="k">static</span> Value u_square(ValueList __a) {
+    Value v_sn = rtPos(__a, <span class="mi">0</span>);
+    <span class="k">return</span> applyArith(<span class="s2">"*"</span>, v_sn, v_sn);
 }</code></pre>
 <p><strong>A registration function</strong>, <code>__rakupp_register</code>, run before <code>main</code>'s body. It resolves cached builtin pointers, registers <code>ClassInfo</code>s for the program's classes, installs named regexes, and registers embedded modules.</p>
 <p><strong><code>main</code></strong>, which sets up <code>@*ARGS</code>, runs the registration, and executes the mainline inside a <code>try</code> with the phaser and exit handling around it.</p>
 <h2 id="control-flow">Control flow</h2>
 <p>Raku control flow becomes C++ control flow wherever it can.</p>
 <p>A <code>for</code> over a literal range becomes a native counting loop with the topic rebuilt per iteration, wrapped in a <code>try</code> that catches the control exceptions:</p>
-<pre class="native-code"><code class="lang-cpp">for (long long __i = __lo; __i &lt;= __hi; __i++) {
+<pre class="native-code"><code class="lang-cpp"><span class="k">for</span> (<span class="kt">long</span> <span class="kt">long</span> __i = __lo; __i &lt;= __hi; __i++) {
     Value v__t0 = Value::integer(__i);
-    try { /* body */ }
-    catch (const NextEx&amp;) { continue; }
-    catch (const LastEx&amp;) { break; }
+    <span class="k">try</span> { <span class="cm">/* body */</span> }
+    <span class="k">catch</span> (<span class="k">const</span> NextEx&amp;) { <span class="k">continue</span>; }
+    <span class="k">catch</span> (<span class="k">const</span> LastEx&amp;) { <span class="k">break</span>; }
 }</code></pre>
 <p>Note that compiled code catches the <em>exception</em> forms of <code>next</code> and <code>last</code> rather than reading the cooperative registers of <a href="/book/control-flow/">Chapter 14</a>. It can afford to: the cooperative path exists to avoid a throw in the tree-walker's hot loop, and a compiled loop's body is already native.</p>
 <p><code>if</code>, <code>while</code>, <code>until</code> and the ternary become their C++ equivalents. Conditions that are comparisons use the <code>bool</code>-returning helpers (<code>rtLtB</code>, <code>rtEqSB</code>) rather than building a <code>Bool</code> <code>Value</code> and reading it back — a default, not an <code>-O</code> feature.</p>
 <h2 id="closures">Closures</h2>
 <p>A block becomes a C++ lambda wrapped as a <code>Value</code>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-static Value closure(std::function&lt;Value(ValueList&amp;)&gt; fn) {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">static</span> Value closure(std::function&lt;Value(ValueList&amp;)&gt; fn) {
     Value v; v.t = VT::Code; v.code = std::make_shared&lt;Callable&gt;();
-    v.code-&gt;builtin = [fn](Interpreter&amp;, ValueList&amp; a) { return fn(a); };
-    return v;
+    v.code-&gt;builtin = [fn](Interpreter&amp;, ValueList&amp; a) { <span class="k">return</span> fn(a); };
+    <span class="k">return</span> v;
 }</code></pre>
 <p>This is where the dual nature of <code>Callable</code> pays off. A <code>Callable</code> is <em>either</em> an AST body plus a closure environment, <em>or</em> a C++ function. The interpreter builds the first kind; the code generator builds the second. Everything downstream — <code>.map</code>, <code>.sort</code>, <code>callsame</code>, <code>&amp;f</code> as a value, passing a block to a user routine — treats them identically, because it only ever calls through <code>callCallable</code>.</p>
 <p>The capture is by value (<code>[=]</code>), so a compiled closure captures copies of the <code>Value</code>s it uses. That is the same observable behaviour as the interpreter's environment capture for reads; for a closure that <em>mutates</em> a captured variable the code generator has to emit a shared slot instead.</p>
@@ -93,15 +93,15 @@ static Value closure(std::function&lt;Value(ValueList&amp;)&gt; fn) {
 <p>A <code>multi</code> becomes one C++ function per candidate plus a dispatcher that scores with <code>rtTypeMatch</code>. That is a simplification of the interpreter's <code>scoreCandidate</code>, which is the honest reason a few multi shapes are on the fallback list.</p>
 <h2 id="signatures">Signatures</h2>
 <p>The generator has to bind arguments without the interpreter's <code>bindParams</code>, so there is a small family of binding helpers:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-Value  rtPos(const ValueList&amp; a, size_t idx);
-bool   rtHasPos(const ValueList&amp; a, size_t idx);
-Value  rtNamed(const ValueList&amp; a, const std::string&amp; key);
-bool   rtHasNamed(const ValueList&amp; a, const std::string&amp; key);
-Value  rtSlurpyPos(const ValueList&amp; a, size_t from);
-Value  rtSlurpyNamed(const ValueList&amp; a);
-size_t rtPosCount(const ValueList&amp; a, size_t from = 0);
-Value&amp; rtPosRef(ValueList&amp; a, size_t i);   // `is rw`: a ref into the list</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+Value  rtPos(<span class="k">const</span> ValueList&amp; a, <span class="kt">size_t</span> idx);
+<span class="kt">bool</span>   rtHasPos(<span class="k">const</span> ValueList&amp; a, <span class="kt">size_t</span> idx);
+Value  rtNamed(<span class="k">const</span> ValueList&amp; a, <span class="k">const</span> std::string&amp; key);
+<span class="kt">bool</span>   rtHasNamed(<span class="k">const</span> ValueList&amp; a, <span class="k">const</span> std::string&amp; key);
+Value  rtSlurpyPos(<span class="k">const</span> ValueList&amp; a, <span class="kt">size_t</span> from);
+Value  rtSlurpyNamed(<span class="k">const</span> ValueList&amp; a);
+<span class="kt">size_t</span> rtPosCount(<span class="k">const</span> ValueList&amp; a, <span class="kt">size_t</span> from = <span class="mi">0</span>);
+Value&amp; rtPosRef(ValueList&amp; a, <span class="kt">size_t</span> i);   <span class="c1">// `is rw`: a ref into the list</span></code></pre>
 <p>A signature is compiled into a sequence of these. Defaults become <code>if (!rtHasPos(…)) …</code>; a slurpy becomes one call; <code>is rw</code> binds a reference into the caller-visible argument list.</p>
 <h2 id="sub-language-pieces-the-generator-hands-back-to-the-runtime">Sub-language pieces the generator hands back to the runtime</h2>
 <p>Some constructs are emitted as a single runtime call rather than transpiled, because transpiling them would mean duplicating an engine:</p>
@@ -113,13 +113,13 @@ Value&amp; rtPosRef(ValueList&amp; a, size_t i);   // `is rw`: a ref into the li
 <p>The failure is total-per-program rather than per-construct: one refused construct bundles the entire file. That is a deliberate simplification — a hybrid binary that interpreted some routines and compiled others would need the two halves to share an environment, which is a much larger design.</p>
 <h2 id="the-correctness-constraint-on-resolving-names-at-compile-time">The correctness constraint on resolving names at compile time</h2>
 <p>The generator resolves a named call at compile time, deciding whether it is a user sub or a built-in. <strong>A <code>use</code>d module can take that name away.</strong></p>
-<pre class="native-code"><code class="lang-raku"># lib/OnlySub.rakumod
-unit module OnlySub;
-sub val() is export { 'from-module' }</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="c1"># lib/OnlySub.rakumod</span>
+<span class="k">unit</span> <span class="k">module</span> OnlySub;
+<span class="k">sub</span> val() <span class="k">is</span> export { <span class="s1">'from-module'</span> }</code></pre>
 <p>The interpreter's <code>evalCall</code> looks in the environment <em>before</em> the builtin table (<a href="/book/dispatch/">Chapter 15</a>), so the exported sub wins. Compiled code never did that lookup and printed the built-in <code>val</code>'s answer instead — a silent divergence.</p>
 <p>So the generator is given the module graph's exported names, and for those it emits a call that looks in the environment first:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-Value callEnvFirst(const std::string&amp; name, ValueList args);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+Value callEnvFirst(<span class="k">const</span> std::string&amp; name, ValueList args);</code></pre>
 <p>Everything else keeps the cached builtin pointer, so the cost lands only on names a module actually claims. The carve-out is the interpreter's own: a <strong>non</strong>-exported module sub of a built-in's name stays module-private, so the importer still reaches the built-in while the module's own code sees its own.</p>
 <p>That fix is a good example of the general hazard in compiling a dynamic language: <strong>any decision made at compile time is a promise about the run-time environment,</strong> and every such promise needs a reason to be true.</p>
 <h2 id="inspecting-the-output">Inspecting the output</h2>
@@ -133,6 +133,6 @@ rakupp --exe -o prog prog.raku  # compile it</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

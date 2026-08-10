@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The AST — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -24,20 +24,20 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 6</p><h1>The AST</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#a-class-hierarchy-here-a-fat-struct-there">A class hierarchy here, a fat struct there</a></li><li><a href="#the-nodes-that-carry-the-most">The nodes that carry the most</a></li><li><a href="#fields-that-are-answers-about-the-syntax">Fields that are answers about the syntax</a></li><li><a href="#two-nodes-that-only-exist-sometimes">Two nodes that only exist sometimes</a></li><li><a href="#borrowed-pointers-and-why-the-tree-is-immortal">Borrowed pointers, and why the tree is immortal</a></li><li><a href="#seeing-the-tree">Seeing the tree</a></li><li><a href="#the-two-emitters-that-must-know-every-field">The two emitters that must know every field</a></li></ul></nav>
 <p>The parser's output is a <code>Program</code>: a vector of statement pointers. Everything downstream — the interpreter, the two compiling back ends, the linter, the highlighter, the serialiser — consumes that one tree.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h
-struct Node { NK kind; int line; virtual ~Node() = default; };
-struct Expr : Node { using Node::Node; };
-struct Stmt : Node { using Node::Node; std::string label; };
-using ExprPtr = std::unique_ptr&lt;Expr&gt;;
-using StmtPtr = std::unique_ptr&lt;Stmt&gt;;
-struct Program { std::vector&lt;StmtPtr&gt; stmts; };</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h</span>
+<span class="k">struct</span> Node { NK kind; <span class="kt">int</span> line; <span class="k">virtual</span> ~Node() = <span class="k">default</span>; };
+<span class="k">struct</span> Expr : Node { <span class="k">using</span> Node::Node; };
+<span class="k">struct</span> Stmt : Node { <span class="k">using</span> Node::Node; std::string label; };
+<span class="k">using</span> ExprPtr = std::unique_ptr&lt;Expr&gt;;
+<span class="k">using</span> StmtPtr = std::unique_ptr&lt;Stmt&gt;;
+<span class="k">struct</span> Program { std::vector&lt;StmtPtr&gt; stmts; };</code></pre>
 <h2 id="a-class-hierarchy-here-a-fat-struct-there">A class hierarchy here, a fat struct there</h2>
 <p>The runtime's <code>Value</code> is a single struct with a tag and a field for every payload (<a href="/book/value/">Chapter 7</a>). The AST is the opposite: a real C++ class hierarchy, one <code>struct</code> per node type, each with exactly the fields it needs. Both choices are right, for opposite reasons.</p>
 <p>An AST node is <strong>built once, lives for the whole run, and is visited by a <code>switch</code> on its tag</strong>. Nodes are few, long-lived, and heterogeneous — some carry two pointers, <code>ClassDecl</code> carries seventeen fields including four vectors. A fat struct there would waste far more than it saved, and the virtual destructor costs nothing that matters when construction happens once.</p>
 <p>A <code>Value</code>, by contrast, is created and destroyed millions of times per second and must be trivially copyable into vectors. Same program, opposite trade.</p>
 <p>The <code>NK</code> enum tags every node so both the interpreter and the code generator can <code>switch</code> rather than dispatch virtually:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h
-enum class NK {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h</span>
+<span class="k">enum</span> <span class="k">class</span> NK {
     IntLit, NumLit, StrLit, InterpStr, BoolLit, VarExpr, ListExpr,
     Assign, Binary, Unary, Call, MethodCall, Index, Ternary, Range,
     Pair, BlockExpr, ArrayLit, HashLit, NameTerm, RegexLit, SubstLit,
@@ -51,35 +51,35 @@ enum class NK {
 <h2 id="the-nodes-that-carry-the-most">The nodes that carry the most</h2>
 <p>Three node types hold most of the language's declarative weight.</p>
 <p><strong><code>Param</code></strong> is not a <code>Node</code> at all — it is a plain struct, because signatures are lists rather than trees — and it is the densest thing in the header:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Param, abridged
-struct Param {
-    std::string name;         // includes the sigil; empty for anonymous
-    char sigil = '$';
-    std::string type;         // constraint name; "" = unconstrained
-    ExprPtr whereExpr;        // `where` clause
-    ExprPtr litVal;           // literal parameter: MAIN('population')
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Param, abridged</span>
+<span class="k">struct</span> Param {
+    std::string name;         <span class="c1">// includes the sigil; empty for anonymous</span>
+    <span class="kt">char</span> sigil = <span class="s1">'$'</span>;
+    std::string type;         <span class="c1">// constraint name; "" = unconstrained</span>
+    ExprPtr whereExpr;        <span class="c1">// `where` clause</span>
+    ExprPtr litVal;           <span class="c1">// literal parameter: MAIN('population')</span>
     ExprPtr defaultVal;
-    std::string namedKey;     // external name for :name($var)
-    char slurpyKind = 0;      // 'f' = *@, 'n' = **@, '1' = +@
-    bool named, slurpy, optional, required, invocant;
-    int defConstraint;        // 0 none, 1 = :D, 2 = :U
-    bool coerce;              // Int(Str)
-    bool isRw, isCopy, isRaw;
-    std::shared_ptr&lt;std::vector&lt;Param&gt;&gt; subSig;   // destructuring
-    // …plus decided-once caches, below
+    std::string namedKey;     <span class="c1">// external name for :name($var)</span>
+    <span class="kt">char</span> slurpyKind = <span class="mi">0</span>;      <span class="c1">// 'f' = *@, 'n' = **@, '1' = +@</span>
+    <span class="kt">bool</span> named, slurpy, optional, required, invocant;
+    <span class="kt">int</span> defConstraint;        <span class="c1">// 0 none, 1 = :D, 2 = :U</span>
+    <span class="kt">bool</span> coerce;              <span class="c1">// Int(Str)</span>
+    <span class="kt">bool</span> isRw, isCopy, isRaw;
+    std::shared_ptr&lt;std::vector&lt;Param&gt;&gt; subSig;   <span class="c1">// destructuring</span>
+    <span class="c1">// …plus decided-once caches, below</span>
 };</code></pre>
 <p>None of that is validated at parse time. It is data for the binder (<a href="/book/calls/">Chapter 13</a>) and the multi-dispatcher (<a href="/book/dispatch/">Chapter 15</a>).</p>
 <p><strong><code>SubDecl</code></strong> carries the routine: name, parameters, alternate signatures sharing one body, the body, non-built-in traits kept as unevaluated expressions, the <code>multi</code>/<code>proto</code>/<code>method</code>/<code>submethod</code>/private flags, export and <code>our</code> scoping, the declared return type, declarator pod, and the four fields that describe an <code>is native</code> declaration.</p>
 <p><strong><code>ClassDecl</code></strong> covers <code>class</code>, <code>role</code>, <code>grammar</code>, <code>module</code> and <code>package</code> at once: parents and roles, attributes, methods, grammar rules, the <code>parameterized</code> flag for <code>role R[T]</code>, the <code>:ver</code>/<code>:auth</code>/<code>:api</code> adverbs both as strings <em>and</em> as expressions (because <code>module Zef:ver($?DISTRIBUTION.meta&lt;version&gt;)</code> is legal and must be evaluated when the declaration runs), the <code>is repr(…)</code> layout for NativeCall, and a statement body for the package forms.</p>
 <h2 id="fields-that-are-answers-about-the-syntax">Fields that are answers about the syntax</h2>
 <p>Several nodes carry a small mutable field that the parser leaves undecided and the first evaluation fills in:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Binary
-mutable DecidedOnce&lt;signed char&gt; simpleOp{-1};
-mutable DecidedOnce&lt;signed char&gt; fastShape{-1};
-mutable DecidedOnce&lt;const void*&gt; litVal{nullptr};</code></pre>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Index
-mutable DecidedOnce&lt;signed char&gt; fastShape{-1};
-mutable DecidedOnce&lt;long long&gt; litIdx{0};</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Binary</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; simpleOp{-<span class="mi">1</span>};
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; fastShape{-<span class="mi">1</span>};
+<span class="k">mutable</span> DecidedOnce&lt;<span class="k">const</span> <span class="kt">void</span>*&gt; litVal{<span class="kc">nullptr</span>};</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Index</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; fastShape{-<span class="mi">1</span>};
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">long</span> <span class="kt">long</span>&gt; litIdx{<span class="mi">0</span>};</code></pre>
 <p>and similarly:</p>
 <pre class="native-code"><code>Block::hoistNeed          ForStmt::hasStateCache
 StrLit::nfcDone           NumLit::cacheN, cacheD
@@ -91,10 +91,10 @@ Callable::arityShape, catchScan</code></pre>
 <p>The <code>DecidedOnce&lt;T&gt;</code> wrapper is a relaxed atomic, for the reason given in <a href="/book/shape-of-source/">Chapter 2</a>: under parallel execution several threads may compute the same idempotent answer concurrently, and a plain field would make that a data race.</p>
 <h2 id="two-nodes-that-only-exist-sometimes">Two nodes that only exist sometimes</h2>
 <p><strong><code>NqpOp</code></strong> implements the <code>use nqp</code> compatibility subset. It exists <em>only</em> when the parser saw <code>use nqp</code> and then met an <code>nqp::</code> call:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h
-enum class NqpOpc : uint16_t { Stmts, While, Until, IfNull, IseqI, AddI,
-                               Substr, Chars, Concat, /* ~50 more */ };
-struct NqpOp : Expr {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h</span>
+<span class="k">enum</span> <span class="k">class</span> NqpOpc : <span class="kt">uint16_t</span> { Stmts, While, Until, IfNull, IseqI, AddI,
+                               Substr, Chars, Concat, <span class="cm">/* ~50 more */</span> };
+<span class="k">struct</span> NqpOp : Expr {
     NqpOpc op;
     std::vector&lt;ExprPtr&gt; args;
 };</code></pre>
@@ -102,14 +102,14 @@ struct NqpOp : Expr {
 <p><strong><code>AllomorphLit</code></strong> exists because a numeric word inside a <code>&lt;…&gt;</code> list is simultaneously a number and its own source spelling: <code>&lt;42&gt;</code> is an <code>IntStr</code>, <code>&lt;1/3&gt;</code> a <code>RatStr</code>. The node keeps both the parsed numeric expression and the original text.</p>
 <h2 id="borrowed-pointers-and-why-the-tree-is-immortal">Borrowed pointers, and why the tree is immortal</h2>
 <p>A <code>Callable</code> — the runtime object behind every sub, block and method — does not own its code:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h — Callable, excerpt
-const std::vector&lt;Param&gt;* params = nullptr;   // borrowed from the AST
-const std::vector&lt;StmtPtr&gt;* body = nullptr;   // borrowed from the AST
-std::shared_ptr&lt;Env&gt; closure;                 // owned</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — Callable, excerpt</span>
+<span class="k">const</span> std::vector&lt;Param&gt;* params = <span class="kc">nullptr</span>;   <span class="c1">// borrowed from the AST</span>
+<span class="k">const</span> std::vector&lt;StmtPtr&gt;* body = <span class="kc">nullptr</span>;   <span class="c1">// borrowed from the AST</span>
+std::shared_ptr&lt;Env&gt; closure;                 <span class="c1">// owned</span></code></pre>
 <p>Only the environment is owned. The parameter list and the body are raw pointers into the tree. Calling a sub walks those AST statements directly; there is no copy, no bytecode, and no intermediate representation.</p>
 <p>The consequence is that <strong>the AST must outlive every value that refers to it</strong>. For the main program that is automatic. For anything parsed later it is not, so the interpreter keeps them alive explicitly:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-std::vector&lt;std::shared_ptr&lt;Program&gt;&gt; keptPrograms_;   // EVAL'd ASTs</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+std::vector&lt;std::shared_ptr&lt;Program&gt;&gt; keptPrograms_;   <span class="c1">// EVAL'd ASTs</span></code></pre>
 <p>and <code>loadModule</code> pushes each module's <code>Program</code> onto the same vector (<a href="/book/modules/">Chapter 30</a>). Nothing is ever released from it. That is a deliberate, bounded leak: the number of distinct compilation units a process loads is small, and the alternative — refcounting subtrees — would cost on every call.</p>
 <h2 id="seeing-the-tree">Seeing the tree</h2>
 <pre class="native-code"><code class="lang-sh">rakupp --dump-ast prog.raku
@@ -125,6 +125,6 @@ RAKUPP_DUMPTOKENS=1 rakupp prog.raku</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>use nqp: a Compatibility Subset — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -29,8 +29,8 @@
 <h2 id="there-is-no-nqp-compiler-here">There is no NQP compiler here</h2>
 <p>The single most important thing to understand: <strong><code>nqp::foo(...)</code> is already valid Raku syntax.</strong> It is a call to a package-qualified routine named <code>nqp::foo</code>. The normal parser reads it with no special help.</p>
 <p>There is no NQP grammar, no NQP compiler, and no QAST anywhere in Raku++. What is added is a <strong>semantic layer</strong>: when a program opts in with <code>use nqp</code>, the parser recognises those already-parsed calls and gives them meaning, compiling them to dedicated AST nodes instead of leaving them as calls to undefined routines.</p>
-<pre class="native-code"><code class="lang-raku">use nqp;                       # (or `use MONKEY-GUTS`)
-my int $x = nqp::add_i(2, 3);  # 5</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> nqp;                       <span class="c1"># (or `use MONKEY-GUTS`)</span>
+<span class="k">my</span> int <span class="nv">$x</span> = nqp::add_i(<span class="mi">2</span>, <span class="mi">3</span>);  <span class="c1"># 5</span></code></pre>
 <p>Without <code>use nqp</code>, <code>nqp::add_i(...)</code> is exactly what it looks like — a call to a routine that does not exist — and running it gives the usual undefined-routine error.</p>
 <h2 id="zero-cost-when-unused">Zero cost when unused</h2>
 <p>This is a hard design constraint, not an aspiration, and it holds by <strong>construction</strong> rather than by optimisation.</p>
@@ -44,55 +44,55 @@ my int $x = nqp::add_i(2, 3);  # 5</code></pre>
 <p>An <code>nqp::</code> op <strong>outside</strong> the implemented subset is left as an ordinary call and fails loudly at run time rather than silently misbehaving. The subset grows by measured demand, never by guessing.</p>
 <h2 id="in-code">In code</h2>
 <p>The parser branch, condensed:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — the term is already lexed as the qualified name `nqp::add_i`
-if (useNqp_ &amp;&amp; name.compare(0, 5, "nqp::") == 0) {
-    if (name.compare(0, 12, "nqp::const::") == 0) {
-        long long cv;
-        if (nqpConstValue(name.substr(12), cv))
-            return std::make_unique&lt;IntLit&gt;(cv);      // folded here
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — the term is already lexed as the qualified name `nqp::add_i`</span>
+<span class="k">if</span> (useNqp_ &amp;&amp; name.compare(<span class="mi">0</span>, <span class="mi">5</span>, <span class="s2">"nqp::"</span>) == <span class="mi">0</span>) {
+    <span class="k">if</span> (name.compare(<span class="mi">0</span>, <span class="mi">12</span>, <span class="s2">"nqp::const::"</span>) == <span class="mi">0</span>) {
+        <span class="kt">long</span> <span class="kt">long</span> cv;
+        <span class="k">if</span> (nqpConstValue(name.substr(<span class="mi">12</span>), cv))
+            <span class="k">return</span> std::make_unique&lt;IntLit&gt;(cv);      <span class="c1">// folded here</span>
     }
-    if (ExprPtr n = makeNqpOp(name.substr(5), callArgs))
-        return n;                                     // an NqpOp, or a Ternary
+    <span class="k">if</span> (ExprPtr n = makeNqpOp(name.substr(<span class="mi">5</span>), callArgs))
+        <span class="k">return</span> n;                                     <span class="c1">// an NqpOp, or a Ternary</span>
 }</code></pre>
 <p>The node is deliberately tiny:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h
-enum class NqpOpc : uint16_t {
-    Stmts, While, Until, IseqI, AddI, Substr, /* … */ };
-struct NqpOp : Expr {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h</span>
+<span class="k">enum</span> <span class="k">class</span> NqpOpc : <span class="kt">uint16_t</span> {
+    Stmts, While, Until, IseqI, AddI, Substr, <span class="cm">/* … */</span> };
+<span class="k">struct</span> NqpOp : Expr {
     NqpOpc op;
     std::vector&lt;ExprPtr&gt; args;
 };</code></pre>
 <p>and the evaluator handles the lazy forms <em>before</em> touching their arguments:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — condensed
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — condensed</span>
 Value Interpreter::evalNqpOp(NqpOp* n) {
-    auto&amp; a = n-&gt;args;
-    switch (n-&gt;op) {                        // lazy forms drive their own args
-        case NqpOpc::While:
-            while (boolify(eval(a[0].get())))
-                for (size_t i = 1; i &lt; a.size(); i++) eval(a[i].get());
-            return Value::nil();
-        default: break;
+    <span class="k">auto</span>&amp; a = n-&gt;args;
+    <span class="k">switch</span> (n-&gt;op) {                        <span class="c1">// lazy forms drive their own args</span>
+        <span class="k">case</span> NqpOpc::While:
+            <span class="k">while</span> (boolify(eval(a[<span class="mi">0</span>].get())))
+                <span class="k">for</span> (<span class="kt">size_t</span> i = <span class="mi">1</span>; i &lt; a.size(); i++) eval(a[i].get());
+            <span class="k">return</span> Value::nil();
+        <span class="k">default</span>: <span class="k">break</span>;
     }
-    ValueList v;                            // everything else: eval once
-    for (auto&amp; e : a) v.push_back(eval(e.get()));
-    auto I = [&amp;](size_t i){ return v[i].toInt(); };
-    switch (n-&gt;op) {
-        case NqpOpc::AddI:  return Value::integer(I(0) + I(1));   // int64
-        case NqpOpc::IseqI: return Value::integer(I(0) == I(1));
-        // … about 40 more leaf ops …
+    ValueList v;                            <span class="c1">// everything else: eval once</span>
+    <span class="k">for</span> (<span class="k">auto</span>&amp; e : a) v.push_back(eval(e.get()));
+    <span class="k">auto</span> I = [&amp;](<span class="kt">size_t</span> i){ <span class="k">return</span> v[i].toInt(); };
+    <span class="k">switch</span> (n-&gt;op) {
+        <span class="k">case</span> NqpOpc::AddI:  <span class="k">return</span> Value::integer(I(<span class="mi">0</span>) + I(<span class="mi">1</span>));   <span class="c1">// int64</span>
+        <span class="k">case</span> NqpOpc::IseqI: <span class="k">return</span> Value::integer(I(<span class="mi">0</span>) == I(<span class="mi">1</span>));
+        <span class="c1">// … about 40 more leaf ops …</span>
     }
 }</code></pre>
 <h2 id="the-argument-buffers">The argument buffers</h2>
 <p>An nqp-heavy program is nqp-heavy in the extreme: a tokenizer written in Raku runs about 1.5 million operations on a 278 KB document. Building a fresh <code>ValueList</code> per operation is a malloc and a free per op, for a vector of one to four values.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
-std::deque&lt;ValueList&gt; nqpArgs;   // one reusable buffer per nesting depth
-size_t nqpDepth = 0;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
+std::deque&lt;ValueList&gt; nqpArgs;   <span class="c1">// one reusable buffer per nesting depth</span>
+<span class="kt">size_t</span> nqpDepth = <span class="mi">0</span>;</code></pre>
 <p>The buffers are kept, so their capacity is kept; the contents are still cleared on the way out, so argument lifetimes are exactly what they were.</p>
 <p>It is a <strong>deque</strong>, not a vector, and the comment says why: an argument's own evaluation can re-enter <code>evalNqpOp</code>, and growing a vector would reallocate under the outer frame's live reference. A deque never moves the elements it already holds.</p>
 <p>That is a small illustration of a recurring theme — the reusable-buffer optimisation is easy, and the container choice that makes it <em>correct</em> under re-entrancy is the part that takes thought.</p>
 <h2 id="native-compilation">Native compilation</h2>
 <p>The subset is a first-class part of the transpiler, not just the interpreter. A <code>use nqp</code> program native-compiles like any other; it does <strong>not</strong> fall back to bundling.</p>
-<pre class="native-code"><code class="lang-console">$ rakupp --cpp -e 'use nqp; say nqp::add_i(1, 2)'
+<pre class="native-code"><code class="lang-console"><span class="sh-p">$ </span>rakupp --cpp -e 'use nqp; say nqp::add_i(1, 2)'
 …
 rtCallB(RT, __bfp0, "say", ValueList{
     ([&amp;]()-&gt;Value{ ValueList __na = ValueList{Value::integer(1LL),
@@ -122,6 +122,6 @@ rtCallB(RT, __bfp0, "say", ValueList{
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

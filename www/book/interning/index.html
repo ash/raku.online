@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Interning and Comparison: IStr and MName — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -31,20 +31,20 @@
 <p>That looks like the ladder's length. Earlier measurement had seemed to exonerate it: <code>.chars</code> sits 177 comparisons into the file and <code>.uc</code> 812, yet they cost the same. <strong>Both facts are true.</strong> Position <em>in the file</em> is not the number of comparisons <em>executed</em>, because the arms are guarded by invocant type — a <code>Str</code> invocant only ever runs the <code>Str</code> arms, and <code>.chars</code>, <code>.uc</code> and <code>.uniname</code> are all in that same group.</p>
 <p>The real problem was that <code>strlen</code> was being called <strong>at run time on a string literal</strong>. Clang normally folds that away, and in a small function it does — a 1,700-branch toy reproduction compiles to zero <code>strlen</code> calls. But <code>methodCallInner</code> was about 8,900 lines with 1,640 comparisons, far past the optimizer's inlining budget: <code>std::operator==</code> stayed out of line, and out of line it cannot see the literal, so it measured it with <code>strlen</code> on every call.</p>
 <p>The fix does not depend on the optimizer's mood. Wrap the name in a type whose <code>operator==</code> takes the literal <strong>by reference to array</strong>, so the length is part of the template argument:</p>
-<pre class="native-code"><code class="lang-cpp">// src/MethodName.h
-struct MName {
-    const std::string&amp; s;
-    std::size_t n;        // cached length: the first test on every comparison
-    std::uint64_t pre;    // first 8 bytes packed, so short names compare as one
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodName.h</span>
+<span class="k">struct</span> MName {
+    <span class="k">const</span> std::string&amp; s;
+    std::<span class="kt">size_t</span> n;        <span class="c1">// cached length: the first test on every comparison</span>
+    std::<span class="kt">uint64_t</span> pre;    <span class="c1">// first 8 bytes packed, so short names compare as one</span>
 
-    explicit MName(const std::string&amp; v)
+    <span class="k">explicit</span> MName(<span class="k">const</span> std::string&amp; v)
         : s(v), n(v.size()), pre(pack(v.data(), v.size())) {}
 
-    template &lt;std::size_t N&gt;
-    RAKUPP_ALWAYS_INLINE bool operator==(const char (&amp;lit)[N]) const {
-        if (n != N - 1) return false;
-        if (N - 1 &lt;= 8) return pre == pack(lit, N - 1);
-        return std::memcmp(s.data(), lit, N - 1) == 0;
+    <span class="k">template</span> &lt;std::<span class="kt">size_t</span> N&gt;
+    RAKUPP_ALWAYS_INLINE <span class="kt">bool</span> <span class="k">operator</span>==(<span class="k">const</span> <span class="kt">char</span> (&amp;lit)[N]) <span class="k">const</span> {
+        <span class="k">if</span> (n != N - <span class="mi">1</span>) <span class="k">return</span> <span class="kc">false</span>;
+        <span class="k">if</span> (N - <span class="mi">1</span> &lt;= <span class="mi">8</span>) <span class="k">return</span> pre == pack(lit, N - <span class="mi">1</span>);
+        <span class="k">return</span> std::memcmp(s.data(), lit, N - <span class="mi">1</span>) == <span class="mi">0</span>;
     }
 };</code></pre>
 <p>One <code>const MName m{mName};</code> at the top of the function, and every <code>m == "chars"</code> site becomes a size check — which rejects nearly every candidate outright — followed by an inlined comparison. Four compile errors resulted, all of them stream or concatenation overloads, which is why the struct also forwards <code>+</code>, <code>&lt;&lt;</code> and the handful of <code>std::string</code> members the chain uses.</p>
@@ -64,26 +64,26 @@ struct MName {
 <p>Measured on that parse:</p>
 <ul><li><code>Value</code>'s implicit constructor, destructor and copy were <strong>12.8% of self time</strong>, the top line of the profile;</li><li><code>std::string == const char*</code> — which calls <code>strlen</code>, then <code>memcmp</code> — plus its helpers was about <strong>10% more</strong>, and <code>hashKind</code> is compared against a literal on paths that run per parameter per call.</li></ul>
 <p>The strings that ever reach these fields are a small closed set in practice: container kinds and type names. So intern them.</p>
-<pre class="native-code"><code class="lang-cpp">// src/IStr.h
-struct IStr {
-    struct Entry { std::string s; std::size_t n; std::uint64_t pre; };
-    const Entry* e = nullptr;      // null IS the empty string
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/IStr.h</span>
+<span class="k">struct</span> IStr {
+    <span class="k">struct</span> Entry { std::string s; std::<span class="kt">size_t</span> n; std::<span class="kt">uint64_t</span> pre; };
+    <span class="k">const</span> Entry* e = <span class="kc">nullptr</span>;      <span class="c1">// null IS the empty string</span>
 
-    static const Entry* intern(const char* p, std::size_t k) {
-        if (!k) return nullptr;
-        static std::deque&lt;Entry&gt; storage;   // stable addresses
-        static std::unordered_map&lt;std::string, const Entry*&gt; index;
-        static std::shared_mutex mu;
+    <span class="k">static</span> <span class="k">const</span> Entry* intern(<span class="k">const</span> <span class="kt">char</span>* p, std::<span class="kt">size_t</span> k) {
+        <span class="k">if</span> (!k) <span class="k">return</span> <span class="kc">nullptr</span>;
+        <span class="k">static</span> std::deque&lt;Entry&gt; storage;   <span class="c1">// stable addresses</span>
+        <span class="k">static</span> std::unordered_map&lt;std::string, <span class="k">const</span> Entry*&gt; index;
+        <span class="k">static</span> std::shared_mutex mu;
         std::string key(p, k);
         { std::shared_lock&lt;std::shared_mutex&gt; rd(mu);
-          auto it = index.find(key);
-          if (it != index.end()) return it-&gt;second; }
+          <span class="k">auto</span> it = index.find(key);
+          <span class="k">if</span> (it != index.end()) <span class="k">return</span> it-&gt;second; }
         std::unique_lock&lt;std::shared_mutex&gt; wr(mu);
-        // … re-check, then append and index …
+        <span class="c1">// … re-check, then append and index …</span>
     }
 
-    // interned, so identity IS equality
-    bool operator==(const IStr&amp; o) const { return e == o.e; }
+    <span class="c1">// interned, so identity IS equality</span>
+    <span class="kt">bool</span> <span class="k">operator</span>==(<span class="k">const</span> IStr&amp; o) <span class="k">const</span> { <span class="k">return</span> e == o.e; }
 };</code></pre>
 <p>Eight bytes, trivially copyable, trivially destructible. A default-constructed <code>IStr</code> costs a zeroed pointer where a <code>std::string</code> cost a constructor call. Comparing two <code>IStr</code>s is a pointer comparison, because interning makes identity equality. Comparing against a literal uses the same packed-prefix trick as <code>MName</code>.</p>
 <p><strong>Interning takes a lock, but only on assignment from text.</strong> Copies and comparisons — the operations <code>Value</code> does millions of times — never reach it. Readers share the lock; only a miss serialises.</p>
@@ -91,12 +91,12 @@ struct IStr {
 <h3>The intern table is never freed</h3>
 <p>That is deliberate. Entries are type names and kind tags, bounded by the program's own vocabulary, and a stable address is what makes the handle comparable by pointer.</p>
 <p>It also imposes a rule, and there is one field that breaks it. <code>ofType</code> is <strong>not</strong> interned, and must stay that way until one site moves:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-// `IO::Path`'s `:CWD` rides in `ofType` because a path value has no other
-// use for it, so this field can hold a runtime DIRECTORY NAME rather than
-// a type name. The intern table is append-only by design, so a program
-// walking many directories would add an entry per directory and never
-// release it.
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="c1">// `IO::Path`'s `:CWD` rides in `ofType` because a path value has no other</span>
+<span class="c1">// use for it, so this field can hold a runtime DIRECTORY NAME rather than</span>
+<span class="c1">// a type name. The intern table is append-only by design, so a program</span>
+<span class="c1">// walking many directories would add an entry per directory and never</span>
+<span class="c1">// release it.</span>
 std::string ofType;</code></pre>
 <p>This is the interesting failure mode of interning, and it is worth stating as a general rule: <strong>intern a closed vocabulary, never an open one.</strong> A field that can hold arbitrary runtime data — a path, a user string, a key — turns an append-only table into an unbounded leak. Everything else in <code>Value</code> is drawn from the program's own vocabulary of type names and is safe.</p>
 <h2 id="why-they-are-separate-types">Why they are separate types</h2>
@@ -109,6 +109,6 @@ std::string ofType;</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

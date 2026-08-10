@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The -O Optimizer — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -29,20 +29,20 @@ rakupp --exe -O prog.raku -o prog     # optimizer on
 rakupp --cpp -O prog.raku             # print the optimized C++</code></pre>
 <h2 id="what-the-generated-code-looks-like-without-it">What the generated code looks like without it</h2>
 <p>By default the transpiler is faithful but generic: every value is a boxed <code>Value</code>, operators in value position go through <code>applyArith</code>, and every user-sub call packs its arguments into a <code>ValueList</code> — a heap allocation per call.</p>
-<pre class="native-code"><code class="lang-cpp">// sub fib($n) { $n &lt; 2 ?? $n !! fib($n-1) + fib($n-2) }
-static Value u_fib(ValueList __a) {
-    Value v_sn = rtPos(__a, 0);
-    return rtLtB(v_sn, Value::integer(2LL))       // condition: always inline
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// sub fib($n) { $n &lt; 2 ?? $n !! fib($n-1) + fib($n-2) }</span>
+<span class="k">static</span> Value u_fib(ValueList __a) {
+    Value v_sn = rtPos(__a, <span class="mi">0</span>);
+    <span class="k">return</span> rtLtB(v_sn, Value::integer(<span class="mi">2LL</span>))       <span class="c1">// condition: always inline</span>
          ? v_sn
-         : applyArith("+",
-             u_fib(ValueList{applyArith("-", v_sn, Value::integer(1LL))}),
-             u_fib(ValueList{applyArith("-", v_sn, Value::integer(2LL))}));
+         : applyArith(<span class="s2">"+"</span>,
+             u_fib(ValueList{applyArith(<span class="s2">"-"</span>, v_sn, Value::integer(<span class="mi">1LL</span>))}),
+             u_fib(ValueList{applyArith(<span class="s2">"-"</span>, v_sn, Value::integer(<span class="mi">2LL</span>))}));
 }</code></pre>
 <p>For a hot recursive function that is two costs on every one of about 1.6 million calls: a <code>ValueList</code> allocation, and value-position <code>applyArith</code> calls that dispatch on the operator <em>string</em> before touching the operands.</p>
 <h2 id="pass-1-direct-arity-calls">Pass 1 — direct-arity calls</h2>
 <p>A sub whose signature is entirely <strong>plain required positional scalars</strong> — no named, slurpy, optional, defaulted or destructured parameters — gets a direct-<code>Value</code> overload, plus a boxed adapter so any unusual call site still resolves. C++ overload resolution picks the right one.</p>
-<pre class="native-code"><code class="lang-cpp">static Value u_fib(Value v_sn) { … }                                // fast
-static Value u_fib(ValueList __a) { return u_fib(rtPos(__a, 0)); }  // adapter</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="k">static</span> Value u_fib(Value v_sn) { … }                                <span class="c1">// fast</span>
+<span class="k">static</span> Value u_fib(ValueList __a) { <span class="k">return</span> u_fib(rtPos(__a, <span class="mi">0</span>)); }  <span class="c1">// adapter</span></code></pre>
 <p>A call site takes the fast overload when it passes exactly the right number of plain positional arguments — no <code>:name(…)</code> pairs, no <code>|@slurp</code>. Multi subs, indirect calls through <code>&amp;fib</code>, and method calls are untouched.</p>
 <p>The same idea covers <strong>37 named builtins</strong>, each of which has a real C++ function (<code>rtBAbs</code>, <code>rtBUc</code>, <code>rtBSin</code>, …) rather than a <code>std::function</code> in a map. <a href="/book/dispatch-compiled/">Chapter 27</a> tells that story, because the reason it works is not the one that was first assumed.</p>
 <h2 id="pass-2-inline-arithmetic">Pass 2 — inline arithmetic</h2>
@@ -53,60 +53,60 @@ static Value u_fib(ValueList __a) { return u_fib(rtPos(__a, 0)); }  // adapter</
 <tr><td><code>%</code> <code>%%</code> <code>div</code></td><td><code>rtMod</code> / <code>rtDivides</code> / <code>rtDiv</code></td><td>floored <code>int64</code></td></tr>
 <tr><td><code>~</code></td><td><code>rtConcat</code></td><td>direct concat when both are <code>Str</code></td></tr>
 <tr><td><code>eq</code> <code>ne</code> <code>lt</code> <code>gt</code> <code>le</code> <code>ge</code></td><td><code>rtEqS</code> …</td><td>byte-wise when both are <strong>plain</strong> <code>Str</code></td></tr></table></div>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-inline Value rtAdd(const Value&amp; l, const Value&amp; r) {
-    long long z;
-    if (rtBothInt(l, r) &amp;&amp; !rakupp::add_ovf(l.i, r.i, &amp;z))
-        return Value::integer(z);
-    return applyArith("+", l, r);     // Rats, bignums, mixed types, coercions
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">inline</span> Value rtAdd(<span class="k">const</span> Value&amp; l, <span class="k">const</span> Value&amp; r) {
+    <span class="kt">long</span> <span class="kt">long</span> z;
+    <span class="k">if</span> (rtBothInt(l, r) &amp;&amp; !rakupp::add_ovf(l.i, r.i, &amp;z))
+        <span class="k">return</span> Value::integer(z);
+    <span class="k">return</span> applyArith(<span class="s2">"+"</span>, l, r);     <span class="c1">// Rats, bignums, mixed types, coercions</span>
 }</code></pre>
 <p><code>rtBothInt</code> tests that both operands are <code>VT::Int</code> and neither has grown a bignum. Overflow promotes to bignum exactly as <code>applyArith</code> does.</p>
 <p>The string comparisons matter more than the integer ones, because they sat <em>late</em> in <code>applyArith</code>'s dispatch chain — about 118 nanoseconds against 10 for a direct call. The guard is that both operands are <strong>plain</strong> <code>Str</code>: no <code>Version</code>/<code>IO</code>/<code>Buf</code> tag and no enum identity. A tagged value falls back to the full chain, which preserves <code>Version</code> part-comparison, enum stringification, junction autothreading and <code>Whatever</code> currying.</p>
 <p>With both passes plus pass 3's condition lane, <code>fib</code> becomes:</p>
-<pre class="native-code"><code class="lang-cpp">static Value u_fib(Value v_sn) {
-    return ([&amp;]() -&gt; bool {                        // condition lane
-        do { if (!(rtIntBox(v_sn))) break;         //   guard the box
-             return (v_sn.i &lt; 2LL); } while (0);   //   compare as raw int64
-        return rtLtB(v_sn, Value::integer(2LL));   //   guard failed
+<pre class="native-code"><code class="lang-cpp"><span class="k">static</span> Value u_fib(Value v_sn) {
+    <span class="k">return</span> ([&amp;]() -&gt; <span class="kt">bool</span> {                        <span class="c1">// condition lane</span>
+        <span class="k">do</span> { <span class="k">if</span> (!(rtIntBox(v_sn))) <span class="k">break</span>;         <span class="c1">//   guard the box</span>
+             <span class="k">return</span> (v_sn.i &lt; <span class="mi">2LL</span>); } <span class="k">while</span> (<span class="mi">0</span>);   <span class="c1">//   compare as raw int64</span>
+        <span class="k">return</span> rtLtB(v_sn, Value::integer(<span class="mi">2LL</span>));   <span class="c1">//   guard failed</span>
     }())
          ? v_sn
-         : rtAdd(u_fib(rtSub(v_sn, Value::integer(1LL))),
-                 u_fib(rtSub(v_sn, Value::integer(2LL))));
+         : rtAdd(u_fib(rtSub(v_sn, Value::integer(<span class="mi">1LL</span>))),
+                 u_fib(rtSub(v_sn, Value::integer(<span class="mi">2LL</span>))));
 }</code></pre>
 <p>No heap allocation, no string dispatch. Under a real C++ optimizer that collapses to tight native-integer recursion.</p>
 <h2 id="pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</h2>
 <p>Passes 1 and 2 still build a boxed <code>Value</code> for every intermediate result: <code>$sum += $_ * 2 - 1</code> constructs four of them per evaluation. Pass 3 removes them.</p>
 <p>A straight-line integer expression whose leaves are <strong>int literals and plain scalar variables</strong> is computed in raw <code>int64</code>. Each leaf is tag-guarded at run time, each operation is overflow-checked, and the result is stored <strong>into the target's existing box</strong> with no <code>Value</code> construction at all:</p>
-<pre class="native-code"><code class="lang-cpp">// $sum += $_ * 2 - 1     (inside a native range loop)
-{ bool __lok = false; do {
-    if (!(rtIntBox(v__t0) &amp;&amp; rtIntSlot(v_ssum))) break;
-    long long __t1; if (rakupp::mul_ovf(v__t0.i, 2LL, &amp;__t1)) break;
-    long long __t2; if (rakupp::sub_ovf(__t1, 1LL, &amp;__t2)) break;
-    long long __t3; if (rakupp::add_ovf(v_ssum.i, __t2, &amp;__t3)) break;
-    v_ssum.i = __t3; __lok = true;
-} while (0);
-if (!__lok) { v_ssum = rtAdd(v_ssum,
-                  rtSub(rtMul(v__t0, Value::integer(2LL)),
-                        Value::integer(1LL))); } }</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// $sum += $_ * 2 - 1     (inside a native range loop)</span>
+{ <span class="kt">bool</span> __lok = <span class="kc">false</span>; <span class="k">do</span> {
+    <span class="k">if</span> (!(rtIntBox(v__t0) &amp;&amp; rtIntSlot(v_ssum))) <span class="k">break</span>;
+    <span class="kt">long</span> <span class="kt">long</span> __t1; <span class="k">if</span> (rakupp::mul_ovf(v__t0.i, <span class="mi">2LL</span>, &amp;__t1)) <span class="k">break</span>;
+    <span class="kt">long</span> <span class="kt">long</span> __t2; <span class="k">if</span> (rakupp::sub_ovf(__t1, <span class="mi">1LL</span>, &amp;__t2)) <span class="k">break</span>;
+    <span class="kt">long</span> <span class="kt">long</span> __t3; <span class="k">if</span> (rakupp::add_ovf(v_ssum.i, __t2, &amp;__t3)) <span class="k">break</span>;
+    v_ssum.i = __t3; __lok = <span class="kc">true</span>;
+} <span class="k">while</span> (<span class="mi">0</span>);
+<span class="k">if</span> (!__lok) { v_ssum = rtAdd(v_ssum,
+                  rtSub(rtMul(v__t0, Value::integer(<span class="mi">2LL</span>)),
+                        Value::integer(<span class="mi">1LL</span>))); } }</code></pre>
 <p>Any guard failure, overflow, or domain failure falls through to the untouched boxed emission. That is sound because <strong>lane leaves are pure</strong> — literals and variable reads — so re-evaluating them on the slow path has no side effects.</p>
 <p>The lane applies to statement-position assignment to a plain scalar, statement- position <code>++</code>/<code>--</code>, and conditions. The store additionally requires <code>rtIntSlot</code>: not an enum-typed box, whose stringification is its name rather than its number.</p>
 <p>Operations covered: <code>+ - *</code> overflow-checked, unary minus, floored <code>%</code> mirroring <code>rtMod</code> bit for bit, <code>%%</code>, and the six comparisons. Everything else — <code>Num</code>s, strings, <code>Rat</code>s, bignums, array elements, method calls — fails the lane at compile time or its guards at run time.</p>
 <h2 id="three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></h2>
 <p>Three changes look like optimisations and are shipped as defaults in every mode, because each fixes a <strong>correctness wart</strong> rather than adding speed.</p>
 <p><strong>In-place <code>~=</code>.</strong> <code>$s ~= …</code> naively rebuilds the whole string each step, so <em>n</em> appends do quadratic work. The interpreter and Rakudo both build strings in linear time, so this was a wart:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-inline void rtCatAssign(Value&amp; l, const Value&amp; r) {
-    if (l.t == VT::Str &amp;&amp; r.t == VT::Str) { l.s += r.s; return; }
-    l = applyArith("~", l, r);
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">inline</span> <span class="kt">void</span> rtCatAssign(Value&amp; l, <span class="k">const</span> Value&amp; r) {
+    <span class="k">if</span> (l.t == VT::Str &amp;&amp; r.t == VT::Str) { l.s += r.s; <span class="k">return</span>; }
+    l = applyArith(<span class="s2">"~"</span>, l, r);
 }</code></pre>
 <p>The interpreter pairs it with sink context, so a loop body's assignment does not copy its growing result either.</p>
 <p><strong><code>.sort($key)</code> extracts the key once per element.</strong> <code>.sort</code> takes either a 2-ary comparator or a 1-ary key extractor, and the difference is asymptotic: a comparator is <em>supposed</em> to run per comparison, but a key extractor runs <strong>once per element</strong>. Raku++ used to call the 1-ary block inside the comparator:</p>
-<pre class="native-code"><code class="lang-cpp">// after — a Schwartzian transform: n calls, then compare the keys
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// after — a Schwartzian transform: n calls, then compare the keys</span>
 std::vector&lt;Value&gt; keys(items.size());
-for (size_t i = 0; i &lt; items.size(); i++)
+<span class="k">for</span> (<span class="kt">size_t</span> i = <span class="mi">0</span>; i &lt; items.size(); i++)
     keys[i] = callCallable(blk, {items[i]});
-std::stable_sort(order.begin(), order.end(), [&amp;](size_t x, size_t y) {
-    return valueCmp(keys[x], keys[y]) &lt; 0;
+std::stable_sort(order.begin(), order.end(), [&amp;](<span class="kt">size_t</span> x, <span class="kt">size_t</span> y) {
+    <span class="k">return</span> valueCmp(keys[x], keys[y]) &lt; <span class="mi">0</span>;
 });</code></pre>
 <p>Sorting codepoints by the length of their Unicode name:</p>
 <div class="tablewrap"><table><tr><th>N</th><th>before</th><th>after</th><th>Rakudo</th></tr><tr><td>8 K</td><td>5.70 s</td><td>0.29 s</td><td>0.34 s</td></tr>
@@ -156,6 +156,6 @@ std::stable_sort(order.begin(), order.end(), [&amp;](size_t x, size_t y) {
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

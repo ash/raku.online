@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Longest-Token Matching — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -24,7 +24,7 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 22</p><h1>Longest-Token Matching</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#two-rankers">Two rankers</a></li><li><a href="#what-ends-a-declarative-prefix">What ends a declarative prefix</a></li><li><a href="#the-gap-aware-hybrid-contract">The gap-aware hybrid contract</a></li><li><a href="#the-automaton">The automaton</a></li><li><a href="#the-cache-and-an-address-reuse-bug">The cache, and an address-reuse bug</a></li><li><a href="#subrule-expansion-three-routes">Subrule expansion: three routes</a></li><li><a href="#proto-dispatch">Proto dispatch</a></li><li><a href="#the-tie-break-must-be-per-path">The tie-break must be per-path</a></li><li><a href="#oracle-notes">Oracle notes</a></li><li><a href="#debugging-and-measured-results">Debugging and measured results</a></li></ul></nav>
 <p>Raku's <code>|</code> alternation does not try its branches left to right. Each branch is ranked by how far its <strong>declarative prefix</strong> can reach into the input — the leading part of the pattern made of literals, character classes and quantifiers, up to the first procedural construct. The branch with the longest reachable prefix is committed first; ties break by more-literal-first, then by declaration order. <code>||</code> is the opt-out: sequential first match, no ranking.</p>
-<pre class="native-code"><code class="lang-raku">say ("abcd" ~~ / [ ab { } cd ] | abc /).Str;   # abc</code></pre>
+<pre class="native-code"><code class="lang-raku">say (<span class="s2">"abcd"</span> ~~ / [ ab { } cd ] | abc /).Str;   <span class="c1"># abc</span></code></pre>
 <p>The first branch <em>could</em> match four characters, but its declarative prefix ends at the code block, at length 2. <code>abc</code>'s prefix is 3, so <code>abc</code> wins.</p>
 <p>Two properties of that example matter and pull in opposite directions. The ranking is by <strong>prefix</strong> length, not by greedy match length. And ranking must run <strong>no user code</strong> — the <code>{ }</code> above must not fire for a branch that loses.</p>
 <h2 id="two-rankers">Two rankers</h2>
@@ -41,44 +41,44 @@
 <h2 id="the-gap-aware-hybrid-contract">The gap-aware hybrid contract</h2>
 <p><code>RAKUPP_LTM=1</code> must never be <em>less</em> correct than the default. So:</p>
 <blockquote class="note"><p>The NFA decides an alternation only when <strong>every</strong> branch's prefix ended for a spec reason. If any branch hit a model gap, that alternation falls back to the probe.</p></blockquote>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-bool anyModelGap() const { return anyGap_; }</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="kt">bool</span> anyModelGap() <span class="k">const</span> { <span class="k">return</span> anyGap_; }</code></pre>
 <p>Each expansion route closed converts more alternations from probe fallback to NFA ranking. A branch whose prefix cannot reach any accept state on the given input is not a candidate at all — the commit never tries it, matching Rakudo's own pruning.</p>
 <h2 id="the-automaton">The automaton</h2>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-struct Pred {
-    char kind = 'A';   // 'L' literal cp, 'C' class node, 'A' any,
-                       // 'S' whitespace (&lt;ws&gt;), 'F' builtin flag class
-    const void* node = nullptr;
-    uint32_t lit = 0;
-    bool icase = false;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="k">struct</span> Pred {
+    <span class="kt">char</span> kind = <span class="s1">'A'</span>;   <span class="c1">// 'L' literal cp, 'C' class node, 'A' any,</span>
+                       <span class="c1">// 'S' whitespace (&lt;ws&gt;), 'F' builtin flag class</span>
+    <span class="k">const</span> <span class="kt">void</span>* node = <span class="kc">nullptr</span>;
+    <span class="kt">uint32_t</span> lit = <span class="mi">0</span>;
+    <span class="kt">bool</span> icase = <span class="kc">false</span>;
 };
-struct State {
-    std::vector&lt;std::pair&lt;int,int&gt;&gt; eps;
-    std::vector&lt;std::pair&lt;int,int&gt;&gt; edges;
-    int acceptBranch = -1;
-    int litDepth = 0;
+<span class="k">struct</span> State {
+    std::vector&lt;std::pair&lt;<span class="kt">int</span>,<span class="kt">int</span>&gt;&gt; eps;
+    std::vector&lt;std::pair&lt;<span class="kt">int</span>,<span class="kt">int</span>&gt;&gt; edges;
+    <span class="kt">int</span> acceptBranch = -<span class="mi">1</span>;
+    <span class="kt">int</span> litDepth = <span class="mi">0</span>;
 };</code></pre>
 <p>Transitions are codepoint predicates that <strong>reuse the <code>Class</code> node's own match data</strong> — byte ranges, codepoint ranges, negation, folding. There is no second Unicode implementation, which is both less code and structurally safer: the ranker cannot disagree with the matcher about what a class contains.</p>
 <p>The <code>Pred</code> borrows the <code>Regex</code>'s <code>Node</code>, relying on the regex outliving its cached automaton — the same lifetime the byteset cache already assumes.</p>
 <p>Every branch gets its <strong>own</strong> entry epsilon-edge from state 0. Sharing entry states once let a sibling branch's <code>a*</code> loop re-anchor other branches, which produced ranks that were not merely wrong but incoherent.</p>
 <h2 id="the-cache-and-an-address-reuse-bug">The cache, and an address-reuse bug</h2>
 <p>The automaton is cached <strong>on the <code>Alt</code> node</strong>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Regex.h — Node
-mutable std::unique_ptr&lt;LtmNfa&gt; ltmNfa;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h — Node</span>
+<span class="k">mutable</span> std::unique_ptr&lt;LtmNfa&gt; ltmNfa;</code></pre>
 <p>The first implementation used a side map keyed on <code>Node*</code>, which is the obvious thing and was wrong. A process compiles many regexes, freed node addresses get recycled by the allocator, and the map handed out an automaton built for a completely different pattern. The symptom, found by the phase-1 harness on a Roast alternation file, was empty or nonsense ranks.</p>
 <p>That is the exact opposite of the flip-flop state map in <a href="/book/lazy/">Chapter 17</a>, which <em>is</em> keyed on a node address and <em>is</em> correct — because AST nodes are never freed while regex nodes are. The rule to extract: <strong>a pointer is only a valid key when its target's lifetime is at least the map's.</strong></p>
 <p>For expanded subrules there is a second staleness axis. Named regexes register last-wins, so a re-declared token changes what the same compiled node resolves to. The stored pattern text doubles as a staleness stamp:</p>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-bool stillValid(const GrammarHooks* hooks) const;
-std::map&lt;std::string, std::string&gt; expandStamps_;   // name → pattern text used</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="kt">bool</span> stillValid(<span class="k">const</span> GrammarHooks* hooks) <span class="k">const</span>;
+std::map&lt;std::string, std::string&gt; expandStamps_;   <span class="c1">// name → pattern text used</span></code></pre>
 <h2 id="subrule-expansion-three-routes">Subrule expansion: three routes</h2>
 <p>A <code>&lt;name&gt;</code> inside a branch resolves through an expansion context:</p>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-struct LtmExpand {
-    const GrammarHooks* hooks = nullptr;
-    std::function&lt;int(const std::string&amp; name, const void*&amp; regexOut,
-                      char&amp; flagOut)&gt; grammar;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="k">struct</span> LtmExpand {
+    <span class="k">const</span> GrammarHooks* hooks = <span class="kc">nullptr</span>;
+    std::function&lt;<span class="kt">int</span>(<span class="k">const</span> std::string&amp; name, <span class="k">const</span> <span class="kt">void</span>*&amp; regexOut,
+                      <span class="kt">char</span>&amp; flagOut)&gt; grammar;
 };</code></pre>
 <p><strong>Lexical.</strong> Interpreter-registered <code>my token/rule/regex</code> bodies, handed over as text plus the match path's exact flag spelling (<code>rule</code> becomes <code>sr</code>, <code>token</code> becomes <code>r</code>). The automaton compiles and <strong>owns</strong> the callee, inlining its prefix recursively. Recursion is treated as a spec prefix end.</p>
 <p><strong>Grammar.</strong> Already-compiled rule bodies from the grammar's own table, so nothing is recompiled and the automaton borrows the <code>Regex</code>'s nodes. The resolver answers with a small integer: refuse, here is a compiled body, this is <code>&lt;ws&gt;</code>, or this is a single-character built-in class. Protos, parameterised rules and dynamically-dependent bodies refuse, which becomes a model gap and therefore a probe fallback.</p>
@@ -86,27 +86,27 @@ struct LtmExpand {
 <p><code>&lt;ws&gt;</code> is modelled as <code>\s*</code> for ranking. That is deliberately approximate — the commit engine enforces the real <code>&lt;!ww&gt;</code> word-boundary gate — and it is ranking-grade rather than semantics-grade, which is all the ranker needs.</p>
 <h3>The composed character class</h3>
 <p>A class written <code>&lt;[\-+.] +uri_alpha +digit&gt;</code> is parsed into a synthesised first-match <code>Alt</code>. Semantically it is a <strong>one-character union</strong>, so the builder must union its members:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Regex.h — Node
-bool classCombo = false;   // a SYNTHESIZED Alt for a composed char class</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h — Node</span>
+<span class="kt">bool</span> classCombo = <span class="kc">false</span>;   <span class="c1">// a SYNTHESIZED Alt for a composed char class</span></code></pre>
 <p>Without the tag those nodes were modelled like a user <code>||</code>, which takes only the first member. That under-matched the prefix and pruned whole branches — the symptom was a URI grammar failing on its <code>scheme</code> rule.</p>
 <h2 id="proto-dispatch">Proto dispatch</h2>
 <p>Protoregex candidates are ranked by the same machinery:</p>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-static std::unique_ptr&lt;LtmNfa&gt; buildForBranches(
-    const std::vector&lt;const void*&gt;&amp; regexes,
-    const std::vector&lt;std::string&gt;&amp; syms, const LtmExpand* ctx);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="k">static</span> std::unique_ptr&lt;LtmNfa&gt; buildForBranches(
+    <span class="k">const</span> std::vector&lt;<span class="k">const</span> <span class="kt">void</span>*&gt;&amp; regexes,
+    <span class="k">const</span> std::vector&lt;std::string&gt;&amp; syms, <span class="k">const</span> LtmExpand* ctx);</code></pre>
 <p>One union automaton over all candidates' bodies, one branch per candidate, with <code>&lt;sym&gt;</code> inlined per branch. It is cached on the <code>GrammarRuleMeta</code>, and since the matcher is per-parse, that cache dies with the parse and needs no staleness management at all. Any model gap in any candidate discards the automaton and the probe dispatch stands.</p>
 <h2 id="the-tie-break-must-be-per-path">The tie-break must be per-path</h2>
 <p>Equal prefix length breaks by "more literal wins", and that count must be computed <strong>per path during the scan</strong>, not stored per state.</p>
 <p>The builder originally kept a static literal depth on each state, max-merged at join states. In:</p>
-<pre class="native-code"><code class="lang-raku">token TOP { &lt;foo&gt; | &lt;bar&gt; }
-token foo { \w\w }
-token bar { aa | &lt;foo&gt; }</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">token</span> TOP { &lt;foo&gt; | &lt;bar&gt; }
+<span class="k">token</span> foo { \w\w }
+<span class="k">token</span> bar { aa | &lt;foo&gt; }</code></pre>
 <p>on input <code>"bb"</code>, <code>bar</code>'s dead <code>aa</code> path — two literals — leaked its count onto the join state that <code>bar</code>'s live <code>&lt;foo&gt;</code> path — zero literals — also reaches. So <code>bar</code> stole the tie from the earlier-declared <code>foo</code>.</p>
 <p><code>rank()</code> now carries, per live state, the length of the leading literal run along the path that reached it, frozen at the first non-literal edge; accepts record the <em>path's</em> value, not the state's.</p>
-<pre class="native-code"><code class="lang-cpp">// src/LtmNfa.h
-struct Ranked { int branch; long prefixEnd; long litPrefix; };
-std::vector&lt;Ranked&gt; rank(const std::string&amp; s, long pos) const;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/LtmNfa.h</span>
+<span class="k">struct</span> Ranked { <span class="kt">int</span> branch; <span class="kt">long</span> prefixEnd; <span class="kt">long</span> litPrefix; };
+std::vector&lt;Ranked&gt; rank(<span class="k">const</span> std::string&amp; s, <span class="kt">long</span> pos) <span class="k">const</span>;</code></pre>
 <p>sorted by prefix end descending, then literal prefix descending, then declaration order — the specification's tie-break chain.</p>
 <h2 id="oracle-notes">Oracle notes</h2>
 <p>Three behaviours confirmed against Rakudo while building this, each of which would otherwise have been guessed wrong:</p>
@@ -127,6 +127,6 @@ std::vector&lt;Ranked&gt; rank(const std::string&amp; s, long pos) const;</code>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

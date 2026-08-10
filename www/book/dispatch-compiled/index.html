@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dispatch Cost in Compiled Code — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -47,13 +47,13 @@
 <p>The late-chain operators pay for everything they walk past: the mixin-delegation check, negated-operator handling, set operations, junction autothreading, <code>Whatever</code> currying, the <code>Version</code> branch — about 110 nanoseconds of "is this something special?" before the actual string work.</p>
 <h2 id="cut-1-cached-builtin-pointers">Cut 1 — cached builtin pointers</h2>
 <p>Every <code>RT.callBuiltin("name", …)</code> site now routes through a per-name pointer resolved once at program startup:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-const BuiltinFn* builtinPtr(const std::string&amp; name) const;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">const</span> BuiltinFn* builtinPtr(<span class="k">const</span> std::string&amp; name) <span class="k">const</span>;
 
-inline Value rtCallB(Interpreter&amp; I, const BuiltinFn* f, const char* name,
+<span class="k">inline</span> Value rtCallB(Interpreter&amp; I, <span class="k">const</span> BuiltinFn* f, <span class="k">const</span> <span class="kt">char</span>* name,
                      ValueList args) {
-    if (f) return (*f)(I, args);
-    return I.callBuiltin(name, std::move(args));   // by-name fallback
+    <span class="k">if</span> (f) <span class="k">return</span> (*f)(I, args);
+    <span class="k">return</span> I.callBuiltin(name, std::move(args));   <span class="c1">// by-name fallback</span>
 }</code></pre>
 <p>The generated call <code>rtCallB(RT, __bfp0, "say", ValueList{…})</code> <strong>is</strong> the cached call, not a lookup: <code>rtCallB</code> is a three-line <code>inline</code> shim whose hot path is one indirect call through the already-resolved pointer, and the <code>"say"</code> literal is touched only on the fallback branch — nothing is hashed or searched.</p>
 <p>The shim also does a required mechanical job. <code>BuiltinFn</code> takes <code>ValueList&amp;</code>, which a temporary cannot bind to; <code>rtCallB</code>'s by-value parameter materialises it into an lvalue.</p>
@@ -72,11 +72,11 @@ inline Value rtCallB(Interpreter&amp; I, const BuiltinFn* f, const char* name,
 <p><strong>That figure was correct only for renaming the same call shape</strong> — an out-of-line call still taking a <code>ValueList</code>. What a real named function unlocks is different in kind:</p>
 <ul><li><strong>direct <code>Value</code> arguments</strong>, so no per-call <code>ValueList</code> allocation — which is the actual floor;</li><li><strong>an inlinable hot path</strong>, because a <code>std::function</code> is an opaque wall to the optimizer and an <code>inline</code> function is not.</li></ul>
 <p>Worse, some builtin lambdas hid extra cost. <code>abs</code>'s delegated to <code>methodCall</code> — the full method-name ladder on every call, about 370 nanoseconds per iteration in an <code>abs</code> loop.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-inline Value rtBAbs(Interpreter&amp; I, const Value&amp; v) {
-    if (v.t == VT::Int &amp;&amp; !v.big &amp;&amp; I.builtinExt_.empty())
-        return Value::integer(v.i &lt; 0 ? -v.i : v.i);
-    return rtBAbsSlow(I, v);
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">inline</span> Value rtBAbs(Interpreter&amp; I, <span class="k">const</span> Value&amp; v) {
+    <span class="k">if</span> (v.t == VT::Int &amp;&amp; !v.big &amp;&amp; I.builtinExt_.empty())
+        <span class="k">return</span> Value::integer(v.i &lt; <span class="mi">0</span> ? -v.i : v.i);
+    <span class="k">return</span> rtBAbsSlow(I, v);
 }</code></pre>
 <p><code>abs</code>, <code>chr</code> and <code>ord</code> became real functions. The interpreter's map entries wrap them, <strong>so the interpreter and the generic compiled path get the win too</strong>, and <code>-O</code> emits direct calls when a single plain positional argument lines up.</p>
 <p>Note the <code>builtinExt_.empty()</code> guard: the inline fast path switches itself off the moment a program <code>augment</code>s a built-in type, so an augmented <code>.abs</code> still wins (<a href="/book/objects/">Chapter 16</a>).</p>
@@ -101,6 +101,6 @@ inline Value rtBAbs(Interpreter&amp; I, const Value&amp; v) {
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Node Specialization — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -46,9 +46,9 @@
 <h2 id="what-cached-means-here">What "cached" means here</h2>
 <p>"Cache" is a misleading word for this, so be precise. In most contexts caching means remembering a computed result so you do not recompute it. <strong>Nothing about the result is remembered.</strong> What is remembered is a fact about the source code.</p>
 <p>The entire mechanism is two extra fields on each <code>Binary</code> node — one byte and one pointer. No table, no map, no key, nothing global:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Ast.h — Binary
-mutable DecidedOnce&lt;signed char&gt; fastShape{-1};   // which shape this node is
-mutable DecidedOnce&lt;const void*&gt; litVal{nullptr}; // the literal, shapes 1 and 2</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Binary</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; fastShape{-<span class="mi">1</span>};   <span class="c1">// which shape this node is</span>
+<span class="k">mutable</span> DecidedOnce&lt;<span class="k">const</span> <span class="kt">void</span>*&gt; litVal{<span class="kc">nullptr</span>}; <span class="c1">// the literal, shapes 1 and 2</span></code></pre>
 <p>Walk one node, <code>$n - 1</code>, through its life.</p>
 <p><strong>After parsing</strong>, the fields say nothing:</p>
 <pre class="native-code"><code>op        = "-"
@@ -63,8 +63,8 @@ litVal   -&gt; Value(1)      &lt;- the 1 from the source text</code></pre>
 <p>So the two fields hold two different kinds of thing.</p>
 <ul><li><strong><code>fastShape</code> is a classification of the syntax</strong> — "this expression is written as variable-operator-literal". That is a fact about the <em>text of the program</em>. It is true before the program starts and stays true until it exits, because source code does not rewrite itself.</li><li><strong><code>litVal</code> is the literal's value.</strong> This is cached in the ordinary sense, but a literal is a constant by definition: if the source says <code>1</code>, it is 1 forever.</li></ul>
 <p><strong><code>$n</code> appears in neither field</strong> — not its value, not its address, not the scope it was found in. Every evaluation does a fresh lookup by name through the current environment and a fresh type check on whatever comes back. Which is why all of this behaves normally:</p>
-<pre class="native-code"><code class="lang-raku">my $v = 1;
-for ^4 { say $v + 1; $v = $v ~~ Int ?? "10" !! 1 }   # 2, 11, 2, 11</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$v</span> = <span class="mi">1</span>;
+<span class="k">for</span> ^<span class="mi">4</span> { say <span class="nv">$v</span> + <span class="mi">1</span>; <span class="nv">$v</span> = <span class="nv">$v</span> ~~ Int ?? <span class="s2">"10"</span> !! <span class="mi">1</span> }   <span class="c1"># 2, 11, 2, 11</span></code></pre>
 <p>One AST node, four evaluations, a variable that changes both value and type underneath it, and the right answer each time. The visits where <code>$v</code> holds a <code>Str</code> still take the fast path, because <code>Str</code> is in the guard; had it become a <code>DateTime</code>, that visit alone would have fallen through to the general path.</p>
 <p>Why store anything at all, then? Because the classification is not free — it is several branches: check both child node kinds, check the variable name's second character, check the literal is not a bignum or a <code>Rat</code>. Asking that once per <em>node</em> instead of once per <em>evaluation</em> is the whole optimisation. A <code>fib(29)</code> run evaluates <code>$n - 1</code> about 1.6 million times and answers the question once.</p>
 <p>It is less a cache than a <strong>sticky note on the node</strong>, written the first time anyone reads it. The precedent sits directly above it in the same struct: <code>simpleOp</code> does exactly the same thing for "is this a plain operator, or one of the special-cased ones?", also decided once, also from the syntax alone.</p>
@@ -107,6 +107,6 @@ for ^4 { say $v + 1; $v = $v ~~ Int ?? "10" !! 1 }   # 2, 11, 2, 11</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

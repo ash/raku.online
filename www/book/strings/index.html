@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strings: CowStr — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -32,20 +32,20 @@
 <tr><td><code>nqp::ordat</code> on a global</td><td>79 ms</td><td>11 ms</td></tr></table></div>
 <h2 id="what-it-is">What it is</h2>
 <p>Two arms, exactly one live:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-class CowStr {
-    std::string s_;                        // short: inline
-    std::shared_ptr&lt;const StrBody&gt; p_;     // long: shared, immutable
-    static constexpr size_t kPromote = 64;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">class</span> CowStr {
+    std::string s_;                        <span class="c1">// short: inline</span>
+    std::shared_ptr&lt;<span class="k">const</span> StrBody&gt; p_;     <span class="c1">// long: shared, immutable</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">size_t</span> kPromote = <span class="mi">64</span>;
 
-    void take(std::string x) {
-        if (x.size() &gt;= kPromote) {
-            p_ = std::make_shared&lt;const StrBody&gt;(std::move(x)); s_.clear();
-        } else { s_ = std::move(x); p_.reset(); }
+    <span class="kt">void</span> take(std::string x) {
+        <span class="k">if</span> (x.size() &gt;= kPromote) {
+            p_ = std::make_shared&lt;<span class="k">const</span> StrBody&gt;(std::move(x)); s_.clear();
+        } <span class="k">else</span> { s_ = std::move(x); p_.reset(); }
     }
-public:
-    const std::string&amp; str() const { return p_ ? p_-&gt;text : s_; }
-    std::string&amp; mut() { if (p_) { s_ = p_-&gt;text; p_.reset(); } return s_; }
+<span class="k">public</span>:
+    <span class="k">const</span> std::string&amp; str() <span class="k">const</span> { <span class="k">return</span> p_ ? p_-&gt;text : s_; }
+    std::string&amp; mut() { <span class="k">if</span> (p_) { s_ = p_-&gt;text; p_.reset(); } <span class="k">return</span> s_; }
 };</code></pre>
 <p>Short strings stay inline, where <code>std::string</code>'s own small-buffer optimisation already makes a copy free and sharing would cost an allocation to save nothing. Long strings are promoted once into a shared immutable body, after which copying is a refcount bump.</p>
 <p>Three decisions inside that deserve their own paragraphs.</p>
@@ -59,12 +59,12 @@ public:
 <p>So 64 leaves a band in which a copy is a couple of words and no allocation happens either way, and only promotes when copying is the thing being paid for. It is not a tuned number; it is a deliberately safe one.</p>
 <h3>The body caches string properties</h3>
 <p>This is the part no general-purpose string type can do, and the real reason <code>CowStr</code> exists rather than a third-party copy-on-write string.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-struct StrBody {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">struct</span> StrBody {
     std::string text;
-    mutable std::atomic&lt;signed char&gt; allAscii{-1};
-    mutable std::atomic&lt;signed char&gt; crFree{-1};
-    mutable std::atomic&lt;long long&gt;   nGraphemes{-1};
+    <span class="k">mutable</span> std::atomic&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; allAscii{-<span class="mi">1</span>};
+    <span class="k">mutable</span> std::atomic&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; crFree{-<span class="mi">1</span>};
+    <span class="k">mutable</span> std::atomic&lt;<span class="kt">long</span> <span class="kt">long</span>&gt;   nGraphemes{-<span class="mi">1</span>};
 };</code></pre>
 <p>Raku string positions are <strong>grapheme</strong> positions, and Raku++ stores UTF-8 bytes. So every indexing operation must first establish whether a byte index is also a grapheme index. Establishing that by scanning is O(position) per character examined — which is the <em>other</em> half of the quadratic, independent of copying.</p>
 <p>Because the promoted body is immutable, the answer can be computed once and cached on it. Three flags suffice:</p>
@@ -106,6 +106,6 @@ struct StrBody {
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Parser — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -39,54 +39,54 @@
 <tr><td><code>use</code> / <code>no</code> / <code>need</code></td><td><code>UseStmt</code></td></tr>
 <tr><td>a phaser name</td><td>a <code>Block</code> tagged with the phaser</td></tr></table></div>
 <p>Everything not caught is a bare expression statement:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — the parseStatementImpl fallthrough
-auto es = std::make_unique&lt;ExprStmt&gt;();
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — the parseStatementImpl fallthrough</span>
+<span class="k">auto</span> es = std::make_unique&lt;ExprStmt&gt;();
 es-&gt;e = parseExpression();
-return applyModifiers(std::move(es));</code></pre>
+<span class="k">return</span> applyModifiers(std::move(es));</code></pre>
 <p>Because keywords are matched by text and only in leading position, an <code>if</code> anywhere else is an ordinary identifier.</p>
 <h2 id="statement-modifiers">Statement modifiers</h2>
 <p>A trailing <code>if</code>, <code>unless</code>, <code>while</code>, <code>until</code>, <code>for</code>, <code>given</code> or <code>with</code> turns the statement into the corresponding control node and sets a <code>modifier</code> flag. <code>applyModifiers</code> recurses, so modifiers chain:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — applyModifiers, the `for` case, abridged
-if (isIdent("for")) { advance();
-    auto fs = std::make_unique&lt;ForStmt&gt;();
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — applyModifiers, the `for` case, abridged</span>
+<span class="k">if</span> (isIdent(<span class="s2">"for"</span>)) { advance();
+    <span class="k">auto</span> fs = std::make_unique&lt;ForStmt&gt;();
     fs-&gt;list = parseExpression();
-    fs-&gt;modifier = true;      // no implicit block
+    fs-&gt;modifier = <span class="kc">true</span>;      <span class="c1">// no implicit block</span>
     fs-&gt;body = wrapStmt(std::move(s));
-    return applyModifiers(std::move(fs));
+    <span class="k">return</span> applyModifiers(std::move(fs));
 }</code></pre>
 <p>The flag is not cosmetic. <code>$x for @a</code> has no implicit block, so a <code>my</code> declaration inside <code>$x</code> is <em>not</em> scoped away when the loop ends — unlike <code>for @a { … }</code>. Every looping and topicalising node carries the same flag for the same reason.</p>
 <h2 id="block-or-hash">Block or hash?</h2>
 <p><code>{ … }</code> is Raku's classic ambiguity. The parser uses a small <code>looksHash</code> heuristic: it is a hash if the first token is a pair key followed immediately by <code>=&gt;</code>, or a colon-pair (<code>:name</code>, <code>:$v</code>, <code>:!flag</code>), or a <code>%</code>-variable followed by <code>,</code> or <code>}</code>. The empty case is decided by <strong>position</strong>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — a statement-leading '{' is a BLOCK unless looksHash
-// src/Parser.cpp — parsePrimary, expression position:
-if (a.kind == Tok::RBrace) isHash = true;    // {} in value context: a Hash</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — a statement-leading '{' is a BLOCK unless looksHash</span>
+<span class="c1">// src/Parser.cpp — parsePrimary, expression position:</span>
+<span class="k">if</span> (a.kind == Tok::RBrace) isHash = <span class="kc">true</span>;    <span class="c1">// {} in value context: a Hash</span></code></pre>
 <p>So a bare <code>{}</code> statement is an empty block, and <code>{}</code> where a value is expected is an empty hash. <code>{ $_ * 2 }</code> — first token a <code>$</code>-variable, no <code>=&gt;</code> — is a block.</p>
 <p>There is a second, subtler brace rule. A <code>}</code> that closed a <strong>block</strong> at the end of a line ends the statement, so an infix on the next line starts a new statement rather than continuing the expression:</p>
-<pre class="native-code"><code class="lang-raku">($r, $g, $b) = (…).map: { … }      # the statement ends here
-%(r =&gt; $r, …)                       # a new statement, not `} % (…)`</code></pre>
+<pre class="native-code"><code class="lang-raku">(<span class="nv">$r</span>, <span class="nv">$g</span>, <span class="nv">$b</span>) = (…).map: { … }      <span class="c1"># the statement ends here</span>
+%(r =&gt; <span class="nv">$r</span>, …)                       <span class="c1"># a new statement, not `} % (…)`</span></code></pre>
 <p>A subscript's <code>}</code> does not count, because <code>%h{'a'}</code> followed by a newline and <code>+ 3</code> really is a continuation. That is why the parser records the token <em>index</em> of the last block-closing brace, <code>lastBlockClose_</code>, rather than testing the token kind.</p>
 <h2 id="expressions-the-pratt-core">Expressions: the Pratt core</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp
-ExprPtr Parser::parseExpr(int minbp) {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp</span>
+ExprPtr Parser::parseExpr(<span class="kt">int</span> minbp) {
     ExprPtr lhs = parsePrefix();
-    for (;;) {
+    <span class="k">for</span> (;;) {
         InfixInfo in = classifyInfix(cur());
-        if (!in.valid || in.lbp &lt; minbp) break;
+        <span class="k">if</span> (!in.valid || in.lbp &lt; minbp) <span class="k">break</span>;
         advance();
-        int nextMin = in.rightAssoc ? in.lbp : in.lbp + 1;
+        <span class="kt">int</span> nextMin = in.rightAssoc ? in.lbp : in.lbp + <span class="mi">1</span>;
         ExprPtr rhs = parseExpr(nextMin);
-        // … build a Binary / Assign / Range / Pair …
+        <span class="c1">// … build a Binary / Assign / Range / Pair …</span>
     }
-    return lhs;
+    <span class="k">return</span> lhs;
 }</code></pre>
 <p>Read a prefix term; then loop, consuming any infix whose left binding power is at least <code>minbp</code>, recursing for the right-hand side with a bound derived from the operator's precedence and associativity. For a left-associative operator the recursive bound is <code>lbp + 1</code>, which is what stops it re-associating.</p>
 <p>Binding powers are a named enum, higher meaning tighter, and <strong>spaced by ten</strong>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp
-enum {
-    BP_OR = 10, BP_AND = 20, BP_ZIP = 25, BP_COMMA = 30, BP_ASSIGN = 40,
-    BP_TERNARY = 50, BP_OROR = 60, BP_ANDAND = 70, BP_COMPARE = 80,
-    BP_RANGE = 90, BP_CONCAT = 100, BP_REPLICATE = 110, BP_ADD = 120,
-    BP_MUL = 130, BP_POW = 140, BP_PREFIX = 150
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp</span>
+<span class="k">enum</span> {
+    BP_OR = <span class="mi">10</span>, BP_AND = <span class="mi">20</span>, BP_ZIP = <span class="mi">25</span>, BP_COMMA = <span class="mi">30</span>, BP_ASSIGN = <span class="mi">40</span>,
+    BP_TERNARY = <span class="mi">50</span>, BP_OROR = <span class="mi">60</span>, BP_ANDAND = <span class="mi">70</span>, BP_COMPARE = <span class="mi">80</span>,
+    BP_RANGE = <span class="mi">90</span>, BP_CONCAT = <span class="mi">100</span>, BP_REPLICATE = <span class="mi">110</span>, BP_ADD = <span class="mi">120</span>,
+    BP_MUL = <span class="mi">130</span>, BP_POW = <span class="mi">140</span>, BP_PREFIX = <span class="mi">150</span>
 };</code></pre>
 <p>The gaps are the whole point, and the next chapter spends them.</p>
 <p>Prefix operators (<code>- ! ~ + ? ++ --</code>) are handled in <code>parsePrefix</code>; postfix ones — <code>++</code>, <code>--</code>, method calls, subscripts, <code>.()</code> — in <code>parsePostfix</code>. The two interleave around the primary term, so <code>-$obj.foo[0]++</code> composes in the right order without a special case.</p>
@@ -101,7 +101,7 @@ enum {
 <p>A <code>"…$x…{ code }…"</code> literal goes through <code>parseInterpString(raw)</code>, which builds an <code>InterpStr</code> node whose <code>parts</code> alternate literal <code>StrLit</code> chunks with parsed sub-expressions. It recognises <code>$x</code>, <code>@a[…]</code>, <code>%h{…}</code>, the capture variables <code>$/</code>, <code>$0</code>, <code>$&lt;name&gt;</code>, backslash escapes including <code>\x[…]</code> and <code>\c[NAME]</code>, and <code>{ EXPR }</code> blocks.</p>
 <p>There is a commit rule for method chains that matches Raku's: <code>"$obj.foo"</code> interpolates the <code>.foo</code> only if a call or a subscript follows it; otherwise the <code>.foo</code> stays literal text.</p>
 <p>Embedded fragments are parsed by a fresh lexer and parser, which <strong>inherits the program's user-declared operators</strong>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.cpp — parseEmbeddedExpr
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — parseEmbeddedExpr</span>
 sub.userInfix_ = userInfix_;   sub.userInfixRight_ = userInfixRight_;
 sub.userPrefix_ = userPrefix_; sub.userPostfix_ = userPostfix_;
 sub.userCircumfix_ = userCircumfix_;
@@ -112,12 +112,12 @@ sub.userPostcircumfix_ = userPostcircumfix_;</code></pre>
 <ul><li><strong>Phasers</strong> become <code>Block</code> statements tagged with a phaser name. <code>BEGIN</code> is not executed during parsing; the interpreter schedules it after the parse.</li><li><strong><code>constant</code></strong> is not folded. It becomes a declaring <code>VarExpr</code> that the interpreter binds.</li><li><strong><code>use</code> and <code>no</code></strong> become <code>UseStmt</code> nodes. No module is loaded, no pragma takes effect, and even <code>no strict</code> is handled at run time rather than by toggling a parser mode.</li><li><strong>Named subs are hoisted</strong> — but by the <em>interpreter</em>, not the parser. <code>hoistSubs</code> pre-registers every named <code>SubDecl</code> in a scope before running its statements, which is why subs need not be declared before use.</li></ul>
 <p>The one parse-time side effect in the entire front end is registering a user-declared operator, which is lexical bookkeeping rather than execution. <code>use Foo</code> participates in exactly that much: <code>scanModuleOps</code> finds the module's source and <em>text-scans</em> it for operator declarations, so the rest of the importing file parses. It does not lex or parse the module (<a href="/book/modules/">Chapter 30</a>).</p>
 <h2 id="errors">Errors</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.h
-struct ParseError : std::runtime_error {
-    int line;
-    std::string exType;    // X::Parameter::Twigil, … ("" = generic)
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h</span>
+<span class="k">struct</span> ParseError : std::runtime_error {
+    <span class="kt">int</span> line;
+    std::string exType;    <span class="c1">// X::Parameter::Twigil, … ("" = generic)</span>
     std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; exAttrs;
-    bool atEof = false;
+    <span class="kt">bool</span> atEof = <span class="kc">false</span>;
 };</code></pre>
 <p>A parse error carries a line, and optionally a <em>typed</em> diagnostic — an exception class name plus attributes — so that compile-time failures Roast checks by class can be reported as that class rather than as a generic message. The driver prints <code>===SORRY!===</code> and exits 1, matching Rakudo's compile-error shape. <code>atEof</code> is the REPL's continuation signal, as in the previous chapter.</p>
 <p><code>checkRedeclarations</code> runs after the parse over each scope's statement list and reports duplicate subs and types in the same scope — one of the few checks that happens before anything runs.</p>
@@ -129,6 +129,6 @@ struct ParseError : std::runtime_error {
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

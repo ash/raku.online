@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Object System — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -24,138 +24,138 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 16</p><h1>The Object System</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#registration-and-lookup">Registration and lookup</a></li><li><a href="#construction">Construction</a></li><li><a href="#attributes-and-accessors">Attributes and accessors</a></li><li><a href="#roles">Roles</a></li><li><a href="#mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></a></li><li><a href="#augment-and-supersede"><code>augment</code> and <code>supersede</code></a></li><li><a href="#package-stashes-and-who">Package stashes and <code>.WHO</code></a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
 <p>A user class is a <code>ClassInfo</code>. An instance is an <code>ObjectData</code> that points at one. There is no per-object method table, no vtable, and no per-class code generation.</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h — abridged
-struct ClassInfo {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — abridged</span>
+<span class="k">struct</span> ClassInfo {
     std::string name;
     std::shared_ptr&lt;ClassInfo&gt; parent;
-    std::string nativeParent;                             // `is Str`, `is Cool`
+    std::string nativeParent;                             <span class="c1">// `is Str`, `is Cool`</span>
     std::vector&lt;std::shared_ptr&lt;ClassInfo&gt;&gt; extraParents;
     std::vector&lt;ClassAttr&gt; attrs;
-    std::map&lt;std::string, Value&gt; methods;                 // Code values
-    std::map&lt;std::string, std::string&gt; rules;             // grammar rules
+    std::map&lt;std::string, Value&gt; methods;                 <span class="c1">// Code values</span>
+    std::map&lt;std::string, std::string&gt; rules;             <span class="c1">// grammar rules</span>
     std::vector&lt;std::string&gt; ruleOrder;
-    bool isGrammar = false, isRole = false;
-    std::string repr;                                     // is repr('CStruct')
+    <span class="kt">bool</span> isGrammar = <span class="kc">false</span>, isRole = <span class="kc">false</span>;
+    std::string repr;                                     <span class="c1">// is repr('CStruct')</span>
     std::string ver, auth, api;
     std::set&lt;std::string&gt; requiredMethods, doneRoles;
-    Value howObj;                                         // persistent .HOW
-    std::shared_ptr&lt;Env&gt; declEnv;                         // for attr defaults
-    ClassDecl* decl = nullptr;                            // for role parameters
+    Value howObj;                                         <span class="c1">// persistent .HOW</span>
+    std::shared_ptr&lt;Env&gt; declEnv;                         <span class="c1">// for attr defaults</span>
+    ClassDecl* decl = <span class="kc">nullptr</span>;                            <span class="c1">// for role parameters</span>
     std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; roleParamBindings;
 };
 
-struct ObjectData {
+<span class="k">struct</span> ObjectData {
     std::shared_ptr&lt;ClassInfo&gt; cls;
     std::map&lt;std::string, Value&gt; attrs;
-    Value boxed; bool hasBoxed = false;                   // for `5 but Role`
+    Value boxed; <span class="kt">bool</span> hasBoxed = <span class="kc">false</span>;                   <span class="c1">// for `5 but Role`</span>
 };</code></pre>
 <p>Everything a class <em>is</em> lives in that first struct, including the grammar rules if it happens to be a grammar — which is how a grammar is just a class whose methods can be regexes (<a href="/book/grammars/">Chapter 21</a>).</p>
 <h2 id="registration-and-lookup">Registration and lookup</h2>
 <p><code>ClassInfo</code>s are registered in one flat map at declaration:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string, std::shared_ptr&lt;ClassInfo&gt;&gt; classes_;
 std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
 <p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 30</a>.</p>
 <p>The alias map softens the consequences of flatness. Registering <code>URI::Path</code> also aliases its tail, <code>Path</code>, unless a real class already claims that name. And a qualified name that is a <em>partial</em> path resolves by unique suffix match:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — resolveClassAlias
-if (n.find("::") != std::string::npos) {
-    const std::string suffix = "::" + n;
-    const std::string* hit = nullptr;
-    for (auto&amp; kv : classes_) {
-        if (…kv.first does not end with suffix…) continue;
-        if (hit) return n;          // ambiguous — leave it alone
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — resolveClassAlias</span>
+<span class="k">if</span> (n.find(<span class="s2">"::"</span>) != std::string::npos) {
+    <span class="k">const</span> std::string suffix = <span class="s2">"::"</span> + n;
+    <span class="k">const</span> std::string* hit = <span class="kc">nullptr</span>;
+    <span class="k">for</span> (<span class="k">auto</span>&amp; kv : classes_) {
+        <span class="k">if</span> (…kv.first does not end with suffix…) <span class="k">continue</span>;
+        <span class="k">if</span> (hit) <span class="k">return</span> n;          <span class="c1">// ambiguous — leave it alone</span>
         hit = &amp;kv.first;
     }
-    if (hit) return classAliases_.emplace(n, *hit).first-&gt;second;
+    <span class="k">if</span> (hit) <span class="k">return</span> classAliases_.emplace(n, *hit).first-&gt;second;
 }</code></pre>
 <p>so <code>Globber::Match</code> inside <code>unit class IO::Glob</code> finds <code>IO::Glob::Globber::Match</code>. Only qualified names take that road — a bare <code>Match</code> must not silently find a nested one — and an ambiguous suffix is left alone rather than guessed at. The successful answer is memoised into the alias map.</p>
 <h2 id="construction">Construction</h2>
 <p>The default <code>new</code> and <code>bless</code> share one path. It walks the class chain <strong>parent-first</strong>, gives each attribute its default, folds named arguments into the attribute map, and then runs <code>BUILD</code> and <code>TWEAK</code>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — default construction, abridged
-for (auto it = chain.rbegin(); it != chain.rend(); ++it)      // parent-first
-    for (auto&amp; at : (*it)-&gt;attrs) {
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — default construction, abridged</span>
+<span class="k">for</span> (<span class="k">auto</span> it = chain.rbegin(); it != chain.rend(); ++it)      <span class="c1">// parent-first</span>
+    <span class="k">for</span> (<span class="k">auto</span>&amp; at : (*it)-&gt;attrs) {
         Value dv = at.hasDefVal ? at.defVal
                  : at.def       ? eval(at.def)
-                 : at.sigil == '@' ? Value::array()
-                 : at.sigil == '%' ? Value::makeHash() : Value::any();
+                 : at.sigil == <span class="s1">'@'</span> ? Value::array()
+                 : at.sigil == <span class="s1">'%'</span> ? Value::makeHash() : Value::any();
         od-&gt;attrs[at.name] = dv;
     }
-for (auto&amp; arg : args)
-    if (arg.t == VT::Pair) od-&gt;attrs[arg.s] = *arg.pairVal;
-if (Value* build = ci-&gt;findMethod("BUILD")) invokeMethod(*build, self, args);
-if (Value* tweak = ci-&gt;findMethod("TWEAK")) invokeMethod(*tweak, self, args);</code></pre>
+<span class="k">for</span> (<span class="k">auto</span>&amp; arg : args)
+    <span class="k">if</span> (arg.t == VT::Pair) od-&gt;attrs[arg.s] = *arg.pairVal;
+<span class="k">if</span> (Value* build = ci-&gt;findMethod(<span class="s2">"BUILD"</span>)) invokeMethod(*build, self, args);
+<span class="k">if</span> (Value* tweak = ci-&gt;findMethod(<span class="s2">"TWEAK"</span>)) invokeMethod(*tweak, self, args);</code></pre>
 <p>Parent-first matters: a subclass's default for an inherited attribute must win, and it does because it is written last.</p>
 <p>Attribute defaults are <em>expressions</em>, evaluated at construction in the scope the class was declared in — which is what <code>ClassInfo::declEnv</code> is for. The compiled backend precomputes them where it can, into <code>ClassAttr::defVal</code>, and falls back to the expression otherwise.</p>
 <p><code>is required</code> throws when construction supplies no value, carrying the reason string from <code>is required("it is a good idea")</code> into the message. <code>is built</code> makes a <em>private</em> attribute settable by name at construction anyway.</p>
 <h2 id="attributes-and-accessors">Attributes and accessors</h2>
 <p><code>$!x</code> is a direct read or write of the attribute map. <code>$.x</code> is a public accessor: method lookup runs first, and on a miss <code>findAttr</code> supplies the attribute. The compiled backend uses the same map through two helpers:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp
-Value rtAttrGet(const Value&amp; self, const std::string&amp; name) {
-    if (self.t == VT::Object &amp;&amp; self.obj) {
-        auto it = self.obj-&gt;attrs.find(name);
-        if (it != self.obj-&gt;attrs.end()) return it-&gt;second;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp</span>
+Value rtAttrGet(<span class="k">const</span> Value&amp; self, <span class="k">const</span> std::string&amp; name) {
+    <span class="k">if</span> (self.t == VT::Object &amp;&amp; self.obj) {
+        <span class="k">auto</span> it = self.obj-&gt;attrs.find(name);
+        <span class="k">if</span> (it != self.obj-&gt;attrs.end()) <span class="k">return</span> it-&gt;second;
     }
-    return Value::any();                     // absent attribute → (Any)
+    <span class="k">return</span> Value::any();                     <span class="c1">// absent attribute → (Any)</span>
 }
-Value&amp; rtAttrRef(Value&amp; self, const std::string&amp; name) {
-    return self.obj-&gt;attrs[name];            // autovivifies
+Value&amp; rtAttrRef(Value&amp; self, <span class="k">const</span> std::string&amp; name) {
+    <span class="k">return</span> self.obj-&gt;attrs[name];            <span class="c1">// autovivifies</span>
 }</code></pre>
 <p><code>ClassAttr</code> carries more than storage: the declared type and its <code>:D</code>/<code>:U</code> smiley, <code>is rw</code>, <code>is required</code>, <code>is built</code>, a container trait (<code>has %.a is Set</code>), a <code>handles</code> list for delegation, an object-keyed flag, and <strong>user traits</strong>.</p>
 <p>That last one is how third-party traits reach their own code. <code>has $.id is json-name('licenseId')</code> records <code>{"json-name", Str}</code> on the attribute, surfaced on the <code>Attribute</code> meta-object, which is exactly what <code>JSON::Unmarshal</code>'s role checks and accessors look for. The parser does not know what <code>json-name</code> means and does not need to.</p>
 <p>Assigning through an accessor is guarded: <code>$obj.attr = v</code> on a private or read-only attribute throws, while <code>$obj!attr</code> and a plain method stay writable. The declared type is enforced too, which needs the attribute's type at the assignment site — hence:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h — ExecContext
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
 std::string lastLvalueAttrType;</code></pre>
 <p>recorded by the method-call lvalue arm so a role-typed <code>has C $.x is rw</code> rejects <code>42</code>.</p>
 <h2 id="roles">Roles</h2>
 <p>A role is a <code>ClassInfo</code> with <code>isRole</code> set, a set of <code>requiredMethods</code>, and a set of <code>doneRoles</code>. Composition copies the role's methods and attributes into the class and records membership.</p>
 <p>Required methods are checked <strong>at class declaration</strong>, using the same <code>findMethod</code> that dispatch uses:</p>
-<pre class="native-code"><code class="lang-cpp">for (ClassInfo* role : composed)
-    for (const std::string&amp; req : role-&gt;requiredMethods)
-        if (!ci-&gt;findMethod(req))
-            throw RakuError{Value::typeObj("X::Role::Unimplemented"), …};</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="k">for</span> (ClassInfo* role : composed)
+    <span class="k">for</span> (<span class="k">const</span> std::string&amp; req : role-&gt;requiredMethods)
+        <span class="k">if</span> (!ci-&gt;findMethod(req))
+            <span class="k">throw</span> RakuError{Value::typeObj(<span class="s2">"X::Role::Unimplemented"</span>), …};</code></pre>
 <p><code>.does</code> and <code>~~</code> consult <code>doesRole</code>, which is true for the role itself, for directly or transitively composed roles, and for roles done by parents:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h
-bool doesRole(const std::string&amp; rn) const {
-    if (isRole &amp;&amp; name == rn) return true;
-    if (doneRoles.count(rn)) return true;
-    if (parent &amp;&amp; parent-&gt;doesRole(rn)) return true;
-    for (auto&amp; p : extraParents) if (p &amp;&amp; p-&gt;doesRole(rn)) return true;
-    return false;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="kt">bool</span> doesRole(<span class="k">const</span> std::string&amp; rn) <span class="k">const</span> {
+    <span class="k">if</span> (isRole &amp;&amp; name == rn) <span class="k">return</span> <span class="kc">true</span>;
+    <span class="k">if</span> (doneRoles.count(rn)) <span class="k">return</span> <span class="kc">true</span>;
+    <span class="k">if</span> (parent &amp;&amp; parent-&gt;doesRole(rn)) <span class="k">return</span> <span class="kc">true</span>;
+    <span class="k">for</span> (<span class="k">auto</span>&amp; p : extraParents) <span class="k">if</span> (p &amp;&amp; p-&gt;doesRole(rn)) <span class="k">return</span> <span class="kc">true</span>;
+    <span class="k">return</span> <span class="kc">false</span>;
 }</code></pre>
 <p>Attribute composition deduplicates by the address of the <em>declaring</em> attribute node, recorded in <code>ClassAttr::declId</code>. So a diamond composition — two roles both doing a third — contributes the shared attribute once rather than twice.</p>
 <p><strong>Parameterised roles</strong> carry their parameters as a <code>Param</code> list on the AST declaration, and a composition binds arguments to them:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Value.h — ClassInfo
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ClassInfo</span>
 std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; roleParamBindings;</code></pre>
 <p>The bindings are injected into the scope of the composing class's methods, so the role's body sees <code>%phase-defaults</code> in <code>does Cro::Policy::Timeout[%h]</code>. <code>makeRolePun</code> handles the anonymous case, <code>R[Int].new</code>, by building a punned class on the spot.</p>
 <p>Role composition is <strong>last-writer-wins</strong>: two roles defining the same method both copy into the table, with no conflict diagnostic. That is a known divergence.</p>
 <h2 id="mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></h2>
 <p><code>5 but Role</code> and <code>%h does R</code> add a role to a value at run time.</p>
 <p>For a value that is already an object, the role is composed into a fresh anonymous subclass. For a <strong>non-object base</strong> there is no <code>ObjectData</code> to extend, so the value is <em>boxed</em>:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.cpp — mixinValue
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — mixinValue</span>
 obj = std::make_shared&lt;ObjectData&gt;();
-obj-&gt;boxed = base;          // the original 5 is kept here
-obj-&gt;hasBoxed = true;
-// … build an anonymous subclass composing the role, wrap in a VT::Object …</code></pre>
+obj-&gt;boxed = base;          <span class="c1">// the original 5 is kept here</span>
+obj-&gt;hasBoxed = <span class="kc">true</span>;
+<span class="c1">// … build an anonymous subclass composing the role, wrap in a VT::Object …</span></code></pre>
 <p>Dispatch on the result checks the role's methods first; anything not found — and not an identity method — is delegated back to the box:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Builtins.cpp — methodCall
-if (inv.t == VT::Object &amp;&amp; inv.obj &amp;&amp; inv.obj-&gt;hasBoxed &amp;&amp; inv.obj-&gt;cls &amp;&amp;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — methodCall</span>
+<span class="k">if</span> (inv.t == VT::Object &amp;&amp; inv.obj &amp;&amp; inv.obj-&gt;hasBoxed &amp;&amp; inv.obj-&gt;cls &amp;&amp;
     !inv.obj-&gt;cls-&gt;findMethod(m) &amp;&amp; !inv.obj-&gt;cls-&gt;findAttr(m)) {
-    static const std::set&lt;std::string&gt; keepOnObj =
-        {"does","HOW","WHAT","WHICH","defined","DEFINITE"};
-    if (!keepOnObj.count(m))
-        return methodCall(inv.obj-&gt;boxed, m, args, rwArgs);
+    <span class="k">static</span> <span class="k">const</span> std::set&lt;std::string&gt; keepOnObj =
+        {<span class="s2">"does"</span>,<span class="s2">"HOW"</span>,<span class="s2">"WHAT"</span>,<span class="s2">"WHICH"</span>,<span class="s2">"defined"</span>,<span class="s2">"DEFINITE"</span>};
+    <span class="k">if</span> (!keepOnObj.count(m))
+        <span class="k">return</span> methodCall(inv.obj-&gt;boxed, m, args, rwArgs);
 }</code></pre>
 <p>So <code>(5 but Role).succ</code> runs <code>Int.succ</code> on the <code>5</code>, while the role's methods and <code>.does</code>/<code>.WHAT</code> see the mixed object. The <code>keepOnObj</code> set is the list of questions that must be answered <em>about the mixin</em> rather than about the box.</p>
 <p><code>$x but Pair</code> mixes an attribute rather than a role, using the same machinery with a synthesised anonymous role — which is what <code>anonMixinSeq_</code> names.</p>
 <h2 id="augment-and-supersede"><code>augment</code> and <code>supersede</code></h2>
 <p><code>augment class Foo { … }</code> on a user class merges methods into the existing <code>ClassInfo</code>. On a <strong>built-in type</strong> there is no <code>ClassInfo</code>, so the methods go into a side table consulted before the native dispatch ladder:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string,
                    std::unordered_map&lt;std::string, Value&gt;&gt; builtinExt_;</code></pre>
 <p>keyed by type name then method name, and searched along the native ancestry so augmenting <code>Cool</code> reaches <code>Int</code> and <code>Str</code>. <a href="/book/dispatch/">Chapter 15</a> covers the dispatch side; <a href="/book/dispatch-compiled/">Chapter 27</a> covers why two compiled fast paths have to check whether this map is empty.</p>
 <p><code>.^add_method($name, $code)</code> writes into <code>ClassInfo::methods</code> directly, which is the whole of runtime method injection.</p>
 <h2 id="package-stashes-and-who">Package stashes and <code>.WHO</code></h2>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::map&lt;std::string,
          std::shared_ptr&lt;std::map&lt;std::string, Value&gt;&gt;&gt; pkgStashes_;</code></pre>
 <p>One shared map per package <strong>name</strong>, and the sharing is the point. <code>.WHO</code> used to build a fresh empty <code>Hash</code> on each call, so <code>EXPORTHOW.WHO.&lt;grammar&gt; = SomeHOW</code> wrote into a temporary and died with "Target is not assignable". Reading a stash also re-syncs the package's qualified globals into it, so <code>our</code>-scoped symbols appear.</p>
@@ -168,6 +168,6 @@ std::map&lt;std::string,
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

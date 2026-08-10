@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Raku in the Browser — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -26,29 +26,29 @@
 <p>The four modes in <a href="/book/run-modes/">Chapter 24</a> all target a machine with a filesystem, threads and a dynamic loader. There is a fifth target that has none of those: the same runtime compiled to <strong>WebAssembly</strong>, which is Raku.js — the interpreter running in a browser tab, with no server.</p>
 <p>It is not a fifth back end. It is mode 1, the tree walk, with a different host. What makes it worth a chapter is that the host removes almost everything the interpreter assumes, and the adaptation is <strong>94 lines that live entirely outside <code>src/</code> and change nothing in the interpreter</strong>.</p>
 <h2 id="the-whole-boundary">The whole boundary</h2>
-<pre class="native-code"><code class="lang-cpp">// rakujs/rakupp_web.cpp — the three exported functions
-EMSCRIPTEN_KEEPALIVE int         rakupp_run(const char* src,
-                                            const char* stdin_text);
-EMSCRIPTEN_KEEPALIVE const char* rakupp_highlight(const char* src);
-EMSCRIPTEN_KEEPALIVE const char* rakupp_version();</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp — the three exported functions</span>
+EMSCRIPTEN_KEEPALIVE <span class="kt">int</span>         rakupp_run(<span class="k">const</span> <span class="kt">char</span>* src,
+                                            <span class="k">const</span> <span class="kt">char</span>* stdin_text);
+EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_highlight(<span class="k">const</span> <span class="kt">char</span>* src);
+EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_version();</code></pre>
 <p><code>rakupp_run</code> calls <code>rakupp::rakuppRun</code> — the same public entry point the native CLI uses — which lexes, parses, builds an <code>Interpreter</code>, runs it, and catches <code>ParseError</code>, <code>RakuError</code> and <code>std::exception</code>, reporting them to stderr exactly as the CLI does. The exit code that comes back is the process exit code the CLI would have produced.</p>
 <p>The other two exports matter more than they look: <code>rakupp_highlight</code> is the tokenizer behind <code>rakupp --highlight</code> (<a href="/book/tooling/">Chapter 35</a>), and it is what lets a browser editor paint Raku with the compiler's own knowledge rather than a JavaScript approximation. That thread is picked up at the end of this chapter.</p>
 <h2 id="input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</h2>
 <p>The interpreter reads standard input exclusively through <code>std::cin</code>. A browser has no standard input, and Emscripten's TTY device brings its own buffering and EOF state. So feeding a program is a stream-buffer swap and nothing else:</p>
-<pre class="native-code"><code class="lang-cpp">// rakujs/rakupp_web.cpp
-static std::istringstream web_stdin;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp</span>
+<span class="k">static</span> std::istringstream web_stdin;
 web_stdin.clear();
-web_stdin.str(stdin_text ? stdin_text : "");
+web_stdin.str(stdin_text ? stdin_text : <span class="s2">""</span>);
 std::streambuf* old_in = std::cin.rdbuf(web_stdin.rdbuf());
 
-int rc = rakupp::rakuppRun(src ? src : "", {}, "web", "rakupp.wasm", {});
+<span class="kt">int</span> rc = rakupp::rakuppRun(src ? src : <span class="s2">""</span>, {}, <span class="s2">"web"</span>, <span class="s2">"rakupp.wasm"</span>, {});
 
 std::cin.rdbuf(old_in);</code></pre>
 <p><code>get</code>, <code>lines</code>, <code>prompt</code> and <code>$*IN.slurp</code> read that text and then see end-of-file, so <strong>nothing ever blocks</strong> — which matters, because a blocking read in a WebAssembly module with no thread to park is a hung tab.</p>
 <p>Two details make it reliable across repeated runs. <code>rdbuf()</code> clears <code>cin</code>'s eof and fail bits as a side effect, so a program that read to EOF does not poison the next run. And a caller built against the older one-argument signature passes no second argument, which arrives as null and means an empty stdin rather than undefined behaviour.</p>
 <h2 id="output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</h2>
 <p>Output needs no interpreter change at all: <code>std::cout</code> and <code>std::cerr</code> are routed by Emscripten to the <code>print</code> and <code>printErr</code> callbacks the host page installs. What needed care is the <em>end</em> of a run.</p>
-<pre class="native-code"><code class="lang-cpp">// rakujs/rakupp_web.cpp — after the program returns
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp — after the program returns</span>
 std::cout.flush();  std::cerr.flush();
 std::fflush(stdout); std::fflush(stderr);
 fsync(STDOUT_FILENO);
@@ -68,26 +68,26 @@ fsync(STDERR_FILENO);</code></pre>
 <h2 id="off-the-main-thread">Off the main thread</h2>
 <p><code>rakupp_run</code> is <strong>synchronous</strong>: it runs a whole program to completion. On the main thread that freezes the page — no spinner animates, and output appears only at the end, if at all.</p>
 <p>So the playground runs it in a dedicated worker:</p>
-<pre class="native-code"><code class="lang-js">// rakujs/playground/worker.js
-importScripts('rakujs.js' + V);          // the MODULARIZE factory
+<pre class="native-code"><code class="lang-js"><span class="c1">// rakujs/playground/worker.js</span>
+importScripts(<span class="s1">'rakujs.js'</span> + V);          <span class="c1">// the MODULARIZE factory</span>
 
-function makeModule() {
-  return RakuJS({
+<span class="k">function</span> makeModule() {
+  <span class="k">return</span> RakuJS({
     locateFile: p =&gt; p + V,
-    print:    t =&gt; { if (inRun) post('out', { text: t + '\n', cls: ''    }); },
-    printErr: t =&gt; { if (inRun) post('out', { text: t + '\n', cls: 'err' }); },
-  }).then(m =&gt; { Module = m; return m; });
+    print:    t =&gt; { <span class="k">if</span> (inRun) post(<span class="s1">'out'</span>, { text: t + <span class="s1">'\n'</span>, cls: <span class="s1">''</span>    }); },
+    printErr: t =&gt; { <span class="k">if</span> (inRun) post(<span class="s1">'out'</span>, { text: t + <span class="s1">'\n'</span>, cls: <span class="s1">'err'</span> }); },
+  }).then(m =&gt; { Module = m; <span class="k">return</span> m; });
 }</code></pre>
 <p>Three things follow from the worker that could not be had without it.</p>
 <p><strong>Output streams.</strong> <code>print</code> posts to the main thread as it fires, so a program that redraws animates frame by frame instead of arriving as one block at the end. How that actually reaches the page is the next section.</p>
 <p><strong>A runaway program can be stopped</strong>, by terminating the worker. There is no other way to interrupt a synchronous call.</p>
 <p><strong>A failure is recoverable.</strong> A <code>RangeError</code> from deep recursion, or an <code>exit</code> in user code, leaves the module instance in an unknown state, so the worker throws it away and builds a clean one for the next run:</p>
-<pre class="native-code"><code class="lang-js">// rakujs/playground/worker.js
-catch (err) {
-  Module = null;
+<pre class="native-code"><code class="lang-js"><span class="c1">// rakujs/playground/worker.js</span>
+<span class="k">catch</span> (err) {
+  Module = <span class="kc">null</span>;
   ready = makeModule();
-  post('runerror', { message: String(err),
-                     deep: err instanceof RangeError
+  post(<span class="s1">'runerror'</span>, { message: String(err),
+                     deep: err <span class="k">instanceof</span> RangeError
                            || /call stack/i.test(String(err)) });
 }</code></pre>
 <p>The <code>inRun</code> flag is a small thing worth noticing: outside a run, <code>print</code> is Emscripten's own load-time diagnostics, which belong in the devtools console rather than in the user's output pane.</p>
@@ -95,57 +95,57 @@ catch (err) {
 <p>There is a message protocol, a screen <em>model</em>, and a coalesced render. All three matter, and none of them is the obvious "append text to a <code>&lt;div&gt;</code>".</p>
 <h3>The protocol</h3>
 <p>The worker posts one of five message types, and the main thread dispatches them to whichever block is currently running:</p>
-<pre class="native-code"><code class="lang-js">// raku.js
-worker.onmessage = function (e) {
-  var m = e.data, b = current;
-  switch (m.type) {
-    case 'ready':     workerReady = true; …; next();            break;
-    case 'out':       if (b) b.feed(m.text, m.cls);             break;
-    case 'done':      if (b) b.finish(m.rc, m.ms);
-                      current = null; next();                   break;
-    case 'runerror':  if (b) { b.error(…); b.finish(1, 0); }
-                      current = null;                           break;
-    case 'loaderror': …                                         break;
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+worker.onmessage = <span class="k">function</span> (e) {
+  <span class="k">var</span> m = e.data, b = current;
+  <span class="k">switch</span> (m.type) {
+    <span class="k">case</span> <span class="s1">'ready'</span>:     workerReady = <span class="kc">true</span>; …; next();            <span class="k">break</span>;
+    <span class="k">case</span> <span class="s1">'out'</span>:       <span class="k">if</span> (b) b.feed(m.text, m.cls);             <span class="k">break</span>;
+    <span class="k">case</span> <span class="s1">'done'</span>:      <span class="k">if</span> (b) b.finish(m.rc, m.ms);
+                      current = <span class="kc">null</span>; next();                   <span class="k">break</span>;
+    <span class="k">case</span> <span class="s1">'runerror'</span>:  <span class="k">if</span> (b) { b.error(…); b.finish(<span class="mi">1</span>, <span class="mi">0</span>); }
+                      current = <span class="kc">null</span>;                           <span class="k">break</span>;
+    <span class="k">case</span> <span class="s1">'loaderror'</span>: …                                         <span class="k">break</span>;
   }
 };</code></pre>
 <p><code>current</code> is the block that owns the run, which is what lets one worker serve every editor on the page: output is routed to a <em>block</em>, not broadcast.</p>
 <h3>The screen is a model, not the DOM</h3>
 <p><code>feed</code> does not touch the document. It appends to an array of <code>[text, cssClass]</code> pairs:</p>
-<pre class="native-code"><code class="lang-js">// raku.js
-this._screen = []; var chars = 0, pending = false, CAP = 200000;
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+<span class="k">this</span>._screen = []; <span class="k">var</span> chars = <span class="mi">0</span>, pending = <span class="kc">false</span>, CAP = <span class="mi">200000</span>;
 
-function push(text, cls) {
-  if (self._clearNext) { self._screen = []; chars = 0;
-                         self._clearNext = false; sched(); }
-  if (!text || chars &gt; CAP) return;
-  chars += text.length; self._screen.push([text, cls || '']); sched();
+<span class="k">function</span> push(text, cls) {
+  <span class="k">if</span> (self._clearNext) { self._screen = []; chars = <span class="mi">0</span>;
+                         self._clearNext = <span class="kc">false</span>; sched(); }
+  <span class="k">if</span> (!text || chars &gt; CAP) <span class="k">return</span>;
+  chars += text.length; self._screen.push([text, cls || <span class="s1">''</span>]); sched();
 }</code></pre>
 <p>Keeping a model rather than mutating the DOM is what makes the next two things possible at all — you cannot <em>clear a screen</em> or <em>drop the oldest output</em> if the only record of it is already rendered.</p>
 <p><code>CAP</code> is a character budget. A program that prints without end fills 200,000 characters and then produces nothing further, rather than growing a DOM node until the tab dies.</p>
 <h3>Rendering is coalesced on a timer</h3>
-<pre class="native-code"><code class="lang-js">// raku.js
-function render() {
-  pending = false;
-  outEl.innerHTML = self._screen.map(function (p) {
-    return '&lt;span class="' + p[1] + '"&gt;' + esc(p[0]) + '&lt;/span&gt;';
-  }).join('');
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+<span class="k">function</span> render() {
+  pending = <span class="kc">false</span>;
+  outEl.innerHTML = self._screen.map(<span class="k">function</span> (p) {
+    <span class="k">return</span> <span class="s1">'&lt;span class="'</span> + p[<span class="mi">1</span>] + <span class="s1">'"&gt;'</span> + esc(p[<span class="mi">0</span>]) + <span class="s1">'&lt;/span&gt;'</span>;
+  }).join(<span class="s1">''</span>);
   outEl.scrollTop = outEl.scrollHeight;
 }
-function sched() { if (!pending) { pending = true; setTimeout(render, 16); } }</code></pre>
+<span class="k">function</span> sched() { <span class="k">if</span> (!pending) { pending = <span class="kc">true</span>; setTimeout(render, <span class="mi">16</span>); } }</code></pre>
 <p>Every <code>push</code> calls <code>sched</code>, and <code>sched</code> schedules <strong>at most one</strong> render per 16 milliseconds however many lines arrived in between. A program emitting thousands of lines therefore costs a few dozen repaints, not thousands.</p>
 <p>The timer is <code>setTimeout</code> rather than <code>requestAnimationFrame</code> on purpose: <code>requestAnimationFrame</code> pauses in a hidden or background tab, so output would simply stop appearing for anyone who switched away mid-run.</p>
 <p>The render is a full rebuild of <code>innerHTML</code> from the model, and the scroll is pinned to the bottom afterwards. A full rebuild sounds wasteful and is not, at this scale: the model is capped, and rebuilding is what makes a <em>clear</em> free.</p>
 <h3>ANSI, which is how animation works</h3>
 <p>A program that animates redraws by moving the cursor home. <code>feed</code> splits its input on an ANSI escape pattern and treats two of them as "start again":</p>
-<pre class="native-code"><code class="lang-js">// raku.js
-var ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+<span class="k">var</span> ANSI = /\x1b\[[<span class="mi">0</span>-<span class="mi">9</span>;?]*[A-Za-z]/g;
 
-this.feed = function (text, cls) {
-  ANSI.lastIndex = 0; var lastI = 0, mm;
-  while ((mm = ANSI.exec(text))) {
+<span class="k">this</span>.feed = <span class="k">function</span> (text, cls) {
+  ANSI.lastIndex = <span class="mi">0</span>; <span class="k">var</span> lastI = <span class="mi">0</span>, mm;
+  <span class="k">while</span> ((mm = ANSI.exec(text))) {
     push(text.slice(lastI, mm.index), cls);
-    var f = mm[0][mm[0].length - 1];
-    if (mm[0] === '\x1b[2J' || f === 'H' || f === 'f') clear();
+    <span class="k">var</span> f = mm[<span class="mi">0</span>][mm[<span class="mi">0</span>].length - <span class="mi">1</span>];
+    <span class="k">if</span> (mm[<span class="mi">0</span>] === <span class="s1">'\x1b[2J'</span> || f === <span class="s1">'H'</span> || f === <span class="s1">'f'</span>) clear();
     lastI = ANSI.lastIndex;
   }
   push(text.slice(lastI), cls);
@@ -153,70 +153,70 @@ this.feed = function (text, cls) {
 <p>Erase-display and cursor-home empty the model; every other escape sequence is recognised and discarded, so it neither prints as garbage nor is mistaken for text. That is the whole of the terminal emulation, and it is enough: a Game of Life that clears and redraws each generation animates in the page, because clearing the model and re-rendering <strong>is</strong> a frame.</p>
 <h3>The deferred clear</h3>
 <p>The subtlest piece. Pressing Run again does not blank the pane immediately:</p>
-<pre class="native-code"><code class="lang-js">// raku.js — inside push()
-// Deferred clear: keep the previous run's output on screen until the new run
-// actually produces something, so re-running never collapses the block.
-if (self._clearNext) { self._screen = []; … }</code></pre>
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js — inside push()</span>
+<span class="c1">// Deferred clear: keep the previous run's output on screen until the new run</span>
+<span class="c1">// actually produces something, so re-running never collapses the block.</span>
+<span class="k">if</span> (self._clearNext) { self._screen = []; … }</code></pre>
 <p>The run sets a <code>_clearNext</code> flag; the <em>first output of the new run</em> is what consumes it. Without this, re-running a slow program blanks the pane and leaves the reader looking at nothing for as long as the program takes to produce its first line — and re-running a program that prints nothing collapses the block to empty, which reads as breakage.</p>
 <h3>Finishing</h3>
-<pre class="native-code"><code class="lang-js">// raku.js
-this.finish = function (rc, ms) {
-  setRun(false);
-  if (self._clearNext) { self._screen = []; chars = 0;
-                         self._clearNext = false; }
-  if (!self._screen.length) push('(no output)', 'meta');
-  push('\n— exit ' + rc + ' · ' + ms + ' ms —', 'meta');
-  stEl.textContent = 'exit ' + rc + ' · ' + ms + ' ms';
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+<span class="k">this</span>.finish = <span class="k">function</span> (rc, ms) {
+  setRun(<span class="kc">false</span>);
+  <span class="k">if</span> (self._clearNext) { self._screen = []; chars = <span class="mi">0</span>;
+                         self._clearNext = <span class="kc">false</span>; }
+  <span class="k">if</span> (!self._screen.length) push(<span class="s1">'(no output)'</span>, <span class="s1">'meta'</span>);
+  push(<span class="s1">'\n— exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms —'</span>, <span class="s1">'meta'</span>);
+  stEl.textContent = <span class="s1">'exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms'</span>;
 };</code></pre>
 <p>The exit code and elapsed time are pushed as an ordinary screen entry with a <code>meta</code> class, so they are styled apart from the program's own output — and the Copy button filters <code>meta</code> entries out, so copying an example gives you what the program printed and not the footer the page added.</p>
 <p>A run that produced nothing says so, because an empty pane is indistinguishable from a pane that never updated.</p>
 <h2 id="live-mode-running-as-you-type">Live mode: running as you type</h2>
 <p>The playground's toolbar carries a <strong>Live</strong> checkbox. With it on, nothing is pressed: the program runs itself a beat after typing stops, so the output pane always shows what the source in front of you does.</p>
 <p>The scheduling is a debounce, and the two constants are the whole policy:</p>
-<pre class="native-code"><code class="lang-js">// play/index.html
-const LIVE_DELAY   = 400;   // ms of quiet before a live run starts
-const LIVE_TIMEOUT = 2000;  // ms a live run may take before it is killed
+<pre class="native-code"><code class="lang-js"><span class="c1">// play/index.html</span>
+<span class="k">const</span> LIVE_DELAY   = <span class="mi">400</span>;   <span class="c1">// ms of quiet before a live run starts</span>
+<span class="k">const</span> LIVE_TIMEOUT = <span class="mi">2000</span>;  <span class="c1">// ms a live run may take before it is killed</span>
 
-function scheduleLive() {
-  if (!live) return;
+<span class="k">function</span> scheduleLive() {
+  <span class="k">if</span> (!live) <span class="k">return</span>;
   clearTimeout(liveTimer);
   liveTimer = setTimeout(liveRun, LIVE_DELAY);
 }</code></pre>
 <p>Every repaint of the editor calls <code>scheduleLive</code>, and so does the standard-input box — <em>the program's input is part of the program</em>, so changing it re-runs too.</p>
 <p><code>liveRun</code> then declines in two situations, and both matter:</p>
-<pre class="native-code"><code class="lang-js">// play/index.html
-function liveRun() {
-  if (!live || !ready) return;
-  if (codeEl.value === lastSrc &amp;&amp; stdinEl.value === lastStdin) return;
-  if (running) { liveTimer = setTimeout(liveRun, 120); return; }
-  startRun(true);
+<pre class="native-code"><code class="lang-js"><span class="c1">// play/index.html</span>
+<span class="k">function</span> liveRun() {
+  <span class="k">if</span> (!live || !ready) <span class="k">return</span>;
+  <span class="k">if</span> (codeEl.value === lastSrc &amp;&amp; stdinEl.value === lastStdin) <span class="k">return</span>;
+  <span class="k">if</span> (running) { liveTimer = setTimeout(liveRun, <span class="mi">120</span>); <span class="k">return</span>; }
+  startRun(<span class="kc">true</span>);
 }</code></pre>
 <p>Nothing changed means nothing runs — moving the caret is not an edit. And if a run is already in flight it is <strong>left alone</strong> and retried shortly, rather than killed: restarting the worker costs a fresh WebAssembly instantiation, and paying that on every keystroke would make typing worse, not better.</p>
 <h3>Why it does not blank while you type</h3>
 <p>The obvious implementation streams output into the pane as it arrives, which is what pressing Run does. For live mode that is unusable: every keystroke mid-word leaves a half-written program, and a half-written program is usually a <strong>parse error</strong>. The pane would blank and flash a diagnostic between every two characters.</p>
 <p>So a live run's output is <strong>double-buffered</strong>. Instead of feeding the screen model directly, it accumulates:</p>
-<pre class="native-code"><code class="lang-js">// play/index.html
-if (buf) bufPush(m.text, m.cls); else feed(m.text, m.cls);</code></pre>
+<pre class="native-code"><code class="lang-js"><span class="c1">// play/index.html</span>
+<span class="k">if</span> (buf) bufPush(m.text, m.cls); <span class="k">else</span> feed(m.text, m.cls);</code></pre>
 <p>and only when the run finishes is the buffer swapped in as one atomic change:</p>
-<pre class="native-code"><code class="lang-js">// play/index.html
-function flushBuf() {
-  const b = buf;
-  buf = null; bufChars = 0;
-  if (!b) return;
+<pre class="native-code"><code class="lang-js"><span class="c1">// play/index.html</span>
+<span class="k">function</span> flushBuf() {
+  <span class="k">const</span> b = buf;
+  buf = <span class="kc">null</span>; bufChars = <span class="mi">0</span>;
+  <span class="k">if</span> (!b) <span class="k">return</span>;
   clearScreen();
-  for (const [t, c] of b) feed(t, c);
+  <span class="k">for</span> (<span class="k">const</span> [t, c] <span class="k">of</span> b) feed(t, c);
 }</code></pre>
 <p>The pane therefore only ever changes from one <em>complete</em> result to the next. That single decision is what makes the mode bearable to type into, and it is the reason the screen is a model rather than the DOM (above) — buffering a list of <code>[text, class]</code> pairs and swapping it in is trivial; buffering rendered markup would not be.</p>
 <h3>The watchdog, and when Live gives up</h3>
 <p>A live run is on a timer. Exceed it and the worker is killed:</p>
-<pre class="native-code"><code class="lang-js">// play/index.html
-function liveTimedOut() {
-  if (!running || !curLive) return;
-  flushBuf();      // whatever it printed before the kill is still worth seeing
-  pushText(`\n— live run stopped after ${LIVE_TIMEOUT / 1000} s —\n`, "meta");
+<pre class="native-code"><code class="lang-js"><span class="c1">// play/index.html</span>
+<span class="k">function</span> liveTimedOut() {
+  <span class="k">if</span> (!running || !curLive) <span class="k">return</span>;
+  flushBuf();      <span class="c1">// whatever it printed before the kill is still worth seeing</span>
+  pushText(<span class="s2">`\n— live run stopped after ${LIVE_TIMEOUT / 1000} s —\n`</span>, <span class="s2">"meta"</span>);
   killAndRecreate();
   …
-  if (++liveStalls &gt;= 2) { setLive(false); … }
+  <span class="k">if</span> (++liveStalls &gt;= <span class="mi">2</span>) { setLive(<span class="kc">false</span>); … }
 }</code></pre>
 <p>Note that the buffer is flushed <em>before</em> the kill is reported: a program that printed something useful and then hung has still told you something, and throwing that away to report a timeout would be a worse trade.</p>
 <p>The stall counter is the part worth copying. <strong>Two watchdog kills in a row turn the mode off</strong>, with a line in the output saying why — because each kill costs a fresh WebAssembly instantiation, and re-killing the worker on every keystroke of a genuinely long-running program helps nobody. A feature that cannot serve you should switch itself off and say so, rather than degrade silently.</p>
@@ -234,15 +234,15 @@ function liveTimedOut() {
 <p><strong>One interpreter per page.</strong> Multiple blocks share a single WebAssembly instance — one download, one instance — so a page with twenty examples does not fetch twenty engines.</p>
 <p><strong>The worker is built from a Blob.</strong> A plain <code>new Worker('https://…')</code> is blocked cross-origin; a Blob worker that <code>importScripts</code> the cross-origin engine is allowed. That single workaround is why the embed works from someone else's domain at all.</p>
 <p><strong>Runs are queued, not dropped.</strong> Only one program runs at a time, so a request made during another run waits its turn:</p>
-<pre class="native-code"><code class="lang-js">// raku.js
-function enqueue(block) {
-  if (queue.indexOf(block) &lt; 0) queue.push(block);
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
+<span class="k">function</span> enqueue(block) {
+  <span class="k">if</span> (queue.indexOf(block) &lt; <span class="mi">0</span>) queue.push(block);
   relabel();
 }</code></pre>
 <p>This used to be a single <code>queued</code> slot, and a third request overwrote the second — press Run on several blocks and only the last one ever started. Every path that ends a run now calls <code>next()</code>, <strong>including the failures</strong>, because a load error or a killed worker used to clear the current block and leave the rest of the queue stranded for ever.</p>
 <p><strong>Each editor lives in its own Shadow DOM</strong>, so the host page's CSS cannot reach in and the embed's cannot leak out. It looks the same on any site.</p>
 <p><strong>The editor is a transparent textarea over a highlighted <code>&lt;pre&gt;</code>.</strong> The two are positioned on top of one another and their scroll offsets are kept in step:</p>
-<pre class="native-code"><code class="lang-js">// raku.js
+<pre class="native-code"><code class="lang-js"><span class="c1">// raku.js</span>
 hl.innerHTML = html;
 hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;</code></pre>
 <p>And the highlighting is the payoff for exporting <code>rakupp_highlight</code>. Until the engine has loaded, editors paint with a fast JavaScript approximation; once it is there, <strong>every editor repaints through rakupp itself</strong> — the same tokenizer as <code>rakupp --highlight</code>, so an embedded editor colours Raku exactly as the compiler understands it, and keeps doing so as the reader types.</p>
@@ -268,6 +268,6 @@ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tooling Built on the AST — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=b03cd3a0"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/shell.css?v=b03cd3a0">
-<link rel="stylesheet" href="/theme/book.css?v=b03cd3a0">
+<script src="/theme/boot.js?v=0d3ae91e"></script>
+<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
+<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -25,11 +25,11 @@
 <p class="ch-label">Chapter 35</p><h1>Tooling Built on the AST</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#lint-static-analysis-that-runs-nothing"><code>--lint</code>: static analysis that runs nothing</a></li><li><a href="#highlight-colouring-with-the-compiler-s-own-knowledge"><code>--highlight</code>: colouring with the compiler's own knowledge</a></li><li><a href="#profile-a-routine-level-wall-time-profiler"><code>--profile</code>: a routine-level wall-time profiler</a></li><li><a href="#the-repl">The REPL</a></li><li><a href="#pod-and-doc">Pod and <code>--doc</code></a></li><li><a href="#dump-ast-and-the-tool-built-on-it"><code>--dump-ast</code>, and the tool built on it</a></li><li><a href="#the-tools-that-are-not-in-the-binary">The tools that are not in the binary</a></li></ul></nav>
 <p>Once a program is a tree, several useful things become short. This chapter covers the five tools that are built on the front end rather than on the runtime, and one that is built on the call path.</p>
 <h2 id="lint-static-analysis-that-runs-nothing"><code>--lint</code>: static analysis that runs nothing</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Lint.h
-struct LintFinding {
-    int line = 0;
-    char severity = 'W';        // 'W' warning, 'N' note
-    std::string rule;           // a stable id, e.g. "unused-variable"
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lint.h</span>
+<span class="k">struct</span> LintFinding {
+    <span class="kt">int</span> line = <span class="mi">0</span>;
+    <span class="kt">char</span> severity = <span class="s1">'W'</span>;        <span class="c1">// 'W' warning, 'N' note</span>
+    std::string rule;           <span class="c1">// a stable id, e.g. "unused-variable"</span>
     std::string message;
 };
 std::vector&lt;LintFinding&gt; lintProgram(Program&amp; prog);</code></pre>
@@ -39,19 +39,19 @@ std::vector&lt;LintFinding&gt; lintProgram(Program&amp; prog);</code></pre>
 <p>Raku's dynamism is why. Interpolation, dynamic variables, <code>EVAL</code>, symbolic references and introspection all mean that a variable which <em>looks</em> unused may be reached by name at run time. An over-eager analyser in this language produces warnings people learn to ignore, at which point the tool is worse than nothing.</p>
 <p>Every finding carries a <strong>machine-readable rule id</strong> as well as prose, so a project can suppress or gate on a specific rule without matching message text.</p>
 <h2 id="highlight-colouring-with-the-compiler-s-own-knowledge"><code>--highlight</code>: colouring with the compiler's own knowledge</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Highlight.h
-std::string highlight(const std::string&amp; source, const std::string&amp; format);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Highlight.h</span>
+std::string highlight(<span class="k">const</span> std::string&amp; source, <span class="k">const</span> std::string&amp; format);</code></pre>
 <p>Two renderers: <code>html</code> produces the same CSS token classes Pygments uses, so existing stylesheets apply unchanged; <code>ansi</code> produces terminal escapes.</p>
 <p>The class names are borrowed, but the classification is not. A regex-based highlighter has to guess; this one knows. <code>$obj.role</code> is coloured as a method call rather than as the keyword <code>role</code>, because the lexer and parser already established which it is.</p>
 <p>That is the general advantage of building a highlighter inside the compiler, and it is why the output is worth the coupling.</p>
 <h2 id="profile-a-routine-level-wall-time-profiler"><code>--profile</code>: a routine-level wall-time profiler</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Profiler.h
-namespace prof {
-    extern bool on;              // read on the hot path
-    void setDest(const std::string&amp; dest);
-    void enter(const void* key, const char* name, const char* file);
-    void leave();
-    void report();
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Profiler.h</span>
+<span class="k">namespace</span> prof {
+    <span class="k">extern</span> <span class="kt">bool</span> on;              <span class="c1">// read on the hot path</span>
+    <span class="kt">void</span> setDest(<span class="k">const</span> std::string&amp; dest);
+    <span class="kt">void</span> enter(<span class="k">const</span> <span class="kt">void</span>* key, <span class="k">const</span> <span class="kt">char</span>* name, <span class="k">const</span> <span class="kt">char</span>* file);
+    <span class="kt">void</span> leave();
+    <span class="kt">void</span> report();
 }</code></pre>
 <p>Two hooks — <code>callCallableRaw</code> for routines with a frame boundary, and <code>invokeMethod</code> — feed a per-thread shadow stack. Per routine it aggregates call count, inclusive and exclusive wall time.</p>
 <p>Three decisions worth naming.</p>
@@ -61,28 +61,28 @@ namespace prof {
 <p>The destination follows Rakudo's convention — the extension selects the format: <code>-</code> writes a table to standard error, a path writes the table there, and a path ending in <code>.json</code> writes a machine-readable dump.</p>
 <p>One portability note is recorded in the header: everything in it is portable C++17, with no <code>__builtin_expect</code> and no attributes, because the prototype's GCC-isms broke the MSVC build once already.</p>
 <h2 id="the-repl">The REPL</h2>
-<pre class="native-code"><code class="lang-cpp">// src/Repl.h
-int rakuppRepl(const std::string&amp; exePath,
-               const std::vector&lt;std::string&gt;&amp; libPaths);
-bool stdinIsTerminal();
-bool replForced();</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Repl.h</span>
+<span class="kt">int</span> rakuppRepl(<span class="k">const</span> std::string&amp; exePath,
+               <span class="k">const</span> std::vector&lt;std::string&gt;&amp; libPaths);
+<span class="kt">bool</span> stdinIsTerminal();
+<span class="kt">bool</span> replForced();</code></pre>
 <p>The REPL is entered <strong>only</strong> by a bare <code>rakupp</code> attached to a terminal. Anything arriving on a pipe or a redirect is a complete program and keeps running as one; the terminal test in <code>main</code> is the whole of that decision.</p>
 <p>It lives in the executable rather than the runtime library, so nothing about an interactive session is linked into the binaries the compiling modes produce.</p>
 <p>A REPL never calls <code>run()</code>. It keeps <strong>one</strong> <code>Interpreter</code> alive and feeds it <code>evalString</code> per line, so the mainline scope <em>is</em> the session. Two functions cover what <code>run()</code> would otherwise have done at either end:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-void replStart(std::vector&lt;std::string&gt; args);  // define @*ARGS, arm `state`
-void replFinish();                              // run END phasers, once
-std::vector&lt;std::string&gt; replNames() const;     // for tab completion</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="kt">void</span> replStart(std::vector&lt;std::string&gt; args);  <span class="c1">// define @*ARGS, arm `state`</span>
+<span class="kt">void</span> replFinish();                              <span class="c1">// run END phasers, once</span>
+std::vector&lt;std::string&gt; replNames() <span class="k">const</span>;     <span class="c1">// for tab completion</span></code></pre>
 <p>The nicest detail is how an incomplete line is recognised. A parse that dies on end-of-input is a request for more input, not a syntax error:</p>
-<pre class="native-code"><code class="lang-cpp">// src/Parser.h — ParseError
-bool atEof = false;</code></pre>
-<pre class="native-code"><code class="lang-cpp">// src/Interpreter.h
-Value evalString(const std::string&amp; src, bool mainlinePH = false,
-                 bool* incompleteOut = nullptr);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h — ParseError</span>
+<span class="kt">bool</span> atEof = <span class="kc">false</span>;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+Value evalString(<span class="k">const</span> std::string&amp; src, <span class="kt">bool</span> mainlinePH = <span class="kc">false</span>,
+                 <span class="kt">bool</span>* incompleteOut = <span class="kc">nullptr</span>);</code></pre>
 <p>The flag is set by the lexer's runaway-construct diagnostics and by the parser when it fails on the end token, so typing <code>sub f {</code> at the prompt asks for a continuation line while <code>sub f )</code> reports an error. One boolean, threaded from the lexer to the prompt.</p>
 <h2 id="pod-and-doc">Pod and <code>--doc</code></h2>
-<pre class="native-code"><code class="lang-cpp">// src/Pod.h
-std::vector&lt;Value&gt; parsePod(const std::string&amp; src);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Pod.h</span>
+std::vector&lt;Value&gt; parsePod(<span class="k">const</span> std::string&amp; src);</code></pre>
 <p>Pod blocks are parsed into the <code>$=pod</code> DOM — a list of <code>Pod::Block</code> values, each a <code>Hash</code> tagged <code>"Pod"</code> with a class, a name, a level, a configuration and contents. Delimited (<code>=begin</code>/<code>=end</code>), paragraph (<code>=for</code>) and abbreviated (<code>=head1 …</code>) forms, nested blocks, and whitespace-collapsed paragraphs.</p>
 <p>Note the representation: a Pod block is not a new <code>VT</code> or a C++ class. It is a tagged <code>Hash</code>, which is the same technique <code>Set</code>, <code>Proxy</code> and <code>DateTime</code> use (<a href="/book/value/">Chapter 7</a>). The Raku program manipulating it sees an ordinary object.</p>
 <p>Declarator documentation — <code>#|</code> above a declaration, <code>#=</code> beside or below it — is collected by the lexer keyed by line and attached by the parser, answering <code>.WHY</code> on routines, classes and attributes.</p>
@@ -111,6 +111,6 @@ RAKUPP_DUMPTOKENS=1 rakupp prog.raku</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=b03cd3a0" defer></script>
+<script src="/theme/shell.js?v=0d3ae91e" defer></script>
 </body>
 </html>
