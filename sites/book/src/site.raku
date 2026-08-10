@@ -4,7 +4,7 @@
     tagline  => 'How a hand-written C++ implementation of Raku works — from source text to native code.',
     repo     => 'https://github.com/ash/rakupp',
     pdf      => 'Raku++-Internals.pdf',
-    pdf-note => '261 pages',
+    pdf-note => '264 pages',
 
     # A one-line description per chapter slug, shown on the contents page.
     # A slug with no entry simply shows its title.
