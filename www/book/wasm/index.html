@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 29</p><h1>Raku in the Browser</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-whole-boundary">The whole boundary</a></li><li><a href="#input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</a></li><li><a href="#output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</a></li><li><a href="#the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</a></li><li><a href="#exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></a></li><li><a href="#off-the-main-thread">Off the main thread</a></li><li><a href="#how-a-line-of-output-reaches-the-page">How a line of output reaches the page</a></li><li><a href="#live-coding-one-script-tag">Live coding: one script tag</a></li><li><a href="#what-the-host-takes-away">What the host takes away</a></li><li><a href="#size-and-memory">Size and memory</a></li><li><a href="#why-this-is-worth-having">Why this is worth having</a></li></ul></nav>
+<p class="ch-label">Chapter 29</p><h1>Raku in the Browser</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-whole-boundary">The whole boundary</a></li><li><a href="#input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</a></li><li><a href="#output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</a></li><li><a href="#the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</a></li><li><a href="#exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></a></li><li><a href="#off-the-main-thread">Off the main thread</a></li><li><a href="#how-a-line-of-output-reaches-the-page">How a line of output reaches the page</a></li><li><a href="#live-mode-running-as-you-type">Live mode: running as you type</a></li><li><a href="#embedded-editors-one-script-tag">Embedded editors: one script tag</a></li><li><a href="#what-the-host-takes-away">What the host takes away</a></li><li><a href="#size-and-memory">Size and memory</a></li><li><a href="#why-this-is-worth-having">Why this is worth having</a></li></ul></nav>
 <p>The four modes in <a href="/book/run-modes/">Chapter 24</a> all target a machine with a filesystem, threads and a dynamic loader. There is a fifth target that has none of those: the same runtime compiled to <strong>WebAssembly</strong>, which is Raku.js — the interpreter running in a browser tab, with no server.</p>
 <p>It is not a fifth back end. It is mode 1, the tree walk, with a different host. What makes it worth a chapter is that the host removes almost everything the interpreter assumes, and the adaptation is <strong>94 lines that live entirely outside <code>src/</code> and change nothing in the interpreter</strong>.</p>
 <h2 id="the-whole-boundary">The whole boundary</h2>
@@ -170,8 +170,63 @@ this.finish = function (rc, ms) {
 };</code></pre>
 <p>The exit code and elapsed time are pushed as an ordinary screen entry with a <code>meta</code> class, so they are styled apart from the program's own output — and the Copy button filters <code>meta</code> entries out, so copying an example gives you what the program printed and not the footer the page added.</p>
 <p>A run that produced nothing says so, because an empty pane is indistinguishable from a pane that never updated.</p>
-<h2 id="live-coding-one-script-tag">Live coding: one script tag</h2>
-<p>The playground is one page. The <em>live-coding</em> mode is the interesting part, because it turns any page on any site into a Raku environment:</p>
+<h2 id="live-mode-running-as-you-type">Live mode: running as you type</h2>
+<p>The playground's toolbar carries a <strong>Live</strong> checkbox. With it on, nothing is pressed: the program runs itself a beat after typing stops, so the output pane always shows what the source in front of you does.</p>
+<p>The scheduling is a debounce, and the two constants are the whole policy:</p>
+<pre class="native-code"><code class="lang-js">// play/index.html
+const LIVE_DELAY   = 400;   // ms of quiet before a live run starts
+const LIVE_TIMEOUT = 2000;  // ms a live run may take before it is killed
+
+function scheduleLive() {
+  if (!live) return;
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(liveRun, LIVE_DELAY);
+}</code></pre>
+<p>Every repaint of the editor calls <code>scheduleLive</code>, and so does the standard-input box — <em>the program's input is part of the program</em>, so changing it re-runs too.</p>
+<p><code>liveRun</code> then declines in two situations, and both matter:</p>
+<pre class="native-code"><code class="lang-js">// play/index.html
+function liveRun() {
+  if (!live || !ready) return;
+  if (codeEl.value === lastSrc &amp;&amp; stdinEl.value === lastStdin) return;
+  if (running) { liveTimer = setTimeout(liveRun, 120); return; }
+  startRun(true);
+}</code></pre>
+<p>Nothing changed means nothing runs — moving the caret is not an edit. And if a run is already in flight it is <strong>left alone</strong> and retried shortly, rather than killed: restarting the worker costs a fresh WebAssembly instantiation, and paying that on every keystroke would make typing worse, not better.</p>
+<h3>Why it does not blank while you type</h3>
+<p>The obvious implementation streams output into the pane as it arrives, which is what pressing Run does. For live mode that is unusable: every keystroke mid-word leaves a half-written program, and a half-written program is usually a <strong>parse error</strong>. The pane would blank and flash a diagnostic between every two characters.</p>
+<p>So a live run's output is <strong>double-buffered</strong>. Instead of feeding the screen model directly, it accumulates:</p>
+<pre class="native-code"><code class="lang-js">// play/index.html
+if (buf) bufPush(m.text, m.cls); else feed(m.text, m.cls);</code></pre>
+<p>and only when the run finishes is the buffer swapped in as one atomic change:</p>
+<pre class="native-code"><code class="lang-js">// play/index.html
+function flushBuf() {
+  const b = buf;
+  buf = null; bufChars = 0;
+  if (!b) return;
+  clearScreen();
+  for (const [t, c] of b) feed(t, c);
+}</code></pre>
+<p>The pane therefore only ever changes from one <em>complete</em> result to the next. That single decision is what makes the mode bearable to type into, and it is the reason the screen is a model rather than the DOM (above) — buffering a list of <code>[text, class]</code> pairs and swapping it in is trivial; buffering rendered markup would not be.</p>
+<h3>The watchdog, and when Live gives up</h3>
+<p>A live run is on a timer. Exceed it and the worker is killed:</p>
+<pre class="native-code"><code class="lang-js">// play/index.html
+function liveTimedOut() {
+  if (!running || !curLive) return;
+  flushBuf();      // whatever it printed before the kill is still worth seeing
+  pushText(`\n— live run stopped after ${LIVE_TIMEOUT / 1000} s —\n`, "meta");
+  killAndRecreate();
+  …
+  if (++liveStalls &gt;= 2) { setLive(false); … }
+}</code></pre>
+<p>Note that the buffer is flushed <em>before</em> the kill is reported: a program that printed something useful and then hung has still told you something, and throwing that away to report a timeout would be a worse trade.</p>
+<p>The stall counter is the part worth copying. <strong>Two watchdog kills in a row turn the mode off</strong>, with a line in the output saying why — because each kill costs a fresh WebAssembly instantiation, and re-killing the worker on every keystroke of a genuinely long-running program helps nobody. A feature that cannot serve you should switch itself off and say so, rather than degrade silently.</p>
+<p>The setting persists in local storage, with one exception: a visitor who arrived from a <code>?live=1</code> link gets it on for that visit only. They came from a page <em>about</em> Live mode, which is not the same as choosing it for every future visit.</p>
+<h3>No incremental compilation, on purpose</h3>
+<p>There is no REPL here, no partial re-evaluation, no caching of a parse between keystrokes. Every live run lexes, parses and executes the whole program from scratch.</p>
+<p>That is not a shortcut around a hard problem — it is the measurement. A whole run of a typical example is a few milliseconds of WebAssembly, comfortably inside the 400 ms debounce, so re-running everything is <em>also</em> the fast thing. Incremental machinery would add state to keep correct, in exchange for latency nobody can perceive.</p>
+<p>It is the same reasoning as <a href="/book/node-specialization/">Chapter 18</a>'s: count the opportunity before building the clever version.</p>
+<h2 id="embedded-editors-one-script-tag">Embedded editors: one script tag</h2>
+<p>The playground is one page. The embed is the part that turns any page on any site into a Raku environment:</p>
 <pre class="native-code"><code class="lang-html">&lt;script src="https://raku.online/raku.js"&gt;&lt;/script&gt;
 &lt;pre data-raku&gt;say "Hello from an embedded editor!";&lt;/pre&gt;</code></pre>
 <p>Every element carrying <code>data-raku</code> becomes an editable, runnable editor. That is what makes the specification site, the tour and the course pages show examples that a reader can change and re-run, rather than screenshots of output.</p>
