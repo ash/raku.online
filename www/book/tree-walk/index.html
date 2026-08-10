@@ -56,7 +56,7 @@ struct ExecContext {
 };
 
 static thread_local ExecContext tctx_;</code></pre>
-<p>It is <code>static thread_local</code>, so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 33</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
+<p>It is <code>static thread_local</code>, so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 34</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
 <p>Two chains, not one. <strong><code>cur</code></strong> is the lexical chain: a callee's parent is the scope it was <em>written</em> in, reached through its <code>Callable::closure</code>. <strong><code>dynStack</code></strong> is the dynamic chain: the caller's scope, pushed on entry, walked only when resolving a <code>$*foo</code>. Keeping them separate is what makes lexical and dynamic scoping both correct and both cheap.</p>
 <h2 id="evaluating-an-expression">Evaluating an expression</h2>
 <p><code>eval</code> is a switch. The interesting arms are the ones that are <em>not</em> a straightforward recursion.</p>
@@ -70,7 +70,7 @@ if (Value* p = tctx_.cur-&gt;find(ve-&gt;name))
 <p><strong><code>Index</code></strong> reads a container element, and has a matching <code>fastShape</code>.</p>
 <p><strong><code>Call</code></strong> and <strong><code>MethodCall</code></strong> are <a href="/book/calls/">Chapters 13</a> and <a href="/book/dispatch/">15</a>.</p>
 <p><strong><code>InterpStr</code></strong> evaluates each part and concatenates. The parts were already parsed into sub-expressions by the front end, so there is no string scanning here at all.</p>
-<p><strong><code>NqpOp</code></strong> exists only under <code>use nqp</code> (<a href="/book/nqp/">Chapter 30</a>).</p>
+<p><strong><code>NqpOp</code></strong> exists only under <code>use nqp</code> (<a href="/book/nqp/">Chapter 31</a>).</p>
 <h2 id="evaluating-a-statement">Evaluating a statement</h2>
 <p><code>exec</code> is the same shape, with the control-flow statements doing the real work. Two mechanisms recur through all of them.</p>
 <h3>Hoisting</h3>
@@ -129,7 +129,7 @@ int rakuppRunBigStack(const std::string&amp; src, std::vector&lt;std::string&gt;
                       const std::string&amp; fileName, const std::string&amp; exePath,
                       const std::vector&lt;std::string&gt;&amp; libPaths = {});
 int rakuppMainOnBigStack(int (*body)(void*), void* ctx);</code></pre>
-<p>and worker threads get the same treatment through <code>BigStackThread</code>, which reserves 256 MiB of <em>virtual</em> address space — committed only as used (<a href="/book/concurrency/">Chapter 33</a>). A compiled <code>--exe</code> binary calls <code>rakuppMainOnBigStack</code> for its own main body, so the recursion budget is the same in every mode.</p>
+<p>and worker threads get the same treatment through <code>BigStackThread</code>, which reserves 256 MiB of <em>virtual</em> address space — committed only as used (<a href="/book/concurrency/">Chapter 34</a>). A compiled <code>--exe</code> binary calls <code>rakuppMainOnBigStack</code> for its own main body, so the recursion budget is the same in every mode.</p>
 <p>The interpreter also keeps a <code>callDepth</code> register and raises a clean Raku error when it gets too deep, so a runaway recursion produces a diagnostic rather than a segmentation fault.</p>
 <h2 id="what-this-costs-honestly">What this costs, honestly</h2>
 <p>Re-dispatching every AST node on every execution is inherently slower than bytecode or a JIT. The profile of a method-heavy loop, after the fixes in <a href="/book/interning/">Chapters 9</a> and <a href="/book/numbers/">10</a>, looks like this:</p>

@@ -4,7 +4,7 @@
     tagline  => 'How a hand-written C++ implementation of Raku works — from source text to native code.',
     repo     => 'https://github.com/ash/rakupp',
     pdf      => 'Raku++-Internals.pdf',
-    pdf-note => '200 pages',
+    pdf-note => '261 pages',
 
     # A one-line description per chapter slug, shown on the contents page.
     # A slug with no entry simply shows its title.
@@ -38,6 +38,7 @@
         'optimizer'           => 'three passes, and three defaults that are not passes',
         'dispatch-compiled'   => 'what each call shape costs, and an analysis that was wrong',
         'astserial'           => 'the binary AST format, and what invalidates a cache entry',
+        'wasm'                => 'the same runtime in a browser tab, and how live editors work',
         'modules'             => 'what use Foo actually does, and where it diverges',
         'nqp'                 => 'a compatibility subset that costs nothing when unused',
         'nativecall'          => 'libffi loaded at run time, and its ABI probed not tabulated',
