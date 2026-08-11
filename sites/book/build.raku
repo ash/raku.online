@@ -616,7 +616,9 @@ sub MAIN(Bool :$clean = False) {
         @toc.push('<ol class="chapters">') unless @toc;
         my $blurb = %SITE<blurbs>{%c<slug>} // '';
         @toc.push('<li><a href="' ~ $BASE ~ '/' ~ %c<slug> ~ '/">'
-                  ~ (%c<label> ?? '<span class="n">' ~ esc(%c<label>) ~ '</span>' !! '')
+                  # The label column is emitted even when empty (the preface has
+                  # no number), so every title starts at the same place.
+                  ~ '<span class="n">' ~ esc(%c<label>) ~ '</span>'
                   ~ '<span class="t">' ~ inline(%c<title>) ~ '</span></a>'
                   ~ ($blurb ?? '<span class="b">' ~ esc($blurb) ~ '</span>' !! '')
                   ~ '</li>');
