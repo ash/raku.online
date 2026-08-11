@@ -85,6 +85,13 @@
     // listeners live on the element, not on its position in the document.
     var sw = document.querySelector('.theme-switch');
     if (sw) bar.appendChild(sw);
+
+    // The tab row scrolls on narrow screens; make sure the section you are in
+    // is not the one hiding past the edge. Last, so the row is measured with
+    // the theme switcher already in the bar. block:'nearest' keeps the page's
+    // own scroll position untouched.
+    var cur = nav.querySelector('[aria-current="page"]');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   if (document.readyState === 'loading') {
