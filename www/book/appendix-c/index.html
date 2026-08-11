@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Source Map and Glossary — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=0d3ae91e"></script>
-<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
-<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
-<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
+<script src="/theme/boot.js?v=41a7aff8"></script>
+<link rel="stylesheet" href="/theme/base.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/shell.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/book.css?v=41a7aff8">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -45,14 +45,15 @@
 <tr><td>Unicode</td><td><code>Unicode.cpp</code>, <code>tools/ucd/</code>, the generators</td><td><a href="/book/unicode/">Chapter 23</a></td></tr>
 <tr><td>the CLI and compile drivers</td><td><code>main.cpp</code></td><td><a href="/book/run-modes/">Chapter 24</a></td></tr>
 <tr><td>the native compiler</td><td><code>Codegen.cpp</code>, the <code>rt*</code> helpers in <code>Interpreter.h</code></td><td><a href="/book/codegen/">Chapters 25</a> to <a href="/book/dispatch-compiled/">27</a></td></tr>
-<tr><td>the parse cache</td><td><code>AstSerial.cpp</code></td><td><a href="/book/astserial/">Chapter 28</a></td></tr>
-<tr><td>the browser build</td><td><code>rakujs/rakupp_web.cpp</code>, <code>rakujs/build.sh</code>, <code>raku.js</code></td><td><a href="/book/wasm/">Chapter 29</a></td></tr>
-<tr><td>module loading</td><td><code>Interpreter.cpp</code> <code>loadModule</code>, <code>Parser.cpp</code> <code>scanModuleOps</code></td><td><a href="/book/modules/">Chapter 30</a></td></tr>
-<tr><td><code>nqp::</code> ops</td><td><code>Parser::makeNqpOp</code>, <code>Interpreter::evalNqpOp</code></td><td><a href="/book/nqp/">Chapter 31</a></td></tr>
-<tr><td>NativeCall</td><td><code>Ffi.cpp</code>, <code>Interpreter::callNative</code></td><td><a href="/book/nativecall/">Chapter 32</a></td></tr>
-<tr><td>the extension ABI</td><td><code>rakupp_ext.h</code>, <code>ExtApi.cpp</code></td><td><a href="/book/extension-abi/">Chapter 33</a></td></tr>
-<tr><td>threads, the GIL, supplies</td><td><code>Interpreter.h</code>'s concurrency section</td><td><a href="/book/concurrency/">Chapter 34</a></td></tr>
-<tr><td>lint, highlight, profile, REPL</td><td><code>Lint.cpp</code>, <code>Highlight.cpp</code>, <code>Profiler.cpp</code>, <code>Repl.cpp</code></td><td><a href="/book/tooling/">Chapter 35</a></td></tr></table></div>
+<tr><td>what a binary keeps</td><td><code>SlimScan.cpp</code>, <code>ucd_seam.h</code>, <code>src/stubs/</code></td><td><a href="/book/slim/">Chapter 28</a></td></tr>
+<tr><td>the parse cache</td><td><code>AstSerial.cpp</code></td><td><a href="/book/astserial/">Chapter 29</a></td></tr>
+<tr><td>the browser build</td><td><code>rakujs/rakupp_web.cpp</code>, <code>rakujs/build.sh</code>, <code>raku.js</code></td><td><a href="/book/wasm/">Chapter 30</a></td></tr>
+<tr><td>module loading</td><td><code>Interpreter.cpp</code> <code>loadModule</code>, <code>Parser.cpp</code> <code>scanModuleOps</code></td><td><a href="/book/modules/">Chapter 31</a></td></tr>
+<tr><td><code>nqp::</code> ops</td><td><code>Parser::makeNqpOp</code>, <code>Interpreter::evalNqpOp</code></td><td><a href="/book/nqp/">Chapter 32</a></td></tr>
+<tr><td>NativeCall</td><td><code>Ffi.cpp</code>, <code>Interpreter::callNative</code></td><td><a href="/book/nativecall/">Chapter 33</a></td></tr>
+<tr><td>the extension ABI</td><td><code>rakupp_ext.h</code>, <code>ExtApi.cpp</code></td><td><a href="/book/extension-abi/">Chapter 34</a></td></tr>
+<tr><td>threads, the GIL, supplies</td><td><code>Interpreter.h</code>'s concurrency section</td><td><a href="/book/concurrency/">Chapter 35</a></td></tr>
+<tr><td>lint, highlight, profile, REPL</td><td><code>Lint.cpp</code>, <code>Highlight.cpp</code>, <code>Profiler.cpp</code>, <code>Repl.cpp</code></td><td><a href="/book/tooling/">Chapter 36</a></td></tr></table></div>
 <h2 id="rules-that-are-easy-to-break-by-accident">Rules that are easy to break by accident</h2>
 <p>Collected here because each has cost real debugging time.</p>
 <p><strong>The method-dispatch chain is order-sensitive.</strong> The four segments are ordered slices of one function; later arms deliberately catch what earlier ones decline. Moving an arm for readability is a behaviour change.</p>
@@ -77,6 +78,8 @@
 <p><strong>Decided-once field</strong> — a mutable field on an AST node holding a fact about the syntax, computed on first evaluation and never recomputed.</p>
 <p><strong>Eigenstate</strong> — one of the values inside a junction.</p>
 <p><strong>Fat struct</strong> — the <code>Value</code> design: one struct with a type tag and a field for every kind of payload, several of which may be live at once.</p>
+<p><strong>Seam</strong> — an accessor that is the only way to reach a piece of data, so the object defining it can be swapped for a stub at link time. What makes a Unicode table cuttable.</p>
+<p><strong>Trigger</strong> (in <code>--slim</code>) — a construct meaning the program can run code the scan never saw, so every feature is kept. An unmodelled AST node is one.</p>
 <p><strong>Emscripten</strong> — the toolchain that compiles the runtime to WebAssembly. Its <code>-fexceptions</code> mode routes C++ throws through JavaScript, which is what bounds recursion depth in the browser.</p>
 <p><strong>GIL</strong> — the global interpreter lock. Only its holder may touch interpreter state; it is engaged lazily on first concurrent use.</p>
 <p><strong>Grapheme</strong> — what a reader calls a character. Raku's string indices are grapheme indices; storage is UTF-8 bytes.</p>
@@ -100,6 +103,6 @@
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=0d3ae91e" defer></script>
+<script src="/theme/shell.js?v=41a7aff8" defer></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Raku in the Browser — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=0d3ae91e"></script>
-<link rel="stylesheet" href="/theme/base.css?v=0d3ae91e">
-<link rel="stylesheet" href="/theme/shell.css?v=0d3ae91e">
-<link rel="stylesheet" href="/theme/book.css?v=0d3ae91e">
+<script src="/theme/boot.js?v=41a7aff8"></script>
+<link rel="stylesheet" href="/theme/base.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/shell.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/book.css?v=41a7aff8">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 29</p><h1>Raku in the Browser</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-whole-boundary">The whole boundary</a></li><li><a href="#input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</a></li><li><a href="#output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</a></li><li><a href="#the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</a></li><li><a href="#exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></a></li><li><a href="#off-the-main-thread">Off the main thread</a></li><li><a href="#how-a-line-of-output-reaches-the-page">How a line of output reaches the page</a></li><li><a href="#live-mode-running-as-you-type">Live mode: running as you type</a></li><li><a href="#embedded-editors-one-script-tag">Embedded editors: one script tag</a></li><li><a href="#what-the-host-takes-away">What the host takes away</a></li><li><a href="#size-and-memory">Size and memory</a></li><li><a href="#why-this-is-worth-having">Why this is worth having</a></li></ul></nav>
+<p class="ch-label">Chapter 30</p><h1>Raku in the Browser</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-whole-boundary">The whole boundary</a></li><li><a href="#input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</a></li><li><a href="#output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</a></li><li><a href="#the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</a></li><li><a href="#exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></a></li><li><a href="#off-the-main-thread">Off the main thread</a></li><li><a href="#how-a-line-of-output-reaches-the-page">How a line of output reaches the page</a></li><li><a href="#live-mode-running-as-you-type">Live mode: running as you type</a></li><li><a href="#embedded-editors-one-script-tag">Embedded editors: one script tag</a></li><li><a href="#what-the-host-takes-away">What the host takes away</a></li><li><a href="#size-and-memory">Size and memory</a></li><li><a href="#why-this-is-worth-having">Why this is worth having</a></li></ul></nav>
 <p>The four modes in <a href="/book/run-modes/">Chapter 24</a> all target a machine with a filesystem, threads and a dynamic loader. There is a fifth target that has none of those: the same runtime compiled to <strong>WebAssembly</strong>, which is Raku.js — the interpreter running in a browser tab, with no server.</p>
 <p>It is not a fifth back end. It is mode 1, the tree walk, with a different host. What makes it worth a chapter is that the host removes almost everything the interpreter assumes, and the adaptation is <strong>94 lines that live entirely outside <code>src/</code> and change nothing in the interpreter</strong>.</p>
 <h2 id="the-whole-boundary">The whole boundary</h2>
@@ -32,7 +32,7 @@ EMSCRIPTEN_KEEPALIVE <span class="kt">int</span>         rakupp_run(<span class=
 EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_highlight(<span class="k">const</span> <span class="kt">char</span>* src);
 EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_version();</code></pre>
 <p><code>rakupp_run</code> calls <code>rakupp::rakuppRun</code> — the same public entry point the native CLI uses — which lexes, parses, builds an <code>Interpreter</code>, runs it, and catches <code>ParseError</code>, <code>RakuError</code> and <code>std::exception</code>, reporting them to stderr exactly as the CLI does. The exit code that comes back is the process exit code the CLI would have produced.</p>
-<p>The other two exports matter more than they look: <code>rakupp_highlight</code> is the tokenizer behind <code>rakupp --highlight</code> (<a href="/book/tooling/">Chapter 35</a>), and it is what lets a browser editor paint Raku with the compiler's own knowledge rather than a JavaScript approximation. That thread is picked up at the end of this chapter.</p>
+<p>The other two exports matter more than they look: <code>rakupp_highlight</code> is the tokenizer behind <code>rakupp --highlight</code> (<a href="/book/tooling/">Chapter 36</a>), and it is what lets a browser editor paint Raku with the compiler's own knowledge rather than a JavaScript approximation. That thread is picked up at the end of this chapter.</p>
 <h2 id="input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</h2>
 <p>The interpreter reads standard input exclusively through <code>std::cin</code>. A browser has no standard input, and Emscripten's TTY device brings its own buffering and EOF state. So feeding a program is a stream-buffer swap and nothing else:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp</span>
@@ -249,9 +249,9 @@ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;</code></pre>
 <p>Nothing is sent anywhere. The program runs in the visitor's browser.</p>
 <h2 id="what-the-host-takes-away">What the host takes away</h2>
 <div class="tablewrap"><table><tr><th></th><th></th></tr><tr><td><strong>deep recursion</strong></td><td>around 200 Raku levels, then a <code>RangeError</code> the page reports as a recursion-limit message and recovers from</td></tr>
-<tr><td><strong><code>start</code> / <code>Promise</code></strong></td><td>needs real threads; a threaded build needs cross-origin isolation headers, awkward for static hosting (<a href="/book/concurrency/">Chapter 34</a>)</td></tr>
+<tr><td><strong><code>start</code> / <code>Promise</code></strong></td><td>needs real threads; a threaded build needs cross-origin isolation headers, awkward for static hosting (<a href="/book/concurrency/">Chapter 35</a>)</td></tr>
 <tr><td><strong>sockets</strong></td><td>not available in the browser sandbox</td></tr>
-<tr><td><strong>NativeCall</strong></td><td>takes its no-libffi fallback path by construction — there is no shared library to open (<a href="/book/nativecall/">Chapter 32</a>)</td></tr>
+<tr><td><strong>NativeCall</strong></td><td>takes its no-libffi fallback path by construction — there is no shared library to open (<a href="/book/nativecall/">Chapter 33</a>)</td></tr>
 <tr><td><strong><code>--exe</code> and the code generator</strong></td><td>irrelevant: this ships the interpreter, not the transpiler</td></tr>
 <tr><td><strong><code>exit</code></strong></td><td>aborts the module instance; the worker rebuilds a fresh one</td></tr></table></div>
 <p>The recursion limit is the one users actually meet, and the message says what it is: a WebAssembly stack limit, not a Raku one. The same program runs natively. Lifting it would mean rewriting the tree walker onto an explicit heap stack — a change to <code>src/</code>, and a large one.</p>
@@ -268,6 +268,6 @@ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=0d3ae91e" defer></script>
+<script src="/theme/shell.js?v=41a7aff8" defer></script>
 </body>
 </html>

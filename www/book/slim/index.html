@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What a Compiled Binary Keeps — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=41a7aff8"></script>
+<link rel="stylesheet" href="/theme/base.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/shell.css?v=41a7aff8">
+<link rel="stylesheet" href="/theme/book.css?v=41a7aff8">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 28</p><h1>What a Compiled Binary Keeps</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-problem-is-the-linker-s-not-the-compiler-s">The problem is the linker's, not the compiler's</a></li><li><a href="#the-seam">The seam</a></li><li><a href="#five-archives">Five archives</a></li><li><a href="#the-stubs">The stubs</a></li><li><a href="#the-levels">The levels</a></li><li><a href="#the-scan">The scan</a></li><li><a href="#the-triggers">The triggers</a></li><li><a href="#what-it-is-worth">What it is worth</a></li><li><a href="#the-directives-and-the-one-that-proves-it">The directives, and the one that proves it</a></li><li><a href="#where-it-declines">Where it declines</a></li><li><a href="#the-manifest">The manifest</a></li><li><a href="#the-shape-of-the-argument">The shape of the argument</a></li></ul></nav>
+<p>A <code>--exe</code> binary carries the whole runtime, and most of the runtime is Unicode tables. <code>say "Hello"</code> used to compile to 9.9 MB, of which the program's own code was a rounding error and the character-name table alone was 3.1 MB — data that program could not reach even in principle.</p>
+<p><code>--slim</code> is the flag that removes what a program cannot use. The interesting part is not the flag; it is what has to be true of the runtime before a linker can be <em>asked</em> to leave something out, and how the compiler decides what is safe to ask for.</p>
+<h2 id="the-problem-is-the-linker-s-not-the-compiler-s">The problem is the linker's, not the compiler's</h2>
+<p>A static archive is pulled in by object file. If any symbol in an object is referenced, the whole object comes along. So a table is droppable only when <strong>nothing in the binary refers to it</strong> — and the runtime referred to everything, because <code>Unicode.cpp</code> named every table directly.</p>
+<p>That gives the shape of the work, and it came in stages: make the tables reachable only through a seam; split the runtime so each cuttable thing is its own archive; build a stub archive that stands in the gap; and only then write the analysis that decides which gaps to open.</p>
+<h2 id="the-seam">The seam</h2>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/ucd_seam.h</span>
+<span class="k">namespace</span> ucd {
+<span class="k">struct</span> NameEnt { <span class="k">const</span> <span class="kt">char</span>* name; <span class="kt">uint32_t</span> cp; };
+<span class="k">const</span> NameEnt* namesTable(<span class="kt">size_t</span>*);
+<span class="k">const</span> <span class="kt">int64_t</span>* numvTable(<span class="kt">size_t</span>*);
+<span class="c1">// …collation, script/block/bidi ranges…</span>
+}</code></pre>
+<p>Four cuttable table groups, each reached <strong>only</strong> through an accessor defined in the same translation unit as its data. That co-location is the whole mechanism: the accessor is the only symbol anyone outside references, so replacing the object replaces the data.</p>
+<p>Two details in the header are worth lifting out.</p>
+<p><strong><code>Unicode.cpp</code> no longer declares the tables at all.</strong> A new direct reference is therefore a compile error rather than a quiet hole in the seam. The seam is enforced by the language, not by a convention someone has to remember.</p>
+<p><strong>The never-cut tables keep their direct references on purpose</strong> — general category, binary properties, normalization, case mapping, grapheme break. Those are reached by ordinary string operations, so no program can prove it does not need them, and a seam there would be indirection with no stub ever standing behind it.</p>
+<p>There is a performance constraint on the seam, and it is stated where the code is:</p>
+<blockquote class="note"><p>Accessors return pointer and count <strong>once</strong>; callers hoist both into locals before any loop, so inner loops still index raw memory.</p></blockquote>
+<p>Collation touches its table once per collation <em>element</em>, so an accessor call per element would have been a measured regression. The gate for that stage was <code>perf-guard</code> flat on the collation paths.</p>
+<h2 id="five-archives">Five archives</h2>
+<pre class="native-code"><code class="lang-cmake">foreach(feat rakupp_ucd_names rakupp_ucd_coll rakupp_ucd_props
+             rakupp_parse rakupp_stubs)
+  add_library(${feat} STATIC ${${FEAT_VAR}})
+endforeach()</code></pre>
+<p>The runtime became <code>librakupp_rt.a</code> plus four feature archives and one stub archive. Three hold Unicode data. The fourth, <code>rakupp_parse</code>, holds the <strong>lexer and parser</strong> — because a compiled program that never calls <code>EVAL</code> does not need a Raku compiler inside it.</p>
+<p>That last one creates a genuine cycle: <code>Runtime.cpp</code> drives the parser, and the parser builds AST nodes whose helpers live in the runtime. Rather than leave it to link order, the cycle is declared:</p>
+<pre class="native-code"><code class="lang-cmake">target_link_libraries(rakupp_rt    INTERFACE rakupp_parse)
+target_link_libraries(rakupp_parse INTERFACE rakupp_rt)</code></pre>
+<p>which lets CMake repeat the archives for a single-pass linker instead of producing an unresolved symbol on some platforms and not others.</p>
+<h2 id="the-stubs">The stubs</h2>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/stubs/stub_ucd_names.cpp</span>
+<span class="k">const</span> NameEnt* namesTable(<span class="kt">size_t</span>*) {
+    featureMissing(<span class="s2">"unicode-names"</span>,
+                   <span class="s2">"uniname/uniparse (the Unicode name table)"</span>);
+}</code></pre>
+<p>One object per feature, in <code>librakupp_stubs.a</code>, linked <strong>in place of</strong> the real archive. The linker pulls exactly the stubs whose archive is absent.</p>
+<p>The stubs are deliberately not part of the runtime or of <code>librakupp</code>, and the comment says why: an interpreter carrying both the real table and a throwing double would be a one-definition-rule violation waiting for a link-order change.</p>
+<p>What they throw is an ordinary typed Raku exception:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/FeatureGate.cpp</span>
+<span class="k">throw</span> FeatureNotBuilt{{Value::typeObj(<span class="s2">"X::Feature::NotBuilt"</span>),
+    std::string(neededFor) + <span class="s2">" needs the '"</span> + feature +
+    <span class="s2">"' feature, and this binary was compiled without it (--slim=-"</span> +
+    feature + <span class="s2">"). …"</span>}};</code></pre>
+<p>Catchable with <code>when X::Feature::NotBuilt</code>, naming the feature, the operation that wanted it, and the flag that would put it back. <strong>A cut feature is a build decision the program ran into, not an internal error</strong> — so it is reported the way a program can handle rather than as a crash.</p>
+<p><code>featureMissing</code> lives in the runtime rather than in a stub, so both sides of the seam can reach it.</p>
+<h2 id="the-levels">The levels</h2>
+<p>Four, at most one per spec:</p>
+<div class="tablewrap"><table><tr><th>level</th><th>what it does</th></tr><tr><td><code>none</code></td><td>nothing: no dead-strip, symbols kept. For debugging a binary.</td></tr>
+<tr><td><code>safe</code></td><td><strong>the default with no flag.</strong> Dead-strip and symbol strip. No feature removed, no analysis run.</td></tr>
+<tr><td><code>auto</code></td><td><strong>what bare <code>--slim</code> means.</strong> <code>safe</code>, plus every feature the scan <em>proves</em> unreachable. Sound.</td></tr>
+<tr><td><code>max</code></td><td><code>auto</code>, ignoring the force-full triggers. Unsound by design.</td></tr></table></div>
+<p><code>safe</code> being the default matters more than it sounds: it costs nothing analytically and takes <code>say "Hello"</code> from 9.9 MB to 8.1 MB, byte-identical in behaviour. Its only real cost is that a C++-level crash reports addresses rather than names, which is why <code>+symbols</code> exists.</p>
+<p>A spec naming no level means <code>auto</code>, so <code>--slim=+eval</code> reads as "automatic pruning, but keep eval".</p>
+<h2 id="the-scan">The scan</h2>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/SlimScan.h</span>
+<span class="k">struct</span> SlimScanResult {
+    <span class="kt">bool</span> used[<span class="mi">4</span>];                        <span class="c1">// per feature</span>
+    std::vector&lt;std::string&gt; triggers;   <span class="c1">// why everything was kept</span>
+    <span class="k">struct</span> Site { <span class="kt">int</span> feat; std::string what; std::string where; <span class="kt">int</span> line; };
+    std::vector&lt;Site&gt; sites;             <span class="c1">// every use, in walk order</span>
+};
+SlimScanResult slimScan(<span class="k">const</span> Program&amp; prog,
+                        <span class="k">const</span> std::vector&lt;BundledModule&gt;&amp; mods);</code></pre>
+<p>It walks the parsed program <strong>and every module embedded alongside it</strong>, asking per feature: can any site reach this? The governing rule is one sentence in the header:</p>
+<blockquote class="note"><p>The default answer to uncertainty is always "keep".</p></blockquote>
+<p>The detectors are more specific than "does the name appear". <code>uniprop('Script')</code> marks <code>unicode-props</code>; <code>uniprop('Name')</code> marks <code>unicode-names</code> instead, because Name and Numeric_Value live in the names tables; a computed property name marks both. A bare <code>&amp;uniprop</code> reference marks both, because the argument is unknown. <code>&lt;:Script&lt;…&gt;&gt;</code> inside a regex marks props; <code>\c[…]</code> marks names, because the engine resolves that name at match time.</p>
+<p>The <code>eval</code> feature has the widest surface, and most of it is not spelled <code>EVAL</code>: <code>require</code>, <code>use-ok</code>, <code>eval-dies-ok</code>, a regex code block, <code>:my</code> in a regex, an <code>s///</code> replacement that interpolates, <code>throws-like</code> with code in a string. Each of those reaches <code>evalString</code> at run time, so each keeps the parser.</p>
+<h2 id="the-triggers">The triggers</h2>
+<p>Some constructs mean the program can run code the scan never saw. Under <code>auto</code> any of them keeps <strong>everything</strong>:</p>
+<pre class="native-code"><code>EVAL / EVALFILE / require
+a symbolic reference (::($name))
+an indirect method call (."$name"())
+a metamodel lookup (.^lookup)
+a regex interpolating a subregex (&lt;$var&gt; / &lt;{…}&gt;)
+a `use`d module that could not be embedded alongside the program
+an AST node the scan does not model</code></pre>
+<p>That last one is the important one, and it is what makes the analysis maintainable: <strong>a node kind the walker does not recognise is itself a trigger.</strong> Adding a construct to the language cannot silently create a hole in the scan; the worst it can do is make <code>auto</code> conservative until someone teaches the walker about it.</p>
+<p>Literal regex code blocks are <strong>not</strong> triggers. Their source is visible, so the scan parses and walks them like any other code.</p>
+<p>And the triggers are reported by name and line, rather than merely suppressing the cut:</p>
+<pre class="native-code"><code>$ rakupp --exe trig.raku --slim=list
+--slim=auto for trig.raku (--exe):
+  unicode-names      keep    3.1 MB   kept: a dynamic construct keeps everything
+  …
+dynamic constructs keeping everything (--slim=max cuts anyway):
+  an indirect method call (."$name"()) (in the program, line 2)
+would cut 0 KB of 5.0 MB cuttable (archive sizes)</code></pre>
+<h2 id="what-it-is-worth">What it is worth</h2>
+<pre class="native-code"><code>$ rakupp --exe hello.raku --slim=list
+--slim=auto for hello.raku (--exe):
+  unicode-names      cut     3.1 MB   proven unused
+  unicode-collation  cut     743 KB   proven unused
+  unicode-props      cut     141 KB   proven unused
+  eval               cut     971 KB   proven unused
+would cut 5.0 MB of 5.0 MB cuttable (archive sizes)</code></pre>
+<p><code>say "Hello"</code>: 9.9 MB unstripped, 8.1 MB at <code>safe</code>, <strong>4.6 MB</strong> under bare <code>--slim</code>. A program that uses one feature keeps one:</p>
+<pre class="native-code"><code>$ rakupp --exe uses-names.raku --slim=list
+  unicode-names      keep    3.1 MB   used: uniname (line 1)
+  unicode-collation  cut     743 KB   proven unused
+  unicode-props      keep    141 KB   used: &lt;:Script&lt;…&gt;&gt; in a regex (line 2)
+  eval               cut     971 KB   proven unused</code></pre>
+<h2 id="the-directives-and-the-one-that-proves-it">The directives, and the one that proves it</h2>
+<p>Four, one per spec:</p>
+<div class="tablewrap"><table><tr><th>directive</th><th></th></tr><tr><td><code>help</code></td><td>the grammar and the feature table, with the real archive sizes beside <em>this</em> rakupp</td></tr>
+<tr><td><code>list</code></td><td>keep/cut per feature for this program, with the reason and the bytes. Analyses only; does not compile</td></tr>
+<tr><td><code>why:FEAT</code></td><td>every site — program or module, with the line — that forces FEAT to be kept</td></tr>
+<tr><td><code>verify</code></td><td>build the slim binary <strong>and</strong> a full reference, run both, and emit the slim one only if stdout, stderr and exit status agree</td></tr></table></div>
+<p><code>verify</code> is the interesting one, because it answers the objection the whole feature invites: how do you know the analysis was right? By not trusting it — build both, run both, compare. A nondeterministic program cannot agree with anything, so <code>verify</code> refuses that too rather than reporting a false difference.</p>
+<p>It composes with an explicit cut, which is exactly when you want the proof: <code>--slim=safe,-eval,verify</code> is "I claim this program never compiles code at run time; prove it".</p>
+<p><code>help</code> deserves a note of its own. It prints the real archive sizes measured from the rakupp you are running, not numbers baked into a string — so the documentation cannot drift from the build.</p>
+<h2 id="where-it-declines">Where it declines</h2>
+<p>Two modes refuse the scan, loudly rather than quietly.</p>
+<p><strong><code>--bundle</code></strong> embeds source and parses it at run time, so nothing can be proven unused — and <code>--slim=-eval</code> is refused there outright, because bundling <em>is</em> the eval feature. <strong><code>--aot</code></strong> keeps every feature until the scan is wired for it. Explicit <code>±feature</code> still applies in both.</p>
+<p><code>--slim</code> shapes the link, so it applies to the compile modes only. The interpreter never slims.</p>
+<h2 id="the-manifest">The manifest</h2>
+<p>Every compiled binary embeds a one-line build manifest — version, mode, slim level, cut list — which <code>rakupp --exe-info BIN</code> prints.</p>
+<p>Keeping a string alive in a binary that was built to drop unreferenced data is its own small problem, and the solution is in <code>FeatureGate.cpp</code>:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="k">static</span> <span class="k">const</span> <span class="kt">char</span>* g_exeManifest = <span class="kc">nullptr</span>;
+<span class="kt">void</span> rakuppKeepManifest(<span class="k">const</span> <span class="kt">char</span>* m) { g_exeManifest = m; }</code></pre>
+<p>A pre-main initializer parks the pointer there. The call is what anchors it: <strong>an escaped address into another translation unit is beyond any optimizer's reach.</strong> And because the reader scans bytes rather than symbol tables, the manifest survives symbol stripping — <code>strings BIN | grep RAKUPP-EXE</code> finds it too.</p>
+<h2 id="the-shape-of-the-argument">The shape of the argument</h2>
+<p><code>--slim</code> is a static analysis whose failure mode was designed before the analysis was. Every layer has an answer to being wrong:</p>
+<ul><li>an unmodelled construct is a <strong>trigger</strong>, so the scan fails towards keeping;</li><li>a wrong cut throws a <strong>typed, catchable exception</strong> at the point of use, never a crash and never a wrong answer;</li><li><code>verify</code> will <strong>build both and compare</strong> rather than ask to be believed;</li><li>and <code>max</code>, the one unsound level, says so in its own help text.</li></ul>
+<p>That ordering is the point. An optimisation that removes code from a program is only as good as its worst case, and the worst case here was decided first.</p><nav class="ch-nav"><a class="prev" href="/book/dispatch-compiled/"><span>Previous</span>Dispatch Cost in Compiled Code</a><a class="next" href="/book/astserial/"><span>Next</span>AST Serialization and the Precompiled Parse</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=41a7aff8" defer></script>
+</body>
+</html>

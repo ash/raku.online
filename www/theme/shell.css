@@ -56,6 +56,19 @@ body { padding-top: var(--shell-h); }
   font-size: 14px;
   user-select: none;
 }
+/* iOS 26 Safari paints the page edge-to-edge behind its floating address-bar
+   chrome but pins fixed elements to the inset layout viewport below it, so
+   scrolled content showed in the strip between the screen top and the bar.
+   Carry the bar's background up through that strip; off-screen everywhere the
+   viewport starts at the screen edge. */
+.shell::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 100%;
+  height: 300px;
+  background: inherit;
+}
 
 .shell-mark {
   display: flex;
@@ -72,7 +85,21 @@ body { padding-top: var(--shell-h); }
 .shell-mark:hover { text-decoration: none; background: var(--bg); }
 .shell-mark .tld { color: var(--muted); font-weight: 500; }
 
-.shell-nav { display: flex; align-items: stretch; }
+/* On screens too narrow for every tab (the 375px iPhones), the row scrolls
+   sideways rather than clipping the last tabs. No scrollbar — the bar is 52px
+   tall and the swipe is the familiar mobile-tab-strip gesture; shell.js brings
+   the active tab into view so a clipped section is never the one you are on.
+   overscroll-behavior keeps a swipe past the strip's edge from turning into
+   the browser's back gesture. */
+.shell-nav {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.shell-nav::-webkit-scrollbar { display: none; }
 
 .shell-tab {
   display: flex;
