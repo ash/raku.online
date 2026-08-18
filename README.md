@@ -28,6 +28,7 @@ program still runs in a fraction of a second:
 | `/spec/` | The Raku++ specification | generated from `sites/spec/` |
 | `/spec/rules/` | Raku Rules — the exhaustive rulebook | generated from `sites/spec/` |
 | `/faq/` | Task-shaped answers to common questions | generated from `sites/faq/` |
+| `/6e/` | What Raku 6.e adds to 6.d, change by change | generated from `sites/6e/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
@@ -83,9 +84,11 @@ sites/            sources for the generated sub-sites
   tour/             build.raku + src/, emits out/
   spec/             build.raku + rules.raku + src/, emits out/
   faq/              build.raku + src/, emits out/ — articles synced by sync.sh
-                    from rakupp/docs/faq, which is where they are written
+                    from rakupp/docs/guide/faq, which is where they are written
   book/             build.raku + src/, emits out/ — chapters and the PDF synced
                     by sync.sh from rakupp/docs/book
+  6e/               build.raku + src/, emits out/ — the 6.e article, synced by
+                    sync.sh from rakupp/docs/guide/LANGUAGE-6E.md
 
 build.sh          assembles www/ and checks it
 ```
@@ -101,11 +104,15 @@ history is intact.
 ./build.sh tour         # one sub-site
 ./build.sh spec
 ./build.sh faq
+./build.sh 6e
 ./build.sh book
 ./build.sh theme
 
 # the FAQ articles live in the rakupp repo; re-sync after editing them there
 ./sites/faq/sync.sh ~/raku++
+
+# so does the 6.e article
+./sites/6e/sync.sh ~/raku++
 
 # the book, likewise — chapters and the built PDF
 ./sites/book/sync.sh ~/raku++
@@ -123,7 +130,7 @@ and then runs six checks — any of which fails the build:
 - no sub-site link escapes its base (see below)
 - the search indexes carry their base
 
-The generated output under `www/tour`, `www/spec`, `www/faq` and `www/book` **is committed**, so the
+The generated output under `www/tour`, `www/spec`, `www/faq`, `www/book` and `www/6e` **is committed**, so the
 repository is publishable as-is and the Pages workflow needs no build step.
 Run `./build.sh` and commit the result whenever a source changes.
 

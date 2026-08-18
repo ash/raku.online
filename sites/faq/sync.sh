@@ -4,10 +4,10 @@
 #   ./sync.sh [path-to-rakupp-checkout]
 #
 # raku.online keeps a copy so the site is buildable on its own (Pages publishes
-# committed files and runs no build), but rakupp/docs/faq stays the source of
+# committed files and runs no build), but rakupp/docs/guide/faq stays the source of
 # truth. Re-run this and rebuild whenever an article changes there.
 set -e
-SRC="${1:-${RAKUPP_SRC:-$HOME/raku++}}/docs/faq"
+SRC="${1:-${RAKUPP_SRC:-$HOME/raku++}}/docs/guide/faq"
 DEST="$(cd "$(dirname "$0")" && pwd)/src/pages"
 
 [ -d "$SRC" ] || { echo "no FAQ sources at $SRC (pass the rakupp checkout as \$1)" >&2; exit 1; }
