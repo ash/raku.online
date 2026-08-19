@@ -504,6 +504,9 @@ sub nav-html(%site, %by-cat, $current) {
     }
     @parts.push('<div class="nav-extra">' ~
         '<a href="' ~ $BASE ~ '/rules/">Raku Rules — every operator and type →</a>' ~
+        ('src/data/6e.raku'.IO.e
+            ?? '<a href="' ~ $BASE ~ '/6e/">Raku 6.e support — the next revision →</a>'
+            !! '') ~
         '</div>');
     @parts.push('</div></nav>');
     @parts.join
@@ -760,6 +763,7 @@ sub render-home(%site, %by-cat --> Str) {
         "<p class=\"hero-links\"><a href=\"{$BASE}/rules/\">Raku Rules — the exhaustive reference →</a>" ~
         " <a href=\"{$BASE}/conformance/\">See the full Roast conformance map →</a>" ~
         ('src/data/dashboard.json'.IO.e ?? ' <a href="' ~ $BASE ~ '/dashboard/">Dashboard →</a>' !! '') ~
+        ('src/data/6e.raku'.IO.e ?? ' <a href="' ~ $BASE ~ '/6e/">Raku 6.e support →</a>' !! '') ~
         "{$excels-link}</p>" ~
         '</div>';
 
@@ -974,6 +978,84 @@ sub collect-pages(%site) {
     $(@pages), $(%by-cat)
 }
 
+# The 6.e support matrix. One section per change the 6.e language revision makes
+# to 6.d, each carrying the same snippet run three times — Rakudo under 6.d,
+# Rakudo under 6.e, Raku++ under 6.e — and a verdict derived from those three
+# outputs rather than asserted. The data is src/data/6e.raku, written by
+# tools/gen-6e.raku; re-run that after an engine change and the page re-scores
+# itself. The prose companion is raku.online/6e.
+sub render-sixe(%site, %by-cat --> Str) {
+    my %d     = EVAL slurp('src/data/6e.raku');
+    my $total = %d<counts>.values.sum;
+    my @parts;
+
+    @parts.push('<div class="conf-head"><h1>Raku 6.e support</h1>');
+    @parts.push('<p class="tagline">What the <strong>6.e</strong> language revision changes about ' ~
+        '<strong>6.d</strong>, and whether Raku++ changes it too. Turn it on with ' ~
+        '<code>use v6.e.PREVIEW;</code> as the first statement — in Rakudo and in Raku++ alike.</p>');
+
+    @parts.push('<div class="sixe-summary">');
+    for <full partial divergent ni> -> $s {
+        my ($label, $cls, $) = @(%STATUS{$s});
+        @parts.push("<span class=\"sixe-tile\"><span class=\"dot $cls\"></span>" ~
+                    "<b>{%d<counts>{$s} // 0}</b><span>{$label}</span></span>");
+    }
+    @parts.push("<span class=\"sixe-tile sixe-total\"><b>{$total}</b><span>changes tracked</span></span>");
+    @parts.push('</div>');
+
+    @parts.push('<p class="sixe-prov">Every output below is a real run, not a prediction: ' ~
+        "<strong>Rakudo {esc(%d<rakudo>)}</strong> and <strong>{esc(%d<rakupp>)}</strong>, " ~
+        "measured {esc(%d<generated>)}. The verdict follows one rule — <em>Full</em> when Raku++ " ~
+        'gives what Rakudo gives under 6.e, or refuses what 6.e refuses; <em>Not implemented</em> ' ~
+        'when Raku++ says the thing does not exist; <em>Divergent</em> when it runs and answers ' ~
+        'something else. <em>Partial</em> is the one verdict set by hand, because "there, but not ' ~
+        'all the way there" is a judgement no comparison of outputs can make. ' ~
+        'The prose version of all this, with the reasoning and the sources, is ' ~
+        '<a href="/6e/">What Raku 6.e adds to 6.d</a>.</p>');
+    @parts.push('</div>');
+
+    # Jump list: the groups, with how many of each are fully supported.
+    @parts.push('<div class="sixe-jump">');
+    for @(%d<groups>) -> %g {
+        my $full = @(%g<items>).grep({ .<status> eq 'full' }).elems;
+        @parts.push("<a href=\"#{%g<slug>}\">{esc(%g<title>)} " ~
+                    "<span>{$full}/{@(%g<items>).elems}</span></a>");
+    }
+    @parts.push('</div>');
+
+    for @(%d<groups>) -> %g {
+        @parts.push("<h2 class=\"conf-areas-title\" id=\"{%g<slug>}\">{esc(%g<title>)}</h2>");
+        @parts.push("<p class=\"sixe-intro\">{esc(%g<intro>)}</p>");
+        for @(%g<items>) -> %i {
+            my ($label, $cls, $tip) = @(%STATUS{ %i<status> });
+            @parts.push("<section class=\"sixe-item\" id=\"{%i<id>}\">");
+            @parts.push("<h3><span class=\"dot $cls\" title=\"{esc-attr($tip)}\"></span>" ~
+                        "<a href=\"#{%i<id>}\">{esc(%i<title>)}</a>" ~
+                        "<span class=\"status $cls\">{$label}</span></h3>");
+            @parts.push("<p class=\"sixe-note\">{esc(%i<note>)}</p>");
+            @parts.push('<pre class="native-code"><code class="lang-raku">' ~
+                        esc(%i<code>) ~ '</code></pre>');
+            @parts.push('<div class="table-wrap"><table class="sixe-out"><tbody>');
+            for ('6.d', %i<d>), ('6.e', %i<e>), ('Raku++', %i<pp>) -> ($who, $out) {
+                my $shown = $out eq '' ?? '<span class="sixe-silent">(no output)</span>'
+                                       !! '<code>' ~ esc($out) ~ '</code>';
+                @parts.push("<tr><th>{$who}</th><td>{$shown}</td></tr>");
+            }
+            @parts.push('</tbody></table></div>');
+            @parts.push("<p class=\"sixe-why\">{esc(%i<why>)}</p>") if %i<why>;
+            @parts.push('<p class="sixe-why">Rakudo needs its RakuAST frontend for this one ' ~
+                        '(<code>RAKUDO_RAKUAST=1</code>); Raku++ does not.</p>') if %i<rakuast>;
+            @parts.push('<p class="sixe-why">6.d and 6.e agree here — the row is kept for ' ~
+                        'completeness.</p>') unless %i<changed>;
+            @parts.push('</section>');
+        }
+    }
+
+    page-shell(%site, 'Raku 6.e support — Raku++ Specification', @parts.join,
+               nav-html(%site, %by-cat, Nil))
+}
+
+
 sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '', Str :$wasm = '',
          Str :$battery = (%*ENV<HOME> // '') ~ '/raku-module-battery') {
     my %site = EVAL slurp('src/site.raku');
@@ -1008,6 +1090,12 @@ sub MAIN(Bool :$verify = False, Bool :$clean = False, Str :$rakupp = RAKUPP-DEFA
         mkdir('out/dashboard');
         spurt('out/dashboard/index.html', render-dashboard(%site, $by-cat));
         spurt('out/dashboard.json', slurp('src/data/dashboard.json'));
+    }
+
+    # The 6.e support matrix (special page + its committed measurement snapshot).
+    if "src/data/6e.raku".IO.e {
+        mkdir("out/6e");
+        spurt("out/6e/index.html", render-sixe(%site, $by-cat));
     }
 
     # "Where Raku++ excels" index — emitted only when some page carries the section.
