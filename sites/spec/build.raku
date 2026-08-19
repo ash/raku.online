@@ -1003,7 +1003,23 @@ sub render-sixe(%site, %by-cat --> Str) {
     @parts.push("<span class=\"sixe-tile sixe-total\"><b>{$total}</b><span>changes tracked</span></span>");
     @parts.push('</div>');
 
-    @parts.push('<p class="sixe-prov">Every output below is a real run, not a prediction: ' ~
+    # Support is one question; whether the pragma is what turns it on is another.
+    if %d<gating> {
+        @parts.push('<div class="sixe-summary sixe-gating">');
+        @parts.push("<span class=\"sixe-tile\"><b>{%d<gating><gated> // 0}</b>" ~
+                    '<span>gated on <code>use v6.e.PREVIEW</code></span></span>');
+        @parts.push("<span class=\"sixe-tile\"><b>{%d<gating><default-on> // 0}</b>" ~
+                    '<span>on by default in Raku++, pragma or not</span></span>');
+        @parts.push('</div>');
+    }
+
+    @parts.push('<p class="sixe-prov">Each entry is one snippet run <strong>four</strong> ' ~
+        'times — both engines under both revisions — because "does Raku++ do this?" and ' ~
+        '"does the pragma turn it on?" are different questions. Raku++ describes itself as ' ~
+        'implementing 6.d <em>with 6.e features</em>, and the fourth row is where that shows: ' ~
+        'a good deal of 6.e is simply on, pragma or not. The verdict scores the 6.e column ' ~
+        'against Rakudo\'s; the 6.d column is there so nobody ports code on a wrong assumption.</p>');
+    @parts.push('<p class="sixe-prov">Every output is a real run, not a prediction: ' ~
         "<strong>Rakudo {esc(%d<rakudo>)}</strong> and <strong>{esc(%d<rakupp>)}</strong>, " ~
         "measured {esc(%d<generated>)}. The verdict follows one rule — <em>Full</em> when Raku++ " ~
         'gives what Rakudo gives under 6.e, or refuses what 6.e refuses; <em>Not implemented</em> ' ~
@@ -1036,12 +1052,24 @@ sub render-sixe(%site, %by-cat --> Str) {
             @parts.push('<pre class="native-code"><code class="lang-raku">' ~
                         esc(%i<code>) ~ '</code></pre>');
             @parts.push('<div class="table-wrap"><table class="sixe-out"><tbody>');
-            for ('6.d', %i<d>), ('6.e', %i<e>), ('Raku++', %i<pp>) -> ($who, $out) {
+            for ('Rakudo 6.d', %i<d>),  ('Rakudo 6.e', %i<e>),
+                ('Raku++ 6.d', %i<ppd>), ('Raku++ 6.e', %i<pp>) -> ($who, $out) {
                 my $shown = $out eq '' ?? '<span class="sixe-silent">(no output)</span>'
                                        !! '<code>' ~ esc($out) ~ '</code>';
                 @parts.push("<tr><th>{$who}</th><td>{$shown}</td></tr>");
             }
             @parts.push('</tbody></table></div>');
+            given %i<gating> {
+                when 'gated' {
+                    @parts.push('<p class="sixe-why">Raku++ gates this on the pragma: ' ~
+                        'without <code>use v6.e.PREVIEW</code> it does the 6.d thing.</p>');
+                }
+                when 'default-on' {
+                    @parts.push('<p class="sixe-why sixe-default-on">Raku++ does this ' ~
+                        '<strong>without the pragma too</strong> — under 6.d, where Rakudo ' ~
+                        'still does the old thing.</p>');
+                }
+            }
             @parts.push("<p class=\"sixe-why\">{esc(%i<why>)}</p>") if %i<why>;
             @parts.push('<p class="sixe-why">Rakudo needs its RakuAST frontend for this one ' ~
                         '(<code>RAKUDO_RAKUAST=1</code>); Raku++ does not.</p>') if %i<rakuast>;

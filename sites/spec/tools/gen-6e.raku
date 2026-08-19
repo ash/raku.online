@@ -294,6 +294,7 @@ sub MAIN(Str :$rakupp = RAKUPP-DEFAULT, Str :$rakudo = RAKUDO-DEFAULT,
 
     my @groups;
     my %counts = full => 0, partial => 0, divergent => 0, ni => 0;
+    my %gating = gated => 0, default-on => 0, none => 0;
 
     for @GROUPS -> %g {
         my @items;
@@ -312,20 +313,35 @@ sub MAIN(Str :$rakupp = RAKUPP-DEFAULT, Str :$rakudo = RAKUDO-DEFAULT,
 
             my %env = %it<env> // {};
             my $scrub = ~$tmp ~ "/";
-            my ($d,  $d-failed)  = run-one($rakudo, ~$plain,   @inc, %env, $scrub);
-            my ($e,  $e-failed)  = run-one($rakudo, ~$preview, @inc, %env, $scrub);
-            my ($pp, $pp-failed) = run-one($rakupp, ~$preview, @inc, {},   $scrub);
+            # Four runs, not three: each engine under each revision. The fourth
+            # is the one that answers "does Raku++ gate this on the pragma at
+            # all?" — it ships a good deal of 6.e switched on in 6.d, and a
+            # reader porting code needs to know which parts.
+            my ($d,    $d-failed)    = run-one($rakudo, ~$plain,   @inc, %env, $scrub);
+            my ($e,    $e-failed)    = run-one($rakudo, ~$preview, @inc, %env, $scrub);
+            my ($pp-d, $pp-d-failed) = run-one($rakupp, ~$plain,   @inc, {},   $scrub);
+            my ($pp,   $pp-failed)   = run-one($rakupp, ~$preview, @inc, {},   $scrub);
 
             my $status = %it<status> // verdict($e, $e-failed, $pp, $pp-failed);
+            # How Raku++ treats the revision, independent of whether it gets the
+            # feature right: gated (the pragma changes what happens), default-on
+            # (no pragma needed, and 6.d in Rakudo does something else), or off.
+            my $gating = $pp-d ne $pp || $pp-d-failed != $pp-failed
+                ?? 'gated'
+                !! ($pp eq $e && !$pp-failed && !$e-failed && ($d ne $e || $d-failed != $e-failed))
+                    ?? 'default-on'
+                    !! 'none';
             %counts{$status}++;
+            %gating{$gating}++;
             @items.push({
                 id => %it<id>, title => %it<title>, note => %it<note>,
-                code => %it<code>, d => $d, e => $e, pp => $pp,
+                code => %it<code>, d => $d, e => $e, ppd => $pp-d, pp => $pp,
                 changed => ($d ne $e || $d-failed != $e-failed) ?? 1 !! 0,
+                gating => $gating,
                 status => $status, why => (%it<why> // ''),
                 rakuast => (%it<env>:exists ?? 1 !! 0),
             });
-            say "  {%it<id>}: $status";
+            say "  {%it<id>}: $status ($gating)";
         }
         @groups.push({ slug => %g<slug>, title => %g<title>, intro => %g<intro>, items => @items });
     }
@@ -342,6 +358,7 @@ sub MAIN(Str :$rakupp = RAKUPP-DEFAULT, Str :$rakudo = RAKUDO-DEFAULT,
     @lines.push("  'rakudo' => '$rakudo-ver',");
     @lines.push("  'rakupp' => '$rakupp-ver',");
     @lines.push("  'counts' => \{ " ~ %counts.keys.sort.map({ "'$_' => {%counts{$_}}" }).join(', ') ~ " \},");
+    @lines.push("  'gating' => \{ " ~ %gating.keys.sort.map({ "'$_' => {%gating{$_}}" }).join(', ') ~ " \},");
     @lines.push("  'groups' => [");
     for @groups -> %g {
         @lines.push("    \{");
@@ -350,7 +367,7 @@ sub MAIN(Str :$rakupp = RAKUPP-DEFAULT, Str :$rakudo = RAKUDO-DEFAULT,
         @lines.push("      'intro' => " ~ %g<intro>.raku ~ ",");
         @lines.push("      'items' => [");
         for @(%g<items>) -> %i {
-            @lines.push("        \{ " ~ <id title note code d e pp changed status why rakuast>.map({
+            @lines.push("        \{ " ~ <id title note code d e ppd pp changed gating status why rakuast>.map({
                 "'$_' => " ~ %i{$_}.raku
             }).join(', ') ~ " \},");
         }
