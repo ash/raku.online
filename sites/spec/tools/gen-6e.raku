@@ -115,7 +115,6 @@ my @GROUPS =
         code => 'say (3+4i).sign;' },
       { id => "int-pick", title => "Int.roll / Int.pick",
         note => "42.pick(3) is short for (^42).pick(3).",
-        status => "partial", why => Q[Int.roll is there; Int.pick($n) returns a single value instead of $n of them.],
         code => Q[say 6.roll ~~ Int, " ", 6.pick(3).elems;] },
       { id => 'mu-callable', title => 'Mu.Callable($name)',
         note => 'The method of that name, or a Failure — a findable method reference.',

@@ -25,7 +25,7 @@
 <nav class="toc" aria-label="Contents"><ul><li><a href="#1-the-short-version">1. The short version</a></li><li><a href="#2-turning-it-on">2. Turning it on</a></li><li><a href="#3-where-the-documentation-is-and-isn-t">3. Where the documentation is — and isn't</a></li><li><a href="#4-new-syntax">4. New syntax</a></li><li><a href="#5-new-terms-subs-and-operators">5. New terms, subs and operators</a></li><li><a href="#6-new-methods">6. New methods</a></li><li><a href="#7-changed-behaviour-the-ones-that-bite">7. Changed behaviour — the ones that bite</a></li><li><a href="#8-new-errors">8. New errors</a></li><li><a href="#9-deprecations">9. Deprecations</a></li><li><a href="#10-declared-in-core-e-but-not-observably-different-yet">10. Declared in <code>core.e</code>, but not observably different (yet)</a></li><li><a href="#11-how-rakudo-implements-this">11. How Rakudo implements this</a></li><li><a href="#12-raku-status">12. Raku++ status</a></li><li><a href="#13-checking-any-of-this-yourself">13. Checking any of this yourself</a></li></ul></nav>
 <p>Raku the <em>language</em> is versioned (<code>6.c</code>, <code>6.d</code>, <code>6.e</code>, …) independently of Rakudo the <em>compiler</em> (<code>2026.07</code>). A given compiler release implements one or more language revisions, and a program picks one with a <code>use v6.X</code> pragma on its first line. Rakudo 2026.07 defaults to <strong>6.d</strong> and offers <strong>6.e</strong> behind a <code>PREVIEW</code> marker; Raku++ does the same.</p>
 <p>This page is the missing changelog: everything <code>6.e</code> changes relative to <code>6.d</code>, with both outputs shown for each item, plus where Raku++ stands on each.</p>
-<blockquote class="note"><p>Verified on Rakudo <strong>v2026.07</strong> (MoarVM) and Raku++ <strong>build-arm64, 2026-08-18</strong>, against rakudo <code>main</code> @<code>050230cb2</code> and roast @<code>b2cbe8a42</code>. Every snippet below was run on both engines; the outputs are pasted, not predicted.</p></blockquote>
+<blockquote class="note"><p>Verified on Rakudo <strong>v2026.07</strong> (MoarVM) and Raku++ <strong>v3.14.0+</strong>, against rakudo <code>main</code> @<code>050230cb2</code> and roast @<code>b2cbe8a42</code>. Every snippet below was run on both engines under both revisions; the outputs are pasted, not predicted. Where the two engines differ, §12 says so.</p></blockquote>
 <hr>
 <h2 id="1-the-short-version">1. The short version</h2>
 <p>6.e is not a redesign. It is roughly four kinds of change:</p>
@@ -202,38 +202,13 @@ say A::B::A::B.^name;</code></pre>
 <pre class="native-code"><code class="lang-bash">grep -rn "language_revision" src/ | grep -w 3</code></pre>
 <hr>
 <h2 id="12-raku-status">12. Raku++ status</h2>
-<p>Raku++ reports itself as implementing 6.d with 6.e features, and sets its internal revision from the same pragma.</p>
-<p>The list below is a snapshot. The same comparison, re-measured on every build and scored per feature, is the support matrix at <strong><a href="https://raku.online/spec/6e/">raku.online/spec/6e</a></strong> — each entry there is one snippet run three times (Rakudo 6.d, Rakudo 6.e, Raku++ 6.e) with all three outputs shown, so a verdict can be checked rather than taken on trust.</p>
-<p>Of the items above, these were verified as <strong>already matching 6.e</strong>:</p>
-<p><code>snip</code> (method and sub), <code>snitch</code>, <code>rotor</code> as a sub, <code>q:o</code>/<code>q:format</code>/<code>Format</code> (without needing a RakuAST frontend), the <code>.fmt(Format)</code> candidates, all four <code>sprintf</code> changes, <code>Complex.sign</code>, <code>(-4).sqrt</code>, the <code>.succ</code> string-range semantics, role submethods not composed, nested same-name packages, <code>%h{**}</code> hyperslices, <code>%h&lt;A;B&gt;</code> returning a scalar, and the single-path <code>unlink</code>.</p>
-<p>And these are <strong>gaps or divergences</strong> as of this build:</p>
-<div class="tablewrap"><table><tr><th>Item</th><th>Rakudo 6.e</th><th>Raku++ 6.e</th></tr><tr><td>prefix <code>//</code></td><td><code>True False</code></td><td>parsed as an empty regex, prints an empty line</td></tr>
-<tr><td>term <code>nano</code></td><td><code>Int</code></td><td><code>Undefined routine 'nano'</code></td></tr>
-<tr><td><code>next($v)</code> / <code>last($v)</code></td><td>value is used</td><td>value discarded</td></tr>
-<tr><td><code>trans</code> as a sub</td><td><code>bbnbnb</code></td><td><code>Undefined routine 'trans'</code></td></tr>
-<tr><td><code>Mu.Callable($name)</code></td><td><code>Method</code></td><td><code>No such method 'Callable'</code></td></tr>
-<tr><td><code>Str.nomark</code> / <code>Cool.nomark</code></td><td><code>elan vital</code></td><td><code>No such method 'nomark'</code></td></tr>
-<tr><td><code>IO::Path.stem</code></td><td><code>foo</code></td><td><code>No such method 'stem'</code></td></tr>
-<tr><td><code>:smartcase</code></td><td><code>True</code></td><td><code>False</code> (adverb ignored)</td></tr>
-<tr><td><code>6.pick(3)</code></td><td>3 elements</td><td>1 element</td></tr>
-<tr><td><code>Str.comb(2 =&gt; 1)</code></td><td><code>(ab de)</code></td><td><code>()</code></td></tr>
-<tr><td><code>.skip(2,3)</code></td><td><code>(1 2 6 7 8 9 10)</code></td><td><code>(3 4 5 6 7 8 9 10)</code></td></tr>
-<tr><td><code>@a[||@i]</code></td><td><code>3</code></td><td><code>Unsupported prefix 'dimslip'</code></td></tr>
-<tr><td><code>so (5..1)</code></td><td><code>False</code></td><td><code>True</code></td></tr>
-<tr><td><code>(-1e0).log</code></td><td><code>0+3.14…i</code></td><td><code>NaN</code></td></tr>
-<tr><td>shaped-hash default</td><td><code>Mu</code></td><td><code>Any</code></td></tr>
-<tr><td><code>MY::&lt;$missing&gt;</code></td><td><code>Failure</code></td><td>throws <code>Variable … is not declared</code></td></tr>
-<tr><td><code>LEXICAL::&lt;$*dyn&gt;</code></td><td>throws</td><td>returns <code>42</code></td></tr>
-<tr><td><code>G.parse("abc")</code></td><td><code>Failure</code></td><td><code>Any</code></td></tr>
-<tr><td><code>subset.^ver</code></td><td><code>6.e</code></td><td><code>v6.c</code></td></tr>
-<tr><td><code>&lt;|f&gt;</code> boundary</td><td>compile error</td><td>matches silently</td></tr>
-<tr><td><code>splice(1,1,$[8,9])</code></td><td><code>[1, [8, 9], 3]</code></td><td><code>[1, 8, 9, 3]</code></td></tr>
-<tr><td><code>Date/Instant.DateTime(:timezone)</code></td><td>honoured</td><td>ignored</td></tr>
-<tr><td><code>.pm</code> module extension</td><td>not found</td><td>still loaded</td></tr>
-<tr><td><code>use v6.e;</code> without <code>PREVIEW</code></td><td>rejected</td><td>accepted</td></tr></table></div>
-<hr>
+<p>Raku++ implements 6.d, and 6.e when a program asks for it with the pragma — <code>rakupp --version</code> says exactly that. The revision is a property of the <em>code</em>, not of the process: a module compiled under <code>use v6.e.PREVIEW</code> keeps 6.e semantics when a 6.d program calls it, and a 6.d mainline does not acquire 6.e semantics by loading a 6.e module. Rakudo differs on that second half — <code>use</code>-ing a 6.e module there loads <code>CORE.e</code> into the process, so the importing 6.d mainline starts returning <code>Complex</code> from <code>sqrt</code> as well, including on lines above the <code>use</code>. That divergence is deliberate.</p>
+<p>The scoreboard is the support matrix at <strong><a href="https://raku.online/spec/6e/">raku.online/spec/6e</a></strong>, which runs every change on this page four ways — Rakudo 6.d, Rakudo 6.e, Raku++ 6.d, Raku++ 6.e — and scores each from those outputs rather than from a claim. As of this writing it reads <strong>50 of 51 full, 0 divergent, 0 partial, 1 not implemented</strong>, with 46 of them gated on the pragma.</p>
+<p>Four things are deliberately not done, and are worth knowing rather than discovering:</p>
+<ul><li><strong><code>RakuAST</code></strong> is a separate campaign, postponed on purpose. It is the one row the matrix scores as not implemented.</li><li><strong><code>.succ</code> string ranges</strong> are 6.e's behaviour under <em>both</em> revisions here. Gating means falling back to 6.d's answer, and 6.d's answer is <code>SEQUENCE</code>'s per-position cross product — <code>("az".."bc")</code> is 52 elements there — which this engine does not implement. It only differs for multi-character endpoints; <code>'a'..'z'</code> goes through <code>CharFromTo</code> in both revisions and never differed.</li><li><strong>A same-named package inside a package</strong> nests here under both revisions. Rakudo's 6.d silently replaces the outer module in the stash, which its own warning calls "legacy behavior specific to Raku 6.d and earlier"; being bug-compatible with a pattern nobody should use is worth less than the risk.</li><li><strong>Blocks accept extra positionals</strong> in every revision here, so the one 6.e <code>@_</code> case that turns on arity — a block called with three arguments inside a routine — still answers instead of dying. That is not a 6.e matter at all: <code>my &amp;c = { 42 }; c(1,2,3)</code> runs here and dies in Rakudo under 6.d too.</li></ul>
+<p>Three general divergences turned up while this page was being verified, none of them about 6.e, all filed on their own: block arity is not checked at all, <code>Instant.from-posix(0)</code> is ten seconds off, and <code>.subparse</code> on a failed match answers <code>Nil</code> where Rakudo answers with the grammar object.</p>
 <h2 id="13-checking-any-of-this-yourself">13. Checking any of this yourself</h2>
-<p>Every line above came out of the same three-way run — 6.d, 6.e, and Raku++ 6.e — which is two commands:</p>
+<p>Every line above came out of the same runs — each snippet on both engines under both revisions — which is two commands per engine:</p>
 <pre class="native-code"><code class="lang-bash">raku -e 'CODE'</code></pre>
 <pre class="native-code"><code class="lang-bash">raku -e 'use v6.e.PREVIEW; CODE'</code></pre>
 <p>For the <code>q:o</code>/<code>Format</code>/multislice syntax on Rakudo, add the RakuAST frontend:</p>
