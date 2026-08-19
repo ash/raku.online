@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where It Sits in the Taxonomy — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=c6c35dca"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c6c35dca">
+<link rel="stylesheet" href="/theme/shell.css?v=c6c35dca">
+<link rel="stylesheet" href="/theme/book.css?v=c6c35dca">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 3</p><h1>Where It Sits in the Taxonomy</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-lexer-separate-complete-no-feedback">The lexer: separate, complete, no feedback</a></li><li><a href="#the-parser-recursive-descent-with-a-pratt-core">The parser: recursive descent with a Pratt core</a></li><li><a href="#the-part-with-no-textbook-box">The part with no textbook box</a></li><li><a href="#the-regex-engine-classified-separately">The regex engine, classified separately</a></li><li><a href="#the-back-end-there-is-no-ir">The back end: there is no IR</a></li><li><a href="#what-it-is-not">What it is not</a></li><li><a href="#compared-with-three-others">Compared with three others</a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>There is a question every compiler gets asked before any other: <em>what kind of compiler is it?</em> LL or LR, one-pass or multi-pass, interpreter or compiler, bytecode or native. The answer for Raku++ is that the question decomposes — the front end, the regex engine and the back end are classified on three different axes, and only when they are taken apart does the taxonomy say anything useful.</p>
+<p>It is worth doing before the mechanisms, because most of the front end's limitations are not independent defects. They are what the box costs. A reader who knows the classification can predict the limitation list in <a href="/book/user-operators/">Chapter 6</a> without being told it.</p>
+<p>The one-line answer:</p>
+<blockquote class="note"><p>A hand-written, single-pass, syntax-directed <strong>recursive-descent parser with a Pratt (precedence-climbing) expression core and a dynamically extensible operator table</strong>, feeding an <strong>AST tree-walking interpreter</strong>, with an optional <strong>source-to-source back end</strong> that emits C++.</p></blockquote>
+<p>Nothing in that sentence is generated. There is no grammar file, no parser generator, no state table, and no dependency — which is the same constraint <a href="/book/what-it-is/">Chapter 1</a> opened with, seen from the compiler-theory side.</p>
+<h2 id="the-lexer-separate-complete-no-feedback">The lexer: separate, complete, no feedback</h2>
+<p><code>Lexer::tokenize()</code> is a character-level scanner that runs to completion and returns a flat <code>std::vector&lt;Token&gt;</code>. Only then is a parser built over it:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp</span>
+Lexer lx(src);
+Parser p(lx.tokenize());</code></pre>
+<p>The two phases are therefore <strong>fully decoupled</strong>. That is worth stating explicitly because the opposite arrangement is so common: C compilers famously need the parser's symbol table to decide whether an identifier is a type name, and the resulting parser-to-lexer feedback loop is known in the trade as the lexer hack. Raku++ has nothing of the sort. The lexer never asks the parser anything, because by the time the parser exists the lexer has finished.</p>
+<p>Raku's context-sensitivity is real, so the work has to happen somewhere; here it is resolved from the lexer's <strong>own one-token history</strong>. A bare <code>/</code> opens a regex in term position and divides in operator position, and <code>regexContext()</code> decides by inspecting the previous token alone — after most operators a term is expected, so a regex follows; after a value, a <code>)</code>, or a postfix <code>++</code>, division does. <a href="/book/lexer/">Chapter 4</a> gives the rule and the keyword set that patches the identifier case.</p>
+<p>Two consequences follow from a lexer that is closed over its input before parsing begins, and both matter later:</p>
+<p><strong>The operator vocabulary is static.</strong> <code>lexOperator</code> matches against a hand-ordered table, first match wins, entries arranged longest-first by hand rather than by a maximal-munch scanner. It tracks no user declarations. An operator spelling it does not know falls through to a single-character token — which is precisely how a user-declared operator reaches the parser at all.</p>
+<p><strong>Rule bodies are not Raku tokens.</strong> A <code>token</code>, <code>rule</code> or <code>regex</code> body is captured whole as one opaque token and re-lexed later by the regex engine (<a href="/book/regex-compile/">Chapter 20</a>). The regex sub-language never enters the main token stream, which is why Part V can be read as a separate compiler.</p>
+<h2 id="the-parser-recursive-descent-with-a-pratt-core">The parser: recursive descent with a Pratt core</h2>
+<p>The parser is the classic hybrid:</p>
+<div class="tablewrap"><table><tr><th>Construct</th><th>Technique</th></tr><tr><td>Statements, declarations, blocks</td><td>Recursive descent on the leading token</td></tr>
+<tr><td>Expressions</td><td>Pratt, i.e. precedence climbing</td></tr>
+<tr><td>Prefix and postfix operators</td><td>Interleaved around the primary term</td></tr></table></div>
+<p>The split is not a matter of taste. Raku's operator table runs to some two dozen precedence levels, and pure recursive descent spends one mutually recursive function per level to express them — the textbook <code>expr → term → factor</code> ladder, with twenty-odd rungs. Precedence climbing collapses the ladder into a single loop driven by sixteen named binding powers, which is why <code>parseExpr</code> fits on a page (<a href="/book/parser/">Chapter 5</a>).</p>
+<p>Placing it in the LL/LR hierarchy: it is <strong>top-down, LL family, and neither LL(1) nor any fixed LL(k)</strong>. The honest description is <em>recursive descent with bounded local backtracking</em>. The parser walks the token vector once, left to right, and rewinds at exactly four places in seven and a half thousand lines, each a short speculative probe that restores the position on failure. Because it memoizes nothing, it is not a packrat or PEG parser; because it builds no parse forest, it is not GLR or Earley. Ambiguity is resolved where it is met, not afterwards.</p>
+<p>The pass structure is equally plain: there is no pre-scan, and <strong>no user code runs during the parse</strong>. <code>BEGIN</code>, <code>constant</code>, <code>use</code> and <code>no</code> all become AST nodes that the interpreter acts on later. Named subs are hoisted — but by the interpreter, which is the reason a sub needs no forward declaration while an operator does.</p>
+<h2 id="the-part-with-no-textbook-box">The part with no textbook box</h2>
+<p>One thing does happen at parse time: the <strong>operator table is mutated while parsing</strong>. Declaring <code>sub postfix:&lt;!&gt;</code> registers a new operator with its own precedence and associativity, taken from <code>is tighter</code>, <code>is looser</code> and <code>is equiv</code>, and tokens after that point parse differently from tokens before it.</p>
+<p>That single fact puts the front end outside the LL/LR classification entirely. Both presuppose a grammar fixed before parsing starts; no static table can be built for a grammar that is not fully known until the program has been read. The nearest term in the literature is an <strong>adaptive</strong>, or extensible, grammar.</p>
+<p>In practice, top-down parsing with a live operator table is the only tractable way to implement one, which is why every language that lets users declare operators — Raku, Haskell, Prolog, Agda — has a top-down front end. The choice of recursive descent here was not made in spite of Raku's grammar. It was made because of it.</p>
+<p>The extension mechanism is deliberately narrow, and <a href="/book/user-operators/">Chapter 6</a> is about exactly how narrow. <code>use Foo</code> does not parse the module at compile time: the parser <em>text-scans</em> the module source for declarations of <code>infix:&lt;…&gt;</code> and its relatives, and registers those names so the importing file can parse them. That is lexical bookkeeping, not execution — the distinction <a href="/book/modules/">Chapter 32</a> returns to.</p>
+<h2 id="the-regex-engine-classified-separately">The regex engine, classified separately</h2>
+<p>Part V is a second compiler inside the first, and it belongs in a different box.</p>
+<p><strong>The matcher is a backtracking recursive-descent walker</strong> over a compiled node tree — the Perl and PCRE lineage, not the Thompson and RE2 lineage. It has to be. Raku regexes carry captures, embedded code blocks, assertions and recursive subrule calls, none of which a pure DFA can express, and a grammar is a class whose methods are regexes. <a href="/book/matcher/">Chapter 21</a> is the matcher; <a href="/book/grammars/">Chapter 22</a> is what a grammar adds on top of it.</p>
+<p><strong>A Thompson NFA appears in exactly one role.</strong> Longest-token matching has to answer "how far can each alternation branch's declarative prefix reach?", and the NFA answers it in one linear, execution-free scan of the input. It never matches on behalf of the engine — the real backtracking matcher then runs on the branches it ranked. It is also not yet the default: the shipped ranker probes each branch for its greedy full-match end, and the NFA ranker is behind an environment variable, for reasons <a href="/book/ltm/">Chapter 23</a> sets out along with the phase plan for flipping it.</p>
+<p>So the engine is a backtracking matcher that borrows one automaton for one question. Describing it as "an NFA engine" would be wrong in both directions.</p>
+<h2 id="the-back-end-there-is-no-ir">The back end: there is no IR</h2>
+<p>Here the classification is unusually short, because a whole layer is missing. There is <strong>no intermediate representation</strong>: no bytecode, no three-address code, no SSA, no control-flow graph, no register allocation, no lowering pass. The AST is the sole representation the whole way through. That is what makes this an <em>AST interpreter</em> rather than a compiler in the Dragon-Book sense, for three of its four modes:</p>
+<div class="tablewrap"><table><tr><th>Mode</th><th>What it is, taxonomically</th></tr><tr><td>default</td><td>Tree-walking interpreter</td></tr>
+<tr><td><code>--bundle</code></td><td>Source in the binary, parsed at startup</td></tr>
+<tr><td><code>--aot</code></td><td>AST rebuilt at startup, still tree-walked</td></tr>
+<tr><td><code>--exe</code></td><td>Source-to-source compiler — a transpiler to C++</td></tr></table></div>
+<p>Only <code>--exe</code> is a compiler proper, and even there the optimizer is <strong>AST-level pattern matching at emit time</strong>: direct-arity calls, inlined <code>int64</code> arithmetic, guarded native-int expression lanes. Those are local, peephole-class transformations by any standard classification (<a href="/book/optimizer/">Chapter 27</a>). Everything classical — inlining, constant propagation, loop transforms, instruction scheduling, register allocation — is delegated to the host C++ compiler, which is the whole point of emitting C++ instead of machine code. <a href="/book/codegen/">Chapter 26</a> is about what that delegation buys and what it costs.</p>
+<p>The interpreter's own speed work sits in the same place on the map. Node specialisation (<a href="/book/node-specialization/">Chapter 19</a>) caches a decision on the syntactic shape of a node; it is a fast path on a tree walk, not a compilation step, and no amount of it turns the tree walk into something with an instruction stream.</p>
+<h2 id="what-it-is-not">What it is not</h2>
+<p>Stated plainly, since these are the usual guesses:</p>
+<div class="tablewrap"><table><tr><th>Not</th><th>Why</th></tr><tr><td>LR, LALR, SLR</td><td>Bottom-up and table-driven; both are incompatible with an operator table that changes mid-parse</td></tr>
+<tr><td>LL(1)</td><td>Several constructs need more than one token of lookahead</td></tr>
+<tr><td>PEG or packrat</td><td>No memoization, no ordered-choice formalism</td></tr>
+<tr><td>GLR or Earley</td><td>No parse forest; ambiguity is settled where it is met</td></tr>
+<tr><td>Generated</td><td>The lexer and parser are hand-written C++</td></tr>
+<tr><td>Bytecode VM</td><td>No instruction set and no opcode dispatch loop</td></tr>
+<tr><td>SSA-based</td><td>No IR of any kind</td></tr>
+<tr><td>JIT</td><td>Nothing is compiled at run time; <code>--exe</code> compiles ahead of time</td></tr></table></div>
+<h2 id="compared-with-three-others">Compared with three others</h2>
+<div class="tablewrap"><table><tr><th></th><th>Front end</th><th>Grammar fixed?</th><th>Back end</th></tr><tr><td><strong>Raku++</strong></td><td>Recursive descent + Pratt, hand-written</td><td>No — live operator table</td><td>AST tree-walk; <code>--exe</code> emits C++</td></tr>
+<tr><td><strong>Rakudo</strong></td><td>Self-hosted NQP grammars, code runs at parse time</td><td>No — slangs and macros</td><td>Bytecode, IR, JIT on MoarVM</td></tr>
+<tr><td><strong>CPython</strong></td><td>Generated PEG parser</td><td>Yes</td><td>AST → bytecode → VM</td></tr>
+<tr><td><strong>Clang</strong></td><td>Recursive descent, hand-written</td><td>Yes</td><td>LLVM IR, SSA, full pipeline</td></tr></table></div>
+<p>Two rows of that table are worth a sentence each.</p>
+<p>Raku++ shares its <em>front end</em> row with a production C++ compiler. Hand-written recursive descent is not a shortcut taken by small projects; it is what industrial compilers for languages with real syntax actually use, because generated parsers are hard to give good errors and impossible to give context-sensitivity.</p>
+<p>And it shares its <em>grammar not fixed</em> column with Rakudo alone — which is a property of the Raku language rather than a choice either implementation made. Any Raku implementation has to solve it. The two solved it differently, and the difference explains most of what <a href="/book/user-operators/">Chapter 6</a> says is missing here: Rakudo runs the program's own code during the parse, and Raku++ does not.</p>
+<h2 id="honest-limitations">Honest limitations</h2>
+<p>Nearly every front-end limitation in this book is downstream of the classification above, and worth reading as a consequence rather than a bug list:</p>
+<ul><li><strong>Operators must be declared before use.</strong> The only way the parser learns of one is by reaching its declaration, and nothing pre-scans the file. Subs are exempt only because the interpreter hoists them.</li><li><strong>No macros and no slangs.</strong> Both require user code to run during the parse and change how later source is parsed. A parser that executes nothing cannot offer them, and no amount of work short of restructuring the pass would.</li><li><strong>Block versus hash stays a heuristic.</strong> It follows Raku's documented rules, but a case a backtracking full grammar would settle by trying both can still be decided wrongly here.</li><li><strong>No whole-program analysis.</strong> With no IR and no separate pass over the tree before execution, an <code>--exe</code> optimization has to be expressible as a local rewrite during emission.</li></ul>
+<p>The other side of the ledger is the reason the design holds. One AST serves all four run modes with no lowering step between them, so a language feature is implemented once (<a href="/book/run-modes/">Chapter 25</a>). A parse error can point straight at a token, because there is no table-driven state to translate back into source. And there is exactly one implementation of the semantics — <code>librakupp_rt.a</code> — shared by the interpreter and by every binary it compiles.</p><nav class="ch-nav"><a class="prev" href="/book/shape-of-source/"><span>Previous</span>The Shape of the Source</a><a class="next" href="/book/lexer/"><span>Next</span>The Lexer</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c6c35dca" defer></script>
+</body>
+</html>

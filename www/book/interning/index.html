@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 9</p><h1>Interning and Comparison: <code>IStr</code> and <code>MName</code></h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#mname-the-method-name-as-the-dispatcher-sees-it"><code>MName</code>: the method name as the dispatcher sees it</a></li><li><a href="#istr-the-storable-counterpart"><code>IStr</code>: the storable counterpart</a></li><li><a href="#why-they-are-separate-types">Why they are separate types</a></li></ul></nav>
+<p class="ch-label">Chapter 10</p><h1>Interning and Comparison: <code>IStr</code> and <code>MName</code></h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#mname-the-method-name-as-the-dispatcher-sees-it"><code>MName</code>: the method name as the dispatcher sees it</a></li><li><a href="#istr-the-storable-counterpart"><code>IStr</code>: the storable counterpart</a></li><li><a href="#why-they-are-separate-types">Why they are separate types</a></li></ul></nav>
 <p>Two small headers, ninety lines each, both solving the same shape of problem: <strong>a string that is compared far more often than it is created</strong>. They arrived from different directions and ended up with almost the same interface, which is itself the point.</p>
 <h2 id="mname-the-method-name-as-the-dispatcher-sees-it"><code>MName</code>: the method name as the dispatcher sees it</h2>
 <p>Method dispatch on a built-in value is a long ladder of name comparisons in <code>Builtins.cpp</code> and its three continuation files — roughly 1,640 of them. So the comparison itself is hot.</p>
@@ -58,7 +58,7 @@
 <p><code>.chars</code> barely moves because it is reached early. <code>.uniname</code> is deep in the <code>Str</code> arm and gains the most.</p>
 <h3>Where that leaves dispatch</h3>
 <p>Name comparison went from 60% of the profile to <strong>8.5%</strong>, which retires it as a target. A perfect-hash dispatch table would only be chasing that 8.5%, and it is not a drop-in: the ladder is not a pure dispatch on the name. Arms are guarded by invocant type and argument shape, and later generic arms deliberately catch what earlier specific ones decline. Turning 1,640 of those into table entries means giving each its own guard <em>and</em> preserving the fall-through order between them — a large, risky rewrite for a single-digit percentage.</p>
-<p>The 42% now sitting in allocation and <code>Value</code> churn is the real remaining target, and it is a different problem (<a href="/book/dispatch/">Chapter 15</a>).</p>
+<p>The 42% now sitting in allocation and <code>Value</code> churn is the real remaining target, and it is a different problem (<a href="/book/dispatch/">Chapter 16</a>).</p>
 <h2 id="istr-the-storable-counterpart"><code>IStr</code>: the storable counterpart</h2>
 <p><code>Value</code> carried four <code>std::string</code> members — <code>hashKind</code>, <code>enumName</code>, <code>enumType</code>, <code>ofType</code> — that are <strong>empty on almost every value</strong>. An empty <code>std::string</code> is not free: it is 24 bytes, and it is constructed, copied and destroyed on every one of the roughly two million <code>Value</code> copies a 278 KB JSON parse makes.</p>
 <p>Measured on that parse:</p>

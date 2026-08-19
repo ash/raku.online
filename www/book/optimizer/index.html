@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 26</p><h1>The <code>-O</code> Optimizer</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#what-the-generated-code-looks-like-without-it">What the generated code looks like without it</a></li><li><a href="#pass-1-direct-arity-calls">Pass 1 — direct-arity calls</a></li><li><a href="#pass-2-inline-arithmetic">Pass 2 — inline arithmetic</a></li><li><a href="#pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</a></li><li><a href="#three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></a></li><li><a href="#forwarding-the-c-optimization-level">Forwarding the C++ optimization level</a></li><li><a href="#measured">Measured</a></li><li><a href="#the-box-stays-only-its-per-operation-cost-goes">The box stays; only its per-operation cost goes</a></li><li><a href="#correctness">Correctness</a></li><li><a href="#what-is-next">What is next</a></li></ul></nav>
+<p class="ch-label">Chapter 27</p><h1>The <code>-O</code> Optimizer</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#what-the-generated-code-looks-like-without-it">What the generated code looks like without it</a></li><li><a href="#pass-1-direct-arity-calls">Pass 1 — direct-arity calls</a></li><li><a href="#pass-2-inline-arithmetic">Pass 2 — inline arithmetic</a></li><li><a href="#pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</a></li><li><a href="#three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></a></li><li><a href="#forwarding-the-c-optimization-level">Forwarding the C++ optimization level</a></li><li><a href="#measured">Measured</a></li><li><a href="#the-box-stays-only-its-per-operation-cost-goes">The box stays; only its per-operation cost goes</a></li><li><a href="#correctness">Correctness</a></li><li><a href="#what-is-next">What is next</a></li></ul></nav>
 <p><code>--exe</code> and its inspection twin <code>--cpp</code> accept <code>-O</code>. Everything under it is <strong>semantics-preserving</strong>: it changes how the compiled program computes, never what it computes. It is opt-in and off by default.</p>
 <pre class="native-code"><code class="lang-sh">rakupp --exe    prog.raku -o prog     # no optimizer
 rakupp --exe -O prog.raku -o prog     # optimizer on
@@ -44,7 +44,7 @@ rakupp --cpp -O prog.raku             # print the optimized C++</code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="k">static</span> Value u_fib(Value v_sn) { … }                                <span class="c1">// fast</span>
 <span class="k">static</span> Value u_fib(ValueList __a) { <span class="k">return</span> u_fib(rtPos(__a, <span class="mi">0</span>)); }  <span class="c1">// adapter</span></code></pre>
 <p>A call site takes the fast overload when it passes exactly the right number of plain positional arguments — no <code>:name(…)</code> pairs, no <code>|@slurp</code>. Multi subs, indirect calls through <code>&amp;fib</code>, and method calls are untouched.</p>
-<p>The same idea covers <strong>37 named builtins</strong>, each of which has a real C++ function (<code>rtBAbs</code>, <code>rtBUc</code>, <code>rtBSin</code>, …) rather than a <code>std::function</code> in a map. <a href="/book/dispatch-compiled/">Chapter 27</a> tells that story, because the reason it works is not the one that was first assumed.</p>
+<p>The same idea covers <strong>37 named builtins</strong>, each of which has a real C++ function (<code>rtBAbs</code>, <code>rtBUc</code>, <code>rtBSin</code>, …) rather than a <code>std::function</code> in a map. <a href="/book/dispatch-compiled/">Chapter 28</a> tells that story, because the reason it works is not the one that was first assumed.</p>
 <h2 id="pass-2-inline-arithmetic">Pass 2 — inline arithmetic</h2>
 <p>For the common operators the generator emits inline helpers instead of <code>applyArith</code>:</p>
 <div class="tablewrap"><table><tr><th>ops</th><th>helper</th><th>fast path</th></tr><tr><td><code>+</code> <code>-</code> <code>*</code></td><td><code>rtAdd</code> / <code>rtSub</code> / <code>rtMul</code></td><td>native <code>int64</code>, overflow to bignum</td></tr>
@@ -113,7 +113,7 @@ std::stable_sort(order.begin(), order.end(), [&amp;](<span class="kt">size_t</sp
 <tr><td>64 K</td><td>18.09 s</td><td>0.68 s</td><td>0.63 s</td></tr>
 <tr><td>128 K</td><td>still running at 95 s</td><td>1.33 s</td><td>1.09 s</td></tr></table></div>
 <p>The ratio grows with log <em>n</em>, which is the shape the change predicts.</p>
-<p><strong>Never numify a string by throwing</strong>, which is <a href="/book/numbers/">Chapter 10</a>'s <code>stod</code> story and was found while profiling the comparator case above.</p>
+<p><strong>Never numify a string by throwing</strong>, which is <a href="/book/numbers/">Chapter 11</a>'s <code>stod</code> story and was found while profiling the comparator case above.</p>
 <h2 id="forwarding-the-c-optimization-level">Forwarding the C++ optimization level</h2>
 <p><code>--exe</code> compiles the generated C++ at <code>-O2</code> by default; a level on the flag is passed through:</p>
 <div class="tablewrap"><table><tr><th>flag</th><th>codegen passes</th><th>C++ compile</th></tr><tr><td><em>(none)</em></td><td>off</td><td><code>-O2</code></td></tr>

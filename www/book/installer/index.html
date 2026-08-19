@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Installer and the Store — Raku++ Internals</title>
+<script>window.__SITE_BASE='/book';</script>
+<script src="/theme/boot.js?v=c6c35dca"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c6c35dca">
+<link rel="stylesheet" href="/theme/shell.css?v=c6c35dca">
+<link rel="stylesheet" href="/theme/book.css?v=c6c35dca">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content book">
+<p class="crumb"><a href="/book/">← Contents</a></p>
+<p class="ch-label">Chapter 33</p><h1>The Installer and the Store</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-layout">The layout</a></li><li><a href="#two-writers-one-reader-contract">Two writers, one reader contract</a></li><li><a href="#the-writer-is-the-engine-s">The writer is the engine's</a></li><li><a href="#the-installer-is-a-shipped-raku-program">The installer is a shipped Raku program</a></li><li><a href="#update-means-add">Update means add</a></li><li><a href="#uninstall-is-garbage-collection">Uninstall is garbage collection</a></li><li><a href="#the-checker">The checker</a></li><li><a href="#what-went-wrong-damage-travels-between-engines">What went wrong: damage travels between engines</a></li><li><a href="#interchange-stated-precisely">Interchange, stated precisely</a></li></ul></nav>
+<p><code>rakupp install Foo</code> downloads a distribution from the Raku ecosystem, runs its tests, and installs it — into <strong>the same on-disk store that Rakudo and zef already share</strong>. That sentence carries the whole design: there is no rakupp package database, no private format, no import step. The store <em>is</em> the interface between the engines, and this chapter is about both sides of it — the layout that makes a directory tree function as a protocol, and the installer that writes it.</p>
+<p>The order of construction matters here. Raku++ could <strong>read</strong> the store long before it could write it: <a href="/book/modules/">Chapter 32</a> ends with <code>use</code> resolving zef-installed modules straight out of Rakudo's install tree. Then the zef-compatibility work gave the engine a <strong>writer</strong> — enough of <code>CompUnit::Repository::Installation</code> that zef itself, running under rakupp, could install things. <code>rakupp install</code> came last, as a thin, careful client of a writer that already existed. Install is a new front door on machinery the engine already had.</p>
+<h2 id="the-layout">The layout</h2>
+<p>A store is one directory — a <em>prefix</em> — with this inside:</p>
+<pre class="native-code"><code>~/.raku/
+├── version              the layout version (2)
+├── repo.lock            what writers flock before mutating anything
+├── sources/&lt;id&gt;         one file per installed module source
+├── dist/&lt;dist-id&gt;       one JSON file per distribution: its full META
+├── short/&lt;sha1(name)&gt;/  the index: one entry per (module name, dist)
+├── resources/&lt;id&gt;       content of each declared resource file
+├── bin/&lt;id&gt;             content of each bin/ script
+└── precomp/             Rakudo's bytecode cache (rakupp ignores it)</code></pre>
+<p>Every engine's default chain includes at least two prefixes. Rakudo's is <code>home</code> (<code>~/.raku</code>) then <code>site</code>/<code>vendor</code>/<code>core</code> under its own installation; rakupp searches <code>~/.raku</code> first and then every Homebrew Rakudo's <code>site</code> and <code>vendor</code> — so a module zef installed for Rakudo is found by rakupp with no configuration at all. The two installers default to <em>different ends</em> of the shared chain: zef writes Rakudo's site store, <code>rakupp install</code> writes <code>~/.raku</code> (<code>--to</code> to aim elsewhere). Both engines read both.</p>
+<p>The clever part of the layout is <code>short/</code>. A <code>use JSON::Fast</code> must find one file among thousands without scanning anything, so the index is <strong>addressed by hash</strong>: the directory name is the SHA-1 of the module name, and each file inside it describes one installed distribution providing that name. The file's <em>name</em> is the distribution's id; its <em>content</em> is five short lines:</p>
+<pre class="native-code"><code>$ cat site/short/E0FD4AFC…0FB899A/8270A3B9…41A908A
+      # …/short/&lt;sha1("File::Temp")&gt;/&lt;dist-id&gt;
+0.0.12                                ← version
+zef:raku-community-modules            ← auth
+                                      ← api
+DBE25863E06AEC6820058FA548E27780308E6C43   ← the sources/ file to load
+1375FC65817F5B56701E20EC2F4101028E8363F6   ← a checksum (see below)</code></pre>
+<p>Resolution is: hash the name, open the directory, pick an entry whose first line satisfies the <code>use</code> version constraint, load <code>sources/&lt;line 4&gt;</code>. Three lines of metadata, one pointer, done. The <code>dist/&lt;dist-id&gt;</code> JSON is <em>not</em> read to resolve a <code>use</code> — it exists for everything else: <code>%?RESOURCES</code> and <code>$?DISTRIBUTION</code> binding, listing, uninstalling.</p>
+<h2 id="two-writers-one-reader-contract">Two writers, one reader contract</h2>
+<p>Rakudo's writer and rakupp's writer produce interchangeable stores, but they are not byte-identical, and the differences say what the contract actually is:</p>
+<div class="tablewrap"><table><tr><th></th><th>Rakudo / zef</th><th>Raku++</th></tr><tr><td><code>sources/</code> file name</td><td>SHA-1 of <em>module name + dist-id</em></td><td>SHA-1 of the file's <em>content</em></td></tr>
+<tr><td>line 5 of a short entry</td><td>SHA-1 of the CRLF-normalised source — its precomp layer's validation checksum</td><td>the dist-id, repeated</td></tr>
+<tr><td><code>precomp/</code></td><td>written and maintained</td><td>never written, never read</td></tr></table></div>
+<p>Neither engine's reader cares about any of these. The <code>sources/</code> name is an opaque token — you read whatever line 4 names; nothing recomputes the hash. Line 5 is consulted only by Rakudo's precompilation machinery, which rakupp does not participate in. That is the contract in practice: <strong>filename of the short entry, lines 1–4, and the blob those point at</strong>. Everything else is a writer's private convention riding along in a shared file.</p>
+<p>(The formulas above are measured, not quoted from documentation: hash a real store's entries and compare. Line 5 of a 2021-era entry in a long-lived home store matches <em>no</em> current formula — the checksum recipe has changed across Rakudo versions, which is itself evidence that nothing load-bearing reads it.)</p>
+<p>One Raku++ divergence from <a href="/book/modules/">Chapter 32</a> needs an update in this light: <code>use Foo:ver&lt;1.2+&gt;</code> adverbs are discarded during lib-path search, but against the <em>installed</em> index the <code>:ver</code> constraint <strong>is</strong> honoured — it is checked against line 1 of each candidate entry. <code>:auth</code> and <code>:api</code> are still not consulted.</p>
+<h2 id="the-writer-is-the-engine-s">The writer is the engine's</h2>
+<p><code>CompUnit::Repository::Installation.install</code> is implemented in C++, in the same method-dispatch code that serves every other built-in class:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp</span>
+<span class="c1">// $cur.install($dist, :$force) — write the CURI layout under `prefix`</span>
+<span class="c1">// (sources/&lt;sha&gt;, short/&lt;sha1(name)&gt;/&lt;dist-id&gt;, dist/&lt;dist-id&gt; JSON,</span>
+<span class="c1">// resources/, bin/). rakupp reads exactly this to resolve `use`.</span></code></pre>
+<p>It computes the dist-id as <code>sha1(name \0 ver \0 auth \0 api)</code>, writes each provided module's source as a content-addressed blob, writes one short entry per provided name, copies <code>resources/</code> and <code>bin/</code> payloads, and writes the <code>dist/</code> record with a <code>files</code> map — relative path → blob id — which is what later makes uninstall able to know exactly which blobs are this distribution's. It returns the dist-id, and that return value is load-bearing: the installer records it as provenance.</p>
+<p>This writer exists because of zef, not because of <code>rakupp install</code>. Running zef under rakupp meant implementing the parts of the <code>CompUnit</code> API zef drives, and <code>.install</code> is the heart of it. When the time came to build our own installer, the choice was already made: use the engine's writer through the same public spelling zef uses —</p>
+<pre class="native-code"><code class="lang-raku"><span class="c1"># tools/install.raku</span>
+<span class="k">my</span> <span class="nv">$repo</span> = CompUnit::RepositoryRegistry.repository-for-spec(<span class="s2">"inst#$prefix"</span>);
+<span class="k">my</span> <span class="nv">$dist-id</span> = <span class="nv">$repo</span>.install(<span class="nv">$dist</span>, :force(<span class="nv">$force</span>));</code></pre>
+<p><strong>What went wrong.</strong> The first version constructed the repository as <code>CompUnit::Repository::Installation.new(prefix =&gt; $to)</code> — which parses, runs, and installs nothing, silently. <code>.new</code> does not thread the prefix through to the writer, so every file operation targeted <code>"/sources"</code> and failed into the void. The fix is twofold: <code>repository-for-spec</code> is the constructor that carries the prefix, and the writer now <em>refuses loudly</em> when its prefix is empty rather than failing file-by-file in silence. A writer aimed at a shared store does not get to guess.</p>
+<h2 id="the-installer-is-a-shipped-raku-program">The installer is a shipped Raku program</h2>
+<p><code>rakupp install</code> and <code>rakupp uninstall</code> are not implemented in the binary. <code>main.cpp</code> recognises the two words and rewrites its own argument vector:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/main.cpp — the same trick `python -m pip` pulls, with a nicer spelling</span>
+<span class="k">for</span> (<span class="k">const</span> <span class="kt">char</span>* rel : {<span class="s2">"/../libexec/rakupp/install.raku"</span>, <span class="s2">"/../tools/install.raku"</span>}) {
+    std::string cand = exeDir + rel;
+    <span class="k">if</span> (std::ifstream(cand).good()) { script = cand; <span class="k">break</span>; }
+}</code></pre>
+<p>so the command becomes <code>rakupp &lt;path&gt;/install.raku …</code> — a Raku program shipped with the release (<code>libexec/rakupp/</code> in an installed layout, <code>tools/</code> in a checkout). The reasons are worth spelling out, because "write the package tool in C++" is the default instinct and it is wrong here:</p>
+<ul><li>A compiled <code>--exe</code> binary and an embedded <code>librakupp</code> must not carry an HTTP client, an ecosystem-index parser and a tar reader (<a href="/book/slim/">Chapter 29</a> is an entire chapter about removing things from the binary).</li><li>The installer changes at ecosystem speed, not engine speed.</li><li>It is dogfood: the project's own tooling running on the interpreter it ships, which is the policy everywhere else in <code>tools/</code>.</li></ul>
+<p>The program is ~600 lines and its shape is a pipeline:</p>
+<p><strong>Index.</strong> <code>https://360.zef.pm/index.json</code> — the fez ecosystem's index, one JSON array of every distribution's META plus an archive path. Cached in <code>~/.raku/rakupp-install/</code> for 24 hours; <code>--refresh</code> refetches; <code>RAKUPP_INSTALL_INDEX</code> substitutes a file or URL, which is how the test suite runs without a network and how a mirror slots in.</p>
+<p><strong>Resolve.</strong> Breadth-first over <code>depends</code>, newest satisfying version first, <code>:from&lt;native&gt;</code> and <code>:from&lt;bin&gt;</code> dependencies reported but not fetched, plan reversed at the end so dependencies install before their dependents:</p>
+<pre class="native-code"><code>$ rakupp install --dry-run JSON::Class
+plan (6 distributions, dependencies first):
+  JSON::Fast:ver&lt;0.20.1&gt;:auth&lt;zef:timo&gt;   https://360.zef.pm/J/SO/JSON_FAST/d5c8426f…be8b.tar.gz
+  JSON::Name:ver&lt;0.0.7&gt;:auth&lt;zef:jonathanstowe&gt;   …
+  JSON::OptIn:ver&lt;0.0.2&gt;:auth&lt;zef:jonathanstowe&gt;   …
+  JSON::Unmarshal:ver&lt;0.18&gt;:auth&lt;zef:raku-community-modules&gt;   …
+  JSON::Marshal:ver&lt;0.0.25&gt;:auth&lt;zef:jonathanstowe&gt;   …
+  JSON::Class:ver&lt;0.0.21&gt;:auth&lt;zef:jonathanstowe&gt;   …
+dry run: nothing written</code></pre>
+<p><strong>Fetch and verify.</strong> Transport is <code>curl</code> and <code>tar</code> — present on every platform this targets, TLS certificate verification on (the installer never passes <code>-k</code>). And the archive URLs above contain their own second factor: fez archives are content-addressed, the path stem <em>is</em> the SHA-1 of the tarball. A fetched archive is hashed and refused on mismatch, so a compromised mirror or a truncated download cannot become an installed module. When an index entry carries no checksum in its path, the installer says so out loud rather than pretending the gate applied.</p>
+<p><strong>Test.</strong> Before a distribution is installed, its own <code>t/</code> suite runs under rakupp — dependencies were installed first, so the tests see them. This gate earned its keep on its very first live run: JSON::Unmarshal 0.18's suite failed one test under rakupp, the installer refused the whole chain, and the failure became an engine bug report (a real bug — named-argument unmarshalling — since fixed). <code>--no-test</code> is the documented override, and it is a statement about what "installed" means here: not "files copied" but "demonstrated to work under this engine, on this machine".</p>
+<p><strong>Write.</strong> The engine's <code>.install</code>, under a real <code>flock</code> on the store's <code>repo.lock</code> (two new builtins, <code>rakupp-repo-lock</code>/<code>-unlock</code>, because the store is shared and a half-written short entry is another engine's crash). Then the returned dist-id is appended to <code>&lt;prefix&gt;/rakupp-install/owned</code> — one line per distribution <em>this tool</em> installed. That file is the whole provenance system, and uninstall is its consumer.</p>
+<h2 id="update-means-add">Update means add</h2>
+<p><code>rakupp install Foo</code> with a newer version available installs the newer version <strong>beside</strong> the old one. Nothing is removed; the store's resolution — pick among short-entry siblings by version — does the rest, and an installed program pinned to <code>:ver&lt;1.2.3&gt;</code> keeps resolving to it. This is not an implementation shortcut, it is what the layout wants: the store is content-addressed and append-friendly, and "replace" would be a delete wearing a trench coat. Reclaiming space is uninstall's job, explicitly.</p>
+<h2 id="uninstall-is-garbage-collection">Uninstall is garbage collection</h2>
+<p>Deleting from a shared, content-addressed store is the hard half, which is why it landed last and why the checker (below) was written <em>before</em> the delete path. <code>rakupp uninstall Foo</code> refuses three ways before it touches anything:</p>
+<ul><li><strong>Not installed by us.</strong> If the dist-id is not in <code>rakupp-install/owned</code>, it is zef's (or something else's), and removing another manager's installation silently is a surprise in someone else's tool. <code>--force</code> for people who mean it.</li><li><strong>Still depended on.</strong> Any other installed distribution whose <code>depends</code> names a module this one provides blocks the removal, with the dependents named.</li><li><strong>Ambiguous.</strong> Two installed versions match a bare name; name a version.</li></ul>
+<p>The removal itself is ordered by failure mode, under the same <code>repo.lock</code>:</p>
+<ol><li><strong>Index entries first</strong> — every <code>short/&lt;sha1(name)&gt;/&lt;dist-id&gt;</code> this  distribution owns. A crash after this step leaves orphaned blobs, which is  wasted disk; the reverse order would leave live index entries pointing at  deleted blobs, which is a broken <code>use</code>.</li><li><strong>Blobs nothing else references.</strong> The <code>files</code> maps of every <em>other</em>  <code>dist/</code> record are the mark phase; only unreferenced blobs are swept. Two  distributions shipping a byte-identical file share one blob under rakupp's  content-addressed writer, and the suite pins that the shared blob survives  the first uninstall.</li><li><strong>The dist record last</strong> — a crash mid-way leaves a record that still  describes what remains to finish.</li></ol>
+<p>Note what provenance does <em>not</em> do: nothing stops zef from removing a distribution rakupp installed. The store has no owner field, and adding one would break the symmetry that makes the whole arrangement work. <code>owned</code> binds only rakupp's own destructive path; politeness is enforced at home.</p>
+<h2 id="the-checker">The checker</h2>
+<p><code>rakupp install --check</code> walks one store and reports; it fixes nothing:</p>
+<pre class="native-code"><code>$ rakupp install --check
+store: /Users/ash/.raku
+store check: 3 distributions, 0 broken, 0 unreferenced blobs</code></pre>
+<p>It distinguishes two severities. <strong>Broken</strong> — an unreadable <code>dist/</code> record, a short entry pointing at a missing dist record, a missing blob behind a live entry, a provided module with no index entry — each is a <code>use</code> that will fail or a record that cannot be trusted, and any of them makes the exit code 1. <strong>Unreferenced blobs</strong> are wasted disk, reported and exempt: in a shared store, a blob this engine cannot account for might be another writer's, and a checker that "cleans" what it does not understand is how shared state gets destroyed. There is deliberately no <code>--fix</code>.</p>
+<h2 id="what-went-wrong-damage-travels-between-engines">What went wrong: damage travels between engines</h2>
+<p>The checker's first run on a real machine found real damage — and the story is a compressed lesson in what sharing a store means.</p>
+<p>A July experiment (zef running under rakupp, mid-debugging) had left a <code>File::Temp</code> registration in the home store whose source blob no longer existed: a live short entry pointing at a deleted <code>sources/</code> file. It sat there for a month without a symptom, because <strong>Rakudo's precomp cache was serving <code>use File::Temp</code> without ever touching the store's blob</strong> — the dangling pointer was behind a cache hit. The first mutation of that store in a month (the lock file the new uninstall path created) perturbed the mask, Rakudo revalidated, followed the dangling entry, and began dying <em>at compile time</em> on any <code>use File::Temp</code> — while rakupp kept working, because its reader skips an entry whose blob is missing and falls through to the site store, where zef's intact copy lives.</p>
+<p>Read that again with the roles labelled: a <strong>rakupp</strong>-era write broke <strong>Rakudo</strong>, a month later, unmasked by a <strong>third</strong> tool's lock file, and the two engines disagreed about whether anything was wrong because their readers degrade differently. A shared store is shared blast radius. That is why every mutation locks, why uninstall orders its deletions by what a crash would leave behind, why the checker exists and reports the store path it checked — and why it was written before the code that deletes.</p>
+<p>(The cleanup itself was two file moves — the stale entry and its dist record out of the store — after which both engines loaded File::Temp again. The checker, the refusals and the ordering all predate the first real damage they were designed for; the damage predates them all.)</p>
+<h2 id="interchange-stated-precisely">Interchange, stated precisely</h2>
+<p>What "rakupp and zef are interchangeable" means, claim by claim, each one gated in CI or verified on a real store:</p>
+<div class="tablewrap"><table><tr><th>Claim</th><th>Evidence</th></tr><tr><td>rakupp reads zef-installed modules</td><td><a href="/book/modules/">Chapter 32</a>'s resolver; the whole module battery runs on zef-installed deps</td></tr>
+<tr><td>Rakudo reads rakupp-installed modules</td><td>a 7-distribution graph (<code>License::SPDX</code> ← <code>JSON::Class</code> ← …) installed by <code>rakupp install</code> loads under Rakudo from the same store, resources included — <code>License::SPDX.new.licenses.elems</code> is 727 under both</td></tr>
+<tr><td>zef itself runs under rakupp</td><td>zef's install path drives the engine's <code>.install</code> — the same writer <code>rakupp install</code> uses</td></tr>
+<tr><td>the stores compose</td><td>one <code>~/.raku</code> holding zef-written and rakupp-written distributions side by side resolves under both engines; the two entry dialects differ only in lines no reader consults</td></tr>
+<tr><td>mutation is coordinated</td><td>both writers <code>flock</code> the same <code>repo.lock</code> (on Windows rakupp proceeds unlocked, and says so)</td></tr></table></div>
+<p>And the honest boundary of the claim: <strong>precompilation does not travel.</strong> Rakudo's <code>precomp/</code> is keyed to its compiler build and rakupp neither writes nor invalidates it; rakupp's own AST cache (<a href="/book/astserial/">Chapter 30</a>) lives outside the store entirely, in <code>~/.cache/rakupp/precomp</code>, and is off by default. Each engine's cache is private state layered over shared truth — which the File::Temp story shows is exactly where the seams are: the store stayed consistent between engines, and it was a <em>cache</em> that made them disagree.</p>
+<p>The suite behind all of this is <code>t/install/run.raku</code> — 22 checks, fully offline (a fixture index, local archives, a scratch <code>HOME</code>), covering the plan, the checksum refusal, the test gate, additive updates, every uninstall refusal, the deletion ordering, shared-blob survival, and <code>--check</code> clean before and after every mutation. It runs in CI on every push.</p><nav class="ch-nav"><a class="prev" href="/book/modules/"><span>Previous</span>Modules</a><a class="next" href="/book/nqp/"><span>Next</span><code>use nqp</code>: a Compatibility Subset</a></nav>
+<footer>
+<span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
+<span><a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c6c35dca" defer></script>
+</body>
+</html>

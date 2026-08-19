@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 16</p><h1>The Object System</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#registration-and-lookup">Registration and lookup</a></li><li><a href="#construction">Construction</a></li><li><a href="#attributes-and-accessors">Attributes and accessors</a></li><li><a href="#roles">Roles</a></li><li><a href="#mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></a></li><li><a href="#augment-and-supersede"><code>augment</code> and <code>supersede</code></a></li><li><a href="#package-stashes-and-who">Package stashes and <code>.WHO</code></a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p class="ch-label">Chapter 17</p><h1>The Object System</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#registration-and-lookup">Registration and lookup</a></li><li><a href="#construction">Construction</a></li><li><a href="#attributes-and-accessors">Attributes and accessors</a></li><li><a href="#roles">Roles</a></li><li><a href="#mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></a></li><li><a href="#augment-and-supersede"><code>augment</code> and <code>supersede</code></a></li><li><a href="#package-stashes-and-who">Package stashes and <code>.WHO</code></a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
 <p>A user class is a <code>ClassInfo</code>. An instance is an <code>ObjectData</code> that points at one. There is no per-object method table, no vtable, and no per-class code generation.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — abridged</span>
 <span class="k">struct</span> ClassInfo {
@@ -49,13 +49,13 @@
     std::map&lt;std::string, Value&gt; attrs;
     Value boxed; <span class="kt">bool</span> hasBoxed = <span class="kc">false</span>;                   <span class="c1">// for `5 but Role`</span>
 };</code></pre>
-<p>Everything a class <em>is</em> lives in that first struct, including the grammar rules if it happens to be a grammar — which is how a grammar is just a class whose methods can be regexes (<a href="/book/grammars/">Chapter 21</a>).</p>
+<p>Everything a class <em>is</em> lives in that first struct, including the grammar rules if it happens to be a grammar — which is how a grammar is just a class whose methods can be regexes (<a href="/book/grammars/">Chapter 22</a>).</p>
 <h2 id="registration-and-lookup">Registration and lookup</h2>
 <p><code>ClassInfo</code>s are registered in one flat map at declaration:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string, std::shared_ptr&lt;ClassInfo&gt;&gt; classes_;
 std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
-<p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 31</a>.</p>
+<p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 32</a>.</p>
 <p>The alias map softens the consequences of flatness. Registering <code>URI::Path</code> also aliases its tail, <code>Path</code>, unless a real class already claims that name. And a qualified name that is a <em>partial</em> path resolves by unique suffix match:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — resolveClassAlias</span>
 <span class="k">if</span> (n.find(<span class="s2">"::"</span>) != std::string::npos) {
@@ -152,7 +152,7 @@ obj-&gt;hasBoxed = <span class="kc">true</span>;
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string,
                    std::unordered_map&lt;std::string, Value&gt;&gt; builtinExt_;</code></pre>
-<p>keyed by type name then method name, and searched along the native ancestry so augmenting <code>Cool</code> reaches <code>Int</code> and <code>Str</code>. <a href="/book/dispatch/">Chapter 15</a> covers the dispatch side; <a href="/book/dispatch-compiled/">Chapter 27</a> covers why two compiled fast paths have to check whether this map is empty.</p>
+<p>keyed by type name then method name, and searched along the native ancestry so augmenting <code>Cool</code> reaches <code>Int</code> and <code>Str</code>. <a href="/book/dispatch/">Chapter 16</a> covers the dispatch side; <a href="/book/dispatch-compiled/">Chapter 28</a> covers why two compiled fast paths have to check whether this map is empty.</p>
 <p><code>.^add_method($name, $code)</code> writes into <code>ClassInfo::methods</code> directly, which is the whole of runtime method injection.</p>
 <h2 id="package-stashes-and-who">Package stashes and <code>.WHO</code></h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
@@ -161,7 +161,7 @@ std::map&lt;std::string,
 <p>One shared map per package <strong>name</strong>, and the sharing is the point. <code>.WHO</code> used to build a fresh empty <code>Hash</code> on each call, so <code>EXPORTHOW.WHO.&lt;grammar&gt; = SomeHOW</code> wrote into a temporary and died with "Target is not assignable". Reading a stash also re-syncs the package's qualified globals into it, so <code>our</code>-scoped symbols appear.</p>
 <p>A <code>module</code> or <code>package</code> has no <code>ClassInfo</code> at all, so its <code>:ver</code>/<code>:auth</code>/<code>:api</code> adverbs live in a separate small map, <code>pkgMeta_</code>, which is what <code>.^ver</code> answers for a package.</p>
 <h2 id="honest-limitations">Honest limitations</h2>
-<ul><li><strong>Depth-first method resolution</strong>, as in <a href="/book/dispatch/">Chapter 15</a>.</li><li><strong>Role conflicts are silent</strong>, last writer wins.</li><li><strong>The class registry is flat</strong>, so unqualified class names from different modules collide. The alias machinery reduces the pain but does not remove the cause.</li><li><strong><code>ClassInfo::decl</code> is a raw <code>ClassDecl*</code></strong> into the AST, kept alive by the same "the tree is immortal" rule as <code>Callable::body</code> (<a href="/book/ast/">Chapter 6</a>).</li></ul><nav class="ch-nav"><a class="prev" href="/book/dispatch/"><span>Previous</span>Dispatch</a><a class="next" href="/book/lazy/"><span>Next</span>Laziness, Junctions, and the Wilder Values</a></nav>
+<ul><li><strong>Depth-first method resolution</strong>, as in <a href="/book/dispatch/">Chapter 16</a>.</li><li><strong>Role conflicts are silent</strong>, last writer wins.</li><li><strong>The class registry is flat</strong>, so unqualified class names from different modules collide. The alias machinery reduces the pain but does not remove the cause.</li><li><strong><code>ClassInfo::decl</code> is a raw <code>ClassDecl*</code></strong> into the AST, kept alive by the same "the tree is immortal" rule as <code>Callable::body</code> (<a href="/book/ast/">Chapter 7</a>).</li></ul><nav class="ch-nav"><a class="prev" href="/book/dispatch/"><span>Previous</span>Dispatch</a><a class="next" href="/book/lazy/"><span>Next</span>Laziness, Junctions, and the Wilder Values</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

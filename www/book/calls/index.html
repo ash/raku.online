@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 13</p><h1>Calls and Parameter Binding</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#building-the-argument-list">Building the argument list</a></li><li><a href="#activating-the-callee">Activating the callee</a></li><li><a href="#binding-parameters">Binding parameters</a></li><li><a href="#the-callable-and-what-it-caches">The <code>Callable</code>, and what it caches</a></li><li><a href="#is-rw-write-back"><code>is rw</code> write-back</a></li><li><a href="#lvalue-mode-method-calls">Lvalue-mode method calls</a></li><li><a href="#what-a-call-costs">What a call costs</a></li></ul></nav>
+<p class="ch-label">Chapter 14</p><h1>Calls and Parameter Binding</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#building-the-argument-list">Building the argument list</a></li><li><a href="#activating-the-callee">Activating the callee</a></li><li><a href="#binding-parameters">Binding parameters</a></li><li><a href="#the-callable-and-what-it-caches">The <code>Callable</code>, and what it caches</a></li><li><a href="#is-rw-write-back"><code>is rw</code> write-back</a></li><li><a href="#lvalue-mode-method-calls">Lvalue-mode method calls</a></li><li><a href="#what-a-call-costs">What a call costs</a></li></ul></nav>
 <p>A call happens in three phases: build the argument list, activate the callee, bind the parameters. Each has a fast path, and each fast path exists because something measurable was in the way.</p>
 <h2 id="building-the-argument-list">Building the argument list</h2>
 <p><code>evalArgs</code> evaluates the argument expressions into one flat <code>ValueList</code>:</p>
@@ -99,7 +99,7 @@ tctx_.dynStack.push_back(caller_scope);                <span class="c1">// the O
 <pre class="native-code"><code class="lang-cpp"><span class="k">if</span> (p.sigil == <span class="s1">'$'</span> &amp;&amp; !p.isRw &amp;&amp; !p.isCopy &amp;&amp; !p.invocant)
     v.readonly = <span class="kc">true</span>;</code></pre></li><li><strong>slurpies</strong>: <code>*@rest</code> flattens, <code>**@rest</code> does not, <code>+@rest</code> applies the single-argument rule, <code>*%named</code> collects the rest;</li><li><strong>named parameters</strong>, including the alias forms <code>:a(:$b)</code> and nested <code>:x(:y(:z($a)))</code>, where every layer's key answers;</li><li><strong>sub-signature destructuring</strong>, <code>sub f([$a, $b])</code>, recursing through <code>Param::subSig</code>;</li><li>the implicit <strong><code>$_</code></strong> topic, and placeholder parameters <code>$^a</code>, <code>$^b</code>, bound in sorted order.</li></ul>
 <h3>What is <em>not</em> checked here</h3>
-<p><strong>Type constraints, <code>where</code> clauses and <code>:D</code>/<code>:U</code> smileys are not enforced for an ordinary, non-multi call.</strong> Single dispatch is largely duck-typed at the bind boundary. Those checks live in <code>scoreCandidate</code>, which is multi dispatch's business (<a href="/book/dispatch/">Chapter 15</a>).</p>
+<p><strong>Type constraints, <code>where</code> clauses and <code>:D</code>/<code>:U</code> smileys are not enforced for an ordinary, non-multi call.</strong> Single dispatch is largely duck-typed at the bind boundary. Those checks live in <code>scoreCandidate</code>, which is multi dispatch's business (<a href="/book/dispatch/">Chapter 16</a>).</p>
 <p>There is one exception, <code>typeCheckBind</code>, used when a lone candidate is being bound and a mismatch should raise <code>X::TypeCheck::Binding</code>. It caches its verdict on the parameter — but <strong>only once true</strong>:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Param</span>
 <span class="k">mutable</span> DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; typeKnown{<span class="mi">0</span>};</code></pre>
@@ -128,7 +128,7 @@ Stmt* catchBlkCache = <span class="kc">nullptr</span>;</code></pre>
 <span class="k">if</span> ((p.isRw || p.sigil == <span class="s1">'\\'</span>) &amp;&amp; pi &lt; rwArgs-&gt;size())
     <span class="k">if</span> (Value* lv = lvalue((*rwArgs)[pi].get()))
         *lv = env-&gt;vars[p.name];</code></pre>
-<p><code>setupRwLinks</code> additionally arranges for an assignment <em>inside</em> the callee to push through immediately, so the caller sees the change mid-call. The bookkeeping that keeps those two mechanisms from fighting is described in <a href="/book/containers/">Chapter 11</a>.</p>
+<p><code>setupRwLinks</code> additionally arranges for an assignment <em>inside</em> the callee to push through immediately, so the caller sees the change mid-call. The bookkeeping that keeps those two mechanisms from fighting is described in <a href="/book/containers/">Chapter 12</a>.</p>
 <p>The whole thing is guarded by a sticky flag, <code>anyRwLinks_</code>, so a program that never uses <code>is rw</code> never runs the per-assignment hook at all.</p>
 <h2 id="lvalue-mode-method-calls">Lvalue-mode method calls</h2>
 <p><code>$obj[$i] = $v</code> on a class whose <code>AT-POS</code> is <code>return-rw @!arr[$i]</code> must write the <em>real</em> element, not a returned copy. That needs a channel from the subscript site into the routine's <code>return-rw</code>:</p>
@@ -143,7 +143,7 @@ Value* lvalueOut = <span class="kc">nullptr</span>;</code></pre>
 <tr><td>cached <code>BuiltinFn*</code> call</td><td>47.4</td></tr>
 <tr><td>by-name lookup: hash, <code>unordered_map::find</code>, <code>std::function</code></td><td>55.0</td></tr></table></div>
 <p>The lookup tax is real but modest at 8 to 9 nanoseconds. The important number is the <strong>floor</strong>: about 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — a heap-allocating <code>std::vector</code> built per call.</p>
-<p>Dispatch was a quarter of the overhead. The argument vector was the rest. That finding is what shaped the optimiser in <a href="/book/optimizer/">Chapter 26</a>: its first pass gives fixed-arity subs direct <code>Value</code> parameters and removes the vector entirely, which buys more than any lookup cache can.</p><nav class="ch-nav"><a class="prev" href="/book/tree-walk/"><span>Previous</span>The Tree Walk</a><a class="next" href="/book/control-flow/"><span>Next</span>Cooperative Control Flow</a></nav>
+<p>Dispatch was a quarter of the overhead. The argument vector was the rest. That finding is what shaped the optimiser in <a href="/book/optimizer/">Chapter 27</a>: its first pass gives fixed-arity subs direct <code>Value</code> parameters and removes the vector entirely, which buys more than any lookup cache can.</p><nav class="ch-nav"><a class="prev" href="/book/tree-walk/"><span>Previous</span>The Tree Walk</a><a class="next" href="/book/control-flow/"><span>Next</span>Cooperative Control Flow</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>
