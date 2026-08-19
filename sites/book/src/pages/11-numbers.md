@@ -214,8 +214,14 @@ Coercing a `Complex` back to a real checks the imaginary part against
 lexically.
 
 The language revision matters here: under `use v6.e.PREVIEW`, `sqrt(-1)` is a
-`Complex` rather than `NaN`. `Interpreter::langRev_` carries the revision and a
-handful of numeric operations branch on it.
+`Complex` rather than `NaN` — and so is `log(-1)`, and `log10`/`log2` of a
+negative, all of which come through one `rtLogReal` so the branch is written
+once. `Interpreter::langRev_` carries the revision *of the code currently
+running*: each compilation unit records the revision it was compiled under, every
+routine is stamped with its unit's, and the call path switches to the callee's
+for the duration of the call. That is what lets a module compiled under 6.e keep
+`Complex` results when a 6.d program calls into it, without the 6.d program's own
+`sqrt` changing meaning.
 
 ## Where the arithmetic actually happens
 
