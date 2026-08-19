@@ -97,6 +97,6 @@ implementation, startup is one of the larger differences.
 ---
 
 See also [NATIVE.md](../NATIVE.md) for what compiles natively and
-[OPTIMIZATION.md](../OPTIMIZATION.md) for what `-O` actually does.
+[OPTIMIZATION.md](../../internals/OPTIMIZATION.md) for what `-O` actually does.
 
 Back to the [FAQ index](README.md).

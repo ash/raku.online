@@ -9,7 +9,7 @@
     # The articles, in reading order. Anything in src/pages that is not listed
     # here is still built, but appears after these; a name listed with no file
     # is skipped, so removing an article upstream does not break the build.
-    order => <shell containers compiling performance debugging differences>,
+    order => <shell containers compiling performance debugging differences 6e>,
 
     # A line of context under each entry on the index. The articles open with a
     # summary of their own, but on an index you want the difference between two
@@ -21,6 +21,7 @@
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
         debugging   => 'When something goes wrong: --lint, --ast, --cpp, and telling your bug from ours.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',
+        '6e'        => 'What the 6.e language revision adds to 6.d, and what use v6.e.PREVIEW actually turns on.',
     },
 
     # ../SOMETHING.md in an article points at a doc that lives in the rakupp

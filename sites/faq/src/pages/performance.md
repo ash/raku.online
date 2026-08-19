@@ -85,7 +85,7 @@ slower than Rakudo — that is worth reporting. Include the program.
 
 ---
 
-Deeper detail: [OPTIMIZATION.md](../OPTIMIZATION.md) for what `-O` does,
-[BENCHMARKS.md](../BENCHMARKS.md) for the full measured set.
+Deeper detail: [OPTIMIZATION.md](../../internals/OPTIMIZATION.md) for what `-O` does,
+[BENCHMARKS.md](../../status/BENCHMARKS.md) for the full measured set.
 
 Back to the [FAQ index](README.md).

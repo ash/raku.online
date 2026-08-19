@@ -58,7 +58,7 @@ semicolon between statements among them. If you want your syntax checked
 strictly, Rakudo is the better checker.
 
 **The full ecosystem.** Many zef modules work under Raku++, but not all; see
-[ECOSYSTEM.md](../ECOSYSTEM.md) and [MODULES.md](../MODULES.md).
+[ECOSYSTEM.md](../../status/ECOSYSTEM.md) and [MODULES.md](../MODULES.md).
 
 ## Differences you will actually run into
 
@@ -80,10 +80,62 @@ on the list.
 **Hash iteration order.** Raku++ iterates sorted; Rakudo's order is its own and
 varies. Neither is guaranteed by the language — sort if you depend on it.
 
+**`$*RAKU.compiler.version` reports a Rakudo era, not the Raku++ release.**
+It answers `v2026.07` — the Rakudo release Raku++ is verified byte-identical
+against — while the rest of the object says who is actually running:
+
+```raku
+say $*RAKU.compiler.name;       # → Raku++      (Rakudo says: rakudo)
+say $*RAKU.compiler.version;    # → v2026.07    (the era tracked, not our release)
+say $*RAKU.compiler.release;    # → 1.7.0       (Rakudo leaves this empty)
+say $*RAKU.compiler.id;         # → 1.7.0       (Rakudo: a commit SHA)
+say $*RAKU.compiler.backend;    # → cpp         (Rakudo: moar)
+```
+
+Because `.id` is our release rather than Rakudo's per-build hash, two different
+builds of the same release are indistinguishable there. Raku++ adds the missing
+identity as its own pair of keys, which Rakudo has neither of:
+
+```raku
+say $*RAKU.compiler.build;       # → v3.14.0-74-g9ff47ae   (git describe)
+say $*RAKU.compiler.build-date;  # → 2026-08-16            (UTC, at build time)
+```
+
+`.build` reads as *74 commits past the v3.14.0 tag, at commit 9ff47ae*, and
+gains a `-modified` suffix when the tree had uncommitted changes; on a tagged
+commit it is just the tag. Built from a source tarball, with no `.git` to ask,
+`.build` is `unknown` rather than a guess — `.build-date` is still stamped.
+Quote `.build` in bug reports: it is the only thing that pins the exact binary.
+
+This is deliberate, and it reverses an earlier decision to report our own
+version there. Modules gate features on `$*RAKU.compiler.version < v2023.12`,
+using the compiler version as a proxy for *do I have modern semantics?* —
+answering `v1.7.0` compares as a pre-2000 Rakudo, and every such module refuses
+to load. JSON::Class was the witness.
+
+So: **detect the engine with `.name`, not with `.version`.** The number answers
+what the language does; the name answers who implements it. The era constant is
+`kOracleEra` in `src/Builtins.cpp`, and it moves when the conformance oracle
+moves — not when Raku++ is released.
+
 ## Keeping yourself portable
 
 If a program must run on both, the reliable habits are:
 
+- put a `;` between statements even when the first one ends in `}`. Raku
+  supplies an implicit statement separator only when the `}` is the last thing
+  on the **line**, so `sub f { … }  say 1;` needs one. Raku++ accepts it
+  without; Rakudo says *"Strange text after block (missing semicolon or
+  comma?)"*. Rakudo is right, and this is the dangerous direction of
+  divergence — the permissive engine teaches a habit that fails on the strict
+  one, with no warning until you get there
+- `await` a `Promise.allof`/`anyof` before asking its `.status`. Raku++ keeps
+  the combined promise eagerly, so it reads `Kept` immediately; Rakudo hands it
+  to the scheduler and reads `Planned` until that runs. After an `await` both
+  say `Kept`, which is what real code does anyway
+- write `callsame()`, not bare `callsame`, when its result feeds an operator:
+  `"[" ~ callsame ~ "]"` parses on Raku++ but Rakudo reads it as
+  `callsame(~"]")` and rejects it
 - `sort` before comparing anything that came out of a hash
 - pass `:out` when you capture, rather than relying on pass-through timing
 - decontainerise explicitly — `@(…)` — rather than relying on a coercion
@@ -94,7 +146,7 @@ If a program must run on both, the reliable habits are:
 
 The measured, per-example classification is in
 [the spec site's source](https://github.com/ash/raku.online/tree/main/sites/spec);
-the Roast standing and how it is counted are in [ROAST.md](../ROAST.md) and
-[COUNTING.md](../COUNTING.md).
+the Roast standing and how it is counted are in [ROAST.md](../../status/ROAST.md) and
+[COUNTING.md](../../status/COUNTING.md).
 
 Back to the [FAQ index](README.md).

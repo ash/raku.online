@@ -983,7 +983,7 @@ sub collect-pages(%site) {
 # Rakudo under 6.e, Raku++ under 6.e — and a verdict derived from those three
 # outputs rather than asserted. The data is src/data/6e.raku, written by
 # tools/gen-6e.raku; re-run that after an engine change and the page re-scores
-# itself. The prose companion is raku.online/6e.
+# itself. The prose companion is the FAQ article at raku.online/faq/6e.
 sub render-sixe(%site, %by-cat --> Str) {
     my %d     = EVAL slurp('src/data/6e.raku');
     my $total = %d<counts>.values.sum;
@@ -1027,7 +1027,7 @@ sub render-sixe(%site, %by-cat --> Str) {
         'something else. <em>Partial</em> is the one verdict set by hand, because "there, but not ' ~
         'all the way there" is a judgement no comparison of outputs can make. ' ~
         'The prose version of all this, with the reasoning and the sources, is ' ~
-        '<a href="/6e/">What Raku 6.e adds to 6.d</a>.</p>');
+        '<a href="/faq/6e/">What Raku 6.e adds to 6.d</a>.</p>');
     @parts.push('</div>');
 
     # Jump list: the groups, with how many of each are fully supported.

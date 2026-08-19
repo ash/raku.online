@@ -16,6 +16,7 @@
 my %SITE;
 my $BASE = '';
 my %TITLES;   # slug => article title, so a link to shell.md can name the article
+my @TOC;      # [level, anchor, text] per heading of the page being rendered
 
 # ---- inline formatting ----------------------------------------------------
 
@@ -48,8 +49,10 @@ sub inline(Str $text --> Str) {
     $s = $s.subst(/ '*' (<-[*]>+) '*' /,   { '<em>' ~ ~$0 ~ '</em>' }, :g);
 
     # put the code spans back, escaped now that no pattern can see into them
+    # An escaped pipe only exists to survive a Markdown table cell; the reader
+    # wants the pipe.
     for @spans.kv -> $i, $code {
-        $s = $s.subst("\x[0]$i\x[0]", '<code>' ~ esc($code) ~ '</code>');
+        $s = $s.subst("\x[0]$i\x[0]", '<code>' ~ esc($code.subst('\\|', '|', :g)) ~ '</code>');
     }
     $s
 }
@@ -76,6 +79,61 @@ sub link-target(Str $t --> Str) {
         return "$BASE/" ~ $t.subst(/ '.md' $ /, '') ~ '/';
     }
     $t
+}
+
+# ---- headings and lists ---------------------------------------------------
+
+
+sub anchor(Str $text --> Str) {
+    my $a = $text.lc.subst(/ <-[a..z0..9]>+ /, '-', :g);
+    $a.subst(/ ^ '-' /, '').subst(/ '-' $ /, '')
+}
+
+
+sub heading(Int $level, Str $text --> Str) {
+    my $id = anchor($text);
+    @TOC.push([$level, $id, $text]) if $level <= 2;
+    "<h$level id=\"$id\">" ~ inline($text) ~ "</h$level>"
+}
+
+
+sub bullet-of(Str $line) {
+    # returns [indent, marker-length] for a list line, or Nil
+    my $m = $line ~~ / ^ (\s*) ('- ' | \d+ '. ') /;
+    $m ?? [ (~$m[0]).chars, (~$m[0]).chars + (~$m[1]).chars ] !! Nil
+}
+
+
+sub list-html(@lines, Int $start) {
+    my $i = $start;
+    my $ordered = so @lines[$i] ~~ / ^ \s* \d+ '. ' /;
+    my @items;
+    while $i < @lines.elems {
+        my $b = bullet-of(@lines[$i]);
+        last unless $b;
+        if $b[0] > 0 && @items {
+            # one level of nesting: collect it into the item just closed
+            my @sub;
+            while $i < @lines.elems && (my $s = bullet-of(@lines[$i])) && $s[0] > 0 {
+                @sub.push('<li>' ~ inline(@lines[$i].substr($s[1])) ~ '</li>');
+                $i++;
+            }
+            @items[@items.end] ~= '<ul>' ~ @sub.join ~ '</ul>';
+            next;
+        }
+        my $text = @lines[$i].substr($b[1]);
+        $i++;
+        # continuation lines: an item wrapped over several lines in the source
+        while $i < @lines.elems && @lines[$i].trim ne ''
+              && !bullet-of(@lines[$i])
+              && @lines[$i].starts-with(' ') {
+            $text ~= ' ' ~ @lines[$i].trim;
+            $i++;
+        }
+        @items.push('<li>' ~ inline($text) ~ '</li>');
+    }
+    my $html = ($ordered ?? Q[<ol>] !! Q[<ul>]) ~ @items.join ~ ($ordered ?? Q[</ol>] !! Q[</ul>]);
+    ($html, $i)
 }
 
 # ---- block formatting -----------------------------------------------------
@@ -116,21 +174,31 @@ sub render(Str $md --> Str) {
             next;
         }
 
-        if $line.starts-with('## ')  { @out.push('<h2>' ~ inline($line.substr(3))  ~ '</h2>'); $i++; next; }
-        if $line.starts-with('### ') { @out.push('<h3>' ~ inline($line.substr(4))  ~ '</h3>'); $i++; next; }
-        if $line.starts-with('# ')   { $i++; next; }   # the title, handled by the caller
-
-        # lists — bullets and numbers, each item one line in these articles
-        if $line ~~ / ^ '- ' / || $line ~~ / ^ \d+ '. ' / {
-            my $ordered = so $line ~~ / ^ \d+ '. ' /;
-            my @items;
-            while $i < @lines.elems
-                  && (@lines[$i] ~~ / ^ '- ' / || @lines[$i] ~~ / ^ \d+ '. ' /) {
-                my $item = @lines[$i].subst(/ ^ ('- ' | \d+ '. ') /, '');
-                @items.push('<li>' ~ inline($item) ~ '</li>');
+        # block quote — a note set aside from the prose
+        if $line.starts-with('> ') {
+            my @quote;
+            while $i < @lines.elems && @lines[$i].starts-with('> ') {
+                @quote.push(@lines[$i].substr(2));
                 $i++;
             }
-            @out.push(($ordered ?? '<ol>' !! '<ul>') ~ @items.join ~ ($ordered ?? '</ol>' !! '</ul>'));
+            @out.push('<blockquote class="note"><p>' ~ inline(@quote.join(' ')) ~ '</p></blockquote>');
+            next;
+        }
+
+        # a horizontal rule between sections
+        if $line.trim eq '---' { @out.push('<hr>'); $i++; next; }
+
+        if $line.starts-with('### ') { @out.push(heading(3, $line.substr(4).trim)); $i++; next; }
+        if $line.starts-with('## ')  { @out.push(heading(2, $line.substr(3).trim)); $i++; next; }
+        if $line.starts-with('# ')   { $i++; next; }   # the title, handled by the caller
+        if $line.starts-with('#')    { $i++; next; }   # any deeper heading: never silently loop
+
+        # lists — bullets and numbers, one level of nesting, and items that run
+        # over several source lines
+        if bullet-of($line) {
+            my ($html, $next) = list-html(@lines, $i);
+            @out.push($html);
+            $i = $next;
             next;
         }
 
@@ -140,8 +208,9 @@ sub render(Str $md --> Str) {
         my @para;
         while $i < @lines.elems && @lines[$i].trim ne ''
               && !@lines[$i].starts-with('```') && !@lines[$i].starts-with('#')
-              && !@lines[$i].starts-with('|')
-              && !(@lines[$i] ~~ / ^ '- ' /) && !(@lines[$i] ~~ / ^ \d+ '. ' /) {
+              && !@lines[$i].starts-with('|') && !@lines[$i].starts-with('> ')
+              && @lines[$i].trim ne '---'
+              && !bullet-of(@lines[$i]) {
             @para.push(@lines[$i]);
             $i++;
         }
@@ -150,18 +219,36 @@ sub render(Str $md --> Str) {
     @out.join("\n")
 }
 
+# A cell may contain an escaped pipe inside a code span; splitting on a bare
+# '|' would cut the row in the middle of it.
 sub cells(Str $row) {
-    $row.subst(/ ^ '|' /, '').subst(/ '|' $ /, '').split('|').map(*.trim)
+    $row.subst(/ ^ '|' /, '').subst(/ '|' $ /, '')
+        .subst('\\|', "\x[1]", :g)
+        .split('|').map({ .trim.subst("\x[1]", '\\|', :g) })
 }
 
 sub table-html(@rows --> Str) {
     my @head = cells(@rows[0]);
     my @body = @rows[2 .. *];
-    my $h = '<tr>' ~ @head.map({ '<th>' ~ inline($_) ~ '</th>' }).join ~ '</tr>';
+    # A comparison table can have no header — the two cells are "6.d" and "6.e"
+    # in the rows themselves. An empty header row is noise.
+    my $h = @head.grep({ $_ ne '' })
+              ?? '<tr>' ~ @head.map({ '<th>' ~ inline($_) ~ '</th>' }).join ~ '</tr>'
+              !! '';
     my $b = @body.map(-> $r {
         '<tr>' ~ cells($r).map({ '<td>' ~ inline($_) ~ '</td>' }).join ~ '</tr>'
     }).join("\n");
     '<div class="tablewrap"><table>' ~ $h ~ $b ~ '</table></div>'
+}
+
+
+# A long article gets a contents list under its title; a short one does not need
+# one, so this is called only past a threshold.
+sub toc-html(--> Str) {
+    return '' unless @TOC;
+    '<nav class="toc" aria-label="Contents"><ul>'
+      ~ @TOC.map(-> @h { '<li><a href="#' ~ @h[1] ~ '">' ~ inline(@h[2]) ~ '</a></li>' }).join
+      ~ '</ul></nav>'
 }
 
 # ---- the page shell -------------------------------------------------------
@@ -252,8 +339,15 @@ sub MAIN(Bool :$clean = False) {
         my $md    = slurp("src/pages/$slug.md");
         my $title = title-of($md);
         mkdir("out/$slug");
+        @TOC = ();
+        my $body = render($md);          # fills @TOC on the way through
+        # Ten sections is where scrolling stops working as navigation. The
+        # existing articles sit under that on purpose — a list of seven links
+        # above four screens of text is furniture, not help.
+        my $toc  = @TOC.elems >= 10 ?? toc-html() !! '';
         spurt("out/$slug/index.html",
-              page($title, '<h1>' ~ esc(heading-case(short-title($title))) ~ '</h1>' ~ "\n" ~ render($md)));
+              page($title, '<h1>' ~ esc(heading-case(short-title($title))) ~ '</h1>' ~ "\n"
+                           ~ $toc ~ "\n" ~ $body));
         @entries.push({ slug => $slug, title => heading-case(short-title($title)) });
     }
 

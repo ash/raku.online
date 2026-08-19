@@ -22,9 +22,10 @@
 <div class="content">
 <p class="crumb"><a href="/faq/">← All questions</a></p>
 <h1>Containers, itemisation, and why my list has one element</h1>
+
 <p>Every snippet on this page was run on both Raku++ and Rakudo and produces identical output.</p>
 <p>This is the single most confusing corner of Raku, and it is not a Raku++ quirk — Rakudo behaves the same way. It is worth understanding once.</p>
-<h2>Why is <code>my @a = %h&lt;k&gt;</code> one element?</h2>
+<h2 id="why-is-my-a-h-k-one-element">Why is <code>my @a = %h&lt;k&gt;</code> one element?</h2>
 <pre class="native-code"><code class="lang-raku">my %h;
 my @x = 7, 8, 9;
 %h&lt;k&gt; = @x;
@@ -40,7 +41,7 @@ say @b.elems;      # 1</code></pre>
 <pre class="native-code"><code class="lang-raku">my @x = 7, 8, 9;
 my @c = @x;
 say @c.elems;      # 3</code></pre>
-<h2>How do I get the elements out?</h2>
+<h2 id="how-do-i-get-the-elements-out">How do I get the elements out?</h2>
 <p>Any of these — they all decontainerise:</p>
 <pre class="native-code"><code class="lang-raku">my %h; %h&lt;k&gt; = [7, 8, 9];
 my @a = @(%h&lt;k&gt;);        # the @ contextualiser
@@ -49,7 +50,7 @@ my @c = %h&lt;k&gt;.Array;
 my @d = |%h&lt;k&gt;;          # flattening prefix
 say @a.elems, @b.elems, @c.elems, @d.elems;   # 3333</code></pre>
 <p><code>@(…)</code> is the usual one. Reach for <code>.Array</code> when you want a real <code>Array</code> back (a mutable copy), <code>.list</code> when a <code>List</code> is fine.</p>
-<h2>What makes something itemised?</h2>
+<h2 id="what-makes-something-itemised">What makes something itemised?</h2>
 <p>The <code>$</code> sigil, in all its forms:</p>
 <pre class="native-code"><code class="lang-raku">say (1, 2, 3).elems;            # 3
 say $(1, 2, 3).elems;           # 1   — $() itemises
@@ -60,7 +61,7 @@ say [1, 2].elems;               # 2   — [] is an Array, not itemised</code></p
 <pre class="native-code"><code class="lang-raku">my %h; %h&lt;k&gt; = [1, 2];
 say %h&lt;k&gt;.raku;                 # $[1, 2]   ← the $ marks the itemisation
 say @(%h&lt;k&gt;).raku;              # [1, 2]</code></pre>
-<h2>Passing a list to a routine</h2>
+<h2 id="passing-a-list-to-a-routine">Passing a list to a routine</h2>
 <p>An itemised value arrives as <strong>one</strong> argument:</p>
 <pre class="native-code"><code class="lang-raku">sub count(*@a) { @a.elems }
 my $items = (1, 2, 3);
@@ -68,7 +69,7 @@ say count($items);              # 1
 say count(|$items);             # 3   — | flattens it into the argument list
 say count(@($items));           # 3</code></pre>
 <p>This is the usual cause of "my sub got one argument and I passed three things".</p>
-<h2>Attributes follow their sigil</h2>
+<h2 id="attributes-follow-their-sigil">Attributes follow their sigil</h2>
 <p>An attribute's sigil is a container type, so the value is coerced to match:</p>
 <pre class="native-code"><code class="lang-raku">class T {
     has @.list = (1, 2);        # a List initialiser…
@@ -77,12 +78,12 @@ say count(@($items));           # 3</code></pre>
 say T.new.list.WHAT;            # (Array)   ← …but the attribute is an Array
 say T.new.h.WHAT;               # (Hash)</code></pre>
 <p>That matters when you render one — an <code>Array</code> reprs as <code>[1, 2]</code> where a <code>List</code> would repr as <code>(1, 2)</code>.</p>
-<h2>Gotchas</h2>
+<h2 id="gotchas">Gotchas</h2>
 <p><strong><code>.elems</code> and binding can disagree if a coercion is wrong.</strong> <code>$v.Array.elems</code> must equal <code>(my @a = $v.Array).elems</code> — if they differ, that is a bug, not a subtlety. (Raku++ had exactly that bug before v1.2.5: <code>.Array</code> reported 3 and bound 1.)</p>
 <p><strong>A <code>for</code> loop binding itemises.</strong> Iterating pairs of values binds each into a scalar, so a nested list stays whole:</p>
 <pre class="native-code"><code class="lang-raku">for [1, 2], [3, 4] -&gt; $pair { say $pair.elems }    # 2, then 2</code></pre>
 <p><strong><code>.flat</code> stops at an itemised value.</strong> That is what it is for — itemisation is the mechanism that lets a structure survive flattening.</p>
-<p>---</p>
+<hr>
 <p>Back to the <a href="/faq/">FAQ index</a>.</p>
 <footer>
 <span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
