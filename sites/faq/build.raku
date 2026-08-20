@@ -280,6 +280,7 @@ sub page(Str $title, Str $body, :$index = False --> Str) {
     <script src="/theme/boot.js"></script>
     <link rel="stylesheet" href="/theme/base.css">
     <link rel="stylesheet" href="/theme/shell.css">
+    <link rel="stylesheet" href="/theme/faq.css">
     </head>
     <body class="home">
     <span class="theme-switch">
@@ -365,17 +366,20 @@ sub MAIN(Bool :$clean = False) {
         @entries.push({ slug => $slug, title => heading-case(short-title($title)) });
     }
 
+    # One paragraph per article, the blurb on the line below the link: a
+    # bulleted list of eight two-line entries is furniture, and a blurb behind
+    # an em dash buries the title it belongs to.
     my $list = @entries.map(-> %e {
         my $blurb = %SITE<blurbs>{%e<slug>} // '';
-        '<li><a href="' ~ $BASE ~ '/' ~ %e<slug> ~ '/">' ~ esc(%e<title>) ~ '</a>'
-          ~ ($blurb ?? ' — ' ~ esc($blurb) !! '') ~ '</li>'
+        '<p class="faq-entry"><a href="' ~ $BASE ~ '/' ~ %e<slug> ~ '/">' ~ esc(%e<title>) ~ '</a>'
+          ~ ($blurb ?? '<br><span class="faq-blurb">' ~ esc($blurb) ~ '</span>' !! '') ~ '</p>'
     }).join("\n");
 
     spurt('out/index.html',
           page(%SITE<title>, :index,
                '<h1>' ~ esc(%SITE<title>) ~ '</h1>'
                ~ '<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>'
-               ~ '<ul class="home-nav">' ~ $list ~ '</ul>'));
+               ~ '<div class="faq-index">' ~ $list ~ '</div>'));
 
     say "built {@entries.elems} FAQ page(s) + index -> out/";
 }
