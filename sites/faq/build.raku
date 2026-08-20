@@ -66,11 +66,25 @@ sub link-text(Str $text, Str $target --> Str) {
     %TITLES{$slug} // $text
 }
 
+# Where these articles conceptually live inside the rakupp repo's docs/, which
+# is what a ../ in a link is relative to.
+my constant @HOME-DIR = <guide faq>;
+
 sub link-target(Str $t --> Str) {
     return $t if $t.starts-with('http') || $t.starts-with('#');
-    # ../SOMETHING.md — a rakupp doc that does not live on this site
+    # ../SOMETHING.md — a rakupp doc that does not live on this site. The
+    # articles are written as if they sat in docs/guide/faq/ of the rakupp
+    # repo, so ../LINT.md is docs/guide/LINT.md and ../../status/ROAST.md is
+    # docs/status/ROAST.md. The whole ../ chain has to be resolved here:
+    # GitHub serves a blob URL literally and does not normalise a '..' in it.
     if $t.starts-with('../') {
-        return %SITE<docs-base> ~ $t.subst('../', '');
+        my @dirs = @HOME-DIR;
+        my $rest = $t;
+        while $rest.starts-with('../') {
+            $rest = $rest.substr(3);
+            @dirs.pop if @dirs;
+        }
+        return %SITE<docs-base> ~ (|@dirs, $rest).join('/');
     }
     # README.md — the index of this FAQ
     return "$BASE/" if $t eq 'README.md';

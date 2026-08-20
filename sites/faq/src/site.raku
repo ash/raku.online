@@ -9,7 +9,7 @@
     # The articles, in reading order. Anything in src/pages that is not listed
     # here is still built, but appears after these; a name listed with no file
     # is skipped, so removing an article upstream does not break the build.
-    order => <shell containers compiling performance debugging differences 6e>,
+    order => <shell containers modules compiling performance debugging differences 6e>,
 
     # A line of context under each entry on the index. The articles open with a
     # summary of their own, but on an index you want the difference between two
@@ -17,6 +17,7 @@
     blurbs => {
         shell       => 'Running external commands: run vs shell, capturing output, feeding input, exit codes.',
         containers  => 'Why does my list have one element? Itemisation, $(…) vs […], and passing lists to routines.',
+        modules     => 'Getting a module and being able to use it: rakupp install, zef, and where both engines look.',
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
         debugging   => 'When something goes wrong: --lint, --ast, --cpp, and telling your bug from ours.',
