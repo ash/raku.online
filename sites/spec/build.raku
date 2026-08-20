@@ -649,8 +649,12 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <h2 class="conf-areas-title">Benchmarks <span>— kernel wall time in ms, lower is better</span></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++
     interpreter, the same source compiled to a native binary with
-    <code>--exe</code>, and Rakudo as the reference. Absolute times from
-    BENCHMARKS.md as committed at each release (same machine throughout).</p>
+    <code>--exe</code>, and Rakudo as the reference. All nine kernels
+    BENCHMARKS.md tables, ordered as that file orders them — string building
+    first, where the gap is widest, down to the two Rakudo still wins on
+    interpreted. Absolute times as committed at each release (same machine
+    throughout), so a kernel is missing from a point only when that release's
+    table did not carry it.</p>
     <div class="dash-bench" id="dash-bench"></div>
     BODY
     my $extra = "<script src=\"/theme/chart.js?v={$VERSION}\" defer></script>" ~

@@ -94,7 +94,7 @@
     [ '1 . 2', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
     [ '"a" . "b"', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
     [ '1 . "2"', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
-    [ '(1, 2) . (3, 4, 5)', 'ERR Cannot invoke non-Callable value of type List', 'ERR Error while compiling -e', 'both-reject' ],
+    [ '(1, 2) . (3, 4, 5)', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
     [ 'True . False', 'ERR No such method \'False\' for invocant of type \'Bool\'', 'ERR No such method \'False\' for invocant of type \'Bool\'. Did you mean', 'both-reject' ],
     [ 'Nil . 1', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
     [ '1/2 . 1/3', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],

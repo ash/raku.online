@@ -52,6 +52,31 @@ sub status-doc(Str $repo, Str $ref, Str $name --> Str) {
 # "157,293" -> 157293
 sub denum(Str $s --> Int) { $s.subst(',', '', :g).subst(/ <-[0..9]> /, '', :g).Int }
 
+# The release's OWN published figures, from the CHANGELOG row it ships with.
+# ROAST.md is a living document and can lag a release by a missed edit — v3.5.0
+# and v3.5.1 were both tagged with the file-count TABLE still reading v3.14.0's
+# 594 while every other place said 630, which drew a dip that never happened.
+# The CHANGELOG row is what the release stands behind, so it wins where it
+# exists; ROAST.md remains the source for everything else and for `main`.
+sub changelog-at(Str $repo, Str $ref --> Hash) {
+    my $md = show-file($repo, $ref, 'CHANGELOG.md');
+    return {} unless $md;
+    my %r;
+    for $md.lines -> $line {
+        last if %r<files-pass>:exists && %r<tests-pass>:exists;
+        next unless $line.trim.starts-with('|');
+        my @cells = $line.split('|').map(*.trim);
+        next unless @cells.elems > 3;
+        my $label = @cells[1].lc;
+        # the entry's own column is the LAST one: "| | v3.14.0 | v3.5.0 |"
+        my $cell = @cells[*-2].subst('*', '', :g);
+        next unless $cell ~~ / ^ <[0..9,]>+ $ /;
+        %r<files-pass> = denum($cell) if $label.contains('files fully passing');
+        %r<tests-pass> = denum($cell) if $label.contains('assertions');
+    }
+    %r
+}
+
 # ---------------------------------------------------------------------------
 # Roast standing out of ROAST.md at a given ref
 # ---------------------------------------------------------------------------
@@ -88,7 +113,11 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # Benchmark kernels out of BENCHMARKS.md at a given ref
 # ---------------------------------------------------------------------------
 
-constant @KERNELS = <fib loopsum strcat>;
+# Every kernel BENCHMARKS.md tables, not a hand-picked three: the file has
+# carried nine since the interpreter/native tables were split, and the dashboard
+# was drawing a third of what we measure. A kernel missing from an older release's
+# table is simply absent from that point — bench-at only records what it finds.
+constant @KERNELS = <fib loopsum strcat hash bigint sortnums regex arrayops streq>;
 
 # Each kernel row appears twice: first in the interpreter table
 # (| fib | <rakupp ms> | <rakudo ms> | …), then in the native --exe table
@@ -241,6 +270,11 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     for @refs -> $ref {
         my %roast = roast-at($rakupp-repo, $ref);
         next unless %roast<tests-pass>:exists;
+        # a TAGGED release's own CHANGELOG row wins over ROAST.md (see above)
+        if $ref ne 'HEAD' {
+            my %cl = changelog-at($rakupp-repo, $ref);
+            %roast<files-pass> = %cl<files-pass> if %cl<files-pass>:exists;
+        }
         $first-charted = $ref unless $first-charted;
         my %bench = bench-at($rakupp-repo, $ref);
         my $label = $ref eq 'HEAD' ?? 'main' !! $ref;

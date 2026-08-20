@@ -239,15 +239,15 @@ b => C
 ', '(Freija Oðin Þor)
 ', '', '' ],
     [ 'Any', '39', 'all-differ', 'þ
-(ß ß ß ß ð)
-', 'þ
-(þ ð þ ð ß)
+(þ ß ð ß ð)
+', 'ß
+(ß þ ß þ ß)
 ', '', '' ],
     [ 'Any', '40', 'ok', '3
 ', '3
 ', '', '' ],
-    [ 'Any', '41', 'all-differ', '(υ ν α)
-', '(θ ε ν)
+    [ 'Any', '41', 'all-differ', '(β μ ρ)
+', '(ζ ρ κ)
 ', '', '' ],
     [ 'Any', '43', 'ok', '(Int)
 (Str)
@@ -338,10 +338,10 @@ True
 (a B c d a)
 3+2i 4+0i
 ', '', '' ],
-    [ 'Any', '57', 'rakupp-differs', '((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
+    [ 'Any', '57', 'doc-drift', '((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
 ((1 => True 2 => True) (2 => True 1 => True))
 ', '((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))
-((2 => True 1 => True) (1 => True 2 => True))
+((1 => True 2 => True) (2 => True 1 => True))
 ', '', '' ],
     [ 'Any', '58', 'ok', '((1))
 ', '((1))
@@ -382,17 +382,17 @@ Nil
     [ 'Any', '69', 'ok', '()
 ', '()
 ', '', '' ],
-    [ 'Any', '70', 'all-differ', '(1 => 1 2 => 2 3 => 3)
-', '(2 => 2 1 => 1 3 => 3)
+    [ 'Any', '70', 'rakupp-differs', '(1 => 1 2 => 2 3 => 3)
+', '(1 => 1 3 => 3 2 => 2)
 ', '', '' ],
     [ 'Any', '71', 'ok', '()
 ', '()
 ', '', '' ],
-    [ 'Any', '72', 'all-differ', '(1 => s 2 => t 3 => u)
-', '(1 => s 3 => u 2 => t)
+    [ 'Any', '72', 'rakupp-differs', '(1 => s 2 => t 3 => u)
+', '(2 => t 1 => s 3 => u)
 ', '', '' ],
     [ 'Any', '73', 'all-differ', '(3 => a 2 => b 4 => c)
-', '(2 => b 3 => a 4 => c)
+', '(2 => b 4 => c 3 => a)
 ', '', '' ],
     [ 'Any', '74', 'ok', '()
 ', '()
@@ -451,10 +451,13 @@ A-B—C—E|F|G
 2
 A-B—C—E|F|G
 ', '', '' ],
-    [ 'Any', '87', 'ok', '', '
+    [ 'Any', '87', 'ok', '
 
 
-', 'No such method \'nl-out\' for invocant of type \'Num\'', '' ],
+', '
+
+
+', '', '' ],
     [ 'Any', '88', 'ok', '(() (0) (1) (2) (0 1) (0 2) (1 2) (0 1 2))
 ', '(() (0) (1) (2) (0 1) (0 2) (1 2) (0 1 2))
 ', '', '' ],
@@ -516,12 +519,12 @@ True
     [ 'Any', '103', 'all-differ', '', '666
 (3 4 5)
 ', 'Target is not assignable', '42' ],
-    [ 'Any', '104', 'all-differ', '', '(3 4 5)
-', 'Undefined routine \'snitch\'', '(1 2 3)' ],
-    [ 'Any', '105', 'rakudo-differs', '[(1 2 3)]
-[3 4 5]
-', '', '', 'No such method \'snitch\' for invocant of type \'Seq\'' ],
-    [ 'Array', '2', 'rakupp-differs', '', 'X::Cannot::Empty: Cannot pop from an empty Array
+    [ 'Any', '104', 'doc-drift', '(3 4 5)
+', '(3 4 5)
+', '(1 2 3)', '(1 2 3)' ],
+    [ 'Any', '105', 'not-runnable', '', '', 'No such method \'snitch\' for invocant of type \'Seq\'', 'No such method \'snitch\' for invocant of type \'Seq\'' ],
+    [ 'Array', '2', 'ok', 'X::Cannot::Empty: Cannot pop from an empty Array
+', 'X::Cannot::Empty: Cannot pop from an empty Array
 ', '', '' ],
     [ 'Array', '3', 'ok', '[a b c d]
 ', '[a b c d]
@@ -548,10 +551,10 @@ def
 ', '[a 42 c]
 [a b c 72]
 ', '', '' ],
-    [ 'Array', '10', 'all-differ', '(1 0.4433528630633674 0.46966748422431337)
-(1 0.6551748903400991 0.7566108966082119)
-', '(1 0.48464008725505636 0.7878425580307388)
-(1 0.48464008725505636 0.7878425580307388)
+    [ 'Array', '10', 'all-differ', '(1 0.904889194317704 0.2524482794686058)
+(1 0.8128595305477333 0.7788215404919789)
+', '(1 0.17738427615211005 0.5782800087867579)
+(1 0.17738427615211005 0.5782800087867579)
 ', '', '' ],
     [ 'Array', '11', 'ok', 'Seq
 ', 'Seq
@@ -648,7 +651,7 @@ but you did not provide a value for it.
 ', 'X::Attribute::Required: The attribute \'$!a\' is required because it is a good idea,
 but you did not provide a value for it.
 ', '', '' ],
-    [ 'Attribute', '16', 'not-runnable', '', '', 'No such method \'new\' for invocant of type \'Thing\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Attribute', '16', 'not-runnable', '', '', 'Undeclared name \'Thing\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Attribute', '20', 'not-runnable', '', '', 'No such method \'new\' for invocant of type \'Foo\'', '===SORRY!===' ],
     [ 'Attribute', '23', 'ok', '@!bar
 ', '@!bar
@@ -782,16 +785,16 @@ Bag(2(3) 3(2) 4(2))
 ("a", "b", "c").Seq
 (1, 1, 2).Seq
 ', '', '' ],
-    [ 'BagHash', '4', 'rakudo-differs', '("b"=>1,"c"=>4).BagHash
+    [ 'BagHash', '4', 'ok', '("b"=>1,"c"=>4).BagHash
 ("b", "c").Seq
 (1, 4).Seq
-', '("c"=>4,"b"=>1).BagHash
-("c", "b").Seq
-(4, 1).Seq
+', '("b"=>1,"c"=>4).BagHash
+("b", "c").Seq
+(1, 4).Seq
 ', '', '' ],
-    [ 'BagHash', '5', 'doc-drift', '("a"=>1,"b"=>1,"c"=>2).BagHash
+    [ 'BagHash', '5', 'rakupp-differs', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("b"=>1,"c"=>4).BagHash
-', '("a"=>1,"b"=>1,"c"=>2).BagHash
+', '("b"=>1,"a"=>1,"c"=>2).BagHash
 ("b"=>1,"c"=>4).BagHash
 ', '', '' ],
     [ 'BagHash', '6', 'ok', '2
@@ -806,18 +809,20 @@ Bag(2(3) 3(2) 4(2))
 ', '', '' ],
     [ 'BagHash', '10', 'all-differ', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("a"=>1,"b"=>1,"c"=>2).BagHash
+("c"=>2).BagHash
+("c"=>1).BagHash
 ', '("a"=>1,"c"=>2,"b"=>1).BagHash
 ("a"=>1,"c"=>3,"b"=>1).BagHash
 ("c"=>3).BagHash
 ("c"=>2).BagHash
-', 'No such method \'remove\' for invocant of type \'BagHash\'', '' ],
+', '', '' ],
     [ 'BagHash', '11', 'all-differ', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("a"=>1,"b"=>1,"c"=>3).BagHash
 ("a"=>1,"b"=>0,"c"=>3).BagHash
 ("b"=>0,"c"=>3).BagHash
-', '("c"=>2,"b"=>1,"a"=>1).BagHash
-("c"=>3,"b"=>1,"a"=>1).BagHash
-("c"=>3,"a"=>1).BagHash
+', '("a"=>1,"c"=>2,"b"=>1).BagHash
+("a"=>1,"c"=>3,"b"=>1).BagHash
+("a"=>1,"c"=>3).BagHash
 ("c"=>3).BagHash
 ', '', '' ],
     [ 'BagHash', '12', 'all-differ', 'False
@@ -847,19 +852,19 @@ BagHash(2(3) 3(2) 4(2))
     [ 'Baggy', '1', 'ok', 'Mix(butter(0.22) sugar(0.12))
 ', 'Mix(butter(0.22) sugar(0.12))
 ', '', '' ],
-    [ 'Baggy', '2', 'doc-drift', 'Ford
-(Rover Rover)
+    [ 'Baggy', '2', 'all-differ', 'Rover
+(Rover Ford)
 (Ford Rover)
 ', 'Ford
+(Rover Ford)
 (Rover Rover)
-(Ford Rover)
 ', '', '' ],
     [ 'Baggy', '3', 'ok', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '4', 'all-differ', 'bacon => 3
-BagHash(eggs(2))
-(eggs => 2)
+    [ 'Baggy', '4', 'doc-drift', 'eggs => 2
+BagHash(bacon(3))
+(bacon => 3)
 ()
 ', 'eggs => 2
 BagHash(bacon(3))
@@ -869,23 +874,23 @@ BagHash(bacon(3))
     [ 'Baggy', '5', 'ok', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '6', 'all-differ', 'bacon
+    [ 'Baggy', '6', 'doc-drift', 'bacon
 (bacon bacon)
 ', 'bacon
-(eggs bacon)
+(bacon bacon)
 ', '', '' ],
     [ 'Baggy', '7', 'not-runnable', '', '', 'Variable \'$breakfast\' is not declared', '===SORRY!=== Error while compiling -e' ],
-    [ 'Baggy', '8', 'all-differ', 'bacon => 3
+    [ 'Baggy', '8', 'rakudo-differs', 'eggs => 1
 (bacon => 3)
-(bacon => 3 eggs => 1)
+(eggs => 1 bacon => 3)
 ', 'bacon => 3
 (eggs => 1)
 (eggs => 1 bacon => 3)
 ', '', '' ],
     [ 'Baggy', '9', 'all-differ', 'bacon
-(bacon bacon eggs)
-', 'bacon
-(eggs bacon bacon)
+(bacon bacon bacon)
+', 'eggs
+(bacon eggs bacon)
 ', '', '' ],
     [ 'Baggy', '10', 'not-runnable', '', '', 'Variable \'$breakfast\' is not declared', '===SORRY!=== Error while compiling -e' ],
     [ 'Baggy', '11', 'ok', '(bacon => 2 eggs => 1)
@@ -1055,20 +1060,20 @@ False
     [ 'Bool', '4', 'all-differ', '', 'Map.new((False => 0, True => 1))
 Map.new((False => 0, True => 1))
 ', 'No such method \'enums\' for invocant of type \'Bool\'', '' ],
-    [ 'Bool', '5', 'rakupp-differs', 'False
-', 'True
+    [ 'Bool', '5', 'rakudo-differs', 'True
+', 'False
 ', '', '' ],
-    [ 'Bool', '6', 'rakupp-differs', '(True)
-', '(False)
+    [ 'Bool', '6', 'rakudo-differs', '(False)
+', '(True)
 ', '', '' ],
-    [ 'Bool', '7', 'rakudo-differs', '(False True)
+    [ 'Bool', '7', 'doc-drift', '(True False)
 ', '(True False)
 ', '', '' ],
-    [ 'Bool', '8', 'all-differ', 'True
-(True False True)
+    [ 'Bool', '8', 'all-differ', 'False
+(True True False)
 ()
-', 'True
-(False True True)
+', 'False
+(True True True)
 (...)
 ', '', '' ],
     [ 'Bool', '9', 'ok', '0
@@ -1251,16 +1256,16 @@ Inf
 ', '', '' ],
     [ 'Code', '15', 'all-differ', '(sub { ... })
 ()
-', '(-> $a { #`(Block|2827914928928) ... })
+', '(-> $a { #`(Block|3339645707040) ... })
 ()
 ', '', '' ],
-    [ 'Code', '16', 'all-differ', '
+    [ 'Code', '16', 'all-differ', 'marine
 &marine
 &marine
 ', 'marine
 marine
-sub marine { #`(Sub|4199112851864) ... }
-', '', 'Sub object coerced to string (please use .gist or .raku to do that)' ],
+sub marine { #`(Sub|5155795845528) ... }
+', 'Sub object coerced to string (please use .gist or .raku to do that)', 'Sub object coerced to string (please use .gist or .raku to do that)' ],
     [ 'Code', '17', 'rakupp-differs', '', 'SETTING::src/core.c/Numeric.rakumod
 ', 'No such method \'file\' for invocant of type \'Sub\'', '' ],
     [ 'Code', '18', 'all-differ', '', '209
@@ -1272,7 +1277,7 @@ sub marine { #`(Sub|4199112851864) ... }
 ', 'No such method \'bytecode-size\' for invocant of type \'Sub\'', 'No such method \'cadidates\' for invocant of type \'Sub\'. Did you mean' ],
     [ 'Collation', '2', 'rakupp-differs', '', 'Less
 More
-', 'No such method \'new\' for invocant of type \'Collation\'', '' ],
+', 'Undeclared name \'Collation\'', '' ],
     [ 'CompUnit::Repository::FileSystem', '2', 'ok', 'Nada
 Nada
 ', 'Nada
@@ -1286,7 +1291,8 @@ Nada
     [ 'Compiler', '1', 'all-differ', 'Raku++ (2026.07)
 ', 'rakudo (2026.07)
 ', '', '' ],
-    [ 'Compiler', '2', 'not-runnable', '', '', 'No such method \'build-date\' for invocant of type \'Compiler\'', 'No such method \'build-date\' for invocant of type \'Compiler\'' ],
+    [ 'Compiler', '2', 'all-differ', '2026-08-20
+', '', '', 'No such method \'build-date\' for invocant of type \'Compiler\'' ],
     [ 'Compiler', '3', 'all-differ', '', 'Raku::can-language-versions=1 2 2.PREVIEW 2.TEST 2.TESTDEPR 3 3.PREVIEW
 Raku::codename=
 Raku::implementation=Rakudo
@@ -1606,8 +1612,8 @@ forty two (but complicated)
 -1
 0
 ', '', '' ],
-    [ 'Cool', '9', 'all-differ', '86524.52308735263
-', '15382.999342673476
+    [ 'Cool', '9', 'all-differ', '92625.87620427106
+', '76141.22327265822
 ', '', '' ],
     [ 'Cool', '10', 'doc-drift', '0
 0.7071067811865475
@@ -1733,7 +1739,7 @@ forty two (but complicated)
     [ 'Cool', '37', 'ok', '2
 ', '2
 ', '', '' ],
-    [ 'Cool', '38', 'all-differ', '3.000434077479319
+    [ 'Cool', '38', 'doc-drift', '3.0004340774793183
 ', '3.0004340774793183
 ', '', '' ],
     [ 'Cool', '39', 'ok', '2.321928094887362
@@ -1958,7 +1964,7 @@ The|quick
 ', '(easy easy)
 (easy easy)
 ', '', '' ],
-    [ 'Cool', '91', 'rakupp-differs', 'Flying|on|a|Boeing 747
+    [ 'Cool', '91', 'ok', 'Flying|on|a|Boeing|747
 ', 'Flying|on|a|Boeing|747
 ', '', '' ],
     [ 'Cool', '92', 'ok', 'Flying|on|a|Boeing 747
@@ -1992,7 +1998,7 @@ The|quick
     [ 'Cool', '99', 'ok', '   Þor
 ', '   Þor
 ', '', '' ],
-    [ 'Cool', '100', 'all-differ', '-0.00000119', '-0.00010383', '', '' ],
+    [ 'Cool', '100', 'all-differ', '-0.00000095', '-0.00006475', '', '' ],
     [ 'Cool', '101', 'ok', '1+1i
 3.141592653589793+0i
 1.3+0i
@@ -2152,12 +2158,12 @@ Failure
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-16:46
+21:22
 ', '2015-11-21T16:01:00Z
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-16:46
+21:22
 ', '', '' ],
     [ 'DateTime', '3', 'ok', '2016-08-10T18:26:23.300000Z
 ', '2016-08-10T18:26:23.300000Z
@@ -2165,8 +2171,8 @@ Failure
     [ 'DateTime', '4', 'ok', '2023-03-04T00:00:00Z
 ', '2023-03-04T00:00:00Z
 ', '', '' ],
-    [ 'DateTime', '5', 'all-differ', '2026-08-11T16:46:06.177766+02:00
-', '2026-08-11T16:46:06.324392+02:00
+    [ 'DateTime', '5', 'all-differ', '2026-08-20T21:22:05.508729+02:00
+', '2026-08-20T21:22:05.664994+02:00
 ', '', '' ],
     [ 'DateTime', '6', 'doc-drift', '2026
 ', '2026
@@ -2356,32 +2362,32 @@ False
 ', '', '' ],
     [ 'Dateish', '15', 'all-differ', '2015-11-15
 2016-08-10
-2026-08-11
+2026-08-20
 ', '2015-11-15
 2016-08-10
-2026/08/11
+2026/08/20
 ', '', '' ],
     [ 'Dateish', '16', 'all-differ', '11-15-2015
 08-10-2016
-08-11-2026
+08-20-2026
 ', '11-15-2015
 08-10-2016
-08/11/2026
+08/20/2026
 ', '', '' ],
     [ 'Dateish', '17', 'all-differ', '15-11-2015
 10-08-2016
-11-08-2026
+20-08-2026
 ', '15-11-2015
 10-08-2016
-11/08/2026
+20/08/2026
 ', '', '' ],
     [ 'Dateish', '18', 'ok', '49987
 ', '49987
 ', '', '' ],
-    [ 'Dateish', '19', 'all-differ', '"2026-08-11".IO
-"2026-08-11T16:46:14.526331+02:00".IO
-', '"2026-08-11".IO
-"2026-08-11T16:46:14.688750+02:00".IO
+    [ 'Dateish', '19', 'all-differ', '"2026-08-20".IO
+"2026-08-20T21:22:14.969179+02:00".IO
+', '"2026-08-20".IO
+"2026-08-20T21:22:15.135075+02:00".IO
 ', '', '' ],
     [ 'Dateish', '20', 'ok', '2014-09-25
 2015-01-25T00:00:00Z
@@ -2435,7 +2441,7 @@ False
 False
 ', '', '' ],
     [ 'Enumeration', '5', 'all-differ', '(0 1 2)
-', '(Þor Freija Oðin)
+', '(Oðin Þor Freija)
 ', '', '' ],
     [ 'Enumeration', '6', 'ok', 'Map.new((g => 1, kg => 1000, mg => 0.001))
 Map.new((g => 1, kg => 1000, mg => 0.001))
@@ -2450,12 +2456,10 @@ Map.new((g => 1, kg => 1000, mg => 0.001))
 ', '', '' ],
     [ 'Enumeration', '9', 'not-runnable', '', '', '===SORRY!=== Parse error at line 2: Unable to parse expression in quote words; couldn\'t find final \'>\' (corresponding starter was at line 1)', '===SORRY!=== Error while compiling -e' ],
     [ 'Enumeration', '10', 'not-runnable', '', '', '===SORRY!=== Parse error at line 2: Unable to parse expression in quote words; couldn\'t find final \'>\' (corresponding starter was at line 1)', '===SORRY!=== Error while compiling -e' ],
-    [ 'Enumeration', '12', 'not-runnable', '', '', 'No such method \'pick\' for invocant of type \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
-    [ 'Enumeration', '13', 'not-runnable', '', '', 'No such method \'roll\' for invocant of type \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
-    [ 'Enumeration', '14', 'all-differ', '-1
-', '', '', '===SORRY!=== Error while compiling -e' ],
-    [ 'Enumeration', '15', 'all-differ', '1
-', '', '', '===SORRY!=== Error while compiling -e' ],
+    [ 'Enumeration', '12', 'not-runnable', '', '', 'Undeclared name \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Enumeration', '13', 'not-runnable', '', '', 'Undeclared name \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Enumeration', '14', 'not-runnable', '', '', 'Undeclared name \'Freija\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Enumeration', '15', 'not-runnable', '', '', 'Undeclared name \'Oðin\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Enumeration', '16', 'all-differ', '0
 1
 2
@@ -2476,7 +2480,7 @@ Cannot convert string to number: base-10 number must begin with valid digits or 
 3.14
 Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>i\' (indicated by <HERE>)
 ', '', '' ],
-    [ 'Enumeration', '19', 'not-runnable', '', '', 'No such method \'pick\' for invocant of type \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Enumeration', '19', 'not-runnable', '', '', 'Undeclared name \'Norse-gods\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Exception', '2', 'doc-drift', 'Something bad happened
 ', 'Something bad happened
 ', '', '' ],
@@ -2484,7 +2488,7 @@ Cannot convert string to number: base-10 number must begin with valid digits or 
 ', 'Dead
 ', '', '' ],
     [ 'Failure', '2', 'all-differ', 'Any: 
-', 'X::AdHoc: 2026-08-11T14:46:19.987568ZWELP‼
+', 'X::AdHoc: 2026-08-20T19:22:21.071455ZWELP‼
 ', '', '' ],
     [ 'Failure', '3', 'ok', 'False
 ', 'False
@@ -2651,14 +2655,11 @@ POPULATE → Submethod
     [ 'Format', '6', 'ok', '3
 ', '3
 ', '', '' ],
-    [ 'Formatter', '1', 'ok', '\'  foo\'
-', '\'  foo\'
-', '', '' ],
-    [ 'Formatter', '2', 'ok', '00042
-', '00042
-', '', '' ],
-    [ 'Grammar', '2', 'not-runnable', 'False
-', '', 'No such method \'parse\' for invocant of type \'Identifier\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Formatter', '1', 'rakupp-differs', '', '\'  foo\'
+', 'Undeclared name \'Formatter\'', '' ],
+    [ 'Formatter', '2', 'rakupp-differs', '', '00042
+', 'Undeclared name \'Formatter\'', '' ],
+    [ 'Grammar', '2', 'not-runnable', '', '', 'Undeclared name \'Identifier\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Grammar', '6', 'ok', '42
 7
 ', '42
@@ -2708,8 +2709,8 @@ Hash
     (\\a, \\b)
     (\\a, **@b is raw)
 ', '', '' ],
-    [ 'Hash', '29', 'rakupp-differs', '{322 => pair, 323 => [hash pipe]}
-', '{322 => pair, 323 => [pipe hash]}
+    [ 'Hash', '29', 'doc-drift', '{322 => pair, 323 => [hash pipe]}
+', '{322 => pair, 323 => [hash pipe]}
 ', '', '' ],
     [ 'Hash', '31', 'ok', '{a => [42 (a b c a)]}
 ', '{a => [42 (a b c a)]}
@@ -2817,46 +2818,105 @@ False
     [ 'HyperWhatever', '4', 'ok', '(1 4 9 16 25)
 ', '(1 4 9 16 25)
 ', '', '' ],
-    [ 'IO::CatHandle', '1', 'not-runnable', '', '', 'No such method \'get\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '2', 'not-runnable', '', '', 'No such method \'get\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '4', 'all-differ', '("fi", "le", "s\\t", "fo", "o ", "ba", "r").Seq
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '5', 'not-runnable', '', '', 'No such method \'readchars\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '6', 'not-runnable', '', '', 'No such method \'eof\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '7', 'not-runnable', '', '', 'No such method \'get\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '8', 'not-runnable', '', '', 'No such method \'getc\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
+    [ 'IO::CatHandle', '1', 'rakupp-differs', '', '("A", "B").Seq
+("C\\n", "D\\n", "E\\n").Seq
+', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '2', 'rakupp-differs', '', '("A", "B").Seq
+("C", "D", "E").Seq
+', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '4', 'rakupp-differs', '("fi", "le", "s\\t", "fo", "o ", "ba", "r").Seq
+', '("fo", "ob", "ar").Seq
+', '', '' ],
+    [ 'IO::CatHandle', '5', 'rakupp-differs', '', 'I ♥ R
+Buf[uint8]:0x<6B 75 6D 65 6F 77>
+', 'No such method \'readchars\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '6', 'rakupp-differs', '', 'SWITCH! False
+SWITCH! False
+SWITCH! True
+', 'No such method \'eof\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '7', 'rakupp-differs', '', 'a
+b
+c
+d
+e
+', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '8', 'rakupp-differs', '', 'I
+ 
+♥
+ 
+R
+a
+k
+u
+m
+e
+o
+w
+', 'No such method \'getc\' for invocant of type \'CatHandle\'', '' ],
     [ 'IO::CatHandle', '10', 'rakupp-differs', '', '(1a 1b)
 (3a 3b)
 ', 'No such method \'handles\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '11', 'all-differ', '("files\\tfoo bar",).Seq
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '12', 'not-runnable', '', '', 'No such method \'native-descriptor\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '16', 'all-differ', '("files\\tfoo bar",).Seq
+    [ 'IO::CatHandle', '11', 'rakupp-differs', '("files\\tfoo bar",).Seq
+', '("foo", "bar", "meow").Seq
+', '', '' ],
+    [ 'IO::CatHandle', '12', 'all-differ', '', '4
+4
+0
+', 'No such method \'native-descriptor\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '16', 'rakupp-differs', '("files\\tfoo bar",).Seq
 []
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
+', '("", "B", "C", "", "E").Seq
+["A\\nB\\nC", "D\\nE"]
+', '', '' ],
     [ 'IO::CatHandle', '17', 'rakupp-differs', '', 'False
 True
 True
 False
 ', 'No such method \'opened\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '19', 'not-runnable', '', '', 'No such method \'read\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '20', 'not-runnable', '', '', 'No such method \'readchars\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '21', 'not-runnable', '', '', 'No such method \'get\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '22', 'not-runnable', '', '', 'No such method \'get\' for invocant of type \'CatHandle\'', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '23', 'all-differ', 'foo
-foo
+    [ 'IO::CatHandle', '19', 'all-differ', '', 'Buf[uint8]:0x<6D 65>
+Buf[uint8]:0x<6F 77 04 05 06>
+meow
+Buf[uint8]:0x<04 05 06>
+', 'No such method \'read\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '20', 'rakupp-differs', '', 'Raku loves 
+to meow
+', 'No such method \'readchars\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '21', 'rakupp-differs', '', 'foo
+oo
+bar
+Failed to seek in filehandle: 22
+', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '22', 'all-differ', '', 'foo
+3
+1
+oob
+1
+', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
+    [ 'IO::CatHandle', '23', 'all-differ', 'foobar
+foobar
 
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
-    [ 'IO::CatHandle', '24', 'all-differ', '("files\\tf", " bar").Seq
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
+', 'foobar
+Buf[uint8]:0x<66 6F 6F 62 61 72>
+Nil
+', '', '' ],
+    [ 'IO::CatHandle', '24', 'rakupp-differs', '("files\\tf", " bar").Seq
+', '("f", "bar").Seq
+', '', '' ],
     [ 'IO::CatHandle', '25', 'all-differ', 'files => ["foo".IO "bar".IO]
 files => ["foo".IO "bar".IO]
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
+', 'fo
+ob
+ar
+Buf[uint8]:0x<66 6F>
+Buf[uint8]:0x<6F 62>
+Buf[uint8]:0x<61 72>
+', '', '' ],
     [ 'IO::CatHandle', '26', 'all-differ', '', 'False
 False
 ', 'No such method \'t\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '27', 'all-differ', '("files", "foo", "bar").Seq
-', '', '', 'Failed to open file /private/tmp/typerun-sandbox/bar: Is a directory' ],
+    [ 'IO::CatHandle', '27', 'rakupp-differs', '("files", "foo", "bar").Seq
+', '("foo", "bar", "meow").Seq
+', '', '' ],
     [ 'IO::Handle', '11', 'all-differ', 'First line is text, then:
 First line is text, then:
 Binary
@@ -2865,7 +2925,7 @@ Buf[uint8]:0x<42 69 6E 61 72 79>
 ', '', '' ],
     [ 'IO::Handle', '12', 'all-differ', 'The file contains 0 lines that mention Raku
 ', '', '', 'Failed to open file /private/tmp/typerun-sandbox/50GB-file: No such file or directory' ],
-    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/17942/statm: No such file or directory', 'Failed to open file /proc/17944/statm: No such file or directory' ],
+    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/88357/statm: No such file or directory', 'Failed to open file /proc/88359/statm: No such file or directory' ],
     [ 'IO::Handle', '15', 'ok', 'I ♥ Raku!
 ', 'I ♥ Raku!
 ', '', '' ],
@@ -2889,14 +2949,18 @@ test
 ""
 ', '"42\\n42foo"
 ', '', '' ],
-    [ 'IO::Handle', '35', 'rakupp-differs', '', '[one
+    [ 'IO::Handle', '35', 'ok', '[one
  two
  three
 ]
-', 'No such method \'encoding\' for invocant of type \'IO::Store\'', '' ],
+', '[one
+ two
+ three
+]
+', '', '' ],
     [ 'IO::Handle', '36', 'rakupp-differs', '', 'one
 two
-', 'No such method \'encoding\' for invocant of type \'IO::Store\'', '' ],
+', 'No such method \'read\' for invocant of type \'IO::Store\'', '' ],
     [ 'IO::Path::Parts', '1', 'ok', 'C:
 ', 'C:
 ', '', '' ],
@@ -3034,7 +3098,7 @@ True
 False
 ', '', '' ],
     [ 'IO::Path', '32', 'rakupp-differs', '"/etc".IO
-"/etc/../..".IO
+"/etc".IO
 "/etc".IO
 ".".IO
 ".".IO
@@ -3058,7 +3122,7 @@ False
 True
 False
 ', '', '' ],
-    [ 'IO::Path', '45', 'all-differ', '10441272
+    [ 'IO::Path', '45', 'all-differ', '10936808
 ', '15344
 ', '', '' ],
     [ 'IO::Path', '46', 'all-differ', '"./.bash_aliases".IO
@@ -3072,7 +3136,7 @@ False
 "/foo/bar".IO
 ', '', '' ],
     [ 'IO::Path', '49', 'not-runnable', '', '', 'Failed to open file /private/tmp/typerun-sandbox/50GB-file: No such file or directory', 'Failed to open file /private/tmp/typerun-sandbox/50GB-file: No such file or directory' ],
-    [ 'IO::Path', '53', 'all-differ', 'True
+    [ 'IO::Path', '53', 'all-differ', '[(foo.txt bar not-there.txt)]
 ', '[foo.txt not-there.txt]
 Failed to remove the file \'/private/tmp/typerun-sandbox/bar\': Failed to delete file: operation not permitted
 ', '', '' ],
@@ -3150,7 +3214,7 @@ False
 ', '', '' ],
     [ 'IO::Spec::Unix', '8', 'all-differ', '(__curupdir)
 ()
-', '-> str $dir { #`(Block|2200598044032) ... }
+', '-> str $dir { #`(Block|3900814220672) ... }
 (foo bar)
 ', '', '' ],
     [ 'IO::Spec::Unix', '10', 'ok', '/
@@ -3403,8 +3467,8 @@ IO::Path::Parts.new("","","")
 ', 'Instant:1769925782
 2026-02-01
 ', 'No such method \'Date\' for invocant of type \'Instant\'', '' ],
-    [ 'Instant', '4', 'all-differ', '2026-08-11T14:46:55.150644Z
-', '2026-08-11T14:46:55.298132Z
+    [ 'Instant', '4', 'all-differ', '2026-08-20T19:23:00.119022Z
+', '2026-08-20T19:23:00.276192Z
 ', '', '' ],
     [ 'Instant', '5', 'rakupp-differs', '[2017-01-01T00:00:09Z 1483228809]
 [2017-01-01T00:00:10Z 1483228810]
@@ -3692,12 +3756,10 @@ Found 11
     [ 'Label', '2', 'ok', 'A1B1A1A2
 ', 'A1B1A1A2
 ', '', '' ],
-    [ 'Label', '3', 'ok', '駱駝道
-', '駱駝道
-', '', '' ],
-    [ 'Label', '4', 'ok', 'A
-', 'A
-', '', '' ],
+    [ 'Label', '3', 'rakupp-differs', '', '駱駝道
+', 'Undefined routine \'駱駝道\'', '' ],
+    [ 'Label', '4', 'rakupp-differs', '', 'A
+', 'Undeclared name \'A\'', '' ],
     [ 'Label', '6', 'doc-drift', '', '', '', '' ],
     [ 'Label', '9', 'doc-drift', '', '', '', '' ],
     [ 'Label', '11', 'doc-drift', '', '', '', '' ],
@@ -3920,19 +3982,17 @@ True
 ', 'True
 ', '', '' ],
     [ 'List', '63', 'not-runnable', '', '', 'Variable \'$list\' is not declared', '===SORRY!=== Error while compiling -e' ],
-    [ 'List', '64', 'all-differ', 'a
-(e c d)
-(e b c d a)
-', 'a
-(b c e)
-(a e d c b)
+    [ 'List', '64', 'all-differ', 'd
+(c d e)
+(d c a b e)
+', 'e
+(d e b)
+(c b e d a)
 ', '', '' ],
-    [ 'List', '65', 'all-differ', '(c b a)
-', '(c a b c b a b a c c)
+    [ 'List', '65', 'all-differ', '(a b c)
+', '(c b a c a b a b c c)
 ', '', '' ],
-    [ 'List', '69', 'all-differ', '(ll)
-((ll))
-', '', '', '===SORRY!=== Error while compiling -e' ],
+    [ 'List', '69', 'not-runnable', '', '', 'Undefined routine \'ll\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '70', 'ok', '(world! hello)
 (9 8 7 6 5 4 3 2 1 0)
 ', '(world! hello)
@@ -3966,7 +4026,7 @@ True
     [ 'List', '81', 'ok', '10
 ', '10
 ', '', '' ],
-    [ 'List', '85', 'not-runnable', '', '', 'No such method \'reduce\' for invocant of type \'List\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'List', '85', 'not-runnable', '', '', 'Undefined routine \'numbers\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '86', 'ok', '81
 81
 81
@@ -4159,11 +4219,11 @@ More
     [ 'Map', '10', 'ok', '2
 ', '2
 ', '', '' ],
-    [ 'Map', '11', 'rakudo-differs', '(a b)
-', '(b a)
+    [ 'Map', '11', 'ok', '(a b)
+', '(a b)
 ', '', '' ],
-    [ 'Map', '12', 'rakudo-differs', '((2 3) 17)
-', '(17 (2 3))
+    [ 'Map', '12', 'ok', '((2 3) 17)
+', '((2 3) 17)
 ', '', '' ],
     [ 'Map', '13', 'rakudo-differs', '(a => (2 3) b => 17)
 ', '(b => 17 a => (2 3))
@@ -4174,8 +4234,8 @@ More
     [ 'Map', '15', 'rakudo-differs', '(2 => a 3 => a 17 => b)
 ', '(17 => b 2 => a 3 => a)
 ', '', '' ],
-    [ 'Map', '17', 'doc-drift', '(a => (2 3) b => 17)
-', '(a => (2 3) b => 17)
+    [ 'Map', '17', 'rakupp-differs', '(a => (2 3) b => 17)
+', '(b => 17 a => (2 3))
 ', '', '' ],
     [ 'Map', '18', 'ok', '(a => 1 b => 2 c => 3)
 (a => 1 b => 2 c => 3)
@@ -4265,7 +4325,7 @@ Int
     [ 'Metamodel::ClassHOW', '1', 'all-differ', 'True
 Nil
 ', 'True
-lazy-if
+log
 ', '', '' ],
     [ 'Metamodel::ClassHOW', '2', 'all-differ', '1
 0
@@ -4274,7 +4334,7 @@ lazy-if
 2
 ', '', '' ],
     [ 'Metamodel::ClassHOW', '3', 'all-differ', '&Int
-', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|4926647406376) ... }
+', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|5187747024680) ... }
 method `uppercase` not found
 FOO
 ', 'No such method \'uppercase\' for invocant of type \'Str\'', '' ],
@@ -4318,7 +4378,7 @@ True
 &BUILD
 &does-not-exist
 ', 'proto method sqrt (Cool $:: *%_) {*}
-submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|3613184340944) ... }
+submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|2854338278352) ... }
 (Mu)
 ', '', '' ],
     [ 'Metamodel::MethodDelegation', '1', 'all-differ', 'Role
@@ -4337,15 +4397,13 @@ True
 ', 'True
 True
 True
-', 'Undefined routine \'Billboard::Vandalized\'', '' ],
+', 'The attribute \'$!vandalism\' is required, but you did not provide a value for it.', '' ],
     [ 'Metamodel::Mixins', '3', 'ok', 'Foo+{Bar}.new
 Foo+{Bar}.new
 ', 'Foo+{Bar}.new
 Foo+{Bar}.new
 ', '', '' ],
-    [ 'Metamodel::MultipleInheritance', '2', 'all-differ', '(Mu,)
-(Mu,)
-', '', '', '===SORRY!=== Error while compiling -e' ],
+    [ 'Metamodel::MultipleInheritance', '2', 'not-runnable', '', '', 'Undeclared name \'A\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Metamodel::Naming', '1', 'ok', 'Int
 ', 'Int
 ', '', '' ],
@@ -4434,13 +4492,13 @@ github:Kaiepi
 ', '', '' ],
     [ 'Mix', '3', 'all-differ', '(Rat Num Str Pair)
 (3.14 => 1 3.141592653589793 => 2 a => 2 (b => 0) => 1)
-', '(Str Num Rat Pair)
-(a => 2 3.141592653589793 => 2 3.14 => 1 (b => 0) => 1)
+', '(Str Pair Num Rat)
+(a => 2 (b => 0) => 1 3.141592653589793 => 2 3.14 => 1)
 ', '', '' ],
-    [ 'Mix', '4', 'ok', '((Str) (Str))
+    [ 'Mix', '4', 'rakudo-differs', '((Str) (Str))
 (a => 2 c => 3.14)
 ', '((Str) (Str))
-(a => 2 c => 3.14)
+(c => 3.14 a => 2)
 ', '', '' ],
     [ 'Mix', '5', 'ok', 'Mix
 Mix(a(2) c(3.14))
@@ -4486,12 +4544,12 @@ True
 ', '0.22
 0.12
 0
-(sugar => 0.12 chocolate => 0.3 flour => 0.275)
+(flour => 0.275 chocolate => 0.3 sugar => 0.12)
 ', '', '' ],
-    [ 'MixHash', '3', 'all-differ', '((Str) (Pair) (Pair))
+    [ 'MixHash', '3', 'doc-drift', '((Str) (Pair) (Pair))
 (a => 2 (b => 0) => 1 (c => 3.14) => 1)
-', '((Pair) (Pair) (Str))
-((c => 3.14) => 1 (b => 0) => 1 a => 2)
+', '((Str) (Pair) (Pair))
+(a => 2 (b => 0) => 1 (c => 3.14) => 1)
 ', '', '' ],
     [ 'MixHash', '4', 'ok', '((Str) (Str))
 (a => 2 c => 3.14)
@@ -4633,8 +4691,8 @@ Point(2, -5)
 Foo.new(foo => 70, boo => sub { ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
-', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|6455462264048) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
-Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|6455462266856) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3742248271088) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3742248273896) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
 ', '', '' ],
@@ -4891,8 +4949,8 @@ Raku => d
     [ 'Pair', '27', 'ok', '(:Raku("foo"), :is("foo"), :great("foo")).Seq
 ', '(:Raku("foo"), :is("foo"), :great("foo")).Seq
 ', '', '' ],
-    [ 'Pair', '28', 'rakudo-differs', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
-', '((:b(72)) => "foo", (:a(42)) => "foo").Seq
+    [ 'Pair', '28', 'ok', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
+', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
 ', '', '' ],
     [ 'Pair', '29', 'ok', '(Raku)
 ', '(Raku)
@@ -4945,7 +5003,8 @@ True
 True
 True
 ', '', '' ],
-    [ 'Parameter', '7', 'all-differ', '', 'X::Assignment::RO: Cannot modify an immutable Int (42)
+    [ 'Parameter', '7', 'all-differ', 'X::Assignment::RO: Cannot assign to a readonly variable or a value
+', 'X::Assignment::RO: Cannot modify an immutable Int (42)
 ', '', '' ],
     [ 'Parameter', '9', 'rakupp-differs', 'True
 True
@@ -5049,7 +5108,7 @@ Str
     [ 'PositionalBindFailover', '1', 'ok', '5
 ', '5
 ', '', '' ],
-    [ 'PositionalBindFailover', '3', 'not-runnable', '', '', 'No such method \'new\' for invocant of type \'Foo\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'PositionalBindFailover', '3', 'not-runnable', '', '', 'Undeclared name \'Foo\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Proc::Async', '19', 'ok', '(cat some files)
 ', '(cat some files)
 ', '', '' ],
@@ -5060,9 +5119,9 @@ Str
 ', 'Output was "Hallo world\\n"
 ', '', '' ],
     [ 'Proc', '5', 'not-runnable', '', '', 'The spawned command \'exit 1\' exited unsuccessfully (exit code: 1, signal: 0)', 'The spawned command \'exit 1\' exited unsuccessfully (exit code: 1, signal: 0)' ],
-    [ 'Promise', '1', 'doc-drift', 'Planned
-Kept
+    [ 'Promise', '1', 'all-differ', 'Planned
 42
+Kept
 ', 'Planned
 Kept
 42
@@ -5133,7 +5192,7 @@ True
 (1.1 2.1 3.1 4.1)
 ', '', '' ],
     [ 'Range', '5', 'all-differ', 'Range
-1..9223372036854775807
+1..Inf
 WhateverCode
 (WhateverCode)
 1..42
@@ -5269,8 +5328,8 @@ X::AdHoc: Cannot return minmax on Range with excluded ends
 ', 'Cannot reverse an infinite range', 'Cannot .reverse a lazy list' ],
     [ 'Range', '31', 'all-differ', '0
 0
-', '4.900721205809509
-0.2924896545040051
+', '4.155070300509863
+0.1249913703700444
 ', '', '' ],
     [ 'Range', '32', 'ok', 'True
 False
@@ -5350,8 +5409,9 @@ forty two and a bit
 ', '42.1
 forty two and a bit
 ', '', '' ],
-    [ 'Rational', '1', 'not-runnable', '', '0.333333
-', 'Default constructor for \'Positive\' only takes named arguments', 'Type check failed in binding to parameter \'nu\'; expected UInt but got Int (-2)' ],
+    [ 'Rational', '1', 'all-differ', 'Positive.new
+', '0.333333
+', '', 'Type check failed in binding to parameter \'nu\'; expected UInt but got Int (-2)' ],
     [ 'Rational', '5', 'ok', '<1/0>
 ', '<1/0>
 ', '', '' ],
@@ -5363,10 +5423,7 @@ forty two and a bit
     [ 'Rational', '8', 'ok', '("2.5", "")
 ', '("2.5", "")
 ', '', '' ],
-    [ 'Real', '4', 'all-differ', '36.6
-6265.6
-123
-', '', '', '===SORRY!=== Error while compiling -e' ],
+    [ 'Real', '4', 'not-runnable', '', '', 'Undefined routine \'℃\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Real', '5', 'ok', '(1 0 0 0 0 0 0 0 1)
 ', '(1 0 0 0 0 0 0 0 1)
 ', '', '' ],
@@ -5516,16 +5573,10 @@ one
     [ 'Seq', '9', 'ok', '(3 4 5)
 ', '(3 4 5)
 ', '', '' ],
-    [ 'Seq', '10', 'all-differ', '(3 4 5 6 7 8 9 10 11 12)
-', '', '', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D); none of these signatures matches:' ],
-    [ 'Seq', '11', 'all-differ', '(3 4 5 6 7 8 9 10)
-(3 4 5 6 7 8 9 10)
-', '', '', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D, Int:D); none of these signatures matches:' ],
-    [ 'Seq', '12', 'all-differ', '(3 4 5 6 7 8 9 10)
-(3 4 5 6 7 8 9 10)
-', '', '', 'Cannot resolve caller skip(Seq:D: Int:D, Whatever:D); none of these signatures matches:' ],
-    [ 'Seq', '13', 'all-differ', '(1 2 3 4 5 6 7 8 9 10)
-', '', '', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D); none of these signatures matches:' ],
+    [ 'Seq', '10', 'not-runnable', '', '', 'Cannot resolve caller skip(Seq: Int, Int); the list form of skip arrived with 6.e', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D); none of these signatures matches:' ],
+    [ 'Seq', '11', 'not-runnable', '', '', 'Cannot resolve caller skip(Seq: Int, Int); the list form of skip arrived with 6.e', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D, Int:D); none of these signatures matches:' ],
+    [ 'Seq', '12', 'not-runnable', '', '', 'Cannot resolve caller skip(Seq: Int, Int); the list form of skip arrived with 6.e', 'Cannot resolve caller skip(Seq:D: Int:D, Whatever:D); none of these signatures matches:' ],
+    [ 'Seq', '13', 'not-runnable', '', '', 'Cannot resolve caller skip(Seq: Int, Int); the list form of skip arrived with 6.e', 'Cannot resolve caller skip(Seq:D: Int:D, Int:D, Int:D); none of these signatures matches:' ],
     [ 'Seq', '14', 'all-differ', '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19)
 ', '', '', 'This type cannot unbox to a native integer: P6opaque, Failure' ],
     [ 'Seq', '15', 'ok', '(1 4 5 6 7 9)
@@ -5543,9 +5594,9 @@ False
 ', 'True
 False
 ', '', '' ],
-    [ 'Set', '3', 'all-differ', '(:one(1), :two(2), :zero(0)).Seq
+    [ 'Set', '3', 'rakupp-differs', '(:one(1), :two(2), :zero(0)).Seq
 ((Pair) (Pair) (Pair))
-', '(:one(1), :zero(0), :two(2)).Seq
+', '(:two(2), :zero(0), :one(1)).Seq
 ((Pair) (Pair) (Pair))
 ', '', '' ],
     [ 'Set', '4', 'ok', '("one", "two").Seq
@@ -5608,14 +5659,14 @@ False
 True
 False
 ', '', '' ],
-    [ 'SetHash', '6', 'all-differ', '(:one(1), :two(2), :zero(0)).Seq
+    [ 'SetHash', '6', 'rakupp-differs', '(:one(1), :two(2), :zero(0)).Seq
 ((Pair) (Pair) (Pair))
-', '(:one(1), :zero(0), :two(2)).Seq
+', '(:two(2), :zero(0), :one(1)).Seq
 ((Pair) (Pair) (Pair))
 ', '', '' ],
-    [ 'SetHash', '7', 'ok', '("one", "two").Seq
+    [ 'SetHash', '7', 'rakudo-differs', '("one", "two").Seq
 ((Str) (Str))
-', '("one", "two").Seq
+', '("two", "one").Seq
 ((Str) (Str))
 ', '', '' ],
     [ 'SetHash', '8', 'rakudo-differs', 'SetHash(key1 key2)
@@ -5654,23 +5705,23 @@ SetHash(1 2 3 4)
 ', 'Set(butter sugar)
 ', '', '' ],
     [ 'Setty', '2', 'all-differ', '3 => True
-(3 => True)
-(3 => True 2 => True 4 => True)
-', '3 => True
 (4 => True)
+(3 => True 2 => True 4 => True)
+', '4 => True
+(3 => True)
 (2 => True 3 => True 4 => True)
 ', '', '' ],
     [ 'Setty', '3', 'ok', '(True => 1 True => 2 True => 3)
 ', '(True => 1 True => 2 True => 3)
 ', '', '' ],
     [ 'Setty', '4', 'all-differ', '(1 2 3)
-', '(1 3 2)
+', '(2 3 1)
 ', '', '' ],
     [ 'Setty', '5', 'ok', '(True True True)
 ', '(True True True)
 ', '', '' ],
     [ 'Setty', '6', 'all-differ', '(1 True 2 True 3 True)
-', '(2 True 3 True 1 True)
+', '(1 True 3 True 2 True)
 ', '', '' ],
     [ 'Setty', '7', 'ok', 'True
 False
@@ -5944,14 +5995,6 @@ Raku
 ("a", "b", "c", "d", "e").Seq
 ', '', '' ],
     [ 'Str', '38', 'all-differ', '("a", "b", "c").Seq
-().Seq
-("abc", "def", "ghi", "jk").Seq
-("abc", "def").Seq
-("a", "b", "c").Seq
-("a", ";", "b", ";", "c").Seq
-("a", "b", "c").Seq
-("a;b",).Seq
-(">", "]", ")").Seq
 ', '("a", "b", "c").Seq
 ("a", "b", "c").Seq
 ("abc", "def", "ghi", "jk").Seq
@@ -5961,14 +6004,8 @@ Raku
 ("a", "b").Seq
 ("a;b",).Seq
 (">", "]", ")").Seq
-', '', '' ],
-    [ 'Str', '40', 'all-differ', '()
-()
-()
-()
-()
-()
-', '', '', 'Cannot resolve caller comb(Str:D: Pair:D); none of these signatures matches:' ],
+', 'Cannot resolve caller comb(Str: Pair); the Pair form of comb arrived with 6.e', '' ],
+    [ 'Str', '40', 'not-runnable', '', '', 'Cannot resolve caller comb(Str: Pair); the Pair form of comb arrived with 6.e', 'Cannot resolve caller comb(Str:D: Pair:D); none of these signatures matches:' ],
     [ 'Str', '41', 'ok', '("a", "b").Seq
 2
 2
@@ -6221,7 +6258,7 @@ ComplexStr
     [ 'Sub', '4', 'all-differ', 'start
 ⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|&bar
 bar has been called
-', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|3660725560592
+', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|2286025647376
 start
 bar has been called
 ', '', '' ],
@@ -6376,7 +6413,7 @@ ok 1 - The object is-a \'Numeric\'
     [ 'Unicode', '3', 'all-differ', '', 'True
 ', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
     [ 'ValueObjAt', '1', 'all-differ', '"Hash|a\\t42"
-', 'ObjAt.new("Hash|2366856591136")
+', 'ObjAt.new("Hash|3983207135008")
 ', '', '' ],
     [ 'ValueObjAt', '2', 'rakupp-differs', '"Date|2025-07-20"
 ', 'ValueObjAt.new("Date|60876")
@@ -6466,12 +6503,12 @@ False
 False
 ', '', '' ],
     [ 'WhateverCode', '6', 'not-runnable', '', '', 'Variable \'$c\' is not declared', '===SORRY!=== Error while compiling -e' ],
-    [ 'WhateverCode', '9', 'all-differ', '0.07930255484939153
-0.9000297506211545
-0.3538826417588794
-', '0.17584140270594895
-0.9442175449422585
-0.3076566226946531
+    [ 'WhateverCode', '9', 'all-differ', '0.8304643894368091
+0.1392115508477687
+0.7630478107765732
+', '0.3204567667097046
+0.0144246663099723
+0.9243108659694292
 ', '', '' ],
     [ 'X::AdHoc', '2', 'rakupp-differs', '', 'Capture+{X::AdHoc::SlurpySentry}3FalseNot here', 'No such method \'payload\' for invocant of type \'X::Method::NotFound\'', '' ],
     [ 'X::Assignment::RO', '1', 'all-differ', 'X::Assignment::RO: Target is not assignable
@@ -6634,7 +6671,7 @@ I ♥ Raku
 1..Inf
 ', '', '' ],
     [ 'routines', '33', 'rakupp-differs', 'I ♥ ', 'I ♥ Raku
-', 'No such method \'seek\' for invocant of type \'FileHandle\'', '' ],
+', 'Undeclared name \'SeekFromCurrent\'', '' ],
     [ 'routines', '35', 'all-differ', 'some text new text
 ', '', '', 'Failed to open file /private/tmp/typerun-sandbox/path/to/file: No such file or directory' ],
     [ 'routines', '43', 'ok', 'Raku is Great!
@@ -6704,8 +6741,8 @@ Mjölnir\'s weight is 3.34 kg
 ', '(42 42)
 (42)
 ', '', '' ],
-    [ 'routines', '75', 'all-differ', '1.0051050186157227
-', '2.505059218
+    [ 'routines', '75', 'all-differ', '1.0100939273834229
+', '2.510891156
 ', '', '' ],
     [ 'routines', '76', 'not-runnable', '', '', 'Variable \'$before\' is not declared', '===SORRY!=== Error while compiling -e' ],
     [ 'routines', '77', 'ok', '0

@@ -153,7 +153,20 @@
 
       // ---- benchmark small multiples -----------------------------------
       var bench = document.getElementById('dash-bench');
-      ['fib', 'loopsum', 'strcat'].forEach(function (kernel) {
+      // Every kernel present in the data, in the order BENCHMARKS.md lists
+      // them (fastest-relative first), rather than a hardcoded three: the
+      // generator mines all nine and the page was drawing a third of them.
+      var KERNEL_ORDER = ['strcat', 'bigint', 'hash', 'sortnums', 'regex',
+                          'arrayops', 'loopsum', 'fib', 'streq'];
+      var present = {};
+      rel.forEach(function (r) {
+        if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
+      });
+      var kernels = KERNEL_ORDER.filter(function (k) { return present[k]; });
+      Object.keys(present).forEach(function (k) {
+        if (KERNEL_ORDER.indexOf(k) < 0) kernels.push(k);   // a kernel we have not ordered yet
+      });
+      kernels.forEach(function (kernel) {
         var vals = function (key) {
           return rel.map(function (r) {
             return r.bench && r.bench[kernel] && r.bench[kernel][key] != null
