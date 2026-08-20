@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — using modules that zef installed</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=c6c35dca"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c6c35dca">
+<link rel="stylesheet" href="/theme/shell.css?v=c6c35dca">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Using modules that zef installed</h1>
+
+<p>Short answer: <strong>point <code>-I</code> at the repository directory — the one that contains <code>sources/</code>, <code>dist/</code> and <code>short/</code> — not at any of those subdirectories</strong>, and Raku++ will load what zef installed there.</p>
+<pre class="native-code"><code class="lang-bash">rakupp -I /path/to/rakudo/share/perl6/site -e 'use File::Which; say which("ls")'</code></pre>
+<p>Everything below is the detail behind that line, including where the directory is for each way of installing Rakudo.</p>
+<h2 id="where-the-repository-is">Where the repository is</h2>
+<p>zef does not put modules where you can see them. It installs into a <strong>CompUnit::Repository::Installation</strong> — a content-addressed store — and the layout is the same wherever Rakudo came from:</p>
+<pre class="native-code"><code>share/perl6/site/          ← this is the path to give -I
+    short/                 index: module name → the file that provides it
+    sources/               the module sources, named by SHA
+    dist/                  one JSON metadata file per distribution
+    resources/             data files, also named by SHA
+    precomp/               Rakudo's precompiled bytecode (Raku++ ignores it)</code></pre>
+<p>The SHA-named files under <code>sources/</code> are not meant to be named directly — the <code>short/</code> index is what turns <code>File::Which</code> into the right one. So a path like <code>…/site/sources</code> is one level too deep, and <code>…/site/sources/A1B2…</code> is a file, not a repository.</p>
+<div class="tablewrap"><table><tr><th>how Rakudo was installed</th><th>the path to use</th></tr><tr><td><strong>rakubrew</strong></td><td><code>~/.rakubrew/versions/&lt;version&gt;/install/share/perl6/site</code></td></tr>
+<tr><td>Homebrew</td><td><code>/usr/local/Cellar/rakudo/&lt;version&gt;/share/perl6/site</code> (or <code>/opt/homebrew/…</code>)</td></tr>
+<tr><td><code>--prefix</code> build</td><td><code>&lt;prefix&gt;/share/perl6/site</code></td></tr>
+<tr><td>zef's <code>--/precompile-install</code> user repo</td><td><code>~/.raku</code></td></tr></table></div>
+<p>Note the extra <code>install/</code> level in the rakubrew layout — that is the one that catches people out.</p>
+<p>If you are not sure, ask Rakudo:</p>
+<pre class="native-code"><code class="lang-bash">raku -e '.say for $*REPO.repo-chain'</code></pre>
+<p>Every <code>inst#…</code> line it prints is a store Raku++ can read.</p>
+<h2 id="two-spellings-both-accepted">Two spellings, both accepted</h2>
+<p>Raku++ takes the same repository specs Rakudo does, in <code>-I</code>, in <code>use lib</code> and in <code>RAKULIB</code>:</p>
+<pre class="native-code"><code class="lang-bash">rakupp -I inst#$HOME/.rakubrew/versions/moar-2026.07/install/share/perl6/site …
+rakupp -I $HOME/.rakubrew/versions/moar-2026.07/install/share/perl6/site …</code></pre>
+<p>The <code>inst#</code> prefix is explicit ("this is an installation store, not a directory of <code>.rakumod</code> files"); without it Raku++ probes the directory and recognises the store anyway. <code>file#</code> names a plain source directory, which is what a bare path without a store in it means.</p>
+<h2 id="you-may-not-need-i-at-all">You may not need <code>-I</code> at all</h2>
+<p>Raku++ consults these repositories by itself, in this order, before anything you pass:</p>
+<ul><li><code>~/.raku</code> — the user repository, where <code>zef install --to=home</code> puts things</li><li>every <code>~/.rakubrew/versions/*/install/share/perl6/{site,vendor}</code></li><li>every Homebrew <code>Cellar/rakudo/*/share/perl6/{site,vendor}</code></li></ul>
+<p>So on a machine with rakubrew, <code>rakupp -e 'use JSON::Fast; …'</code> finds the module with no flags. <code>-I</code> is for repositories in other places — a <code>--prefix</code> build, a container image, a second checkout.</p>
+<h2 id="could-not-find-foo-when-the-module-is-definitely-installed">"Could not find Foo" when the module is definitely installed</h2>
+<p>The usual cause is asking for a <strong>distribution</strong> name rather than a <strong>module</strong> name. They are often the same, and sometimes not:</p>
+<pre class="native-code"><code class="lang-bash">rakupp -e 'use Digest'          # Could not find Digest
+rakupp -e 'use Digest::SHA1'    # fine — the dist "Digest" provides this</code></pre>
+<p>Rakudo fails on <code>use Digest</code> in exactly the same way, so if you are unsure, try the same line under <code>raku</code>: if it fails there too, the name is the problem, not the engine. To see what a distribution actually provides:</p>
+<pre class="native-code"><code class="lang-bash">raku -e 'say $*REPO.repo-chain.map(*.candidates("Digest::SHA1")).flat.head.meta&lt;provides&gt;.keys'</code></pre>
+<h2 id="what-still-does-not-work">What still does not work</h2>
+<p>Of the 35 distributions in one real zef store, 33 load under Raku++ unchanged. The ones that do not are not a repository problem — they are modules using language or runtime corners Raku++ has not finished (zef's own <code>Zef::Client</code> chain is the notable one). If a module fails <strong>after</strong> it is found — a parse error, a missing method — that is a bug worth reporting, with the module name: <a href="https://github.com/ash/rakupp/issues">https://github.com/ash/rakupp/issues</a>.</p>
+<p>Raku++ also ignores <code>precomp/</code>: it reads the sources and parses them itself, so a store precompiled by a different Rakudo version is not a problem, and no precompilation of your own is required. It is why the first <code>use</code> of a large module costs a parse rather than a load — see <a href="https://github.com/ash/rakupp/blob/main/docs/CACHING.md">caching</a> for the AST cache that softens that.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c6c35dca" defer></script>
+</body>
+</html>
