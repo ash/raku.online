@@ -8,7 +8,7 @@
 
     # The pages, in reading order. Anything in src/modules that is not listed
     # here is still built and sorts after these, so adding a module is one file.
-    order => <statistics-distributions>,
+    order => <statistics-distributions data-generators>,
 
     # Where a module page's links point when it names its own home.
     land-base => 'https://raku.land/',
