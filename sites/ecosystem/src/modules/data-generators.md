@@ -43,6 +43,12 @@ say random-real((0, 100), 3).map(*.fmt('%.1f'));
 Your run will print different words and numbers — that is the point. What is
 stable is the shape, and the pages of this handbook assert on shapes.
 
+One thing to budget for: `use Data::Generators` costs about a second, on
+**both** engines — the module parses its 85,000-word list and 20,000 pet-name
+records at load time, before your first line runs. That is the module's design,
+not an engine tax (Raku++ spends ~0.9s on it, Rakudo ~1.3s). Pay it once per
+process, not once per call.
+
 ## Words
 
 `random-word($n)` draws from a built-in list of about 85,000 English words.
