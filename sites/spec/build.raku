@@ -657,7 +657,13 @@ sub render-dashboard(%site, %by-cat --> Str) {
     committed at each release; the measuring machine changed at v3.6.0 (the
     file's own note records it), so read ratios across that boundary, not
     milliseconds. A kernel is missing from a point only when that release's
-    table did not carry it.</p>
+    table did not carry it — except <code>hashfill</code>, whose tagged points
+    are <em>retrospective</em>: every tagged release binary from GitHub,
+    re-run on one machine in one sitting (2026-08-21), with that day's Rakudo
+    and perl as fixed references — the one series here that is comparable in
+    milliseconds end to end. (Its <code>main</code> point comes from the
+    committed tables like every other kernel's, so the last step carries
+    ordinary sitting-to-sitting noise.)</p>
     <div class="dash-bench" id="dash-bench"></div>
     BODY
     my $extra = "<script src=\"/theme/chart.js?v={$VERSION}\" defer></script>" ~

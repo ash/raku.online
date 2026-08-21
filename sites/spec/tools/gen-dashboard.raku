@@ -288,6 +288,22 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     my @refs = run-lines('git', '-C', $rakupp-repo, 'tag', '--list', 'v*').sort;
     @refs.push('HEAD');
 
+    # Retrospective bench points: tagged artifacts re-run on ONE machine in
+    # one sitting (src/data/bench-backfill.tsv says when and how). Gap-fill
+    # only — a kernel a tag's own committed tables carry keeps its mined
+    # numbers; the backfill exists precisely because those tables were
+    # measured on whatever machine each release had.
+    my %backfill;
+    my $bf = 'src/data/bench-backfill.tsv'.IO;
+    if $bf.e {
+        for $bf.lines -> $line {
+            next if $line.starts-with('#') || !$line.trim;
+            my @p = $line.words;
+            next unless @p.elems == 4;
+            %backfill{@p[0]}{@p[1]}{@p[2]} = @p[3].Num;
+        }
+    }
+
     my @entries;
     my $first-charted = '';
     for @refs -> $ref {
@@ -301,6 +317,12 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         $first-charted = $ref unless $first-charted;
         my %bench = bench-at($rakupp-repo, $ref);
         my $label = $ref eq 'HEAD' ?? 'main' !! $ref;
+        if %backfill{$label}:exists {
+            for %backfill{$label}.kv -> $kernel, %engines {
+                next if %bench{$kernel}:exists;   # the tag's own tables win
+                %bench{$kernel} = %engines;
+            }
+        }
         my @f;
         @f.push('"tag":' ~ json-esc($label));
         @f.push('"date":' ~ json-esc(ref-date($rakupp-repo, $ref)));
