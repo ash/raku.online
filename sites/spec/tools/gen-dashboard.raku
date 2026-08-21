@@ -125,7 +125,7 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # carried nine since the interpreter/native tables were split, and the dashboard
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
-constant @KERNELS = <fib loopsum strcat hash bigint sortnums regex arrayops streq>;
+constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq>;
 
 # Each kernel row appears twice: first in the interpreter table
 # (| fib | <rakupp ms> | <rakudo ms> | …), then in the native --exe table
@@ -153,6 +153,20 @@ sub bench-at(Str $repo, Str $ref --> Hash) {
         elsif %seen{$kernel} == 2 {
             %out{$kernel}<native> = $ms.Num;
         }
+    }
+    # hashfill carries a fourth engine: the same program timed as the `perl`
+    # binary, from the "vs Perl 5" table's own row. First encounter wins (the
+    # four-engine table precedes the mode ladder in the doc).
+    for $md.lines -> $line {
+        last if %out<hashfill><perl>:exists;
+        next unless $line.trim.starts-with('|');
+        my @cells = $line.split('|').map(-> $c { $c.trim });
+        next unless @cells.elems > 3;
+        next unless @cells[1] eq 'Perl 5';
+        next unless @cells[2].ends-with('ms');
+        my $ms = @cells[2].words[0];
+        next unless $ms ~~ / ^ \d+ ['.' \d+]? $ /;
+        %out<hashfill><perl> = $ms.Num if %out<hashfill>:exists;
     }
     %out
 }
@@ -259,6 +273,7 @@ sub bench-json(%bench --> Str) {
         @f.push('"interp":' ~ %b<interp>) if %b<interp>:exists;
         @f.push('"native":' ~ %b<native>) if %b<native>:exists;
         @f.push('"rakudo":' ~ %b<rakudo>) if %b<rakudo>:exists;
+        @f.push('"perl":'   ~ %b<perl>)   if %b<perl>:exists;   # hashfill's second reference
         @parts.push(json-esc($k) ~ ':{' ~ @f.join(',') ~ '}');
     }
     '{' ~ @parts.join(',') ~ '}'

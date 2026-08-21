@@ -156,8 +156,8 @@
       // Every kernel present in the data, in the order BENCHMARKS.md lists
       // them (fastest-relative first), rather than a hardcoded three: the
       // generator mines all nine and the page was drawing a third of them.
-      var KERNEL_ORDER = ['strcat', 'bigint', 'hash', 'sortnums', 'regex',
-                          'arrayops', 'loopsum', 'fib', 'streq'];
+      var KERNEL_ORDER = ['strcat', 'bigint', 'hash', 'hashfill', 'sortnums',
+                          'regex', 'arrayops', 'loopsum', 'fib', 'streq'];
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
@@ -174,23 +174,35 @@
           });
         };
         var interp = vals('interp'), native = vals('native'), rakudo = vals('rakudo');
-        var max = Math.max.apply(null, [].concat(interp, native, rakudo).filter(function (v) { return v != null; }));
+        // hashfill carries a fourth reference: the same program in Perl 5,
+        // timed as the `perl` binary. Present only where the tables carry it.
+        var perl = vals('perl');
+        var hasPerl = perl.some(function (v) { return v != null; });
+        var all = [].concat(interp, native, rakudo, hasPerl ? perl : []);
+        var max = Math.max.apply(null, all.filter(function (v) { return v != null; }));
         var card = div('dash-bench-card', bench);
         div('dash-bench-title', card, kernel);
         var host = div('dash-chart', card);
+        var series = [
+          { name: 'interpreter', cls: 's1', values: interp },
+          { name: 'native --exe', cls: 's2', values: native },
+          { name: 'Rakudo', cls: 'sref', dash: true, values: rakudo }
+        ];
+        var names = ['interpreter', 'native --exe', 'Rakudo'];
+        var cols = [interp, native, rakudo];
+        if (hasPerl) {
+          series.push({ name: 'perl', cls: 'sperl', dash: true, values: perl });
+          names.push('perl');
+          cols.push(perl);
+        }
         lineChart(host, {
           labels: tagLabels,
-          series: [
-            { name: 'interpreter', cls: 's1', values: interp },
-            { name: 'native --exe', cls: 's2', values: native },
-            { name: 'Rakudo', cls: 'sref', dash: true, values: rakudo }
-          ],
+          series: series,
           yMax: niceMax(max),
           yFmt: function (v) { return fmt(Math.round(v)); },
           width: 380, height: 230, maxXLabels: 4,
           tipRow: function (si, i) {
-            var names = ['interpreter', 'native --exe', 'Rakudo'];
-            var v = [interp, native, rakudo][si][i];
+            var v = cols[si][i];
             return names[si] + ': ' + v + ' ms';
           }
         });

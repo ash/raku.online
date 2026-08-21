@@ -649,11 +649,14 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <h2 class="conf-areas-title">Benchmarks <span>— kernel wall time in ms, lower is better</span></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++
     interpreter, the same source compiled to a native binary with
-    <code>--exe</code>, and Rakudo as the reference. All nine kernels
-    BENCHMARKS.md tables, ordered as that file orders them — string building
-    first, where the gap is widest, down to the two Rakudo still wins on
-    interpreted. Absolute times as committed at each release (same machine
-    throughout), so a kernel is missing from a point only when that release's
+    <code>--exe</code>, and Rakudo as the reference — plus, on
+    <code>hashfill</code> alone, the same program in Perl 5 as a second
+    dashed reference. All ten kernels of the BENCHMARKS.md tables, ordered as
+    that file orders them — string building first, where the gap is widest,
+    down to the kernels Rakudo still wins on interpreted. Absolute times as
+    committed at each release; the measuring machine changed at v3.6.0 (the
+    file's own note records it), so read ratios across that boundary, not
+    milliseconds. A kernel is missing from a point only when that release's
     table did not carry it.</p>
     <div class="dash-bench" id="dash-bench"></div>
     BODY
