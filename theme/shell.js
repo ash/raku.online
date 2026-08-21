@@ -19,7 +19,8 @@
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
-    { href: '/book/',   label: 'Book',   hue: 'book'   }
+    { href: '/book/',   label: 'Book',   hue: 'book'   },
+    { href: '/ecosystem/', label: 'Modules', hue: 'eco' }
   ];
 
   // Deliberately not stamped at build time. The version that matters is the one

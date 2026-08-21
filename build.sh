@@ -46,6 +46,17 @@ build_book() {
     cp -R "$ROOT/sites/book/out" "$WWW/book"
 }
 
+# The handbook's examples need the modules they document to be INSTALLED, so
+# --verify is not part of the ordinary build: a machine without the store would
+# fail a build that has nothing wrong with it. Run it before publishing:
+#   ( cd sites/ecosystem && rakupp build.raku --verify --oracle=raku )
+build_ecosystem() {
+    echo "ecosystem -> www/ecosystem"
+    ( cd "$ROOT/sites/ecosystem" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/ecosystem"
+    cp -R "$ROOT/sites/ecosystem/out" "$WWW/ecosystem"
+}
+
 build_spec() {
     echo "spec -> www/spec"
     ( cd "$ROOT/sites/spec" && "$RAKUPP" build.raku --clean && "$RAKUPP" rules.raku )
@@ -71,7 +82,8 @@ check_shell() {
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
-                "$WWW/faq/index.html" "$WWW/book/index.html"; do
+                "$WWW/faq/index.html" "$WWW/book/index.html" \
+                "$WWW/ecosystem/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
     done
@@ -89,9 +101,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|faq|book|theme|play|rakupp|embed|builder|demo)$' || true)
+            | grep -vE '^/(tour|spec|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -108,13 +120,14 @@ check_no_unexpanded_base() {
 }
 
 case "${1:-all}" in
-    theme) build_theme ;;
-    tour)  build_tour ;;
-    spec)  build_spec ;;
-    faq)   build_faq ;;
-    book)  build_book ;;
-    all)   build_theme; build_tour; build_spec; build_faq; build_book ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|faq|book]" >&2; exit 2 ;;
+    theme)     build_theme ;;
+    tour)      build_tour ;;
+    spec)      build_spec ;;
+    faq)       build_faq ;;
+    book)      build_book ;;
+    ecosystem) build_ecosystem ;;
+    all)   build_theme; build_tour; build_spec; build_faq; build_book; build_ecosystem ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|faq|book|ecosystem]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
