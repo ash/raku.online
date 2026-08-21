@@ -334,12 +334,12 @@ True
 
 ## Where the two engines differ
 
-Everything above runs identically under Raku++ and under Rakudo. Three things
-around the edges do not, and all three bite when you try to pin a random
+Everything above runs identically under Raku++ and under Rakudo. Two things
+around the edges do not, and both bite when you try to pin a random
 program down.
 
 **`srand` pins the sequence under Raku++, and does not under Rakudo.** Seeding
-and re-seeding gives you the same draws again here; under Rakudo 2026.06 it does
+and re-seeding gives you the same draws again here; under Rakudo 2026.07 it does
 not, so a seed is not a way to make a run reproducible across both engines.
 
 ```raku sample name="srand"
@@ -353,7 +353,7 @@ my @b = random-variate(NormalDistribution.new(0, 1), 3);
 say @a eqv @b;
 ```
 
-| | Raku++ | Rakudo 2026.06 |
+| | Raku++ | Rakudo 2026.07 |
 |---|---|---|
 | `srand(42)` twice, same draws | `True` | `False` |
 
@@ -363,10 +363,11 @@ process, so the same object prints `Normal(:mean(3), :sd(1))` in one run and
 `Normal(:sd(1), :mean(3))` in the next. Print `.Hash` instead — `say` sorts a
 hash's keys, so it is the same line every time on both engines.
 
-**`.round(0.1)` answers a Num under Raku++ and a Rat under Rakudo**, so a
-rounded variate can print as `178.10000000000002` here and `178.1` there. Use
-`.fmt('%.1f')` for anything you are going to show or compare; the two engines
-format identically.
+> A third divergence used to sit here: `.round(0.1)` answered a Num under
+> Raku++ where Rakudo answers an exact Rat, so a rounded variate printed as
+> `178.10000000000002` on one engine and `178.1` on the other. Fixed —
+> current builds answer `178.1` as a Rat on both. On Raku++ **3.5.1 and
+> earlier**, use `.fmt('%.1f')` instead of `.round` for anything you show.
 
 ## What was run to put this page here
 

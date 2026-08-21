@@ -9,7 +9,7 @@ rakupp install Data::Generators   # or: zef install Data::Generators
 rakupp 01-tour.raku
 ```
 
-Each file is run under Raku++ 3.5.1 (dev build) and under Rakudo 2026.06, twice on each,
+Each file is run under Raku++ 3.5.1 (dev build) and under Rakudo 2026.07, twice on each,
 whenever the site is built. A file whose output has moved fails that build, so
 the "Output:" comment at the bottom of a file is what it printed, not what it
 was once expected to print. The ones marked *varies* draw random numbers —

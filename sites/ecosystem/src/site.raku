@@ -28,5 +28,5 @@
     # wrongly" and be verified on a build that fixes it, and then the footer
     # has to say which build that was.
     engine    => 'Raku++ 3.5.1 (dev build)',
-    oracle    => 'Rakudo 2026.06',
+    oracle    => 'Rakudo 2026.07',
 }

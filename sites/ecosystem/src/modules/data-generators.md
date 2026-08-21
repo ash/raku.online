@@ -230,7 +230,7 @@ True
 Everything above runs identically under Raku++ and Rakudo. Two things at the
 edges do not.
 
-**`generators` as a positional list dies under Rakudo 2026.06.** The
+**`generators` as a positional list dies under Rakudo 2026.07.** The
 `generators => [ &gen1, &gen2 ]` list form (as opposed to the map form above)
 trips a "Seq already consumed" error inside the module under Rakudo, and works
 under Raku++. Use the map form — it is clearer anyway, and it works everywhere.
