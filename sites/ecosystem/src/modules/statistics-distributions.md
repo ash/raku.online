@@ -26,7 +26,7 @@ There are two things in it worth learning: `random-variate`, which draws from a
 distribution, and `quantile`, which reads percentiles off data you already
 have. Everything else is the catalogue of distributions those two work with.
 
-```raku
+```raku name="catalogue"
 use Statistics::Distributions;
 
 say known-distributions.keys.elems;
@@ -50,7 +50,7 @@ you to get right.
 `random-variate($distribution, $n)` gives you `$n` numbers. Ask for one and you
 get a bare number, not a one-element list.
 
-```raku sample
+```raku sample name="first-draw"
 use Statistics::Distributions;
 
 my @heights = random-variate(NormalDistribution.new(:mean(170), :sd(8)), 5);
@@ -69,7 +69,7 @@ Those five numbers will be different for you, and different again on the next
 run — that is the point of the module. What does not change is the shape of the
 answer, and where the numbers land:
 
-```raku
+```raku name="draw-shape"
 use Statistics::Distributions;
 
 my @s = random-variate(NormalDistribution.new(:mean(170), :sd(8)), 1000);
@@ -88,7 +88,7 @@ True
 Every distribution is also a class you can hold on to, which is what you want
 when the same distribution is drawn from in several places:
 
-```raku sample
+```raku sample name="reuse-a-distribution"
 use Statistics::Distributions;
 
 my $noise = NormalDistribution.new(:mean(0), :sd(0.5));
@@ -110,7 +110,7 @@ ask an object what it ended up with — and the way to print one, since a bare
 `say $distribution` renders its parameters in hash order, which is not stable
 under Rakudo.
 
-```raku
+```raku name="parameters"
 use Statistics::Distributions;
 
 say NormalDistribution.new(:mean(170), :sd(8)).Hash;
@@ -151,7 +151,7 @@ suite taught Raku++.
 Four of the distributions hand back whole numbers rather than reals. A die is a
 discrete uniform:
 
-```raku
+```raku name="dice"
 use Statistics::Distributions;
 
 my @rolls = random-variate(DiscreteUniformDistribution.new(1, 6), 6000);
@@ -171,7 +171,7 @@ True
 A biased coin is a Bernoulli, and it gives you 1 and 0 rather than True and
 False, so you can add them up:
 
-```raku
+```raku name="biased-coin"
 use Statistics::Distributions;
 
 # A coin that comes up heads 30% of the time, thrown 10,000 times.
@@ -192,7 +192,7 @@ True
 `UniformDistribution` is the one people reach for first, and it is a thin cover
 over Raku's own `(min .. max).rand`:
 
-```raku
+```raku name="uniform"
 use Statistics::Distributions;
 
 my @u = random-variate(UniformDistribution.new(-1, 1), 500);
@@ -218,7 +218,7 @@ True
 `quantile` is the half of this module that has nothing to do with random
 numbers. Hand it measurements and it gives you the cut points:
 
-```raku
+```raku name="quantiles"
 use Statistics::Distributions;
 
 my @data = 1 .. 100;
@@ -245,7 +245,7 @@ Two distributions are built from others rather than from parameters. A
 **mixture** draws from one of several distributions, choosing by weight — the
 shape you want when your data has two populations in it:
 
-```raku
+```raku name="mixture"
 use Statistics::Distributions;
 
 # 30% of the readings come from one process, 70% from another.
@@ -266,7 +266,7 @@ True
 
 A **product** draws from all of them at once, giving you one tuple per draw:
 
-```raku
+```raku name="product"
 use Statistics::Distributions;
 
 # One draw = one (x, y) pair, x normal and y exponential, independent.
@@ -294,7 +294,7 @@ requests are fast, a few are not, and the mean tells you almost nothing. A
 gamma with shape 2 makes a realistic-looking day, and `quantile` reads the
 percentiles you would actually put on a dashboard.
 
-```raku sample
+```raku sample name="response-times"
 use Statistics::Distributions;
 
 # A day of response times: mostly fast, with a long tail.
@@ -315,7 +315,7 @@ p99   268.6 ms
 The numbers move every run; the relationships do not, and those are what a test
 around code like this should assert:
 
-```raku
+```raku name="response-time-assertions"
 use Statistics::Distributions;
 
 my @ms = random-variate(GammaDistribution.new(2, 40), 5000);
@@ -342,7 +342,7 @@ program down.
 and re-seeding gives you the same draws again here; under Rakudo 2026.06 it does
 not, so a seed is not a way to make a run reproducible across both engines.
 
-```raku sample
+```raku sample name="srand"
 use Statistics::Distributions;
 
 srand(42);

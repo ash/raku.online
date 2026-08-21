@@ -97,14 +97,26 @@ sub shell-html(Str $code --> Str) {
     }).join("\n")
 }
 
-sub code-block(Str $inner --> Str) {
-    '<div class="native-ex"><pre class="native-code"><code>' ~ $inner ~ '</code></pre></div>'
+# The Copy button is injected by theme/copy.js; a link to the example's FILE
+# sits beside it, because copying is not the only thing a reader wants to do
+# with a working program — the repository is there to be cloned.
+sub code-block(Str $inner, Str :$src, Str :$name --> Str) {
+    my $link = $src
+        ?? '<a class="ex-src" href="' ~ esc-attr($src) ~ '" title="'
+             ~ esc-attr("This example as a file: $name") ~ '">File</a>'
+        !! '';
+    '<div class="native-ex">' ~ $link
+      ~ '<pre class="native-code"><code>' ~ $inner ~ '</code></pre></div>'
 }
 
 sub output-block(Str $text, Str $label --> Str) {
     '<div class="expected"><span class="expected-label">' ~ esc($label) ~ '</span>'
       ~ '<pre class="output"><code>' ~ esc($text) ~ '</code></pre></div>'
 }
+
+# Where an example's file lives on GitHub, and where it lives on disk.
+sub example-url(Str $slug, Str $file --> Str) { %SITE<examples-url> ~ "/$slug/$file" }
+sub example-dir(Str $slug --> Str)            { %SITE<examples-dir> ~ "/$slug" }
 
 # ---- the document model ---------------------------------------------------
 
@@ -113,6 +125,9 @@ class Example {
     has      $.expected;      # Str, or Str type object when none was declared
     has Bool $.sample;        # output varies run to run: run it, never compare it
     has Int  $.line;
+    has Str  $.file;          # examples/<module>/NN-name.raku — what a reader clones
+    has Str  $.section;       # the heading it sits under, for the file's own header
+    has Str  $.anchor;        # …and the link back to that heading
 }
 
 class Module {
@@ -169,6 +184,8 @@ class Renderer {
     has $.mod;
     has @!out;
     has Int $!i = 0;
+    has Str $!section = '';      # the heading the examples below it belong to
+    has Str $!anchor  = '';
 
     method render(--> Str) {
         while $!i < @.lines.elems {
@@ -201,6 +218,7 @@ class Renderer {
         my $hashes = ($line ~~ / ^ ('#'+) /)[0].chars;
         my $text   = $line.substr($hashes).trim;
         my $id     = anchor($text);
+        if $hashes == 2 { $!section = $text; $!anchor = $id }
         @!out.push("<h$hashes id=\"$id\">" ~ inline($text)
                    ~ " <a class=\"anchor\" href=\"#$id\" aria-label=\"link\">#</a></h$hashes>");
         $!i++;
@@ -294,12 +312,23 @@ class Renderer {
         my @info = $info.words;
         my $lang = @info ?? @info[0] !! '';
         my $sample = so @info.first('sample');
+        # `name="quantiles"` names the file this example is written to; without
+        # one it takes the name of the section it sits under, which is right
+        # often enough and never leaves a file unnamed.
+        my $named = '';
+        if $info ~~ / 'name="' (<-["]>+) '"' / { $named = ~$0 }
 
         if $lang eq 'raku' {
             my $expected = self!peek-output;
+            my $n    = $.mod.examples.elems + 1;
+            my $slug = $named || anchor($!section) || 'example';
+            my $file = sprintf('%02d-%s.raku', $n, $slug);
             $.mod.examples.push(Example.new(
-                code => $code, expected => $expected, sample => $sample, line => $start));
-            @!out.push(code-block(highlight($code)));
+                code => $code, expected => $expected, sample => $sample, line => $start,
+                file => $file, section => $!section, anchor => $!anchor));
+            @!out.push(code-block(highlight($code),
+                                  src  => example-url($.mod.slug, $file),
+                                  name => $file));
             @!out.push(output-block($expected, $sample ?? 'One run' !! 'Output'))
                 if $expected.defined;
         }
@@ -421,12 +450,86 @@ sub install-html(%m --> Str) {
     code-block(shell-html("\$ rakupp install $name"))
 }
 
+# ---- the examples, as files -----------------------------------------------
+
+# Every example is also a standalone program under examples/<module>/, so a
+# reader can clone the repository and run it instead of copying it out of a web
+# page. The file carries its own provenance — which page it is from, what to
+# install, what it printed when the site was last built — because a file that
+# travels away from its page has to explain itself.
+sub write-examples($mod) {
+    my $dir = example-dir($mod.slug);
+    run('rm', '-rf', $dir) if $dir.IO.d;
+    mkdir($dir);
+
+    my $name = $mod.meta<name>;
+    for @($mod.examples) -> $ex {
+        my @head = "#!/usr/bin/env rakupp";
+        @head.push("# $name — {$ex.section}");
+        @head.push("# {%SITE<site-url>}{%SITE<base>}/{$mod.slug}/#{$ex.anchor}");
+        @head.push('#');
+        @head.push('# Install what it needs, then run it:');
+        @head.push("#     rakupp install $name");
+        @head.push("#     rakupp {$ex.file}");
+        @head.push('#');
+        @head.push("# Run under {%SITE<engine>} and {%SITE<oracle>} every time the site is");
+        @head.push('# built; the build fails if the output below stops matching.');
+
+        my @tail;
+        if $ex.expected.defined {
+            @tail.push('');
+            @tail.push($ex.sample ?? '# One run printed:' !! '# Output:');
+            @tail.push("#     $_") for $ex.expected.lines;
+        }
+        spurt("$dir/{$ex.file}", (|@head, '', $ex.code.trim, |@tail).join("\n") ~ "\n");
+        "$dir/{$ex.file}".IO.chmod(0o755);
+    }
+
+    spurt("$dir/README.md", examples-readme($mod));
+    say "  {@($mod.examples).elems} example file(s) -> $dir/";
+}
+
+sub examples-readme($mod --> Str) {
+    my %m = $mod.meta;
+    my $page = %SITE<site-url> ~ %SITE<base> ~ '/' ~ $mod.slug ~ '/';
+    my @rows = @($mod.examples).map(-> $ex {
+        '| [`' ~ $ex.file ~ '`](' ~ $ex.file ~ ') | ' ~ $ex.section
+          ~ ' | ' ~ ($ex.sample ?? 'varies (random)'
+                                !! $ex.expected.defined ?? 'checked' !! 'runs') ~ ' |'
+    });
+    qq:to/MD/;
+    # {%m<name>} — the examples
+
+    Every example from [the {%m<name>} page]($page), one file each. They are
+    generated from that page, so they cannot drift from it — and each one is a
+    complete program: no scaffolding to add, nothing to uncomment.
+
+    ```sh
+    rakupp install {%m<name>}   # or: zef install {%m<name>}
+    rakupp {@($mod.examples) ?? @($mod.examples)[0].file !! 'example.raku'}
+    ```
+
+    Each file is run under {%SITE<engine>} and under {%SITE<oracle>}, twice on each,
+    whenever the site is built. A file whose output has moved fails that build, so
+    the "Output:" comment at the bottom of a file is what it printed, not what it
+    was once expected to print. The ones marked *varies* draw random numbers —
+    they are run, but their output is not compared.
+
+    | File | Section | Output |
+    |---|---|---|
+    { @rows.join("\n") }
+    MD
+}
+
 # ---- verification ---------------------------------------------------------
 
-sub run-snippet(Str $exe, Str $code) {
-    my $proc = run($exe, '/dev/stdin', :in, :out, :err);
-    $proc.in.print($code);
-    $proc.in.close;
+# Run the example's FILE, not the markdown it came from: the file is what a
+# reader clones, so the file is what has to work. (They cannot differ — the file
+# is generated from the page — but checking the generated artifact is what makes
+# that a fact rather than an intention.)
+sub run-example(Str $exe, $mod, $ex) {
+    my $path = example-dir($mod.slug) ~ '/' ~ $ex.file;
+    my $proc = run($exe, $path, :out, :err);
     my $out = $proc.out.slurp(:close).subst(/ \n+ $ /, '');
     my $err = $proc.err.slurp(:close);
     $out, $err
@@ -442,8 +545,8 @@ sub verify-examples(@mods, Str $oracle --> Int) {
     my $ran     = 0;
     my $fails   = 0;
 
-    sub check(Str $engine, Str $exe, $ex, Str $path) {
-        my ($got, $err) = run-snippet($exe, $ex.code);
+    sub check(Str $engine, Str $exe, $mod, $ex, Str $path) {
+        my ($got, $err) = run-example($exe, $mod, $ex);
         if $err.trim && !$ex.expected.defined {
             $fails++;
             note "  $engine FAILED $path:{$ex.line}";
@@ -451,7 +554,7 @@ sub verify-examples(@mods, Str $oracle --> Int) {
             return;
         }
         return if $ex.sample;      # a sample is expected to move; it only has to run
-        my ($again, $) = run-snippet($exe, $ex.code);
+        my ($again, $) = run-example($exe, $mod, $ex);
         if $got ne $again {
             $fails++;
             note "  $engine UNSTABLE $path:{$ex.line} — two runs, two answers";
@@ -473,8 +576,8 @@ sub verify-examples(@mods, Str $oracle --> Int) {
     for @mods -> $mod {
         for @($mod.examples) -> $ex {
             $ex.expected.defined && !$ex.sample ?? $checked++ !! $ran++;
-            check('RAKU++', $RAKUPP, $ex, $mod.path);
-            check("ORACLE($oracle)", $oracle, $ex, $mod.path) if $oracle;
+            check('RAKU++', $RAKUPP, $mod, $ex, $mod.path);
+            check("ORACLE($oracle)", $oracle, $mod, $ex, $mod.path) if $oracle;
         }
     }
 
@@ -589,9 +692,11 @@ sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
     mkdir('out');
 
     my @mods = @(collect-modules());
+    mkdir(%SITE<examples-dir>) unless %SITE<examples-dir>.IO.d;
     for @mods -> $mod {
         mkdir("out/{$mod.slug}");
-        spurt("out/{$mod.slug}/index.html", render-module($mod));
+        spurt("out/{$mod.slug}/index.html", render-module($mod));  # fills .examples
+        write-examples($mod);
     }
     spurt('out/index.html', render-index(@mods));
 
