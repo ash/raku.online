@@ -70,6 +70,14 @@ sub changelog-at(Str $repo, Str $ref --> Hash) {
         my $label = @cells[1].lc;
         # the entry's own column is the LAST one: "| | v3.14.0 | v3.5.0 |"
         my $cell = @cells[*-2].subst('*', '', :g);
+        # v3.6.0's entry writes the files row with its denominator
+        # ("633 / 1,464"); take the numerator. A plain number still matches
+        # whole — without this, the row was skipped and the parser fell
+        # through to the PREVIOUS release's table and mined 630.
+        if $cell ~~ / ^ (<[0..9,]>+) \s* '/' /
+        {
+            $cell = ~$0;
+        }
         next unless $cell ~~ / ^ <[0..9,]>+ $ /;
         %r<files-pass> = denum($cell) if $label.contains('files fully passing');
         %r<tests-pass> = denum($cell) if $label.contains('assertions');
