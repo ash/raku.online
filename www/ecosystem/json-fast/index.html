@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Fast — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/ecosystem';</script>
+<script src="/theme/boot.js?v=77c70fd1"></script>
+<link rel="stylesheet" href="/theme/base.css?v=77c70fd1">
+<link rel="stylesheet" href="/theme/shell.css?v=77c70fd1">
+<link rel="stylesheet" href="/theme/eco.css?v=77c70fd1">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/ecosystem/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Fast</h1><span class="status st-full">Works</span></div><p class="summary">JSON in, Raku data out, and back again. Two exported subs, a handful of adverbs, and the numbers come back typed the way you would have typed them.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.20.1</code> <span class="fact-sub">zef:timo</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>14 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-22 <span class="fact-sub">against Raku++ 3.6.0 (dev build) and Rakudo 2026.07</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:timo/JSON::Fast">raku.land</a> · <a href="https://github.com/timo/json_fast">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Fast</code></pre></div><p class="fact-sub"><code>zef install JSON::Fast</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Something handed you JSON — a config file, an HTTP response, a line off a queue — and you want it as a Hash you can index. Or you have a Hash and something else wants JSON. That is the whole job, and this module is two subs wide:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">%config</span> = <span class="n">from-json</span>(<span class="s">'{&quot;name&quot;:&quot;raku&quot;,&quot;stars&quot;:3,&quot;tags&quot;:[&quot;fast&quot;,&quot;fun&quot;]}'</span>);
+<span class="nb">say</span> <span class="nv">%config</span><span class="s">&lt;name&gt;</span>;
+<span class="nb">say</span> <span class="nv">%config</span><span class="s">&lt;tags&gt;</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="n">to-json</span>({ <span class="n">ok</span> =&gt; <span class="n">True</span>, <span class="n">count</span> =&gt; <span class="mi">2</span> }, :<span class="n">sorted-keys</span>, :!<span class="n">pretty</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>raku
+fast, fun
+{"count":2,"ok":true}</code></pre></div>
+<p>It has no dependencies outside the core, which is why 170 other distributions depend on <em>it</em> — more than three times the runner-up. If you install one module from the ecosystem, it is probably this one, and if you install any other, this one likely comes along.</p>
+<h2 id="reading-the-types-you-get-back">Reading: the types you get back <a class="anchor" href="#reading-the-types-you-get-back" aria-label="link">#</a></h2>
+<p><code>from-json</code> is not a stringly parser. A JSON number arrives as the Raku numeric type that can hold it exactly — an integer as <code>Int</code>, a decimal as <code>Rat</code>, and only a number written with an exponent as the lossy <code>Num</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/02-types.raku" title="This example as a file: 02-types.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">%n</span> = <span class="n">from-json</span>(<span class="s">'{&quot;i&quot;:42,&quot;r&quot;:3.5,&quot;e&quot;:1e3,&quot;big&quot;:123456789012345678901234567890}'</span>);
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;i&gt;</span>.^<span class="n">name</span>,   <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;i&gt;</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;r&gt;</span>.^<span class="n">name</span>,   <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;r&gt;</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;e&gt;</span>.^<span class="n">name</span>,   <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;e&gt;</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;big&gt;</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;big&gt;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Int 42
+Rat 3.5
+Num 1000
+Int 123456789012345678901234567890</code></pre></div>
+<p>Two of those lines are the reason to prefer this module to hand-rolled parsing. <code>3.5</code> stays a <code>Rat</code>, so money and percentages survive arithmetic without a floating-point tail. And a number too big for a machine word becomes an arbitrary-precision <code>Int</code> rather than silently rounding — the JSON spec puts no ceiling on an integer literal, and neither does Raku.</p>
+<p><code>true</code>/<code>false</code> come back as <code>Bool</code>, <code>null</code> as <code>Any</code>, an object as a <code>Hash</code> and an array as an <code>Array</code>.</p>
+<h2 id="writing-to-json-and-its-three-adverbs">Writing: <code>to-json</code> and its three adverbs <a class="anchor" href="#writing-to-json-and-its-three-adverbs" aria-label="link">#</a></h2>
+<p>By default <code>to-json</code> pretty-prints with two spaces:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/03-pretty.raku" title="This example as a file: 03-pretty.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="nb">print</span> <span class="n">to-json</span>({ <span class="n">name</span> =&gt; <span class="s">'raku'</span>, <span class="n">tags</span> =&gt; <span class="s">&lt;fast fun&gt;</span> }, :<span class="n">sorted-keys</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{
+  "name": "raku",
+  "tags": [
+    "fast",
+    "fun"
+  ]
+}</code></pre></div>
+<p><code>:!pretty</code> puts it all on one line — what you want on a wire. <code>:spacing($n)</code> changes the indent. <code>:sorted-keys</code> sorts object keys, and it is worth reaching for by reflex: a Hash has no order, so without it the same data serialises differently from run to run, and a diff of two config dumps becomes noise.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/04-spacing.raku" title="This example as a file: 04-spacing.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="nb">print</span> <span class="n">to-json</span>({ <span class="n">a</span> =&gt; <span class="mi">1</span>, <span class="n">b</span> =&gt; [<span class="mi">2</span>, <span class="mi">3</span>] }, :<span class="n">sorted-keys</span>, :<span class="n">spacing</span>(<span class="mi">4</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{
+    "a": 1,
+    "b": [
+        2,
+        3
+    ]
+}</code></pre></div>
+<p>The adverbs can also be set once, at the <code>use</code>, for every call in that scope — an import list of option names, <code>!</code> to switch one off:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/05-import-form.raku" title="This example as a file: 05-import-form.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span> &lt;<span class="n">immutable</span> !<span class="n">pretty</span>&gt;;
+
+<span class="k">my</span> <span class="nv">$d</span> = <span class="n">from-json</span>(<span class="s">'{&quot;a&quot;:1}'</span>);
+<span class="nb">say</span> <span class="nv">$d</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">to-json</span>({ <span class="n">a</span> =&gt; <span class="mi">1</span> });</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Map
+{"a":1}</code></pre></div>
+<h2 id="immutable-a-result-nobody-can-edit-under-you"><code>:immutable</code> — a result nobody can edit under you <a class="anchor" href="#immutable-a-result-nobody-can-edit-under-you" aria-label="link">#</a></h2>
+<p>Parsed JSON is usually configuration: read many times, written never. Ask for it <code>:immutable</code> and you get <code>Map</code> and <code>List</code> instead of <code>Hash</code> and <code>Array</code>, so an accidental assignment fails loudly at the moment of the mistake rather than somewhere downstream:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/06-immutable.raku" title="This example as a file: 06-immutable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">$d</span> = <span class="n">from-json</span>(<span class="s">'{&quot;a&quot;:[1,2]}'</span>, :<span class="n">immutable</span>);
+<span class="nb">say</span> <span class="nv">$d</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$d</span><span class="s">&lt;a&gt;</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="nv">$d</span><span class="s">&lt;a&gt;</span>[<span class="mi">0</span>] = <span class="mi">9</span>; <span class="s">'assigned'</span> }) // <span class="s">'refused'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Map
+List
+refused</code></pre></div>
+<h2 id="json-with-comments">JSON with comments <a class="anchor" href="#json-with-comments" aria-label="link">#</a></h2>
+<p>Configuration files grow comments whether or not the format allows them. <code>:allow-jsonc</code> accepts both comment styles, so a hand-maintained file can explain itself:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/07-jsonc.raku" title="This example as a file: 07-jsonc.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="s">q:to/JSONC/</span>;
+    {
+        <span class="sr">//</span> <span class="n">the</span> <span class="n">name</span> <span class="n">of</span> <span class="n">the</span> <span class="n">thing</span>
+        <span class="s">&quot;name&quot;</span>: <span class="s">&quot;raku&quot;</span>,
+        <span class="sr">/* and how many stars it has */</span>
+        <span class="s">&quot;stars&quot;</span>: <span class="mi">3</span>
+    }
+    <span class="n">JSONC</span>
+
+<span class="nb">say</span> <span class="n">from-json</span>(<span class="nv">$text</span>, :<span class="n">allow-jsonc</span>)&lt;<span class="n">name</span> <span class="n">stars</span>&gt;.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>raku 3</code></pre></div>
+<h2 id="when-the-text-is-wrong">When the text is wrong <a class="anchor" href="#when-the-text-is-wrong" aria-label="link">#</a></h2>
+<p>Text that is not JSON throws. The one failure worth catching by type is text that <em>starts</em> as valid JSON and then keeps going — a doubled response, a file with two documents in it — because the exception says where the good part ended:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/08-errors.raku" title="This example as a file: 08-errors.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="s">'{&quot;a&quot;:1} trailing junk'</span>;
+<span class="k">my</span> <span class="nv">$data</span> = <span class="k">try</span> <span class="n">from-json</span>(<span class="nv">$text</span>);
+<span class="k">with</span> <span class="nv">$!</span> {
+    <span class="nb">say</span> .^<span class="n">name</span>;
+    <span class="nb">say</span> .<span class="n">rest-position</span>;
+    <span class="nb">say</span> <span class="nv">$text</span>.<span class="nb">substr</span>(.<span class="n">rest-position</span>).<span class="nb">trim</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>X::JSON::AdditionalContent
+8
+trailing junk</code></pre></div>
+<p><code>.rest-position</code> counts <strong>graphemes</strong>, not bytes, so it indexes straight back into the string you passed — as it does above.</p>
+<h2 id="unicode-and-the-pair-of-escapes-above-uffff">Unicode, and the pair of escapes above U+FFFF <a class="anchor" href="#unicode-and-the-pair-of-escapes-above-uffff" aria-label="link">#</a></h2>
+<p>Strings survive the round trip, including characters outside the Basic Multilingual Plane, which JSON can only spell as a surrogate pair:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-fast/09-unicode.raku" title="This example as a file: 09-unicode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">$json</span> = <span class="n">to-json</span>({ <span class="n">text</span> =&gt; <span class="s">&quot;möp stüff — 𝄞&quot;</span> }, :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="nv">$json</span>;
+<span class="nb">say</span> <span class="n">from-json</span>(<span class="nv">$json</span>)<span class="s">&lt;text&gt;</span>;
+<span class="nb">say</span> <span class="n">from-json</span>(<span class="nv">$json</span>)<span class="s">&lt;text&gt;</span> <span class="n">eq</span> <span class="s">&quot;möp stüff — 𝄞&quot;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{"text":"möp stüff — \uD834\uDD1E"}
+möp stüff — 𝄞
+True</code></pre></div>
+<p>The G-clef went out as <code>\uD834\uDD1E</code> — the surrogate pair JSON has to use for anything above U+FFFF — and came back as one character. That last <code>True</code> is a stricter claim than it looks. The engine composes combining marks when it joins strings, and the module round-trips text through NFD codepoints and back — for a while under Raku++ the two disagreed, and <code>"möp stüff"</code> came back decomposed while <code>.ords</code> looked identical on both sides. It is the kind of bug that hides in plain sight; the assertion is on this page on purpose.</p>
+<h2 id="speed-measured">Speed, measured <a class="anchor" href="#speed-measured" aria-label="link">#</a></h2>
+<p>The module is called Fast because it is fast under Rakudo. Under Raku++ it is slower, and by how much is worth knowing before you point it at a large file. Parsing the 325 KB SPDX license list that <code>License::SPDX</code> ships:</p>
+<div class="tablewrap"><table><thead><tr><th></th><th>Raku++ 3.6.0</th><th>Rakudo 2026.07</th></tr></thead><tbody><tr><td>325 KB, 3 top-level keys</td><td>~450–510 ms</td><td>~50–70 ms</td></tr></tbody></table></div>
+<p>About 8×, and it scales linearly on both — a file twice the size costs about twice as much, not four times. That last property was bought once and is worth naming, because for one release it was not true: <code>Value</code> copied its <code>Str</code> by value on every argument pass, and the nqp scanning ops re-derived the scan prefix per character, which made <em>any</em> Raku tokenizer quadratic. A 421 KB parse took 13,969 ms. With copy-on-write strings and the scan cached on the shared body it takes 764 ms, and the curve is straight.</p>
+<p>For a while Raku++ shipped a C++ JSON parser under this module's name, which made the same parse 5 ms — and pinned every user to version 0.19 whatever they had installed, silently. That was the wrong trade and it was reversed in v3.0.1. <code>use JSON::Fast</code> loads the author's module from disk and parses as ordinary Raku, and the number above is what ordinary Raku costs today.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. Every example above prints the same bytes under Raku++ and under Rakudo, twice on each, and the site build fails if that stops being true.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install JSON::Fast</code>, no dependencies to pull.</li><li><strong>Test</strong> — the distribution's own suite: 14 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Getting the suite green took ten engine fixes, and not one of them was about JSON. The module is nqp-heavy, so its tests reach the runtime's lowest layers: a repeated <code>use</code> never re-ran a module's <code>EXPORT</code> sub, so <code>use JSON::Fast &lt;immutable !pretty&gt;</code> in one block and a plain <code>use JSON::Fast</code> in the next got the first block's bindings or none; enum values did not do <code>Enumeration</code> and an enum type object came back <em>defined</em>, which made the module render it as <code>null</code>; <code>nqp::create</code> matched class names by their full name, so a <code>my class … is repr("VMHash")</code> declared inside a module got a buffer instead of a hash and every key vanished; an <code>augment</code> of a built-in class shadowed the built-in instead of adding to it; and a hyper around a user-defined infix, <code>@a »=~=« @b</code>, failed twice over — once in the parse, once in reading the trailing <code>=</code> as a compound assignment.</p>
+<p>The one that was hardest to see is the one asserted above: <code>~</code> composed combining marks but <code>.join</code>, <code>nqp::join</code>, <code>nqp::concat</code> and <code>nqp::strfromcodes</code> did not. JSON::Fast round-trips strings through NFD codepoints and back, so <code>"möp stüff"</code> came out byte-decomposed while <code>.ords</code> looked identical on both sides, and only <code>eq</code> disagreed.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.6.0 (dev build) and Rakudo 2026.07 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=77c70fd1" defer></script>
+<script src="/theme/copy.js?v=77c70fd1" defer></script>
+</body>
+</html>

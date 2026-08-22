@@ -20,6 +20,9 @@
 #   ```raku sample   an example whose output is random. A following ```output is
 #                    labelled as one run and never compared; --verify still runs
 #                    the program, so a sample that has stopped working is caught.
+#   ```raku fragment an EXCERPT: highlighted, written to no file, never run.
+#                    For code that cannot stand alone — the two lines showing
+#                    what a module gets wrong, a quote from its source.
 #   ```sh            a shell transcript. `$ ` marks a command; copy.js hands the
 #                    clipboard the commands without the echoed output.
 
@@ -312,13 +315,22 @@ class Renderer {
         my @info = $info.words;
         my $lang = @info ?? @info[0] !! '';
         my $sample = so @info.first('sample');
+        # `raku fragment` — highlighted like an example, never RUN. Some things
+        # are only sayable as a fragment: the two lines that show what a module
+        # does WRONG, an excerpt of somebody else's source. Without this they
+        # had to be written as an unhighlighted plain fence, which made the
+        # page look like the code did not matter.
+        my $fragment = so @info.first('fragment');
         # `name="quantiles"` names the file this example is written to; without
         # one it takes the name of the section it sits under, which is right
         # often enough and never leaves a file unnamed.
         my $named = '';
         if $info ~~ / 'name="' (<-["]>+) '"' / { $named = ~$0 }
 
-        if $lang eq 'raku' {
+        if $lang eq 'raku' && $fragment {
+            @!out.push(code-block(highlight($code)));
+        }
+        elsif $lang eq 'raku' {
             my $expected = self!peek-output;
             my $n    = $.mod.examples.elems + 1;
             my $slug = $named || anchor($!section) || 'example';

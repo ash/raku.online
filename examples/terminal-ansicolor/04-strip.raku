@@ -1,0 +1,22 @@
+#!/usr/bin/env rakupp
+# Terminal::ANSIColor — Taking it off again
+# https://raku.online/ecosystem/terminal-ansicolor/#taking-it-off-again
+#
+# Install what it needs, then run it:
+#     rakupp install Terminal::ANSIColor
+#     rakupp 04-strip.raku
+#
+# Run under Raku++ 3.6.0 (dev build) and Rakudo 2026.07 every time the site is
+# built; the build fails if the output below stops matching.
+
+use Terminal::ANSIColor;
+
+my $painted = colored('red text', 'red');
+say colorstrip($painted);
+say colorstrip($painted).chars;
+say $painted.chars;
+
+# Output:
+#     red text
+#     8
+#     17

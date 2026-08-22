@@ -8,7 +8,9 @@
 
     # The pages, in reading order. Anything in src/modules that is not listed
     # here is still built and sorts after these, so adding a module is one file.
-    order => <statistics-distributions data-generators>,
+    order => <json-fast uri xml yamlish mime-base64
+              file-temp file-find terminal-ansicolor
+              statistics-distributions data-generators>,
 
     # Where a module page's links point when it names its own home.
     land-base => 'https://raku.land/',
@@ -27,6 +29,6 @@
     # Bump `engine` at every release — a page can say "3.5.1 answers this
     # wrongly" and be verified on a build that fixes it, and then the footer
     # has to say which build that was.
-    engine    => 'Raku++ 3.5.1 (dev build)',
+    engine    => 'Raku++ 3.6.0 (dev build)',
     oracle    => 'Rakudo 2026.07',
 }

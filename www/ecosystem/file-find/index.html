@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Find — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/ecosystem';</script>
+<script src="/theme/boot.js?v=77c70fd1"></script>
+<link rel="stylesheet" href="/theme/base.css?v=77c70fd1">
+<link rel="stylesheet" href="/theme/shell.css?v=77c70fd1">
+<link rel="stylesheet" href="/theme/eco.css?v=77c70fd1">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/ecosystem/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>File::Find</h1><span class="status st-full">Works</span></div><p class="summary">Walk a directory tree as a lazy sequence, filtered by name, type or path, without writing the recursion yourself.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.5</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-22 <span class="fact-sub">against Raku++ 3.6.0 (dev build) and Rakudo 2026.07</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/File::Find">raku.land</a> · <a href="https://github.com/raku-community-modules/File-Find">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Find</code></pre></div><p class="fact-sub"><code>zef install File::Find</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>dir()</code> gives you one directory. Everything below it is your problem — a recursive sub, a stack, a check for whether each entry is itself a directory, and the bug where a symlink loop hangs you. <code>find</code> is that walk, already written, and it hands back a lazy <code>Seq</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-find/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Find</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;find-demo-$*PID&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, ~<span class="nv">$root</span> }
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/deep'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'README.md'</span>).<span class="nb">spurt</span>(<span class="s">'readme'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/a.raku'</span>).<span class="nb">spurt</span>(<span class="s">'say 1'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/deep/b.raku'</span>).<span class="nb">spurt</span>(<span class="s">'say 2'</span>);
+
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>, <span class="n">name</span> =&gt; <span class="sr">/\.raku$/</span>).<span class="nb">map</span>(*.<span class="n">basename</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>, <span class="n">type</span> =&gt; <span class="s">'dir'</span>).<span class="nb">map</span>(*.<span class="n">basename</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>5
+a.raku b.raku
+deep src</code></pre></div>
+<p>Five entries: two directories and three files. <code>find</code> yields directories as well as files, which is why <code>type</code> exists.</p>
+<h2 id="the-filters">The filters <a class="anchor" href="#the-filters" aria-label="link">#</a></h2>
+<p>Every named argument is optional and they compose. <code>name</code> matches the <strong>basename</strong>, <code>path</code> matches the whole path, <code>type</code> is <code>'file'</code>, <code>'dir'</code> or <code>'symlink'</code>, and <code>exclude</code> prunes. Each takes a <code>Regex</code>, a <code>Str</code>, or a <code>Callable</code> — anything you can smartmatch against.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-find/02-filters.raku" title="This example as a file: 02-filters.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Find</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;find-excl-$*PID&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, ~<span class="nv">$root</span> }
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'keep'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.git'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'keep/a.txt'</span>).<span class="nb">spurt</span>(<span class="s">'a'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.git/objects'</span>).<span class="nb">spurt</span>(<span class="s">'junk'</span>);
+
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>, <span class="n">exclude</span> =&gt; <span class="sr">/'.git'/</span>).<span class="nb">map</span>(*.<span class="n">basename</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>, <span class="n">recursive</span> =&gt; <span class="n">False</span>).<span class="nb">map</span>(*.<span class="n">basename</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a.txt keep
+.git keep</code></pre></div>
+<p><code>exclude</code> prunes the whole subtree, not just the matching entry — that is the difference between it and filtering the result with <code>.grep</code>, and it is what you want for <code>.git</code>, <code>node_modules</code> and friends, because the point is not to descend into them at all.</p>
+<p><code>recursive =&gt; False</code> turns the walk into a single directory listing, which is occasionally what you want when the rest of your filter logic is already written against <code>find</code>.</p>
+<h2 id="it-is-lazy-and-that-matters">It is lazy, and that matters <a class="anchor" href="#it-is-lazy-and-that-matters" aria-label="link">#</a></h2>
+<p>The return value is a <code>Seq</code>, produced as you consume it. On a large tree that is the difference between waiting and not:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-find/03-lazy.raku" title="This example as a file: 03-lazy.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Find</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;find-lazy-$*PID&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, ~<span class="nv">$root</span> }
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">&quot;f$_.txt&quot;</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>) <span class="k">for</span> ^<span class="mi">50</span>;
+
+<span class="k">my</span> <span class="nv">$seq</span> = <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>);
+<span class="nb">say</span> <span class="nv">$seq</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$seq</span>.<span class="nb">head</span>(<span class="mi">3</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">find</span>(<span class="n">dir</span> =&gt; <span class="nv">$root</span>, <span class="n">name</span> =&gt; <span class="sr">/f1 \d '.txt'/</span>).<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Seq
+3
+10</code></pre></div>
+<p><code>.head(3)</code> stopped the walk after three entries. Being a <code>Seq</code>, it is also one-shot: consume it twice and the second consumption throws. If you need the list twice, <code>.list</code> it once and keep that.</p>
+<p>Every element is an <code>IO::Path</code>, so <code>.basename</code>, <code>.extension</code>, <code>.slurp</code> and <code>.modified</code> are all right there.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. Every example prints the same bytes under Raku++ and under Rakudo, twice on each.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install File::Find</code>, no dependencies to pull.</li><li><strong>Test</strong> — the distribution's own suite: 1 file, 29 assertions, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Three gaps stood between Raku++ and this suite, and the middle one is the sort of bug that flatters an engine rather than failing it. <code>symlink</code> and <code>link</code> existed only as methods, not as the subs the suite calls. Then <code>symlink</code> was not absolutizing its target — the OS reads a relative link target relative to the <em>link's</em> directory, not the current one, so the suite's <code>symlink("t/dir1/another_dir", "t/dir2/symdir")</code> made a dangling link, the whole symlink section quietly took its "this platform cannot" branch, and four tests passed without testing anything. And the <code>X::IO</code> exception family could be <em>thrown</em> by the engine's own IO builtins but not <strong>constructed</strong> by a program, so the suite's way of mocking a directory error — <code>X::IO::Dir.new(path =&gt; …, os-error =&gt; …).throw</code> — died. All thirteen of those classes now exist and compose Rakudo's message text.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.6.0 (dev build) and Rakudo 2026.07 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=77c70fd1" defer></script>
+<script src="/theme/copy.js?v=77c70fd1" defer></script>
+</body>
+</html>

@@ -6,7 +6,7 @@
 #     rakupp install Data::Generators
 #     rakupp 05-strings.raku
 #
-# Run under Raku++ 3.5.1 (dev build) and Rakudo 2026.07 every time the site is
+# Run under Raku++ 3.6.0 (dev build) and Rakudo 2026.07 every time the site is
 # built; the build fails if the output below stops matching.
 
 use Data::Generators;
