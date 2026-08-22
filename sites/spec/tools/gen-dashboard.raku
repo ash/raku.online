@@ -41,8 +41,16 @@ sub ref-date(Str $repo, Str $ref --> Str) {
 #| release and belong to dev-series(), which has its own root fallback. Adding
 #| it turns ten pre-release daily points into three early release entries and
 #| silently changes the shape of the chart.
+#| `main` is the repo AS IT STANDS, so at HEAD the working tree wins over
+#| `git show HEAD:` — a sitting measured and written up but not yet committed
+#| is still the current reading, and mining the committed blob instead drew
+#| the previous sitting's numbers under today's label.
 sub status-doc(Str $repo, Str $ref, Str $name --> Str) {
     for "docs/status/$name", "docs/$name" -> $path {
+        if $ref eq 'HEAD' && "$repo/$path".IO.e {
+            my $text = "$repo/$path".IO.slurp;
+            return $text if $text;
+        }
         my $text = show-file($repo, $ref, $path);
         return $text if $text;
     }
@@ -126,6 +134,26 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
 constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq>;
+
+#| The revision BENCHMARKS.md says the sitting was taken at, out of its own
+#| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is
+#| the rev the numbers BELONG to, which is not the rev the doc was committed at
+#| — the tables are typically written up a commit or two later. Returns '' when
+#| the line is absent (every revision before the wording settled).
+sub bench-rev-at(Str $repo, Str $ref --> Str) {
+    my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
+    return '' unless $md;
+    # the line wraps, so match across the newline the paragraph may carry
+    $md ~~ / 're-measured' \s+ \d**4 '-' \d**2 '-' \d**2 \s+ 'at' \s+
+             '`'? <( 'v' <[0..9.]>+ ['-' \d+ '-g' <[0..9a..f]>+ ]? )> '`'? /
+        ?? ~$/ !! ''
+}
+
+#| The short commit of a `git describe` rev, or '' when the rev IS a tag —
+#| a tagged release is named by its tag, so the hash would only be noise.
+sub rev-commit(Str $rev --> Str) {
+    $rev ~~ / '-g' <( <[0..9a..f]>+ )> $ / ?? ~$/ !! ''
+}
 
 # Each kernel row appears twice: first in the interpreter table
 # (| fib | <rakupp ms> | <rakudo ms> | …), then in the native --exe table
@@ -295,6 +323,15 @@ sub sitting-date(Str $line --> Str) {
     $line ~~ / '"date":"' <( <-["]>+ )> '"' / ?? ~$/ !! ''
 }
 
+#| The rev a logged sitting was measured at, when it carries one. This is the
+#| identity a re-measure is recognised by: two sittings can share a DATE (a
+#| second measurement the same day is exactly what a same-day fix produces),
+#| and matching on the date alone made the newer reading overwrite the older
+#| one instead of joining it.
+sub sitting-rev(Str $line --> Str) {
+    $line ~~ / '"rev":"' <( <-["]>+ )> '"' / ?? ~$/ !! ''
+}
+
 #| The kernel numbers alone, so a logged sitting can be recognised as the one
 #| `main` is still drawing. Date is not enough: BENCHMARKS.md is often committed
 #| a day after the sitting it records, and then main's date no longer matches
@@ -350,9 +387,23 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
             }
         }
         my $date = ref-date($rakupp-repo, $ref);
+        # The rev the numbers were measured at, and its short commit. Only an
+        # UNTAGGED point needs the hash: a release point is named by its tag,
+        # while `main` and every past sitting are just "a day", and a day can
+        # hold two readings.
+        my $rev    = $ref eq 'HEAD' ?? bench-rev-at($rakupp-repo, $ref) !! '';
+        my $commit = $rev ?? rev-commit($rev) !! '';
+        # No methodology line to read (an older doc): fall back to the commit
+        # main is sitting on, which is at least the code the numbers came from.
+        if $ref eq 'HEAD' && !$rev {
+            $commit = run-lines('git', '-C', $rakupp-repo, 'log', '-1',
+                                '--format=%h', 'HEAD').head // '';
+        }
         my @f;
         @f.push('"tag":' ~ json-esc($label));
         @f.push('"date":' ~ json-esc($date));
+        @f.push('"rev":' ~ json-esc($rev))       if $rev;
+        @f.push('"commit":' ~ json-esc($commit)) if $commit;
         @f.push('"tests_pass":' ~ %roast<tests-pass>);
         @f.push('"tests_total":' ~ %roast<tests-total>);
         @f.push('"files_pass":' ~ %roast<files-pass>)   if %roast<files-pass>:exists;
@@ -378,8 +429,14 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     if $main-date {
         my @log = SITTINGS.IO.e ?? SITTINGS.IO.lines.grep(*.trim) !! ();
         my $main-bench = sitting-bench($main-log);
+        my $main-rev   = sitting-rev($main-log);
         my $is-main = -> $line {
-            sitting-date($line) eq $main-date || sitting-bench($line) eq $main-bench
+            my $rev = sitting-rev($line);
+            # A rev on both sides is decisive either way: same rev is the same
+            # sitting, a different rev is a different one even on the same date.
+            $rev && $main-rev ?? $rev eq $main-rev
+                              !! sitting-bench($line) eq $main-bench
+                                 || (!$rev && !$main-rev && sitting-date($line) eq $main-date)
         };
         my @past = @log.grep({ !$is-main($_) });
         @entries.splice(*-1, 0, |@past) if @past;

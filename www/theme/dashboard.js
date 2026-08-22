@@ -58,8 +58,17 @@
       var dev = data.dev || [];
       var span = dev.concat(rel);
       var devCount = dev.length;
-      var tagLabels = rel.map(function (r) { return r.tag; });
-      var spanLabels = span.map(function (r) { return r.tag; });
+      // A point between releases is a DATE, and a date can hold more than one
+      // sitting — so where the generator recorded which commit was measured,
+      // the label carries it next to the date. Releases are named by their tag
+      // and need no hash. The axis shows the short form (see tickLabels).
+      function fullLabel(r) {
+        return r.commit ? r.tag + ' \u00b7 ' + r.commit : r.tag;
+      }
+      var tagLabels = rel.map(fullLabel);
+      var tagTicks = rel.map(function (r) { return r.tag; });
+      var spanLabels = span.map(fullLabel);
+      var spanTicks = span.map(function (r) { return r.tag; });
       var testsPct = span.map(function (r) {
         return r.tests_total ? 100 * r.tests_pass / r.tests_total : null;
       });
@@ -72,6 +81,7 @@
       div('dash-card-title', cardA, 'declared tests passing');
       lineChart(div('dash-chart', cardA), {
         labels: spanLabels,
+        tickLabels: spanTicks,
         series: [{ name: 'declared tests passing', cls: 's1', values: testsPct }],
         yMax: 100,
         yFmt: function (v) { return v + '%'; },
@@ -93,6 +103,7 @@
       div('dash-card-title', cardB, 'files fully passing (of ' + fmt(last.files_total) + ' in the suite)');
       lineChart(div('dash-chart', cardB), {
         labels: spanLabels,
+        tickLabels: spanTicks,
         series: [{ name: 'files fully passing', cls: 's2', values: filesN }],
         yMax: niceMax(Math.max.apply(null, filesN.filter(function (v) { return v != null; }))),
         yFmt: function (v) { return fmt(Math.round(v)); },
@@ -201,6 +212,7 @@
         }
         lineChart(host, {
           labels: tagLabels,
+          tickLabels: tagTicks,
           series: series,
           yMax: niceMax(max),
           yFmt: function (v) { return fmt(Math.round(v)); },

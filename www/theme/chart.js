@@ -112,8 +112,13 @@
         .textContent = opts.yFmt(v);
     }
     // x labels — thin them out when the chart is narrow
+    // The axis gets the SHORT form of each label; the tooltip and the data
+    // table get the full one. A dated bench sitting reads "Aug 22" on the axis
+    // and "Aug 22 · 363c4b6" everywhere there is room for the commit, so two
+    // sittings on one date stay tellable apart without crowding the ticks.
+    var tickLabels = opts.tickLabels || opts.labels;
     var every = Math.max(1, Math.ceil(n / (opts.maxXLabels || n)));
-    opts.labels.forEach(function (lab, i) {
+    tickLabels.forEach(function (lab, i) {
       if (i % every && i !== n - 1) return;
       if (i === n - 1 && (n - 1) % every && n > 2) {
         // keep the final label from crowding its predecessor
