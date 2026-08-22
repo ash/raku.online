@@ -140,6 +140,12 @@ constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arra
 #| the rev the numbers BELONG to, which is not the rev the doc was committed at
 #| — the tables are typically written up a commit or two later. Returns '' when
 #| the line is absent (every revision before the wording settled).
+#|
+#| Write that line with the last CODE commit measured, never the doc commit
+#| that records it. A write-up commit gets rewritten whenever the branch is
+#| rebased, and one already has: a sitting logged as `v3.6.0-19-g4c0e80b`
+#| named a SHA that no longer exists in main a day later, while the code it
+#| measured (`d1e9082`, lexical pads) kept its own SHA throughout.
 sub bench-rev-at(Str $repo, Str $ref --> Str) {
     my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
     return '' unless $md;
