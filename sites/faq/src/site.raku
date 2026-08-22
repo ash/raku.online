@@ -23,6 +23,7 @@
         debugging   => 'When something goes wrong: --lint, --ast, --cpp, and telling your bug from ours.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',
         '6e'        => 'What the 6.e language revision adds to 6.d, and what use v6.e.PREVIEW actually turns on.',
+        optimizer   => 'Why the optimising code generator is opt-in: what a default owes every program, and where -O loses.',
     },
 
     # ../SOMETHING.md in an article points at a doc that lives in the rakupp
