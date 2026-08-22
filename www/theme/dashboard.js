@@ -168,11 +168,50 @@
 
       // ---- benchmark small multiples -----------------------------------
       var bench = document.getElementById('dash-bench');
+
+      // A scale switch for the whole section. On a linear axis every one of
+      // these charts is bounded by its Rakudo line, so the two Raku++ series
+      // are squeezed into the bottom few percent and a real 3x gap between
+      // them is drawn a few pixels apart — worst on exactly the kernels where
+      // Raku++ leads by most, which are the ones shown first. A log axis makes
+      // a ratio a distance, so "3x faster" looks the same whether the numbers
+      // are 3 ms or 300 ms. Linear stays the default: it is the honest picture
+      // of absolute time, and it is what the tables report.
+      function scaleSwitch(host, state, onChange) {
+        var wrap = div('dash-scale', host);
+        var lab = document.createElement('span');
+        lab.className = 'dash-scale-label';
+        lab.textContent = 'scale';
+        wrap.appendChild(lab);
+        var group = div('dash-scale-group', wrap);
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', 'benchmark chart scale');
+        [['linear', false], ['log', true]].forEach(function (opt) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'dash-scale-btn';
+          b.textContent = opt[0];
+          b.setAttribute('aria-pressed', String(opt[1] === state.log));
+          b.addEventListener('click', function () {
+            if (state.log === opt[1]) return;
+            state.log = opt[1];
+            [].slice.call(group.children).forEach(function (o, i) {
+              o.setAttribute('aria-pressed', String((i === 1) === state.log));
+            });
+            onChange();
+          });
+          group.appendChild(b);
+        });
+      }
       // Every kernel present in the data, in the order BENCHMARKS.md lists
       // them (fastest-relative first), rather than a hardcoded three: the
       // generator mines all nine and the page was drawing a third of them.
+      var benchScale = { log: false };
+      // BENCHMARKS.md's own order (widest gap first), with startup last: it is
+      // process startup rather than a workload, so it sits outside the ranking.
       var KERNEL_ORDER = ['strcat', 'bigint', 'hash', 'hashfill', 'sortnums',
-                          'regex', 'arrayops', 'loopsum', 'fib', 'streq'];
+                          'regex', 'arrayops', 'loopsum', 'fib', 'streq',
+                          'startup'];
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
@@ -181,7 +220,12 @@
       Object.keys(present).forEach(function (k) {
         if (KERNEL_ORDER.indexOf(k) < 0) kernels.push(k);   // a kernel we have not ordered yet
       });
-      kernels.forEach(function (kernel) {
+      function drawBench() {
+        bench.textContent = '';
+        kernels.forEach(drawKernel);
+      }
+
+      function drawKernel(kernel) {
         var vals = function (key) {
           return rel.map(function (r) {
             return r.bench && r.bench[kernel] && r.bench[kernel][key] != null
@@ -193,8 +237,10 @@
         // timed as the `perl` binary. Present only where the tables carry it.
         var perl = vals('perl');
         var hasPerl = perl.some(function (v) { return v != null; });
-        var all = [].concat(interp, native, rakudo, hasPerl ? perl : []);
-        var max = Math.max.apply(null, all.filter(function (v) { return v != null; }));
+        var all = [].concat(interp, native, rakudo, hasPerl ? perl : [])
+                    .filter(function (v) { return v != null; });
+        var max = Math.max.apply(null, all);
+        var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
         var card = div('dash-bench-card', bench);
         div('dash-bench-title', card, kernel);
         var host = div('dash-chart', card);
@@ -214,15 +260,95 @@
           labels: tagLabels,
           tickLabels: tagTicks,
           series: series,
-          yMax: niceMax(max),
-          yFmt: function (v) { return fmt(Math.round(v)); },
+          log: benchScale.log,
+          dataMin: min,
+          yMax: benchScale.log ? max : niceMax(max),
+          // Sub-millisecond decades still need a digit; whole ms do not.
+          yFmt: function (v) { return v < 1 ? String(v) : fmt(Math.round(v)); },
           width: 380, height: 230, maxXLabels: 4,
           tipRow: function (si, i) {
             var v = cols[si][i];
-            return names[si] + ': ' + v + ' ms';
+            if (v == null) return names[si] + ': —';
+            var row = names[si] + ': ' + v + ' ms';
+            // The ratio is the thing these charts are actually about, and on a
+            // linear axis it is unreadable off the marks — so state it.
+            var ref = cols[2][i];                       // Rakudo, the reference
+            if (si !== 2 && ref) row += ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo';
+            if (si === 1 && cols[0][i]) row += ', ' + (cols[0][i] / v).toFixed(1) + '\u00d7 interp';
+            return row;
           }
         });
-      });
+      }
+
+      scaleSwitch(bench.parentNode.insertBefore(document.createElement('div'), bench),
+                  benchScale, drawBench);
+      drawBench();
+
+      // ---- the -O optimizer small multiples -----------------------------
+      // Same shape, different comparison: one program compiled two ways. Only
+      // the refs where the -O table was actually re-measured carry a block, so
+      // this series is sparse by construction — see the section's note.
+      var optHost = document.getElementById('dash-optbench');
+      if (optHost) {
+        var optScale = { log: false };
+        var OPT_ORDER = ['sieve', 'powmod', 'intsum', 'fibcalls', 'stringbuild'];
+        var optPresent = {};
+        rel.forEach(function (r) {
+          if (r.optbench) Object.keys(r.optbench).forEach(function (k) { optPresent[k] = true; });
+        });
+        var optKernels = OPT_ORDER.filter(function (k) { return optPresent[k]; });
+        Object.keys(optPresent).forEach(function (k) {
+          if (OPT_ORDER.indexOf(k) < 0) optKernels.push(k);
+        });
+
+        var drawOpt = function () {
+          optHost.textContent = '';
+          optKernels.forEach(function (kernel) {
+            var vals = function (key) {
+              return rel.map(function (r) {
+                return r.optbench && r.optbench[kernel] && r.optbench[kernel][key] != null
+                  ? r.optbench[kernel][key] : null;
+              });
+            };
+            var exe = vals('exe'), opt = vals('opt'), rakudo = vals('rakudo');
+            var all = [].concat(exe, opt, rakudo).filter(function (v) { return v != null; });
+            if (!all.length) return;
+            var max = Math.max.apply(null, all);
+            var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
+            var card = div('dash-bench-card', optHost);
+            div('dash-bench-title', card, kernel);
+            var host = div('dash-chart', card);
+            var names = ['--exe', '--exe -O', 'Rakudo'];
+            var cols = [exe, opt, rakudo];
+            lineChart(host, {
+              labels: tagLabels,
+              tickLabels: tagTicks,
+              series: [
+                { name: '--exe', cls: 's2', values: exe },
+                { name: '--exe -O', cls: 's1', values: opt },
+                { name: 'Rakudo', cls: 'sref', dash: true, values: rakudo }
+              ],
+              log: optScale.log,
+              dataMin: min,
+              yMax: optScale.log ? max : niceMax(max),
+              yFmt: function (v) { return v < 1 ? String(v) : fmt(Math.round(v)); },
+              width: 380, height: 230, maxXLabels: 4,
+              tipRow: function (si, i) {
+                var v = cols[si][i];
+                if (v == null) return names[si] + ': not measured';
+                var row = names[si] + ': ' + v + ' ms';
+                if (si === 1 && cols[0][i]) row += ' · ' + (cols[0][i] / v).toFixed(1) + '\u00d7 over --exe';
+                if (si !== 2 && cols[2][i]) row += (si === 1 ? ', ' : ' · ') +
+                  (cols[2][i] / v).toFixed(1) + '\u00d7 Rakudo';
+                return row;
+              }
+            });
+          });
+        };
+        scaleSwitch(optHost.parentNode.insertBefore(document.createElement('div'), optHost),
+                    optScale, drawOpt);
+        drawOpt();
+      }
     })
     .catch(function (e) {
       document.getElementById('dash-roast').textContent = 'Could not load dashboard data (' + e + ').';

@@ -45,8 +45,11 @@
 
   // ---- line chart -------------------------------------------------------
   // opts: { labels: [x labels], series: [{name, cls, dash?, values: [num|null]}],
-  //         yMax, yFmt(v), tipRow(seriesIdx, ptIdx) -> string, height? }
-  // Mark spec: 2px lines, small round markers, hairline grid, 0-based y axis.
+  //         yMax, yFmt(v), tipRow(seriesIdx, ptIdx) -> string, height?,
+  //         tickLabels?, log?, dataMin? }
+  // Mark spec: 2px lines, small round markers, hairline grid, 0-based y axis
+  // (log? swaps that for a decade-bounded axis — pass dataMin so the floor is
+  // the decade below the smallest value rather than an arbitrary 1).
   // Interaction: nearest-point crosshair + tooltip. Identity: legend chips for
   // >=2 series plus a direct label at each line's end (ink text, colored dot).
   // Round a data maximum up to a "nice" axis maximum (1/2/2.5/4/5/8 × 10^k) —
@@ -58,6 +61,13 @@
     var f = m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 4 ? 4 : m <= 5 ? 5 : m <= 8 ? 8 : 10;
     return f * p;
   }
+  // A log axis is bounded by DECADES, so every gridline is a power of ten and
+  // the ratio between two points reads as a distance. Used where the series on
+  // one chart span orders of magnitude — 3 ms beside 300 ms — and a linear axis
+  // would crush the small ones onto the baseline.
+  function decadeFloor(v) { return Math.pow(10, Math.floor(Math.log10(v))); }
+  function decadeCeil(v)  { return Math.pow(10, Math.ceil(Math.log10(v))); }
+
   // Prefer a tick count whose step is itself nice (integers on small axes).
   function tickCount(yMax) {
     var counts = [5, 4], best = 4;
@@ -81,7 +91,19 @@
     var padL = 46, padR = 30, padT = 12, padB = 26;
     var iw = W - padL - padR, ih = H - padT - padB;
     var X = function (i) { return padL + (n === 1 ? iw / 2 : i * iw / (n - 1)); };
-    var Y = function (v) { return padT + ih - (v / opts.yMax) * ih; };
+    // Linear is 0-based; log runs floor-decade..ceil-decade of the data, since
+    // a log axis has no zero to anchor to.
+    var log = !!opts.log;
+    var yMin = log ? (opts.yMin || decadeFloor(opts.dataMin || 1)) : 0;
+    var yMax = log ? decadeCeil(opts.yMax) : opts.yMax;
+    var lo = log ? Math.log10(yMin) : 0, hi = log ? Math.log10(yMax) : 0;
+    var Y = log
+      ? function (v) {
+          if (!(v > 0)) return padT + ih;            // 0 and negatives have no
+          var t = (Math.log10(v) - lo) / (hi - lo);  // place on a log axis
+          return padT + ih - Math.max(0, Math.min(1, t)) * ih;
+        }
+      : function (v) { return padT + ih - (v / yMax) * ih; };
 
     if (opts.series.length > 1) {
       var leg = div('dash-legend', host);
@@ -102,15 +124,21 @@
     var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'dash-svg', role: 'img' }, host);
     if (opts.label) svg.setAttribute('aria-label', opts.label);
 
-    // grid + y ticks (recessive hairlines, muted ink)
-    var ticks = tickCount(opts.yMax);
-    for (var t = 0; t <= ticks; t++) {
-      var v = opts.yMax * t / ticks;
+    // grid + y ticks (recessive hairlines, muted ink). One line per decade on a
+    // log axis, evenly spaced values on a linear one.
+    var gridVals = [];
+    if (log) {
+      for (var d = yMin; d <= yMax * 1.0000001; d *= 10) gridVals.push(d);
+    } else {
+      var ticks = tickCount(yMax);
+      for (var t = 0; t <= ticks; t++) gridVals.push(yMax * t / ticks);
+    }
+    gridVals.forEach(function (v) {
       var y = Y(v);
       el('line', { x1: padL, x2: W - padR, y1: y, y2: y, 'class': 'dash-grid' }, svg);
       el('text', { x: padL - 6, y: y + 3.5, 'text-anchor': 'end', 'class': 'dash-tick' }, svg)
         .textContent = opts.yFmt(v);
-    }
+    });
     // x labels — thin them out when the chart is narrow
     // The axis gets the SHORT form of each label; the tooltip and the data
     // table get the full one. A dated bench sitting reads "Aug 22" on the axis

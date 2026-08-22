@@ -133,7 +133,7 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # carried nine since the interpreter/native tables were split, and the dashboard
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
-constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq>;
+constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup>;
 
 #| The revision BENCHMARKS.md says the sitting was taken at, out of its own
 #| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is
@@ -201,6 +201,63 @@ sub bench-at(Str $repo, Str $ref --> Hash) {
         my $ms = @cells[2].words[0];
         next unless $ms ~~ / ^ \d+ ['.' \d+]? $ /;
         %out<hashfill><perl> = $ms.Num if %out<hashfill>:exists;
+    }
+    %out
+}
+
+#| `startup` is the eleventh bench program and the only one whose table is a
+#| MODE ladder rather than a kernel row, so bench-at's two-encounters rule
+#| cannot read it. Shape: | Raku++ native `--exe` | 2.4 ms | ... |, one row per
+#| mode. Charted as an ordinary kernel once assembled.
+sub startup-at(Str $repo, Str $ref --> Hash) {
+    my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
+    return {} unless $md;
+    my %out;
+    for $md.lines -> $line {
+        next unless $line.trim.starts-with('|');
+        my @cells = $line.split('|').map(-> $c { $c.trim.subst('`', '', :g) });
+        next unless @cells.elems > 2;
+        my $ms = @cells[2].ends-with('ms') ?? @cells[2].words[0] !! '';
+        next unless $ms ~~ / ^ \d+ ['.' \d+]? $ /;
+        my $mode = @cells[1];
+        %out<native> = $ms.Num if $mode eq 'Raku++ native --exe' && !(%out<native>:exists);
+        %out<interp> = $ms.Num if $mode eq 'Raku++ interp'       && !(%out<interp>:exists);
+        %out<rakudo> = $ms.Num if $mode eq 'Rakudo'              && !(%out<rakudo>:exists);
+    }
+    %out<interp>:exists && %out<native>:exists ?? %out !! {}
+}
+
+# ---------------------------------------------------------------------------
+# The `-O` optimizer table out of BENCHMARKS.md at a given ref
+# ---------------------------------------------------------------------------
+
+# A DIFFERENT comparison from the kernel tables above: same program compiled
+# two ways, `--exe` against `--exe -O`, with Rakudo alongside as the reference.
+# The interpreter does not appear — `-O` is a codegen flag — so these get their
+# own series rather than extra lanes on the kernel charts.
+constant @OPTKERNELS = <sieve powmod intsum fibcalls stringbuild>;
+
+# Row shape: | name | <exe ms> | **<opt ms>** | **<n>x** | <rakudo ms> | note |
+# The `-O` cell is bolded in the doc, so strip the markers before numifying.
+sub optbench-at(Str $repo, Str $ref --> Hash) {
+    my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
+    return {} unless $md;
+    my %out;
+    for $md.lines -> $line {
+        next unless $line.trim.starts-with('|');
+        my @cells = $line.split('|').map(-> $c { $c.trim.subst('**', '', :g) });
+        next unless @cells.elems > 5;
+        my $kernel = @cells[1];
+        next unless $kernel eq any(@OPTKERNELS);
+        next if %out{$kernel}:exists;          # first table wins
+        my @ms = @cells[2, 3, 5].map(-> $c {
+            $c.ends-with('ms') && $c.words[0] ~~ / ^ \d+ ['.' \d+]? $ /
+                ?? $c.words[0].Num !! Nil
+        });
+        next unless @ms[0].defined && @ms[1].defined;
+        %out{$kernel}<exe> = @ms[0];
+        %out{$kernel}<opt> = @ms[1];
+        %out{$kernel}<rakudo> = @ms[2] if @ms[2].defined;
     }
     %out
 }
@@ -298,6 +355,18 @@ sub json-esc(Str $s --> Str) {
     '"' ~ $e ~ '"'
 }
 
+sub optbench-json(%o --> Str) {
+    my @k;
+    for @OPTKERNELS -> $k {
+        next unless %o{$k}:exists;
+        my %b = %o{$k};
+        @k.push(json-esc($k) ~ ':{' ~
+            <exe opt rakudo>.grep({ %b{$_}:exists })
+                            .map({ json-esc($_) ~ ':' ~ %b{$_} }).join(',') ~ '}');
+    }
+    '{' ~ @k.join(',') ~ '}'
+}
+
 sub bench-json(%bench --> Str) {
     my @parts;
     for @KERNELS -> $k {
@@ -372,6 +441,14 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     }
 
     my @entries;
+    # The `-O` table is re-measured RARELY — written once and carried forward
+    # verbatim across a dozen tags. Mining it per ref therefore yields the same
+    # reading over and over, and charting those would draw a flat line that
+    # looks like a dozen sittings agreeing when it is one sitting repeated. A
+    # ref emits its optbench block only when the table CHANGED there, so the
+    # series has a point exactly where a measurement happened and a gap
+    # elsewhere (the chart already skips nulls).
+    my $last-opt = '';
     my $first-charted = '';
     my $main-date = '';
     my $main-log  = '';
@@ -385,6 +462,10 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         }
         $first-charted = $ref unless $first-charted;
         my %bench = bench-at($rakupp-repo, $ref);
+        # startup lives in a mode ladder of its own (see startup-at)
+        my %su = startup-at($rakupp-repo, $ref);
+        %bench<startup> = %su if %su;
+        my %opt = optbench-at($rakupp-repo, $ref);
         my $label = $ref eq 'HEAD' ?? 'main' !! $ref;
         if %backfill{$label}:exists {
             for %backfill{$label}.kv -> $kernel, %engines {
@@ -415,6 +496,15 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         @f.push('"files_pass":' ~ %roast<files-pass>)   if %roast<files-pass>:exists;
         @f.push('"files_total":' ~ %roast<files-total>) if %roast<files-total>:exists;
         @f.push('"bench":' ~ bench-json(%bench));
+        my $opt-here = False;
+        if %opt {
+            my $oj = optbench-json(%opt);
+            if $oj ne $last-opt {
+                @f.push('"optbench":' ~ $oj);
+                $last-opt = $oj;
+                $opt-here = True;
+            }
+        }
         @entries.push('{' ~ @f.join(',') ~ '}');
         # the same entry, labelled by its date, is what the log keeps once
         # `main` has moved on to a newer commit
@@ -425,7 +515,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         }
         say "  $label: {%roast<tests-pass>}/{%roast<tests-total>} tests, " ~
             "{%roast<files-pass> // '?'}/{%roast<files-total> // '?'} files, " ~
-            "{%bench.keys.elems} kernels";
+            "{%bench.keys.elems} kernels" ~
+            ($opt-here ?? ", {%opt.keys.elems} optbench (re-measured here)" !! '');
     }
 
     # Past main sittings, charted as their own dated points, and this run's

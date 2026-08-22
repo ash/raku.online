@@ -653,7 +653,14 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <code>hashfill</code> alone, the same program in Perl 5 as a second
     dashed reference. All ten kernels of the BENCHMARKS.md tables, ordered as
     that file orders them — string building first, where the gap is widest,
-    down to the kernels Rakudo still wins on interpreted. Absolute times as
+    down to the closest-run kernels — plus <code>startup</code>, the eleventh
+    program in <code>tools/bench/</code>, last. (<code>startup</code> was a row
+    in the tables early on, left them for a long stretch, and returned as its
+    own section on 2026-08-22, so its series has a real gap in the middle.)
+    Use the <em>log</em> scale when you want to read the distance between the
+    interpreter and <code>--exe</code>: on a linear axis every chart is bounded
+    by its Rakudo line, which squeezes both Raku++ series onto the baseline —
+    worst on exactly the kernels where the lead is largest. Absolute times as
     committed at each release; the measuring machine changed at v3.6.0 (the
     file's own note records it), so read ratios across that boundary, not
     milliseconds. A point labelled by <em>date</em> rather than a version is a
@@ -668,6 +675,22 @@ sub render-dashboard(%site, %by-cat --> Str) {
     committed tables like every other kernel's, so the last step carries
     ordinary sitting-to-sitting noise.)</p>
     <div class="dash-bench" id="dash-bench"></div>
+
+    <h2 id="optbench">The <code>-O</code> optimizer</h2>
+    <p class="dash-note">A different comparison from the kernels above: the
+    same five programs of <a
+    href="https://github.com/ash/rakupp/tree/main/tools/optbench">tools/optbench/</a>
+    compiled twice — plain <code>--exe</code> against <code>--exe -O</code>,
+    with Rakudo alongside as the reference. The interpreter does not appear
+    because <code>-O</code> is a codegen flag. Each program is written to
+    exercise one of the speculative passes, and is verified to produce
+    identical output all four ways before anything is timed. <strong>This
+    series has a point only where the table was actually re-measured</strong>
+    — the <code>-O</code> table is not re-run every release, and it was carried
+    forward unchanged from v1.0.0 to v3.6.0, so drawing a point per release
+    would show a dozen sittings agreeing where there was one sitting repeated.
+    Gaps here mean "not measured", not "unchanged".</p>
+    <div class="dash-bench" id="dash-optbench"></div>
     BODY
     my $extra = "<script src=\"/theme/chart.js?v={$VERSION}\" defer></script>" ~
                 "<script src=\"/theme/dashboard.js?v={$VERSION}\" defer></script>";
