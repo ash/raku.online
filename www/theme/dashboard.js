@@ -226,6 +226,30 @@
         kernels.forEach(drawKernel);
       }
 
+      // The card title links to the kernel's source in the rakupp repo, so a
+      // reader can see exactly what program a chart is timing. External
+      // repository URLs, not site paths — no __SITE_BASE involved. The `dir`
+      // argument carries its own trailing slash so that no string literal
+      // here starts with one (the runtime-URL check hunts root-absolute
+      // site paths, which these are not).
+      var RAKUPP_TOOLS = 'https://github.com/ash/rakupp/blob/main/tools/';
+      function benchTitle(card, kernel, dir) {
+        var t = div('dash-bench-title', card);
+        var a = document.createElement('a');
+        a.href = RAKUPP_TOOLS + dir + kernel + '.raku';
+        a.textContent = kernel;
+        a.title = 'the ' + kernel + ' source in the rakupp repository';
+        t.appendChild(a);
+        if (kernel === 'hashfill') {
+          t.appendChild(document.createTextNode(' '));
+          var p = document.createElement('a');
+          p.href = RAKUPP_TOOLS + 'bench/hashfill.pl';
+          p.textContent = '· Perl twin';
+          p.title = 'the line-for-line Perl 5 twin the perl series runs';
+          t.appendChild(p);
+        }
+      }
+
       function drawKernel(kernel) {
         var vals = function (key) {
           return rel.map(function (r) {
@@ -243,7 +267,7 @@
         var max = Math.max.apply(null, all);
         var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
         var card = div('dash-bench-card', bench);
-        div('dash-bench-title', card, kernel);
+        benchTitle(card, kernel, 'bench/');
         var host = div('dash-chart', card);
         var series = [
           { name: 'interpreter', cls: 's1', values: interp },
@@ -318,7 +342,7 @@
             var max = Math.max.apply(null, all);
             var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
             var card = div('dash-bench-card', optHost);
-            div('dash-bench-title', card, kernel);
+            benchTitle(card, kernel, 'optbench/');
             var host = div('dash-chart', card);
             var names = ['--exe', '--exe -O', 'Rakudo'];
             var cols = [exe, opt, rakudo];

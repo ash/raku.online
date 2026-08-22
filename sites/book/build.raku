@@ -135,6 +135,21 @@ my $RAKU-KW = set <
     where start react whenever supply await so not and or xor andthen orelse
 >;
 my $RAKU-LIT = set < True False Nil Any Mu self >;
+
+# Perl 5, for the hashfill twin in Chapter 40: same tokenizer as Raku (the
+# comment, string, sigil-variable and number scanners all match Perl's
+# surface), different keyword vocabulary. Common builtins are keyworded the
+# way Pygments' perl lexer does, since a snippet reads by its verbs.
+my $PERL-KW = set <
+    my our local sub package use no require BEGIN END
+    if elsif else unless while until for foreach do return last next redo
+    and or not xor eq ne lt gt le ge cmp
+    print printf say defined undef scalar wantarray ref bless
+    keys values each exists delete length substr index split join
+    push pop shift unshift splice map grep sort reverse
+    chomp chop lc uc die warn open close
+>;
+my $PERL-LIT = set < undef >;
 my $NONE = set();
 
 sub ident-char(Str $c --> Bool) { so $c ~~ /^<[A..Za..z0..9_]>$/ }
@@ -215,7 +230,7 @@ sub hl-c(Str $s, $kw, $type, $lit, Bool :$preproc = False, Bool :$backtick = Fal
     @t
 }
 
-sub hl-raku(Str $s) {
+sub hl-raku(Str $s, :$kw = $RAKU-KW, :$lit = $RAKU-LIT) {
     my @t; my $plain = ''; my $n = $s.chars; my $i = 0;
     my $flush = -> { if $plain ne '' { @t.push(['', $plain]); $plain = '' } };
     my $emit  = -> $cls, $text { $flush(); @t.push([$cls, $text]) };
@@ -254,7 +269,7 @@ sub hl-raku(Str $s) {
                                        && $j + 1 < $n
                                        && ident-start($s.substr($j + 1, 1))));
             my $w = $s.substr($i, $j - $i);
-            my $cls = $RAKU-KW{$w} ?? 'k' !! $RAKU-LIT{$w} ?? 'kc' !! '';
+            my $cls = $kw{$w} ?? 'k' !! $lit{$w} ?? 'kc' !! '';
             if $cls { $emit($cls, $w) } else { $plain ~= $w }
             $i = $j; next;
         }
@@ -288,6 +303,7 @@ sub highlight(Str $code, Str $lang --> Str) {
     if    $lang eq 'cpp' || $lang eq 'c' { @t = hl-c($code, $C-KW, $C-TYPE, $C-LIT, :preproc) }
     elsif $lang eq 'js'                  { @t = hl-c($code, $JS-KW, $NONE, $JS-LIT, :backtick) }
     elsif $lang eq 'raku'                { @t = hl-raku($code) }
+    elsif $lang eq 'perl'                { @t = hl-raku($code, kw => $PERL-KW, lit => $PERL-LIT) }
     elsif $lang eq 'sh' || $lang eq 'console' { @t = hl-sh($code) }
     else                                 { return esc($code) }
 
