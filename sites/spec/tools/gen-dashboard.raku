@@ -279,6 +279,30 @@ sub bench-json(%bench --> Str) {
     '{' ~ @parts.join(',') ~ '}'
 }
 
+# ---------------------------------------------------------------------------
+# Past `main` sittings
+# ---------------------------------------------------------------------------
+# `main` is a MOVING point: re-measuring the kernels on a newer commit rewrites
+# the numbers the previous run drew, so a re-measure silently replaced the last
+# reading instead of adding to it. Every generated main entry is therefore
+# logged here, one JSON object per line, labelled by its date; on the next run
+# each sitting older than the current main is charted as its own point. The log
+# is append-only and the entries are literal chart entries — a sitting is never
+# recomputed, because the commit it measured is gone from `main` by then.
+constant SITTINGS = 'src/data/bench-sittings.jsonl';
+
+sub sitting-date(Str $line --> Str) {
+    $line ~~ / '"date":"' <( <-["]>+ )> '"' / ?? ~$/ !! ''
+}
+
+#| The kernel numbers alone, so a logged sitting can be recognised as the one
+#| `main` is still drawing. Date is not enough: BENCHMARKS.md is often committed
+#| a day after the sitting it records, and then main's date no longer matches
+#| the logged one while the numbers are still the very same measurement.
+sub sitting-bench(Str $line --> Str) {
+    $line ~~ / '"bench":' <( .* )> $ / ?? ~$/ !! ''
+}
+
 sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-battery') {
     die "rakupp repo not found at $rakupp-repo (pass --rakupp-repo=PATH)"
         unless "$rakupp-repo/.git".IO.e;
@@ -306,6 +330,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
 
     my @entries;
     my $first-charted = '';
+    my $main-date = '';
+    my $main-log  = '';
     for @refs -> $ref {
         my %roast = roast-at($rakupp-repo, $ref);
         next unless %roast<tests-pass>:exists;
@@ -323,18 +349,45 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                 %bench{$kernel} = %engines;
             }
         }
+        my $date = ref-date($rakupp-repo, $ref);
         my @f;
         @f.push('"tag":' ~ json-esc($label));
-        @f.push('"date":' ~ json-esc(ref-date($rakupp-repo, $ref)));
+        @f.push('"date":' ~ json-esc($date));
         @f.push('"tests_pass":' ~ %roast<tests-pass>);
         @f.push('"tests_total":' ~ %roast<tests-total>);
         @f.push('"files_pass":' ~ %roast<files-pass>)   if %roast<files-pass>:exists;
         @f.push('"files_total":' ~ %roast<files-total>) if %roast<files-total>:exists;
         @f.push('"bench":' ~ bench-json(%bench));
         @entries.push('{' ~ @f.join(',') ~ '}');
+        # the same entry, labelled by its date, is what the log keeps once
+        # `main` has moved on to a newer commit
+        if $ref eq 'HEAD' {
+            $main-date = $date;
+            @f[0] = '"tag":' ~ json-esc(short-date($date));
+            $main-log = '{' ~ @f.join(',') ~ '}';
+        }
         say "  $label: {%roast<tests-pass>}/{%roast<tests-total>} tests, " ~
             "{%roast<files-pass> // '?'}/{%roast<files-total> // '?'} files, " ~
             "{%bench.keys.elems} kernels";
+    }
+
+    # Past main sittings, charted as their own dated points, and this run's
+    # main logged for the next one (see SITTINGS). Only sittings from a date
+    # main has already left behind are drawn — otherwise today's reading would
+    # appear twice, once as `main` and once as its own date.
+    if $main-date {
+        my @log = SITTINGS.IO.e ?? SITTINGS.IO.lines.grep(*.trim) !! ();
+        my $main-bench = sitting-bench($main-log);
+        my $is-main = -> $line {
+            sitting-date($line) eq $main-date || sitting-bench($line) eq $main-bench
+        };
+        my @past = @log.grep({ !$is-main($_) });
+        @entries.splice(*-1, 0, |@past) if @past;
+        say "  past sittings: {@past.elems} dated bench points before main";
+        unless @log.first({ $is-main($_) }) {
+            spurt SITTINGS, (|@log, $main-log).join("\n") ~ "\n";
+            say "  logged main's $main-date sitting to {SITTINGS}";
+        }
     }
 
     # Pre-release run-up: daily points from ROAST.md's history before the

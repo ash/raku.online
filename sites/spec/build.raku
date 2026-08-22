@@ -656,7 +656,10 @@ sub render-dashboard(%site, %by-cat --> Str) {
     down to the kernels Rakudo still wins on interpreted. Absolute times as
     committed at each release; the measuring machine changed at v3.6.0 (the
     file's own note records it), so read ratios across that boundary, not
-    milliseconds. A kernel is missing from a point only when that release's
+    milliseconds. A point labelled by <em>date</em> rather than a version is a
+    re-measure of <code>main</code> between releases: every sitting is kept as
+    its own point, so a fresh measurement adds to the series instead of
+    overwriting the last reading. A kernel is missing from a point only when that release's
     table did not carry it — except <code>hashfill</code>, whose tagged points
     are <em>retrospective</em>: every tagged release binary from GitHub,
     re-run on one machine in one sitting (2026-08-21), with that day's Rakudo
