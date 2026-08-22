@@ -209,9 +209,10 @@
       var benchScale = { log: false };
       // BENCHMARKS.md's own order (widest gap first), with startup last: it is
       // process startup rather than a workload, so it sits outside the ranking.
-      var KERNEL_ORDER = ['strcat', 'bigint', 'hash', 'hashfill', 'sortnums',
-                          'regex', 'arrayops', 'loopsum', 'fib', 'streq',
-                          'startup'];
+      var KERNEL_ORDER = ['strcat', 'hash', 'sortby', 'bigint', 'sortnums',
+                          'regex', 'textsplit', 'arrayops', 'hashfill',
+                          'arraypush', 'loopsum', 'rats', 'fib', 'streq',
+                          'objects', 'startup'];
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
@@ -291,7 +292,8 @@
       var optHost = document.getElementById('dash-optbench');
       if (optHost) {
         var optScale = { log: false };
-        var OPT_ORDER = ['sieve', 'powmod', 'intsum', 'fibcalls', 'stringbuild'];
+        var OPT_ORDER = ['sieve', 'powmod', 'intsum', 'fibcalls', 'arrayidx',
+                         'nummath', 'methodcalls', 'stringbuild'];
         var optPresent = {};
         rel.forEach(function (r) {
           if (r.optbench) Object.keys(r.optbench).forEach(function (k) { optPresent[k] = true; });

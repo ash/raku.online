@@ -133,7 +133,8 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # carried nine since the interpreter/native tables were split, and the dashboard
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
-constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup>;
+constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup
+                     sortby textsplit arraypush rats objects>;
 
 #| The revision BENCHMARKS.md says the sitting was taken at, out of its own
 #| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is
@@ -235,7 +236,7 @@ sub startup-at(Str $repo, Str $ref --> Hash) {
 # two ways, `--exe` against `--exe -O`, with Rakudo alongside as the reference.
 # The interpreter does not appear — `-O` is a codegen flag — so these get their
 # own series rather than extra lanes on the kernel charts.
-constant @OPTKERNELS = <sieve powmod intsum fibcalls stringbuild>;
+constant @OPTKERNELS = <sieve powmod intsum fibcalls stringbuild arrayidx nummath methodcalls>;
 
 # Row shape: | name | <exe ms> | **<opt ms>** | **<n>x** | <rakudo ms> | note |
 # The `-O` cell is bolded in the doc, so strip the markers before numifying.
