@@ -635,14 +635,14 @@ sub probe-modules(@mods --> Int) {
 
 # ---- build ----------------------------------------------------------------
 
+# The index is alphabetical by module name: a reader scans for a name, and
+# adding a module stays one file under src/modules/ — nothing to list anywhere.
 sub collect-modules(--> Array) {
-    my @files = dir('src/modules').grep({ .IO.f && .Str.ends-with('.md') }).map(*.IO.basename).sort;
-    my @slugs = @files.map({ .subst(/ '.md' $ /, '') });
-    my @ordered = @(%SITE<order>).grep(-> $s { so @slugs.first(* eq $s) });
-    for @slugs -> $s { @ordered.push($s) unless @ordered.first(* eq $s) }
+    my @slugs = dir('src/modules').grep({ .IO.f && .Str.ends-with('.md') })
+                                  .map({ .IO.basename.subst(/ '.md' $ /, '') }).sort;
     my @mods;
-    @mods.push(load-module("src/modules/$_.md")) for @ordered;
-    @mods
+    @mods.push(load-module("src/modules/$_.md")) for @slugs;
+    @mods.sort({ .meta<name>.lc }).Array
 }
 
 sub render-module($mod --> Str) {

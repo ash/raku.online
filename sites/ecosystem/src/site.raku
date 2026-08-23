@@ -6,12 +6,6 @@
     tagline => 'One page per module from raku.land — installed, tested and run ' ~
                'under Raku++, with examples you can copy straight into a file.',
 
-    # The pages, in reading order. Anything in src/modules that is not listed
-    # here is still built and sorts after these, so adding a module is one file.
-    order => <json-fast uri xml yamlish mime-base64
-              file-temp file-find terminal-ansicolor
-              statistics-distributions data-generators>,
-
     # Where a module page's links point when it names its own home.
     land-base => 'https://raku.land/',
     repo      => 'https://github.com/ash/rakupp',
