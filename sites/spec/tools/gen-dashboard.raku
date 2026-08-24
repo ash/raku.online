@@ -31,6 +31,35 @@ sub ref-date(Str $repo, Str $ref --> Str) {
     run-lines('git', '-C', $repo, 'log', '-1', '--format=%as', $ref).head // ''
 }
 
+#| The same ref as a unix timestamp, used to ORDER the releases series.
+#|
+#| Sorting the tag list as STRINGS is what this used to do, and it is wrong the
+#| moment a version component reaches two digits: "v3.14.0" sorts between
+#| "v3.1.0" and "v3.5.0" because "1" < "5" character by character. That happened
+#| to be the right slot — v3.14.0 is a pi joke tagged 2026-08-11, genuinely
+#| between v3.1.0 and v3.5.0 — so nothing looked broken. A "v3.20.0" would not
+#| be so lucky: it string-sorts before v3.5.0 and would draw the newest release
+#| in the MIDDLE of every chart, three releases back.
+#|
+#| Ordering by the ref's own commit timestamp cannot drift from the x-axis,
+#| because `ref-date` plots that same commit. It also needs no tiebreak: two
+#| tags in one day (v3.0.0/v3.0.1, v3.1.0/v3.14.0, v3.5.0/v3.5.1) are distinct
+#| commits and order correctly, where a date-only sort would leave them
+#| arbitrary.
+sub ref-stamp(Str $repo, Str $ref --> Int) {
+    (run-lines('git', '-C', $repo, 'log', '-1', '--format=%ct', $ref).head // '0').Int
+}
+
+#| Tiebreak for two tags on ONE commit, where the timestamp cannot separate
+#| them. Compared component by component as INTEGERS, which is the comparison
+#| the tag string fails at: (3,20,0) sorts above (3,7,0), and (3,14,0) above
+#| both — correct here, because within a single commit the higher version is
+#| the later release. Never the primary key: across commits v3.14.0 really is
+#| older than v3.7.0, and only the timestamp knows that.
+sub ver-key(Str $ref --> List) {
+    $ref.subst(/^ 'v'/, '').split('.').map({ (try .Int) // 0 }).List
+}
+
 #| A status document, wherever it lived at that ref. The docs were filed into
 #| subdirectories after v1.7.0, so one hardcoded path silently drops every
 #| release on the far side of that move — and since this script only collects
@@ -422,7 +451,11 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     die "battery repo not found at $battery (pass --battery=PATH)"
         unless "$battery/.git".IO.e;
 
-    my @refs = run-lines('git', '-C', $rakupp-repo, 'tag', '--list', 'v*').sort;
+    # By commit timestamp, NOT by tag string — see ref-stamp. HEAD is appended
+    # after the sort because it is always the last point and the splice of past
+    # bench sittings below relies on it staying there.
+    my @refs = run-lines('git', '-C', $rakupp-repo, 'tag', '--list', 'v*')
+                   .sort({ (ref-stamp($rakupp-repo, $_), ver-key($_)) });
     @refs.push('HEAD');
 
     # Retrospective bench points: tagged artifacts re-run on ONE machine in
