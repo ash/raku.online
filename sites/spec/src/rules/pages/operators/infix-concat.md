@@ -109,22 +109,23 @@ say (~@a).WHAT;
 (Str)
 ```
 
-### An undefined operand is a warning in Rakudo and an error in Raku++
+### An undefined operand quietly becomes the empty string
 
-Rakudo warns *Use of Nil in string context* (or *uninitialized value*) and treats the
-operand as the empty string. Raku++ diverges, and not gracefully:
+An undefined value reaching `~` stringifies to `""` and the concatenation
+succeeds:
 
-```diverge
+```raku
 say Nil ~ "x";
 ```
-```text
-Rakudo:  warns, then prints  x
-Raku++:  No such method 'Nil' for invocant of type 'Str'
+```output
+x
 ```
 
-`"a" ~ Any` is the same story: Rakudo warns and prints `a`, Raku++ prints `a`
-silently. Either way, an undefined value reaching `~` means a missing `//` default
-somewhere upstream.
+The engines agree on the value but not on how loudly to deliver it: Rakudo
+warns on stderr — *Use of Nil in string context*, or *uninitialized value* for
+`"a" ~ Any` — while Raku++ says nothing at all. (Raku++ used to throw here;
+since it stopped, the silence is the whole residue.) Either way, an undefined
+value reaching `~` means a missing `//` default somewhere upstream.
 
 ### Concatenating in a loop is quadratic
 

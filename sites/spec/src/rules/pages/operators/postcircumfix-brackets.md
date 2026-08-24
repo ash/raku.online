@@ -249,16 +249,35 @@ my @a = 1, 2, 3;
 say @a[1; 0];
 ```
 
-### Binding a slice gives different types in the two implementations
+### Binding a slice: the same type with different rights
 
-`my @b := @a[0, 1]` binds a `List` in Rakudo and an `Array` in Raku++. The values
-match; `.WHAT` and mutability do not. Assign (`=`) instead of bind (`:=`) unless you
-specifically need the binding.
+`my @b := @a[0, 1]` binds a `List` in both implementations — but not the same
+kind of `List`. Rakudo's slice holds `@a`'s own containers: assigning to an
+element of `@b` writes through into `@a`, while growing the list is refused.
+Raku++ hands back a detached immutable `List`: assigning to an element is
+refused — and `.push`, inconsistently, is allowed. Assign (`=`) instead of
+bind (`:=`) unless you specifically need the binding.
 
 ```diverge
 my @a = 1, 2, 3;
 my @b := @a[0, 1];
-say @b.^name;
+@b[0] = 9;
+say @a;
+```
+```text
+Rakudo:  [9 2 3] — the slice elements are @a's own containers
+Raku++:  Cannot modify an immutable List ((1 2))
+```
+
+```diverge
+my @a = 1, 2, 3;
+my @b := @a[0, 1];
+@b.push(9);
+say @b;
+```
+```text
+Rakudo:  Cannot call 'push' on an immutable 'List'
+Raku++:  (1 2 9)
 ```
 
 ## See also

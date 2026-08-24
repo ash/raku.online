@@ -6,7 +6,7 @@ both engines reject the expression count as agreement, however differently they
 word the diagnostic — only value-vs-value differences and accept-vs-reject are
 listed. Every entry is a Raku++ fix candidate.
 
-**24** disagreements across **121** operators.
+**24** disagreements across **133** operators.
 
 ## Type mismatches by root cause
 
