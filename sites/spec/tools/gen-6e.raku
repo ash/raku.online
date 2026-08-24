@@ -16,7 +16,7 @@
 # src/core.e, from every language_revision >= 3 gate in its grammars, actions and
 # metamodel, from the `is revision-gated("6.e")` routines in src/core.c, and from
 # roast's 6.e test files — the same reconstruction as the prose article at
-# raku.online/6e (rakupp docs/guide/LANGUAGE-6E.md), which this page is the
+# raku.online/faq/6e (rakupp docs/guide/faq/6e.md), which this page is the
 # machine-checked companion to.
 
 constant RAKUPP-DEFAULT = 'rakupp';
@@ -155,7 +155,7 @@ my @GROUPS =
         note => 'Emptiness, not "has endpoints".',
         code => 'say so (5..1), " ", so ("b".."a");' },
       { id => 'str-range', title => 'string ranges iterate by .succ',
-        note => '6.d walks a per-position cross product, which is why ("az".."bc") has 52 elements there.',
+        note => '6.d walks a per-position cross product, which is why ("az".."bc") has 48 elements there.',
         code => 'say ("az".."bc").join(",");' },
       { id => 'sprintf-sign', title => 'sprintf: sign before the prefix',
         note => 'C puts the minus first for every base.',
@@ -196,6 +196,12 @@ my @GROUPS =
       { id => 'subset-ver', title => 'a subset records its language version',
         note => 'Even.^ver reports the revision it was declared under.',
         code => 'subset Even of Int where * %% 2; say Even.^ver;' },
+      { id => 'divmod-zero', title => 'mod by zero soft-fails',
+        note => 'core.e redoes the div/mod candidates: 1 mod 0 returns a Failure the way div always has, instead of throwing on the spot. Visible on the 6.d/6.e axis since Rakudo 2026.08.',
+        code => 'my $x = 1 mod 0; say $x.^name; $x.so;' },
+      { id => 'eval-revision', title => 'use v6.e.PREVIEW inside EVAL',
+        note => 'Since Rakudo 2026.08 the pragma inside an EVAL string is accepted but inert — the EVAL\'d code stays at the caller\'s revision. Raku++ still raises it, which is why the row scores default-on there: the snippet works without the outer pragma.',
+        code => 'say EVAL q[use v6.e.PREVIEW; rotor(2, 1..6)];' },
     ),
   },
   {
