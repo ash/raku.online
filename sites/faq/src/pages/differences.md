@@ -87,8 +87,8 @@ against — while the rest of the object says who is actually running:
 ```raku
 say $*RAKU.compiler.name;       # → Raku++      (Rakudo says: rakudo)
 say $*RAKU.compiler.version;    # → v2026.08    (the era tracked, not our release)
-say $*RAKU.compiler.release;    # → 3.6.0       (Rakudo leaves this empty)
-say $*RAKU.compiler.id;         # → 3.6.0       (Rakudo: a commit SHA)
+say $*RAKU.compiler.release;    # → 3.7.0       (Rakudo leaves this empty)
+say $*RAKU.compiler.id;         # → 3.7.0       (Rakudo: a commit SHA)
 say $*RAKU.compiler.backend;    # → cpp         (Rakudo: moar)
 ```
 

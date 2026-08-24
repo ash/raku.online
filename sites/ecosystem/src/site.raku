@@ -23,6 +23,6 @@
     # Bump `engine` at every release — a page can say "3.5.1 answers this
     # wrongly" and be verified on a build that fixes it, and then the footer
     # has to say which build that was.
-    engine    => 'Raku++ 3.6.0 (dev build)',
-    oracle    => 'Rakudo 2026.07',
+    engine    => 'Raku++ 3.7.0',
+    oracle    => 'Rakudo 2026.08',
 }

@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: MIME::Base64
 suite: 5 files, green
-tested: 2026-08-22
+tested: 2026-08-24
 raku-land: https://raku.land/zef:leont/YAMLish
 source: https://github.com/Leont/yamlish
 ---

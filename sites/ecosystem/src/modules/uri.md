@@ -9,7 +9,7 @@ summary: RFC 3986 in a Raku grammar. Take a URI apart into scheme, host, path
 status: full
 license: Artistic-2.0
 suite: 14 files, green
-tested: 2026-08-22
+tested: 2026-08-24
 raku-land: https://raku.land/zef:raku-community-modules/URI
 source: https://github.com/raku-community-modules/URI
 ---

@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: Statistics::Distributions, Math::SpecialFunctions
 suite: 9 files, green
-tested: 2026-08-21
+tested: 2026-08-24
 raku-land: https://raku.land/zef:antononcube/Data::Generators
 source: https://github.com/antononcube/Raku-Data-Generators
 ---
@@ -227,19 +227,22 @@ True
 
 ## Where the two engines differ
 
-Everything above runs identically under Raku++ and Rakudo. Two things at the
-edges do not.
-
-**`generators` as a positional list dies under Rakudo 2026.07.** The
-`generators => [ &gen1, &gen2 ]` list form (as opposed to the map form above)
-trips a "Seq already consumed" error inside the module under Rakudo, and works
-under Raku++. Use the map form — it is clearer anyway, and it works everywhere.
+Everything above runs identically under Raku++ and Rakudo. One thing at the
+edge does not.
 
 **`srand` pins the sequence under Raku++, and does not under Rakudo** — the
 same divergence noted on the
 [Statistics::Distributions page](/ecosystem/statistics-distributions/): a seed
 makes a Raku++ run reproducible, and does not make a Rakudo run reproducible,
 so do not build a cross-engine test on one.
+
+_This page used to list a second divergence: `generators` as a positional list
+(`generators => [ &gen1, &gen2 ]`, rather than the map form above) tripped a
+"Seq already consumed" error inside the module under Rakudo while working under
+Raku++. **It no longer reproduces.** Re-checked at the v3.7.0 oracle bump on
+the same module version (0.1.11): under Rakudo 2026.08 the list form returns
+its rows like the map form does, so the note is retired rather than
+re-dated. The map form is still the clearer spelling._
 
 ## What was run to put this page here
 

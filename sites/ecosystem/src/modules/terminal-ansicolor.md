@@ -8,7 +8,7 @@ summary: Colour and style for terminal output, by name rather than by escape
 status: full
 license: Artistic-2.0
 suite: 1 file, green
-tested: 2026-08-22
+tested: 2026-08-24
 raku-land: https://raku.land/zef:raku-community-modules/Terminal::ANSIColor
 source: https://github.com/raku-community-modules/Terminal-ANSIColor
 ---

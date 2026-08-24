@@ -8,7 +8,7 @@ summary: JSON in, Raku data out, and back again. Two exported subs, a handful
 status: full
 license: Artistic-2.0
 suite: 14 files, green
-tested: 2026-08-22
+tested: 2026-08-24
 raku-land: https://raku.land/zef:timo/JSON::Fast
 source: https://github.com/timo/json_fast
 ---
@@ -235,27 +235,52 @@ this page on purpose.
 
 ## Speed, measured
 
-The module is called Fast because it is fast under Rakudo. Under Raku++ it is
-slower, and by how much is worth knowing before you point it at a large file.
-Parsing the 325 KB SPDX license list that `License::SPDX` ships:
+The module is called Fast because it is fast under Rakudo, and for a long time
+this page said Raku++ was about 8× slower at it. Since **v3.7.0 that is no
+longer true**, and the reason is worth reading before you trust the number.
 
-| | Raku++ 3.6.0 | Rakudo 2026.07 |
-|---|---|---|
-| 325 KB, 3 top-level keys | ~450–510 ms | ~50–70 ms |
+Parsing the 325 KB SPDX license list that `License::SPDX` ships — whole
+process, best of seven, on one machine:
 
-About 8×, and it scales linearly on both — a file twice the size costs about
-twice as much, not four times. That last property was bought once and is worth
-naming, because for one release it was not true: `Value` copied its `Str` by
-value on every argument pass, and the nqp scanning ops re-derived the scan
-prefix per character, which made *any* Raku tokenizer quadratic. A 421 KB parse
-took 13,969 ms. With copy-on-write strings and the scan cached on the shared
-body it takes 764 ms, and the curve is straight.
+| | 325 KB, 3 top-level keys |
+|---|---|
+| Raku++ 3.7.0, `from-json` as you would call it | **7 ms** |
+| Rakudo 2026.08 | 235 ms |
+| Raku++ 3.7.0, the module's own Raku | 272 ms |
 
-For a while Raku++ shipped a C++ JSON parser under this module's name, which
-made the same parse 5 ms — and pinned every user to version 0.19 whatever they
-had installed, silently. That was the wrong trade and it was reversed in
-v3.0.1. `use JSON::Fast` loads the author's module from disk and parses as
-ordinary Raku, and the number above is what ordinary Raku costs today.
+The three rows do not measure the same thing, which is the whole point. `use
+JSON::Fast` still loads **the author's module from disk** — the v3.0.1
+unvendoring stands, and no JSON source is pinned inside the binary. What
+changed is the *call*: the engine wraps the loaded `&to-json`/`&from-json`, and
+a call whose arguments a native codec covers runs that codec instead. Anything
+it does not cover — an unknown adverb, a callable `:sorted-keys`, a NaN/Inf
+`Num`, a type outside the ladder — falls through to the module's own sub, so
+the behaviour is the module's in every uncovered case.
+
+The third row is that fallback, measured by loading the same module source
+under another name so the wrap cannot match it: **272 ms**, against the
+~450–510 ms this page reported at v3.6.0. That improvement is not JSON work at
+all — it is the 128-byte `Value`, lexical pads and the TARG slices making
+*every* Raku tokenizer faster.
+
+So read the rows as: what you get (7 ms), what the reference engine gets
+(235 ms), and what ordinary interpreted Raku still costs on the path the fast
+codec declines (272 ms).
+
+Scaling is linear on all three — a file twice the size costs about twice as
+much, not four times. That property was bought once and is worth naming,
+because for one release it was not true: `Value` copied its `Str` by value on
+every argument pass, and the nqp scanning ops re-derived the scan prefix per
+character, which made *any* Raku tokenizer quadratic. A 421 KB parse took
+13,969 ms. With copy-on-write strings and the scan cached on the shared body
+the curve is straight.
+
+This is deliberately **not** the trade Raku++ made once before and reversed.
+For a while it shipped a C++ JSON parser *under this module's name*, which made
+the same parse 5 ms and silently pinned every user to version 0.19 whatever
+they had installed. That was wrong and it went in v3.0.1. The difference now is
+that the module is whatever you installed, the version is whatever you
+installed, and the codec only intercepts calls it can answer identically.
 
 ## Where the two engines differ
 

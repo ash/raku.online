@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: File::Directory::Tree
 suite: 3 files, green
-tested: 2026-08-22
+tested: 2026-08-24
 raku-land: https://raku.land/zef:raku-community-modules/File::Temp
 source: https://github.com/raku-community-modules/File-Temp
 ---

@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: Math::SpecialFunctions
 suite: 4 files, green
-tested: 2026-08-21
+tested: 2026-08-24
 raku-land: https://raku.land/zef:antononcube/Statistics::Distributions
 source: https://github.com/antononcube/Raku-Statistics-Distributions
 ---
@@ -339,7 +339,7 @@ around the edges do not, and both bite when you try to pin a random
 program down.
 
 **`srand` pins the sequence under Raku++, and does not under Rakudo.** Seeding
-and re-seeding gives you the same draws again here; under Rakudo 2026.07 it does
+and re-seeding gives you the same draws again here; under Rakudo 2026.08 it does
 not, so a seed is not a way to make a run reproducible across both engines.
 
 ```raku sample name="srand"
@@ -353,7 +353,7 @@ my @b = random-variate(NormalDistribution.new(0, 1), 3);
 say @a eqv @b;
 ```
 
-| | Raku++ | Rakudo 2026.07 |
+| | Raku++ | Rakudo 2026.08 |
 |---|---|---|
 | `srand(42)` twice, same draws | `True` | `False` |
 

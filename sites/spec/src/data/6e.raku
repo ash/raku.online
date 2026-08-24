@@ -2,7 +2,7 @@
 {
   'generated' => '2026-08-24',
   'rakudo' => '2026.08',
-  'rakupp' => 'Raku++ (rakupp) 3.6.0 — a Raku interpreter and compiler in C++',
+  'rakupp' => 'Raku++ (rakupp) 3.7.0 — a Raku interpreter and compiler in C++',
   'counts' => { 'divergent' => 0, 'full' => 52, 'ni' => 1, 'partial' => 0 },
   'gating' => { 'default-on' => 4, 'gated' => 47, 'none' => 2 },
   'groups' => [
