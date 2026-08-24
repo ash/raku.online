@@ -22,47 +22,47 @@ These collapse hard: fixing one defect clears every row it produced.
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
-| `infix:<...>` | `(1, 2) ... (3, 4, 5)` | `Seq — (1 2 3)` | `Seq — (1 2 3 4 5)` |
-| `infix:<...>` | `True ... False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
-| `infix:<but>` | `1 but "2"` | `Int+{<anon\|1>} — 1` | `Int+{<anon\|1>} — 2` |
-| `infix:<but>` | `True but False` | `Bool+{<anon\|1>} — True` | `Bool+{<anon\|1>} — False` |
+| `prefix:<^>` | `^ (True)` | `Range — ^1` | `Range — ^True` |
+| `prefix:<^>` | `^ (1/2)` | `Range — ^0` | `Range — 0..^0.5` |
 | `infix:<mod>` | `1/2 mod 1/3` | `Rat — 0` | `Rat — 0.166667` |
 | `infix:<∪>` | `Nil ∪ 1` | `Set — Set(Nil 1)` | `Set — Set(1 Nil)` |
 | `infix:<⊎>` | `Nil ⊎ 1` | `Bag — Bag(Nil 1)` | `Bag — Bag(1 Nil)` |
 | `infix:<⊖>` | `Nil ⊖ 1` | `Set — Set(Nil 1)` | `Set — Set(1 Nil)` |
-| `prefix:<^>` | `^ (True)` | `Range — ^1` | `Range — ^True` |
-| `prefix:<^>` | `^ (1/2)` | `Range — ^0` | `Range — 0..^0.5` |
+| `infix:<but>` | `1 but "2"` | `Int+{<anon\|1>} — 1` | `Int+{<anon\|1>} — 2` |
+| `infix:<but>` | `True but False` | `Bool+{<anon\|1>} — True` | `Bool+{<anon\|1>} — False` |
+| `infix:<...>` | `(1, 2) ... (3, 4, 5)` | `Seq — (1 2 3)` | `Seq — (1 2 3 4 5)` |
+| `infix:<...>` | `True ... False` | `Seq — (True 0)` | `Seq — (True True True True True True True True True True True True True ` |
 
 
 ## Raku++ accepts what Rakudo rejects (6)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
-| `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
+| `infix:<does>` | `(1, 2) does (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|1>,<anon\|2>,<anon\|3>} |
 | `infix:<but>` | `(1, 2) but (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|4>,<anon\|5>,<anon\|6>} |
 | `infix:<but>` | `1/2 but 1/3` | `Rat — 0.166667` | _error:_ Cannot resolve caller infix:<but>(Rat:D, Int:D, :value(Int)); none of th |
 | `infix:<coll>` | `Nil coll 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<coll>(Nil:U, Int:D); none of these signatur |
-| `infix:<does>` | `(1, 2) does (3, 4, 5)` | `List+{<anon\|1>,<anon\|2>,<anon\|3>} — (1 2)` | _error:_ Method 'Int' must be resolved by class List+{<anon\|1>,<anon\|2>,<anon\|3>} |
 | `infix:<unicmp>` | `Nil unicmp 1` | `Order — Less` | _error:_ Cannot resolve caller infix:<unicmp>(Nil:U, Int:D); none of these signat |
-
-
-## Raku++ rejects what Rakudo accepts (4)
-
-| Operator | Expression | Raku++ | Rakudo |
-|---|---|---|---|
-| `infix:<!=>` | `"a" != "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
-| `infix:<≠>` | `"a" ≠ "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
-| `prefix:<let>` | `let (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
-| `prefix:<temp>` | `temp (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
+| `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
 
 
 ## Result type differs (4)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
-| `infix:<andthen>` | `Nil andthen 1` | `Any — (Any)` | `Slip — ()` |
-| `infix:<min>` | `Nil min 1` | `Any — (Any)` | `Int — 1` |
 | `prefix:<+>` | `+ (Nil)` | `Num — 0` | `Int — 0` |
 | `prefix:<->` | `- (Nil)` | `Num — -0` | `Int — 0` |
+| `infix:<min>` | `Nil min 1` | `Any — (Any)` | `Int — 1` |
+| `infix:<andthen>` | `Nil andthen 1` | `Any — (Any)` | `Slip — ()` |
+
+
+## Raku++ rejects what Rakudo accepts (4)
+
+| Operator | Expression | Raku++ | Rakudo |
+|---|---|---|---|
+| `prefix:<temp>` | `temp (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
+| `prefix:<let>` | `let (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
+| `infix:<!=>` | `"a" != "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
+| `infix:<≠>` | `"a" ≠ "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
 
 
