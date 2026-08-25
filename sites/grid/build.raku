@@ -1039,15 +1039,25 @@ sub ruling-example-html(--> Str) {
 
 sub render-home(@families) {
     my %t = sum-counts(@ATOM-ORDER);
-    my $engines = %ENGINES.keys.elems;
     my $crash-total = @CRASHES.map({ .<members>.elems }).sum // 0;
     my $differ = %t<d> + %t<c>;
     my $agree  = %t<a> + %t<f>;
 
+    # "7 engines" would be misleading: six of the names are rakupp build
+    # snapshots, kept so a sweep re-probes only what changed. Count
+    # implementations, and let the subtitle own the snapshot story.
+    my %impl;
+    for %ENGINES.keys -> $e {
+        my $i = $e.index('-');
+        %impl{$i.defined ?? $e.substr(0, $i) !! $e} = 1;
+    }
+    my $pp-snaps = %ENGINES.keys.grep({ .starts-with('rakupp') }).elems;
+
     my @tiles =
         [commify(%t<total>), 'tests', 'every one a single recorded behaviour'],
         [commify(%ATOM.elems), 'atoms', 'one construct probed across a ladder of values'],
-        [$engines.Str, 'engines on record', 'Rakudo as reference, rakupp snapshots over time'],
+        [%impl.elems.Str, 'engines', 'Rakudo as the reference · rakupp across '
+                                     ~ $pp-snaps ~ ' build snapshots'],
         [commify($agree), 'agree',
          %t<f> ?? commify(%t<f>) ~ ' of them fixed along the way' !! 'newest observations, both engines'],
         [commify($differ), 'differ', commify(%t<c>) ~ ' of them crash an engine'],
@@ -1108,7 +1118,9 @@ sub render-home(@families) {
       ~ 'divergence was adjudicated by hand; <b>no data</b> means one side was never recorded. '
       ~ 'An observation is a snapshot, not a verdict on today’s binary: a differing cell says '
       ~ 'the engines disagreed when that cell was last probed, and the drawer names the exact '
-      ~ 'build that said it.</p>'
+      ~ 'build that said it. The rakupp snapshots accumulate on purpose — a sweep re-probes '
+      ~ 'only what changed, so an untouched cell keeps the build that last ran it instead of '
+      ~ 'costing a fresh run of the whole grid.</p>'
       ~ '</section>'
       ~ '<section class="grid-section"><h2 id="arbiter">The oracle is not the arbiter</h2>'
       ~ '<p>Where the engines disagree, Rakudo’s answer is the <em>default</em>, not the law. '
