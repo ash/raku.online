@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — Writing: `to-json` and its three adverbs
-# https://raku.online/ecosystem/json-fast/#writing-to-json-and-its-three-adverbs
+# https://raku.online/modules/json-fast/#writing-to-json-and-its-three-adverbs
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

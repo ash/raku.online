@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URI — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=7562fac4"></script>
+<link rel="stylesheet" href="/theme/base.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/shell.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/eco.css?v=7562fac4">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · web</div><h1>URI</h1><span class="status st-full">Works</span></div><p class="summary">RFC 3986 in a Raku grammar. Take a URI apart into scheme, host, path and query, put a new one together, and get the escaping right without thinking about it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3.8</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>14 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-24 <span class="fact-sub">against Raku++ 3.7.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/URI">raku.land</a> · <a href="https://github.com/raku-community-modules/URI">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install URI</code></pre></div><p class="fact-sub"><code>zef install URI</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>You have a URL as a string and you need one piece of it — the host, the path, one query parameter. Splitting on <code>/</code> and <code>?</code> works until it doesn't: a password with an <code>@</code> in it, an IPv6 host in brackets, a query value containing an encoded <code>&amp;</code>. <code>URI</code> parses the actual grammar from RFC 3986 and hands you the parts:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://raku.land/zef:timo/JSON::Fast?ver=0.20.1#docs'</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">scheme</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">host</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">fragment</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>https
+raku.land
+/zef%3Atimo/JSON%3A%3AFast
+ver=0.20.1
+docs</code></pre></div>
+<p>Note the path: the colons came back <strong>percent-encoded</strong>, because that is what they are on the wire. The module gives you the URI as the URI actually is, not as it looked when you typed it.</p>
+<h2 id="the-parts-of-an-authority">The parts of an authority <a class="anchor" href="#the-parts-of-an-authority" aria-label="link">#</a></h2>
+<p>Everything between the <code>//</code> and the path is the authority, and it has three pieces of its own — userinfo, host, port — each available separately:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/02-authority.raku" title="This example as a file: 02-authority.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://user:pw@example.com:8443/a/b/c.html'</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">authority</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">userinfo</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">host</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">port</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>user:pw@example.com:8443
+user:pw
+example.com
+8443</code></pre></div>
+<p>When the URI does not spell out a port, <code>.port</code> gives the scheme's default — that is <code>.default-port</code> doing the work, and it is why you can hand <code>.port</code> straight to a socket:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/03-ports.raku" title="This example as a file: 03-ports.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'http://example.com/'</span>).<span class="n">port</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/'</span>).<span class="n">port</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'http://example.com/'</span>).<span class="n">default-port</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>80
+443
+80</code></pre></div>
+<p>An IPv6 literal keeps its brackets, which is the right answer — the brackets are part of the host production in the grammar, and stripping them would make <code>host</code> ambiguous with a port:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/04-ipv6.raku" title="This example as a file: 04-ipv6.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://[2001:db8::1]:8080/p'</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">host</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">port</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[2001:db8::1]
+8080</code></pre></div>
+<h2 id="the-path-and-its-segments">The path, and its segments <a class="anchor" href="#the-path-and-its-segments" aria-label="link">#</a></h2>
+<p><code>.segments</code> splits the path the way the RFC does — which means a leading empty segment for an absolute path, and a trailing empty one when the path ends in a slash. Both are information, not noise: they are how you tell <code>/a/b</code> from <code>/a/b/</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/05-segments.raku" title="This example as a file: 05-segments.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/a/b/'</span>).<span class="n">segments</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/a/b'</span>).<span class="n">segments</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com'</span>).<span class="n">path</span>.<span class="nb">Str</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>("", "a", "b", "")
+("", "a", "b")
+""</code></pre></div>
+<h2 id="the-query-is-not-a-hash">The query is not a Hash <a class="anchor" href="#the-query-is-not-a-hash" aria-label="link">#</a></h2>
+<p>A query string may repeat a key — <code>?tag=fast&amp;tag=fun</code> is legal and means two tags — so <code>.query</code> hands back a <code>URI::Query</code>, which indexes like a Hash but answers with a <strong>list</strong> every time:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/06-query.raku" title="This example as a file: 06-query.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/search?q=raku&amp;page=2&amp;tag=fast&amp;tag=fun'</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span><span class="s">&lt;q&gt;</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span><span class="s">&lt;page&gt;</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span><span class="s">&lt;tag&gt;</span>.<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">squish</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>q=raku&amp;page=2&amp;tag=fast&amp;tag=fun
+URI::Query
+(raku)
+(2)
+fast,fun
+page q tag</code></pre></div>
+<p><code>(raku)</code> rather than <code>raku</code> is the point of the class: one code path whether a parameter appeared once or five times. <code>.keys</code> repeats a key once per occurrence, hence the <code>.squish</code>.</p>
+<p>Decoding happens on the way out, so a value that arrived percent-encoded is readable by the time you see it:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/07-decoding.raku" title="This example as a file: 07-decoding.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/a%20b/c?q=one%20two'</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">query</span><span class="s">&lt;q&gt;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>/a%20b/c
+(one two)</code></pre></div>
+<h2 id="building-one">Building one <a class="anchor" href="#building-one" aria-label="link">#</a></h2>
+<p>The accessors are also mutators. Assign a path or a query and stringify the result — <code>.path-query</code> gives you the half a request line wants:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/08-build.raku" title="This example as a file: 08-build.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/'</span>);
+<span class="nv">$u</span>.<span class="n">path</span>(<span class="s">'/api/v2/things'</span>);
+<span class="nv">$u</span>.<span class="n">query</span>(<span class="s">'page=2&amp;per=50'</span>);
+<span class="nb">say</span> ~<span class="nv">$u</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="n">path-query</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>https://example.com/api/v2/things?page=2&amp;per=50
+/api/v2/things?page=2&amp;per=50</code></pre></div>
+<h2 id="absolute-relative-and-one-method-to-avoid">Absolute, relative, and one method to avoid <a class="anchor" href="#absolute-relative-and-one-method-to-avoid" aria-label="link">#</a></h2>
+<p><code>.is-absolute</code> and <code>.is-relative</code> answer the question a router asks:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/09-absolute.raku" title="This example as a file: 09-absolute.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/a'</span>).<span class="n">is-absolute</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'/just/a/path'</span>).<span class="n">is-absolute</span>;
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'/just/a/path'</span>).<span class="n">is-relative</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+False
+True</code></pre></div>
+<p><code>rel2abs</code> resolves a relative reference against a base, and it takes the base as a <strong>URI</strong>, not a string — <code>URI.new($relative).rel2abs($base)</code>, not <code>$base.rel2abs($relative)</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/10-rel2abs.raku" title="This example as a file: 10-rel2abs.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI</span>;
+
+<span class="k">my</span> <span class="nv">$base</span> = <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://example.com/docs/guide/index.html'</span>);
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'/top.html'</span>).<span class="n">rel2abs</span>(<span class="nv">$base</span>);
+<span class="nb">say</span> <span class="n">URI</span>.<span class="nb">new</span>(<span class="s">'https://other.example/x'</span>).<span class="n">rel2abs</span>(<span class="nv">$base</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>https://example.com/top.html
+https://other.example/x</code></pre></div>
+<blockquote class="note"><p>Keep to the absolute and already-absolute cases. A <strong>dot-segment</strong> reference — <code>URI.new('../api/v2.html').rel2abs($base)</code> — does not walk the path: it concatenates, and returns <code>https://example.comhttps://example.com/docs/guide/index.html/../api/v2.html</code>. That is the module's own behaviour and it is <strong>identical under both engines</strong>, so it is a bug to route around, not an engine difference. Resolve dot segments yourself, or keep your references rooted.</p></blockquote>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>One method, and it is one the module already asks you not to call.</p>
+<p><strong><code>.query-form</code> is deprecated, and under Raku++ it also answers differently.</strong> Rakudo's <code>URI.query-form</code> returns the <code>URI::Query</code> object; Raku++ returns a plain <code>Array</code>, so <code>.keys</code> gives <code>0,1,2</code> instead of the parameter names and a <code>&lt;x y&gt;</code> slice comes back <code>Any</code>. The cause is a dispatch difference the module happens to expose: it declares both <code>multi method query-form(URI:D: |c)</code> and a later <code>multi method query-form()</code>, and for a no-argument call Rakudo picks the empty signature while Raku++ picks the capture. Reduced to its bones, the whole divergence is this:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri/11-where-the-two-engines-differ.raku" title="This example as a file: 11-where-the-two-engines-differ.raku">File</a><pre class="native-code"><code><span class="k">class</span> <span class="n">C</span> {
+    <span class="k">proto</span> <span class="k">method</span> <span class="sr">m(|)</span> { * }
+    <span class="k">multi</span> <span class="k">method</span> <span class="sr">m(C:D: |c)</span> { <span class="s">'capture'</span> }
+    <span class="k">multi</span> <span class="k">method</span> <span class="sr">m()</span>        { <span class="s">'empty'</span>   }
+}
+<span class="nb">say</span> <span class="n">C</span>.<span class="nb">new</span>.<span class="n">m</span>;      <span class="c1"># Rakudo: empty      Raku++: capture</span></code></pre></div>
+<p>Both engines deprecate <code>.query-form</code> in favour of <code>.query</code>, which behaves identically on both — every query example on this page uses it. Nothing else on this page differs.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install URI</code>, no dependencies to pull.</li><li><strong>Test</strong> — the distribution's own suite: 14 files, 222 assertions, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>The suite went from 88 of 222 to all 222 over a single day, on twenty general interpreter fixes and not one line of URI. The ones with the widest blast radius were not about URIs at all. Type conformance had <em>two</em> implementations — <code>~~</code> knew the whole story while parameter dispatch used a laxer test that returned a blanket true for any type object, so a multi could be dispatched away on the engine's ignorance. A typed attribute assigned <code>Nil</code> reset to bare <code>Any</code> instead of to its declared type, so the next <code>$!authority .= new(…)</code> had nothing to call <code>new</code> on. A coercion parameter, <code>Str() $x</code>, scored as high as an exact nominal type, so <code>multi method authority(Str() $a)</code> tied with <code>multi method authority(Nil)</code> and won on declaration order — meaning <code>.authority(Nil)</code> could never clear the authority. And <code>%h&lt;k&gt; = 1, 2</code> stored only <code>1</code>: every subscript assignment takes the whole comma list, which was wrong for ordinary hashes and arrays too, and only showed up here because <code>URI::Query</code> writes <code>$q&lt;foo&gt; = '5', '6'</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.7.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=7562fac4" defer></script>
+<script src="/theme/copy.js?v=7562fac4" defer></script>
+</body>
+</html>

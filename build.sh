@@ -49,12 +49,15 @@ build_book() {
 # The handbook's examples need the modules they document to be INSTALLED, so
 # --verify is not part of the ordinary build: a machine without the store would
 # fail a build that has nothing wrong with it. Run it before publishing:
-#   ( cd sites/ecosystem && rakupp build.raku --verify --oracle=raku )
-build_ecosystem() {
-    echo "ecosystem -> www/ecosystem"
-    ( cd "$ROOT/sites/ecosystem" && "$RAKUPP" build.raku --clean )
-    rm -rf "$WWW/ecosystem"
-    cp -R "$ROOT/sites/ecosystem/out" "$WWW/ecosystem"
+#   ( cd sites/modules && rakupp build.raku --verify --oracle=raku )
+# (Lived at /ecosystem until 2026-08-26; www/ecosystem now holds redirect stubs
+# so old links keep resolving — "ecosystem" unqualified was too easy to read as
+# this handbook when it now names the system around Raku++ itself.)
+build_modules() {
+    echo "modules -> www/modules"
+    ( cd "$ROOT/sites/modules" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/modules"
+    cp -R "$ROOT/sites/modules/out" "$WWW/modules"
 }
 
 build_spec() {
@@ -118,7 +121,7 @@ check_shell() {
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/book/index.html" \
-                "$WWW/ecosystem/index.html" "$WWW/grid/index.html" \
+                "$WWW/modules/index.html" "$WWW/grid/index.html" \
                 "$WWW/in-use/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
@@ -138,9 +141,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|faq|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -163,11 +166,11 @@ case "${1:-all}" in
     grid)      build_grid ;;
     faq)       build_faq ;;
     book)      build_book ;;
-    ecosystem) build_ecosystem ;;
+    modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_ecosystem; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|ecosystem|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers

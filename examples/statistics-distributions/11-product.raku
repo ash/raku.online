@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Mixtures and products
-# https://raku.online/ecosystem/statistics-distributions/#mixtures-and-products
+# https://raku.online/modules/statistics-distributions/#mixtures-and-products
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

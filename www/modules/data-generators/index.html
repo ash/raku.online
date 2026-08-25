@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data::Generators — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=7562fac4"></script>
+<link rel="stylesheet" href="/theme/base.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/shell.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/eco.css?v=7562fac4">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data generation</div><h1>Data::Generators</h1><span class="status st-full">Works</span></div><p class="summary">Random words, strings, numbers, dates, pet names, job titles — and whole tabular datasets. The fastest way to have data before you have data.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.11</code> <span class="fact-sub">zef:antononcube</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Statistics::Distributions</code>, <code>Math::SpecialFunctions</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>9 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-24 <span class="fact-sub">against Raku++ 3.7.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:antononcube/Data::Generators">raku.land</a> · <a href="https://github.com/antononcube/Raku-Data-Generators">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Data::Generators</code></pre></div><p class="fact-sub"><code>zef install Data::Generators</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>You are writing something that eats data — a parser, a report, a table widget, a load test — and you do not have the data yet. This module makes plausible fakes of most things you will want: words that are real English words, strings with a shape you specify, numbers in a range, date-times between two moments, and entire tabular datasets with named columns.</p>
+<p>Everything here is one function call, and every function takes the count first:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="nb">say</span> <span class="n">random-word</span>(<span class="mi">4</span>);
+<span class="nb">say</span> <span class="n">random-pet-name</span>(<span class="mi">3</span>);
+<span class="nb">say</span> <span class="n">random-string</span>(<span class="mi">2</span>, <span class="nb">chars</span> =&gt; <span class="mi">8</span>, <span class="n">ranges</span> =&gt; [<span class="s">&quot;A&quot;</span>..<span class="s">&quot;Z&quot;</span>, <span class="s">&quot;0&quot;</span>..<span class="s">&quot;9&quot;</span>]);
+<span class="nb">say</span> <span class="n">random-real</span>((<span class="mi">0</span>, <span class="mi">100</span>), <span class="mi">3</span>).<span class="nb">map</span>(*.<span class="n">fmt</span>(<span class="s">'%.1f'</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>(remotely kitten roundelay ankylotic)
+(Walter Sweetie Sasha)
+(O72P0U5P PS4AVECI)
+(12.3 87.4 55.0)</code></pre></div>
+<p>Your run will print different words and numbers — that is the point. What is stable is the shape, and the pages of this handbook assert on shapes.</p>
+<p>One thing to budget for: <code>use Data::Generators</code> costs about a second, on <strong>both</strong> engines — the module parses its 85,000-word list and 20,000 pet-name records at load time, before your first line runs. That is the module's design, not an engine tax (Raku++ spends ~0.9s on it, Rakudo ~1.3s). Pay it once per process, not once per call.</p>
+<h2 id="words">Words <a class="anchor" href="#words" aria-label="link">#</a></h2>
+<p><code>random-word($n)</code> draws from a built-in list of about 85,000 English words. Four word kinds are built in: <code>'known'</code> (the whole list), <code>'common'</code>, <code>'stopword'</code>, and <code>'any'</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/02-words.raku" title="This example as a file: 02-words.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="nb">say</span> <span class="n">random-word</span>(<span class="mi">1000</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="n">random-word</span>(<span class="mi">1000</span>).<span class="n">all</span> ~~ <span class="nb">Str</span>;
+<span class="nb">say</span> <span class="n">random-word</span>(<span class="mi">1000</span>).<span class="nb">unique</span>.<span class="nb">elems</span> &gt; <span class="mi">500</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1000
+True
+True</code></pre></div>
+<p>The word kinds are how you keep the fakes readable — <code>'common'</code> gives you words a reader will recognise, <code>'stopword'</code> the little glue words:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/03-word-types.raku" title="This example as a file: 03-word-types.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@common</span> = <span class="n">random-word</span>(<span class="mi">5</span>, <span class="n">type</span> =&gt; <span class="s">'common'</span>);
+<span class="k">my</span> <span class="nv">@stop</span>   = <span class="n">random-word</span>(<span class="mi">5</span>, <span class="n">type</span> =&gt; <span class="s">'stopword'</span>);
+<span class="nb">say</span> <span class="nv">@common</span>.<span class="nb">elems</span> + <span class="nv">@stop</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> (<span class="nv">@common</span>, <span class="nv">@stop</span>).<span class="nb">flat</span>.<span class="n">all</span> ~~ <span class="nb">Str</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="n">random-word</span>(<span class="mi">200</span>, <span class="n">type</span> =&gt; <span class="s">'stopword'</span>).<span class="nb">map</span>(*.<span class="nb">chars</span>).<span class="nb">max</span> &lt;= <span class="mi">15</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>10
+True
+True</code></pre></div>
+<p>Two neighbours of <code>random-word</code> are pure fun with the same signature: <code>random-pet-name</code> draws from real pet-license registries (ask for <code>species =&gt; 'Cat'</code> or <code>'Dog'</code> specifically), and <code>random-pretentious-job-title</code> builds titles like <em>Regional Communications Orchestrator</em> — useful the moment your fake dataset needs a <code>title</code> column nobody will mistake for production data.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/04-names-and-titles.raku" title="This example as a file: 04-names-and-titles.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="nb">say</span> <span class="n">random-pet-name</span>(<span class="mi">4</span>, <span class="n">species</span> =&gt; <span class="s">'Cat'</span>);
+<span class="nb">say</span> <span class="n">random-pretentious-job-title</span>(<span class="mi">2</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>(Polly Butchie Quinn Maggie)
+(Relational Factors Representative Interactive Operations Orchestrator)</code></pre></div>
+<h2 id="strings-with-a-shape">Strings with a shape <a class="anchor" href="#strings-with-a-shape" aria-label="link">#</a></h2>
+<p><code>random-string</code> takes the length in characters and the character sets to draw from — each set a range or a list of characters, mixed freely:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/05-strings.raku" title="This example as a file: 05-strings.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@s</span> = <span class="n">random-string</span>(<span class="mi">100</span>, <span class="nb">chars</span> =&gt; <span class="mi">4</span>, <span class="n">ranges</span> =&gt; [<span class="s">&quot;a&quot;</span>..<span class="s">&quot;f&quot;</span>, <span class="s">&quot;0&quot;</span>..<span class="s">&quot;9&quot;</span>]);
+<span class="nb">say</span> <span class="nv">@s</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@s</span>.<span class="nb">map</span>(*.<span class="nb">chars</span>).<span class="n">all</span> == <span class="mi">4</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@s</span>.<span class="nb">join</span>.<span class="nb">comb</span>.<span class="n">all</span> ~~ <span class="sr">/&lt;[a..f 0..9]&gt;/</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>100
+True
+True</code></pre></div>
+<p>That <code>ranges =&gt; ["a".."f", "0".."9"]</code> — a list holding two Ranges — is exactly the shape that taught Raku++ two lessons at once: a Range written <em>inside</em> an array literal must stay a Range rather than spread into its elements, and the module's own argument check smartmatches a junction <em>topic</em> against a code block. Both now behave as Rakudo does; the page you are reading is built on the engine that learned it.</p>
+<h2 id="numbers-and-date-times">Numbers and date-times <a class="anchor" href="#numbers-and-date-times" aria-label="link">#</a></h2>
+<p><code>random-real</code> draws uniformly from a range given as <code>(min, max)</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/06-reals.raku" title="This example as a file: 06-reals.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@r</span> = <span class="n">random-real</span>((<span class="mi">10</span>, <span class="mi">20</span>), <span class="mi">1000</span>);
+<span class="nb">say</span> <span class="nv">@r</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@r</span>.<span class="n">all</span> ~~ <span class="nb">Num</span>;
+<span class="nb">say</span> <span class="k">so</span> ([&amp;&amp;] <span class="nv">@r</span>.<span class="nb">map</span>({ <span class="mi">10</span> &lt;= <span class="nv">$_</span> &lt;= <span class="mi">20</span> }));
+<span class="nb">say</span> <span class="mi">14</span> &lt; <span class="nv">@r</span>.<span class="nb">sum</span> / <span class="nv">@r</span>.<span class="nb">elems</span> &lt; <span class="mi">16</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1000
+True
+True
+True</code></pre></div>
+<p><code>random-date-time</code> spans 1900–2100 by default, and takes <code>:min</code>/<code>:max</code> bounds:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/07-date-times.raku" title="This example as a file: 07-date-times.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@dt</span> = <span class="n">random-date-time</span>(<span class="n">size</span> =&gt; <span class="mi">100</span>);
+<span class="nb">say</span> <span class="nv">@dt</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@dt</span>.<span class="n">all</span> ~~ <span class="nb">DateTime</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@dt</span>.<span class="nb">map</span>(*.<span class="n">year</span>).<span class="n">all</span> ~~ <span class="mi">1900</span>.<span class="mf">.2100</span>;
+
+<span class="k">my</span> <span class="nv">$min</span> = <span class="nb">DateTime</span>.<span class="nb">new</span>(<span class="s">'2024-01-01T00:00:00Z'</span>);
+<span class="k">my</span> <span class="nv">$max</span> = <span class="nb">DateTime</span>.<span class="nb">new</span>(<span class="s">'2024-12-31T23:59:59Z'</span>);
+<span class="nb">say</span> <span class="k">so</span> <span class="n">random-date-time</span>(:<span class="nv">$min</span>, :<span class="nv">$max</span>, <span class="n">size</span> =&gt; <span class="mi">50</span>).<span class="nb">map</span>(*.<span class="n">year</span>).<span class="n">all</span> == <span class="mi">2024</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>100
+True
+True
+True</code></pre></div>
+<blockquote class="note"><p>Call it as <code>random-date-time(size =&gt; $n)</code> or with bounds — <strong>not</strong> <code>random-date-time($n)</code>. That form dies on <strong>both</strong> engines: the module's own candidate list catches a bare integer in a signature that wants a DateTime, and its own test suite avoids it too.</p></blockquote>
+<h2 id="whole-tabular-datasets">Whole tabular datasets <a class="anchor" href="#whole-tabular-datasets" aria-label="link">#</a></h2>
+<p><code>random-tabular-dataset</code> is the reason this module is on load-test duty everywhere: one call gives you a list of hashes with named columns, ready to feed to anything that eats rows.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/08-dataset.raku" title="This example as a file: 08-dataset.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@tbl</span> = <span class="n">random-tabular-dataset</span>(<span class="mi">4</span>, <span class="s">&lt;name age score&gt;</span>);
+<span class="nb">say</span> <span class="nv">@tbl</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="nv">@tbl</span>.<span class="nb">head</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@tbl</span>.<span class="n">all</span> ~~ <span class="nb">Map</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>4
+age,name,score
+True</code></pre></div>
+<p>Left to itself it picks a random generator per column. Pass <code>generators</code> — a map from column name to a closure taking the row count — and each column means something:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-generators/09-dataset-generators.raku" title="This example as a file: 09-dataset-generators.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Generators</span>;
+
+<span class="k">my</span> <span class="nv">@readings</span> = <span class="n">random-tabular-dataset</span>(<span class="mi">5</span>, <span class="s">&lt;city temp&gt;</span>, <span class="n">generators</span> =&gt; {
+    <span class="n">city</span> =&gt; { <span class="n">random-word</span>(<span class="nv">$_</span>) },
+    <span class="k">temp</span> =&gt; { <span class="n">random-real</span>((-<span class="mi">5</span>, <span class="mi">35</span>), <span class="nv">$_</span>) },
+});
+<span class="nb">say</span> <span class="nv">@readings</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@readings</span>.<span class="nb">map</span>(*.<span class="s">&lt;temp&gt;</span>).<span class="n">all</span> ~~ <span class="nb">Num</span>;
+<span class="nb">say</span> <span class="k">so</span> ([&amp;&amp;] <span class="nv">@readings</span>.<span class="nb">map</span>({ -<span class="mi">5</span> &lt;= .<span class="s">&lt;temp&gt;</span> &lt;= <span class="mi">35</span> }));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>5
+True
+True</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Everything above runs identically under Raku++ and Rakudo. One thing at the edge does not.</p>
+<p><strong><code>srand</code> pins the sequence under Raku++, and does not under Rakudo</strong> — the same divergence noted on the <a href="/modules/statistics-distributions/">Statistics::Distributions page</a>: a seed makes a Raku++ run reproducible, and does not make a Rakudo run reproducible, so do not build a cross-engine test on one.</p>
+<p>_This page used to list a second divergence: <code>generators</code> as a positional list (<code>generators =&gt; [ &amp;gen1, &amp;gen2 ]</code>, rather than the map form above) tripped a "Seq already consumed" error inside the module under Rakudo while working under Raku++. <strong>It no longer reproduces.</strong> Re-checked at the v3.7.0 oracle bump on the same module version (0.1.11): under Rakudo 2026.08 the list form returns its rows like the map form does, so the note is retired rather than re-dated. The map form is still the clearer spelling._</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install Data::Generators</code>, which pulls <code>Statistics::Distributions</code> and <code>Math::SpecialFunctions</code> with it and runs all three test suites before marking anything installed.</li><li><strong>Test</strong> — the distribution's own suite: 9 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Getting the suite green took five engine fixes, none of them reachable from roast: a Rat index into a lazy sequence (how <code>Math::SpecialFunctions</code> reads its memoised Bernoulli numbers), a Range inside an array literal spreading into its elements (how this module writes character sets), a junction topic in smartmatch keeping its junction instead of collapsing (how it validates arguments), <code>Range</code> not doing <code>Positional</code>, and <code>pick</code>/<code>roll</code> not accepting the spelled-out <code>Whatever</code> as a count (how it decides between drawing with and without replacement). One more surfaced while writing this page: <code>DateTime.new($dt + $offset)</code> read the argument as a <em>year</em>, which put every random date-time in the year 8.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.7.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=7562fac4" defer></script>
+<script src="/theme/copy.js?v=7562fac4" defer></script>
+</body>
+</html>

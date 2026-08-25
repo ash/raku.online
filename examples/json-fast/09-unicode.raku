@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — Unicode, and the pair of escapes above U+FFFF
-# https://raku.online/ecosystem/json-fast/#unicode-and-the-pair-of-escapes-above-uffff
+# https://raku.online/modules/json-fast/#unicode-and-the-pair-of-escapes-above-uffff
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

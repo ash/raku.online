@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Naming the parameters
-# https://raku.online/ecosystem/statistics-distributions/#naming-the-parameters
+# https://raku.online/modules/statistics-distributions/#naming-the-parameters
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

@@ -194,7 +194,7 @@ say %d<staging><timeout>;
 `retries` came from the anchor and is gone; `timeout`, written out in full, is
 there. If your configuration relies on merge keys, flatten it before handing it
 to YAMLish, or merge the hashes yourself after loading —
-[`Hash::Merge`](/ecosystem/hash-merge/) does exactly that.
+[`Hash::Merge`](/modules/hash-merge/) does exactly that.
 
 ## Where the two engines differ
 

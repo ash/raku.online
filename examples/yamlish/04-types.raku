@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # YAMLish — What the scalars become
-# https://raku.online/ecosystem/yamlish/#what-the-scalars-become
+# https://raku.online/modules/yamlish/#what-the-scalars-become
 #
 # Install what it needs, then run it:
 #     rakupp install YAMLish

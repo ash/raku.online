@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # MIME::Base64 — The header everybody writes
-# https://raku.online/ecosystem/mime-base64/#the-header-everybody-writes
+# https://raku.online/modules/mime-base64/#the-header-everybody-writes
 #
 # Install what it needs, then run it:
 #     rakupp install MIME::Base64

@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # File::Find — The filters
-# https://raku.online/ecosystem/file-find/#the-filters
+# https://raku.online/modules/file-find/#the-filters
 #
 # Install what it needs, then run it:
 #     rakupp install File::Find

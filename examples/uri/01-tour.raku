@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — What it is for
-# https://raku.online/ecosystem/uri/#what-it-is-for
+# https://raku.online/modules/uri/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install URI

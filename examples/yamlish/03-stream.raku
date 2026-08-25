@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # YAMLish — More than one document
-# https://raku.online/ecosystem/yamlish/#more-than-one-document
+# https://raku.online/modules/yamlish/#more-than-one-document
 #
 # Install what it needs, then run it:
 #     rakupp install YAMLish

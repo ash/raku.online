@@ -1,6 +1,6 @@
 # Data::Generators — the examples
 
-Every example from [the Data::Generators page](https://raku.online/ecosystem/data-generators/), one file each. They are
+Every example from [the Data::Generators page](https://raku.online/modules/data-generators/), one file each. They are
 generated from that page, so they cannot drift from it — and each one is a
 complete program: no scaffolding to add, nothing to uncomment.
 

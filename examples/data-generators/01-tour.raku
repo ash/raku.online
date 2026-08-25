@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Data::Generators — What it is for
-# https://raku.online/ecosystem/data-generators/#what-it-is-for
+# https://raku.online/modules/data-generators/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install Data::Generators

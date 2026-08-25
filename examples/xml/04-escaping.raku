@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # XML — The sharp edge: nothing is escaped for you
-# https://raku.online/ecosystem/xml/#the-sharp-edge-nothing-is-escaped-for-you
+# https://raku.online/modules/xml/#the-sharp-edge-nothing-is-escaped-for-you
 #
 # Install what it needs, then run it:
 #     rakupp install XML

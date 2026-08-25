@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Terminal::ANSIColor — Attributes, and how they combine
-# https://raku.online/ecosystem/terminal-ansicolor/#attributes-and-how-they-combine
+# https://raku.online/modules/terminal-ansicolor/#attributes-and-how-they-combine
 #
 # Install what it needs, then run it:
 #     rakupp install Terminal::ANSIColor

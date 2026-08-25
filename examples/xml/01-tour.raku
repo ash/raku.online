@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # XML — What it is for
-# https://raku.online/ecosystem/xml/#what-it-is-for
+# https://raku.online/modules/xml/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install XML

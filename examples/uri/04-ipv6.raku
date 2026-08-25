@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — The parts of an authority
-# https://raku.online/ecosystem/uri/#the-parts-of-an-authority
+# https://raku.online/modules/uri/#the-parts-of-an-authority
 #
 # Install what it needs, then run it:
 #     rakupp install URI

@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # YAMLish — The Norway problem
-# https://raku.online/ecosystem/yamlish/#the-norway-problem
+# https://raku.online/modules/yamlish/#the-norway-problem
 #
 # Install what it needs, then run it:
 #     rakupp install YAMLish

@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # File::Temp — Naming it something recognisable
-# https://raku.online/ecosystem/file-temp/#naming-it-something-recognisable
+# https://raku.online/modules/file-temp/#naming-it-something-recognisable
 #
 # Install what it needs, then run it:
 #     rakupp install File::Temp

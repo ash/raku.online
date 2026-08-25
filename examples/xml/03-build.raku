@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # XML — Building a document
-# https://raku.online/ecosystem/xml/#building-a-document
+# https://raku.online/modules/xml/#building-a-document
 #
 # Install what it needs, then run it:
 #     rakupp install XML

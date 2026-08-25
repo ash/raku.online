@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Your first draw
-# https://raku.online/ecosystem/statistics-distributions/#your-first-draw
+# https://raku.online/modules/statistics-distributions/#your-first-draw
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

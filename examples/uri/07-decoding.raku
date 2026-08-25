@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — The query is not a Hash
-# https://raku.online/ecosystem/uri/#the-query-is-not-a-hash
+# https://raku.online/modules/uri/#the-query-is-not-a-hash
 #
 # Install what it needs, then run it:
 #     rakupp install URI

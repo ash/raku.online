@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Reading quantiles off data you already have
-# https://raku.online/ecosystem/statistics-distributions/#reading-quantiles-off-data-you-already-have
+# https://raku.online/modules/statistics-distributions/#reading-quantiles-off-data-you-already-have
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

@@ -26,7 +26,7 @@
     { href: '/grid/',   label: 'Grid',   hue: 'grid'   },
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
     { href: '/book/',   label: 'Book',   hue: 'book'   },
-    { href: '/ecosystem/', label: 'Modules', hue: 'eco' }
+    { href: '/modules/', label: 'Modules', hue: 'eco' }
   ];
 
   // Deliberately not stamped at build time. The version that matters is the one

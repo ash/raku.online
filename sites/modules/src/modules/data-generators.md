@@ -232,7 +232,7 @@ edge does not.
 
 **`srand` pins the sequence under Raku++, and does not under Rakudo** — the
 same divergence noted on the
-[Statistics::Distributions page](/ecosystem/statistics-distributions/): a seed
+[Statistics::Distributions page](/modules/statistics-distributions/): a seed
 makes a Raku++ run reproducible, and does not make a Rakudo run reproducible,
 so do not build a cross-engine test on one.
 

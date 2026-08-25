@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Terminal::ANSIColor — 256 colours
-# https://raku.online/ecosystem/terminal-ansicolor/#256-colours
+# https://raku.online/modules/terminal-ansicolor/#256-colours
 #
 # Install what it needs, then run it:
 #     rakupp install Terminal::ANSIColor

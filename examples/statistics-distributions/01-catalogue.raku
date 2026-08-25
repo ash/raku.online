@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — What it is for
-# https://raku.online/ecosystem/statistics-distributions/#what-it-is-for
+# https://raku.online/modules/statistics-distributions/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

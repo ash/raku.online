@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — What it is for
-# https://raku.online/ecosystem/json-fast/#what-it-is-for
+# https://raku.online/modules/json-fast/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

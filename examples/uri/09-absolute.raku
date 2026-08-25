@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — Absolute, relative, and one method to avoid
-# https://raku.online/ecosystem/uri/#absolute-relative-and-one-method-to-avoid
+# https://raku.online/modules/uri/#absolute-relative-and-one-method-to-avoid
 #
 # Install what it needs, then run it:
 #     rakupp install URI

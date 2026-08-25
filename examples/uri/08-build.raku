@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — Building one
-# https://raku.online/ecosystem/uri/#building-one
+# https://raku.online/modules/uri/#building-one
 #
 # Install what it needs, then run it:
 #     rakupp install URI

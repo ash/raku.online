@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Discrete draws
-# https://raku.online/ecosystem/statistics-distributions/#discrete-draws
+# https://raku.online/modules/statistics-distributions/#discrete-draws
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

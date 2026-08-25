@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Data::Generators — Numbers and date-times
-# https://raku.online/ecosystem/data-generators/#numbers-and-date-times
+# https://raku.online/modules/data-generators/#numbers-and-date-times
 #
 # Install what it needs, then run it:
 #     rakupp install Data::Generators

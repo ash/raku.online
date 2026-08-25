@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Where the two engines differ
-# https://raku.online/ecosystem/statistics-distributions/#where-the-two-engines-differ
+# https://raku.online/modules/statistics-distributions/#where-the-two-engines-differ
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

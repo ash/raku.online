@@ -1,6 +1,6 @@
 # MIME::Base64 — the examples
 
-Every example from [the MIME::Base64 page](https://raku.online/ecosystem/mime-base64/), one file each. They are
+Every example from [the MIME::Base64 page](https://raku.online/modules/mime-base64/), one file each. They are
 generated from that page, so they cannot drift from it — and each one is a
 complete program: no scaffolding to add, nothing to uncomment.
 

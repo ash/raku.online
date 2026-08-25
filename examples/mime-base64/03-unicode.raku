@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # MIME::Base64 — Text, and what "text" means
-# https://raku.online/ecosystem/mime-base64/#text-and-what-text-means
+# https://raku.online/modules/mime-base64/#text-and-what-text-means
 #
 # Install what it needs, then run it:
 #     rakupp install MIME::Base64

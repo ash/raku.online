@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # MIME::Base64 — `:oneline`, and why the default has newlines in it
-# https://raku.online/ecosystem/mime-base64/#oneline-and-why-the-default-has-newlines-in-it
+# https://raku.online/modules/mime-base64/#oneline-and-why-the-default-has-newlines-in-it
 #
 # Install what it needs, then run it:
 #     rakupp install MIME::Base64

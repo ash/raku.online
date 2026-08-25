@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — `:immutable` — a result nobody can edit under you
-# https://raku.online/ecosystem/json-fast/#immutable-a-result-nobody-can-edit-under-you
+# https://raku.online/modules/json-fast/#immutable-a-result-nobody-can-edit-under-you
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

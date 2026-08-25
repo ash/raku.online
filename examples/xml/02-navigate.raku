@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # XML — Finding things
-# https://raku.online/ecosystem/xml/#finding-things
+# https://raku.online/modules/xml/#finding-things
 #
 # Install what it needs, then run it:
 #     rakupp install XML

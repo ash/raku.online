@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # MIME::Base64 — What it is for
-# https://raku.online/ecosystem/mime-base64/#what-it-is-for
+# https://raku.online/modules/mime-base64/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install MIME::Base64

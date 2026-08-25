@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — Uniform, and the range it draws from
-# https://raku.online/ecosystem/statistics-distributions/#uniform-and-the-range-it-draws-from
+# https://raku.online/modules/statistics-distributions/#uniform-and-the-range-it-draws-from
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

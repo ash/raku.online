@@ -1,4 +1,4 @@
-# build.raku — the ecosystem handbook at raku.online/ecosystem.
+# build.raku — the ecosystem handbook at raku.online/modules.
 #
 #   rakupp build.raku [--clean]
 #   rakupp build.raku --verify [--oracle=raku]   run every example, check its output

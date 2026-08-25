@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — When the text is wrong
-# https://raku.online/ecosystem/json-fast/#when-the-text-is-wrong
+# https://raku.online/modules/json-fast/#when-the-text-is-wrong
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

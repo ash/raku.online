@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YAMLish — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=7562fac4"></script>
+<link rel="stylesheet" href="/theme/base.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/shell.css?v=7562fac4">
+<link rel="stylesheet" href="/theme/eco.css?v=7562fac4">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>YAMLish</h1><span class="status st-full">Works</span></div><p class="summary">Read and write YAML — configuration files as people actually write them, with the type guessing that implies, and one famous trap.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.3</code> <span class="fact-sub">zef:leont</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>MIME::Base64</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-24 <span class="fact-sub">against Raku++ 3.7.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:leont/YAMLish">raku.land</a> · <a href="https://github.com/Leont/yamlish">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install YAMLish</code></pre></div><p class="fact-sub"><code>zef install YAMLish</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>YAML is the format configuration ends up in when a human has to edit it: no braces, no quotes unless you need them, indentation carrying the structure. <code>load-yaml</code> turns a document into ordinary Raku data:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="k">my</span> <span class="nv">$yaml</span> = <span class="s">q:to/YAML/</span>;
+    <span class="n">name</span>: <span class="nb">raku</span>
+    <span class="n">version</span>: <span class="mi">6</span>.<span class="n">d</span>
+    <span class="n">tags</span>:
+      - <span class="n">fast</span>
+      - <span class="n">fun</span>
+    <span class="n">limits</span>:
+      <span class="n">depth</span>: <span class="mi">3</span>
+      <span class="n">strict</span>: <span class="n">true</span>
+    <span class="n">YAML</span>
+
+<span class="k">my</span> <span class="nv">%d</span> = <span class="n">load-yaml</span>(<span class="nv">$yaml</span>);
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;name&gt;</span>;
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;tags&gt;</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;limits&gt;</span><span class="s">&lt;depth&gt;</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">%d</span><span class="s">&lt;limits&gt;</span><span class="s">&lt;depth&gt;</span>;
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;limits&gt;</span><span class="s">&lt;strict&gt;</span>.^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>raku
+fast, fun
+Int 3
+Bool</code></pre></div>
+<p>Mappings become <code>Hash</code>, sequences <code>Array</code>, and scalars are <strong>typed by their shape</strong>, not left as strings: <code>3</code> is an <code>Int</code>, <code>true</code> is a <code>Bool</code>. That is the convenience of YAML and, two sections down, its trap.</p>
+<h2 id="writing-it-back">Writing it back <a class="anchor" href="#writing-it-back" aria-label="link">#</a></h2>
+<p><code>save-yaml</code> goes the other way. It quotes every string and every key, which is verbose but never ambiguous:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/02-save.raku" title="This example as a file: 02-save.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="nb">print</span> <span class="n">save-yaml</span>({ <span class="n">name</span> =&gt; <span class="s">'raku'</span>, <span class="n">tags</span> =&gt; <span class="s">&lt;fast fun&gt;</span>, <span class="n">depth</span> =&gt; <span class="mi">3</span> });</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>---
+"depth": 3
+"name": "raku"
+"tags": 
+  - "fast"
+  - "fun"
+...</code></pre></div>
+<p>The <code>---</code> and <code>...</code> are the document start and end markers, and keys come out sorted. Round-tripping a file through <code>load-yaml</code> and <code>save-yaml</code> therefore does not preserve its layout — comments, key order and quoting style are all lost. YAMLish is for reading configuration and writing data, not for editing somebody's file in place.</p>
+<h2 id="more-than-one-document">More than one document <a class="anchor" href="#more-than-one-document" aria-label="link">#</a></h2>
+<p>A YAML stream may hold several documents separated by <code>---</code>. <code>load-yamls</code> returns all of them:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/03-stream.raku" title="This example as a file: 03-stream.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="k">my</span> <span class="nv">$stream</span> = <span class="s">q:to/YAML/</span>;
+    ---
+    <span class="n">doc</span>: <span class="mi">1</span>
+    ---
+    <span class="n">doc</span>: <span class="mi">2</span>
+    <span class="n">YAML</span>
+
+<span class="k">my</span> <span class="nv">@docs</span> = <span class="n">load-yamls</span>(<span class="nv">$stream</span>);
+<span class="nb">say</span> <span class="nv">@docs</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="nv">@docs</span>.<span class="nb">map</span>(*.<span class="s">&lt;doc&gt;</span>).<span class="nb">join</span>(<span class="s">','</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2
+1,2</code></pre></div>
+<p><code>save-yamls</code> is its counterpart for writing several out.</p>
+<h2 id="what-the-scalars-become">What the scalars become <a class="anchor" href="#what-the-scalars-become" aria-label="link">#</a></h2>
+<p>Worth reading once, because every one of these lines has surprised somebody:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/04-types.raku" title="This example as a file: 04-types.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="k">my</span> <span class="nv">%d</span> = <span class="n">load-yaml</span>(<span class="s">q:to/YAML/</span>);
+    <span class="n">count</span>: <span class="mi">42</span>
+    <span class="n">ratio</span>: <span class="mf">0.5</span>
+    <span class="k">when</span>: <span class="mi">2026</span>-<span class="mi">08</span>-<span class="mi">22</span>
+    <span class="n">nothing</span>: ~
+    <span class="n">text</span>: <span class="s">&quot;42&quot;</span>
+    <span class="n">YAML</span>
+
+<span class="k">for</span> &lt;<span class="n">count</span> <span class="n">ratio</span> <span class="k">when</span> <span class="n">nothing</span> <span class="n">text</span>&gt; -&gt; <span class="nv">$k</span> {
+    <span class="nb">say</span> <span class="s">&quot;$k: %d{$k}.^name() = %d{$k}.raku()&quot;</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>count: Int = 42
+ratio: Rat = 0.5
+when: Str = "2026-08-22"
+nothing: Any = Any
+text: Str = "42"</code></pre></div>
+<p><code>0.5</code> is a <code>Rat</code>, not a <code>Num</code> — exact, like the rest of Raku's decimals. A date stays a <strong>string</strong>: YAML's timestamp type is not resolved here, so parse it yourself with <code>Date.new</code> if you want a <code>Date</code>. <code>~</code> is YAML's null and arrives as an undefined <code>Any</code>. And <code>"42"</code> in quotes stays a string, which is how you keep a version number or a zip code from turning into a number.</p>
+<h2 id="the-norway-problem">The Norway problem <a class="anchor" href="#the-norway-problem" aria-label="link">#</a></h2>
+<p>This is the one to know. YAML 1.1 treats <code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>true</code> and <code>false</code> as booleans — <strong>including when they are keys</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/05-norway.raku" title="This example as a file: 05-norway.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="k">my</span> <span class="nv">%d</span> = <span class="n">load-yaml</span>(<span class="s">&quot;yes: true\nno: false\nname: raku\n&quot;</span>);
+<span class="nb">say</span> <span class="nv">%d</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="nv">%d</span>{<span class="n">True</span>}.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"False" "True" "name"
+Bool::True</code></pre></div>
+<p>The keys <code>yes</code> and <code>no</code> did not survive as <code>yes</code> and <code>no</code>; they became <code>True</code> and <code>False</code>. The same rule is why a country list containing Norway — whose ISO code is <code>NO</code> — loses it unless it is quoted. Quote any key or value that is one of those six words, and quote anything that only <em>looks</em> like a number.</p>
+<h2 id="what-it-does-not-do">What it does not do <a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<p>Merge keys are not resolved. <code>&lt;&lt;: *base</code> is accepted as syntax but does not merge the anchored mapping in — the merged-in keys are simply absent, on both engines:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/yamlish/06-anchors.raku" title="This example as a file: 06-anchors.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">YAMLish</span>;
+
+<span class="k">my</span> <span class="nv">%d</span> = <span class="n">load-yaml</span>(<span class="s">q:to/YAML/</span>);
+    <span class="n">defaults</span>: <span class="nv">&amp;base</span>
+      <span class="n">retries</span>: <span class="mi">3</span>
+      <span class="n">timeout</span>: <span class="mi">30</span>
+    <span class="n">staging</span>:
+      &lt;&lt;: *<span class="n">base</span>
+      <span class="n">timeout</span>: <span class="mi">5</span>
+    <span class="n">YAML</span>
+
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;staging&gt;</span><span class="s">&lt;retries&gt;</span>;
+<span class="nb">say</span> <span class="nv">%d</span><span class="s">&lt;staging&gt;</span><span class="s">&lt;timeout&gt;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(Any)
+5</code></pre></div>
+<p><code>retries</code> came from the anchor and is gone; <code>timeout</code>, written out in full, is there. If your configuration relies on merge keys, flatten it before handing it to YAMLish, or merge the hashes yourself after loading — <a href="/modules/hash-merge/"><code>Hash::Merge</code></a> does exactly that.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. Every example prints the same bytes under Raku++ and under Rakudo, twice on each.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install YAMLish</code>, which pulls <code>MIME::Base64</code> with it.</li><li><strong>Test</strong> — the distribution's own suite: 5 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>YAMLish was one of the four distributions that already matched Rakudo when the ecosystem campaign took its first measurement, so it did not need a rescue. It earned its keep a different way: as the thing that <strong>caught</strong> two engine bugs found while other modules were being fixed.</p>
+<p>The first was a dispatch rule. YAMLish writes <code>multi to-yaml(Str:D $d where /^ &lt;!Schema::Core::element&gt; …/)</code>, and when an unrelated fix made that candidate selectable for the first time, scalars started coming out unquoted. The cause was not the <code>where</code> clause: <strong>a routine that does not declare a named parameter cannot take one</strong>, and Raku++ was accepting undeclared nameds silently, so the bare-scalar candidate was winning calls that thread <code>:sorted</code> through to its sibling. Dispatch now rejects an undeclared named — except where Raku says otherwise: <code>*%rest</code>, a <code>|c</code> capture, and methods, which carry an implicit <code>*%_</code>.</p>
+<p>The second was in the regex engine. A fix to <code>&lt;?[…]&gt;</code> — the class-assertion shorthand — had been applied to the keyword form as well, so <code>&lt;?before [ … ]&gt;</code> read its bracket as a character class instead of a group, and YAMLish's block-scalar rule stopped parsing. The shorthand applies only to the keyword-less form; that is now what the engine does.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.7.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=7562fac4" defer></script>
+<script src="/theme/copy.js?v=7562fac4" defer></script>
+</body>
+</html>

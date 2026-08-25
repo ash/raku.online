@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — The path, and its segments
-# https://raku.online/ecosystem/uri/#the-path-and-its-segments
+# https://raku.online/modules/uri/#the-path-and-its-segments
 #
 # Install what it needs, then run it:
 #     rakupp install URI

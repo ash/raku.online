@@ -1,6 +1,6 @@
 # JSON::Fast — the examples
 
-Every example from [the JSON::Fast page](https://raku.online/ecosystem/json-fast/), one file each. They are
+Every example from [the JSON::Fast page](https://raku.online/modules/json-fast/), one file each. They are
 generated from that page, so they cannot drift from it — and each one is a
 complete program: no scaffolding to add, nothing to uncomment.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # URI — Where the two engines differ
-# https://raku.online/ecosystem/uri/#where-the-two-engines-differ
+# https://raku.online/modules/uri/#where-the-two-engines-differ
 #
 # Install what it needs, then run it:
 #     rakupp install URI

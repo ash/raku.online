@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Data::Generators — Strings with a shape
-# https://raku.online/ecosystem/data-generators/#strings-with-a-shape
+# https://raku.online/modules/data-generators/#strings-with-a-shape
 #
 # Install what it needs, then run it:
 #     rakupp install Data::Generators

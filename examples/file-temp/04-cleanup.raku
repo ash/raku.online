@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # File::Temp — Who removes what, and when
-# https://raku.online/ecosystem/file-temp/#who-removes-what-and-when
+# https://raku.online/modules/file-temp/#who-removes-what-and-when
 #
 # Install what it needs, then run it:
 #     rakupp install File::Temp

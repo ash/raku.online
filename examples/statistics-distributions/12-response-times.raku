@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Statistics::Distributions — A worked example: a day of response times
-# https://raku.online/ecosystem/statistics-distributions/#a-worked-example-a-day-of-response-times
+# https://raku.online/modules/statistics-distributions/#a-worked-example-a-day-of-response-times
 #
 # Install what it needs, then run it:
 #     rakupp install Statistics::Distributions

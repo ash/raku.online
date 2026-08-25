@@ -1,7 +1,7 @@
 # Site configuration for the ecosystem handbook generator.
 # This file is EVAL'd by build.raku and must evaluate to a Hash.
 {
-    base    => '/ecosystem',               # where this site is mounted on raku.online
+    base    => '/modules',               # where this site is mounted on raku.online
     title   => 'The Raku Ecosystem, Working',
     tagline => 'One page per module from raku.land — installed, tested and run ' ~
                'under Raku++, with examples you can copy straight into a file.',

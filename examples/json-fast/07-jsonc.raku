@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — JSON with comments
-# https://raku.online/ecosystem/json-fast/#json-with-comments
+# https://raku.online/modules/json-fast/#json-with-comments
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

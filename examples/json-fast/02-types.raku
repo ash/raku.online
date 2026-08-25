@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # JSON::Fast — Reading: the types you get back
-# https://raku.online/ecosystem/json-fast/#reading-the-types-you-get-back
+# https://raku.online/modules/json-fast/#reading-the-types-you-get-back
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Fast

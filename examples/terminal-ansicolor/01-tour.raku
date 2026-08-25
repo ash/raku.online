@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Terminal::ANSIColor — What it is for
-# https://raku.online/ecosystem/terminal-ansicolor/#what-it-is-for
+# https://raku.online/modules/terminal-ansicolor/#what-it-is-for
 #
 # Install what it needs, then run it:
 #     rakupp install Terminal::ANSIColor

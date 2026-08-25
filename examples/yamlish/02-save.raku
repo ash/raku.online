@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # YAMLish — Writing it back
-# https://raku.online/ecosystem/yamlish/#writing-it-back
+# https://raku.online/modules/yamlish/#writing-it-back
 #
 # Install what it needs, then run it:
 #     rakupp install YAMLish

@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # File::Temp — Directories
-# https://raku.online/ecosystem/file-temp/#directories
+# https://raku.online/modules/file-temp/#directories
 #
 # Install what it needs, then run it:
 #     rakupp install File::Temp

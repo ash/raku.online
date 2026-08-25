@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
 # Data::Generators — Whole tabular datasets
-# https://raku.online/ecosystem/data-generators/#whole-tabular-datasets
+# https://raku.online/modules/data-generators/#whole-tabular-datasets
 #
 # Install what it needs, then run it:
 #     rakupp install Data::Generators
