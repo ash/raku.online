@@ -119,6 +119,7 @@ check_shell() {
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/book/index.html" \
                 "$WWW/ecosystem/index.html" "$WWW/grid/index.html" \
+                "$WWW/in-use/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
@@ -139,7 +140,7 @@ check_frozen() {
 check_no_stray_absolutes() {
     stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base

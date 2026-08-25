@@ -15,8 +15,11 @@
 
   var SECTIONS = [
     { href: '/play/',   label: 'Play',   hue: 'play'   },
-    { href: '/examples/', label: 'Examples', hue: 'examples' },
-    { href: '/showcase/', label: 'Showcase', hue: 'showcase' },
+    // One tab for the three rooms that show the language in use: the example
+    // gallery, the showcase and /live. It lands on the hub and stays lit in
+    // all of them, so the group reads as one place with three shelves.
+    { href: '/in-use/', label: 'In use', hue: 'inuse',
+      match: ['/in-use/', '/examples/', '/showcase/', '/live/'] },
     { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
@@ -57,7 +60,10 @@
     var nav = el('div', { class: 'shell-nav' });
     SECTIONS.forEach(function (s) {
       var a = el('a', { class: 'shell-tab', href: s.href, 'data-hue': s.hue }, s.label);
-      if (path === s.href || path.indexOf(s.href) === 0) a.setAttribute('aria-current', 'page');
+      var here = (s.match || [s.href]).some(function (p) {
+        return path === p || path.indexOf(p) === 0;
+      });
+      if (here) a.setAttribute('aria-current', 'page');
       nav.appendChild(a);
     });
     bar.appendChild(nav);

@@ -354,7 +354,7 @@ sub live-index(--> Str) {
     my $md = slurp('src/live/README.md');
     @CTX = 'live',;
     my $title = title-of($md) || %SITE<live-title>;
-    my $body = '<p class="crumb"><a href="' ~ $BASE ~ '/">← The showcase</a></p>'
+    my $body = '<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>'
         ~ "\n<h1>" ~ inline($title) ~ '</h1>'
         ~ "\n" ~ render($md);
     page(%SITE<live-title>, $body, FOOT-LIVE)
@@ -363,6 +363,7 @@ sub live-index(--> Str) {
 sub index-page(@projects --> Str) {
     @CTX = 'showcase',;
     my @body;
+    @body.push('<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>');
     @body.push('<h1>' ~ esc(%SITE<title>) ~ '</h1>');
     @body.push('<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>');
     @body.push('<p>Every one of them runs under the interpreter and compiles to a

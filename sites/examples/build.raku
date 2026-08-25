@@ -21,6 +21,7 @@
 
 my %SITE;
 my $BASE = '';
+my $RAKUPP = 'rakupp';   # also the highlighter; MAIN points it at --rakupp
 
 # ---- inline formatting ----------------------------------------------------
 # The subset of Markdown the examples README actually uses: code spans, links,
@@ -160,6 +161,27 @@ sub prose-html(@lines --> Str) {
     @out.join("\n")
 }
 
+# The engine's own highlighter, for the three programs that are shown static
+# rather than as an editor (the editor colours itself). `rakupp --highlight
+# --html` emits Pygments class names that base.css already colours — same sub
+# as the ecosystem handbook's. A highlighter that fails for any reason falls
+# back to escaped plain text: a page with grey code is a small loss, a page
+# with no code is not a page.
+sub highlight(Str $code --> Str) {
+    my $out = '';
+    {
+        my $p = run($RAKUPP, '--highlight', '--html', :in, :out, :err);
+        $p.in.print($code);
+        $p.in.close;
+        $out = $p.out.slurp(:close);
+        $p.err.slurp(:close);
+        CATCH { default { return esc($code) } }
+    }
+    my $m = $out ~~ / '<pre>' (.*) '</pre>' /;
+    return esc($code) unless $m;
+    (~$0).subst(/ ^ '<span></span>' /, '').subst(/ \n+ $ /, '')
+}
+
 # ---- capture ---------------------------------------------------------------
 # Run every program for real and store what it printed. Committed, so the
 # ordinary build never executes anything — and the site never shows output
@@ -290,7 +312,7 @@ sub example-page(%e, $prev, $next --> Str) {
         @body.push('<p class="native-note">This one needs ' ~ $why
             ~ ' — so there is no Run button here. <a href="/install/">Install Raku++</a> and run it from a checkout:</p>');
         @body.push('<pre class="native-code"><code>rakupp examples/' ~ $slug ~ '.raku</code></pre>');
-        @body.push('<pre class="native-code src-listing"><code>' ~ esc($code) ~ '</code></pre>');
+        @body.push('<pre class="native-code src-listing"><code>' ~ highlight($code) ~ '</code></pre>');
         @body.push('<p class="ex-links"><a href="' ~ $gh ~ '">Source on GitHub ↗</a></p>');
     }
     else {
@@ -318,6 +340,7 @@ sub example-page(%e, $prev, $next --> Str) {
 
 sub index-page(@examples --> Str) {
     my @body;
+    @body.push('<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>');
     @body.push('<h1>' ~ esc(%SITE<title>) ~ '</h1>');
     @body.push('<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>');
     @body.push('<p>Each program is complete and self-contained — no arguments, no
@@ -350,6 +373,7 @@ sub index-page(@examples --> Str) {
 
 sub MAIN(Bool :$clean = False, Bool :$capture = False,
          Str :$rakupp = 'rakupp', Str :$oracle = '') {
+    $RAKUPP = $rakupp;
     %SITE = EVAL slurp('src/site.raku');
     $BASE = %SITE<base> // '';
 

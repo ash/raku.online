@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>echo-server.raku — Raku by example</title>
 <script>window.__SITE_BASE='/examples';</script>
-<script src="/theme/boot.js?v=c7b5b9c7"></script>
-<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
-<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
-<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+<script src="/theme/boot.js?v=5a208410"></script>
+<link rel="stylesheet" href="/theme/base.css?v=5a208410">
+<link rel="stylesheet" href="/theme/shell.css?v=5a208410">
+<link rel="stylesheet" href="/theme/examples.css?v=5a208410">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -28,53 +28,53 @@
 <h2>The program</h2>
 <p class="native-note">This one needs TCP sockets, which the browser sandbox does not have — so there is no Run button here. <a href="/install/">Install Raku++</a> and run it from a checkout:</p>
 <pre class="native-code"><code>rakupp examples/echo-server.raku</code></pre>
-<pre class="native-code src-listing"><code>#!/usr/bin/env raku
-# A TCP echo server and its client, in one self-contained program.
-#
-# Everything runs over the loopback interface (127.0.0.1), so no internet
-# connection is needed and the output is deterministic. The server runs on
-# its own thread; the main thread is the client. This is real networking —
-# IO::Socket::INET is the same socket API you would point at a remote host.
+<pre class="native-code src-listing"><code><span class="c1">#!/usr/bin/env raku</span>
+<span class="c1"># A TCP echo server and its client, in one self-contained program.</span>
+<span class="c1">#</span>
+<span class="c1"># Everything runs over the loopback interface (127.0.0.1), so no internet</span>
+<span class="c1"># connection is needed and the output is deterministic. The server runs on</span>
+<span class="c1"># its own thread; the main thread is the client. This is real networking —</span>
+<span class="c1"># IO::Socket::INET is the same socket API you would point at a remote host.</span>
 
-constant HOST = '127.0.0.1';
-constant PORT = 8099;
+<span class="k">constant</span> <span class="n">HOST</span> = <span class="s">'127.0.0.1'</span>;
+<span class="k">constant</span> <span class="n">PORT</span> = <span class="mi">8099</span>;
 
-# Create the listening socket up front. `:listen` binds the port here, in
-# the main thread, so the client below can connect without any race — only
-# `.accept` (waiting for a connection) is deferred to the server thread.
-my $listener = IO::Socket::INET.new(:localhost(HOST), :localport(PORT), :listen);
+<span class="c1"># Create the listening socket up front. `:listen` binds the port here, in</span>
+<span class="c1"># the main thread, so the client below can connect without any race — only</span>
+<span class="c1"># `.accept` (waiting for a connection) is deferred to the server thread.</span>
+<span class="k">my</span> <span class="nv">$listener</span> = <span class="n">IO::Socket::INET</span>.<span class="nb">new</span>(:<span class="n">localhost</span>(<span class="n">HOST</span>), :<span class="n">localport</span>(<span class="n">PORT</span>), :<span class="n">listen</span>);
 
-my $server = start {
-    loop {
-        my $conn = $listener.accept;
-        my $request = $conn.recv;
-        last if $request eq 'BYE';
-        $conn.print($request.uc);          # shout the message back
-        $conn.close;
+<span class="k">my</span> <span class="nv">$server</span> = <span class="k">start</span> {
+    <span class="k">loop</span> {
+        <span class="k">my</span> <span class="nv">$conn</span> = <span class="nv">$listener</span>.<span class="n">accept</span>;
+        <span class="k">my</span> <span class="nv">$request</span> = <span class="nv">$conn</span>.<span class="n">recv</span>;
+        <span class="k">last</span> <span class="k">if</span> <span class="nv">$request</span> <span class="n">eq</span> <span class="s">'BYE'</span>;
+        <span class="nv">$conn</span>.<span class="nb">print</span>(<span class="nv">$request</span>.<span class="nb">uc</span>);          <span class="c1"># shout the message back</span>
+        <span class="nv">$conn</span>.<span class="nb">close</span>;
     }
-    $listener.close;
+    <span class="nv">$listener</span>.<span class="nb">close</span>;
 }
 
-# The client: send a few messages, print what the server echoes back.
-sub ask($message) {
-    my $sock = IO::Socket::INET.new(:host(HOST), :port(PORT));
-    $sock.print($message);
-    my $reply = $sock.recv;
-    $sock.close;
-    $reply;
+<span class="c1"># The client: send a few messages, print what the server echoes back.</span>
+<span class="k">sub</span> <span class="n">ask</span>(<span class="nv">$message</span>) {
+    <span class="k">my</span> <span class="nv">$sock</span> = <span class="n">IO::Socket::INET</span>.<span class="nb">new</span>(:<span class="n">host</span>(<span class="n">HOST</span>), :<span class="n">port</span>(<span class="n">PORT</span>));
+    <span class="nv">$sock</span>.<span class="nb">print</span>(<span class="nv">$message</span>);
+    <span class="k">my</span> <span class="nv">$reply</span> = <span class="nv">$sock</span>.<span class="n">recv</span>;
+    <span class="nv">$sock</span>.<span class="nb">close</span>;
+    <span class="nv">$reply</span>;
 }
 
-say 'Client -&gt; server -&gt; client, over TCP on 127.0.0.1:';
-for 'hello', 'raku sockets', 'goodbye' -&gt; $msg {
-    say sprintf('  sent %-16s got back %s', "'$msg'", ask($msg));
+<span class="nb">say</span> <span class="s">'Client -&gt; server -&gt; client, over TCP on 127.0.0.1:'</span>;
+<span class="k">for</span> <span class="s">'hello'</span>, <span class="s">'raku sockets'</span>, <span class="s">'goodbye'</span> -&gt; <span class="nv">$msg</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  sent %-16s got back %s'</span>, <span class="s">&quot;'$msg'&quot;</span>, <span class="n">ask</span>(<span class="nv">$msg</span>));
 }
 
-# Tell the server to shut down, then wait for its thread to finish.
-my $bye = IO::Socket::INET.new(:host(HOST), :port(PORT));
-$bye.print('BYE');
-$bye.close;
-await $server;
-say 'Server stopped cleanly.';</code></pre>
+<span class="c1"># Tell the server to shut down, then wait for its thread to finish.</span>
+<span class="k">my</span> <span class="nv">$bye</span> = <span class="n">IO::Socket::INET</span>.<span class="nb">new</span>(:<span class="n">host</span>(<span class="n">HOST</span>), :<span class="n">port</span>(<span class="n">PORT</span>));
+<span class="nv">$bye</span>.<span class="nb">print</span>(<span class="s">'BYE'</span>);
+<span class="nv">$bye</span>.<span class="nb">close</span>;
+<span class="nb">await</span> <span class="nv">$server</span>;
+<span class="nb">say</span> <span class="s">'Server stopped cleanly.'</span>;</code></pre>
 <p class="ex-links"><a href="https://github.com/ash/rakupp/blob/main/examples/echo-server.raku">Source on GitHub ↗</a></p>
 <div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Client -&gt; server -&gt; client, over TCP on 127.0.0.1:
   sent 'hello'          got back HELLO
@@ -89,6 +89,6 @@ Server stopped cleanly.</code></pre></div>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/theme/shell.js?v=5a208410" defer></script>
 </body>
 </html>

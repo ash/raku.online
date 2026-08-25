@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sleep-sort.raku — Raku by example</title>
 <script>window.__SITE_BASE='/examples';</script>
-<script src="/theme/boot.js?v=c7b5b9c7"></script>
-<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
-<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
-<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+<script src="/theme/boot.js?v=5a208410"></script>
+<link rel="stylesheet" href="/theme/base.css?v=5a208410">
+<link rel="stylesheet" href="/theme/shell.css?v=5a208410">
+<link rel="stylesheet" href="/theme/examples.css?v=5a208410">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -28,50 +28,50 @@
 <h2>The program</h2>
 <p class="native-note">This one needs real threads and timers, which the single-threaded WebAssembly build does not have — so there is no Run button here. <a href="/install/">Install Raku++</a> and run it from a checkout:</p>
 <pre class="native-code"><code>rakupp examples/sleep-sort.raku</code></pre>
-<pre class="native-code src-listing"><code>#!/usr/bin/env raku
-# Sleep sort: the famous joke sorting algorithm, which is really a
-# demonstration of concurrency wearing a funny hat.
-#
-# For each number we launch a thread that sleeps for a time proportional to
-# the number's value and then emits it. Small numbers wake up first, large
-# numbers last, so the values arrive already in order — the scheduler does
-# the "comparing" for us. It is O(max value) in wall-clock time and no use
-# for real sorting, but it is a tidy little tour of `start`, a `Channel`,
-# and `await`.
+<pre class="native-code src-listing"><code><span class="c1">#!/usr/bin/env raku</span>
+<span class="c1"># Sleep sort: the famous joke sorting algorithm, which is really a</span>
+<span class="c1"># demonstration of concurrency wearing a funny hat.</span>
+<span class="c1">#</span>
+<span class="c1"># For each number we launch a thread that sleeps for a time proportional to</span>
+<span class="c1"># the number's value and then emits it. Small numbers wake up first, large</span>
+<span class="c1"># numbers last, so the values arrive already in order — the scheduler does</span>
+<span class="c1"># the &quot;comparing&quot; for us. It is O(max value) in wall-clock time and no use</span>
+<span class="c1"># for real sorting, but it is a tidy little tour of `start`, a `Channel`,</span>
+<span class="c1"># and `await`.</span>
 
-my @input = 5, 1, 8, 2, 9, 3, 7, 4, 6;
+<span class="k">my</span> <span class="nv">@input</span> = <span class="mi">5</span>, <span class="mi">1</span>, <span class="mi">8</span>, <span class="mi">2</span>, <span class="mi">9</span>, <span class="mi">3</span>, <span class="mi">7</span>, <span class="mi">4</span>, <span class="mi">6</span>;
 
-# One tick per unit of value. Keep it comfortably larger than scheduler
-# jitter so distinct integers can't overtake each other — 20 ms proved
-# too tight on loaded CI runners.
-constant TICK = 0.1;
+<span class="c1"># One tick per unit of value. Keep it comfortably larger than scheduler</span>
+<span class="c1"># jitter so distinct integers can't overtake each other — 20 ms proved</span>
+<span class="c1"># too tight on loaded CI runners.</span>
+<span class="k">constant</span> <span class="n">TICK</span> = <span class="mf">0.1</span>;
 
-my $out = Channel.new;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
 
-# The starting gun: every sleeper blocks on this Promise until all of them
-# are launched, THEN they start their sleeps together. Without it the sort
-# also races thread LAUNCH time — on a busy two-core CI runner spawning the
-# ninth thread can lag the first by more than a whole tick, which reordered
-# the output no matter how wide the tick was.
-my $go = Promise.new;
+<span class="c1"># The starting gun: every sleeper blocks on this Promise until all of them</span>
+<span class="c1"># are launched, THEN they start their sleeps together. Without it the sort</span>
+<span class="c1"># also races thread LAUNCH time — on a busy two-core CI runner spawning the</span>
+<span class="c1"># ninth thread can lag the first by more than a whole tick, which reordered</span>
+<span class="c1"># the output no matter how wide the tick was.</span>
+<span class="k">my</span> <span class="nv">$go</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
 
-# `.eager` forces every `start` to launch now, rather than lazily.
-my @sleepers = @input.map(-&gt; $n {
-    start {
-        await $go;
-        sleep $n * TICK;
-        $out.send($n);
+<span class="c1"># `.eager` forces every `start` to launch now, rather than lazily.</span>
+<span class="k">my</span> <span class="nv">@sleepers</span> = <span class="nv">@input</span>.<span class="nb">map</span>(-&gt; <span class="nv">$n</span> {
+    <span class="k">start</span> {
+        <span class="nb">await</span> <span class="nv">$go</span>;
+        <span class="nb">sleep</span> <span class="nv">$n</span> * <span class="n">TICK</span>;
+        <span class="nv">$out</span>.<span class="n">send</span>(<span class="nv">$n</span>);
     }
-}).eager;
-$go.keep;
+}).<span class="n">eager</span>;
+<span class="nv">$go</span>.<span class="n">keep</span>;
 
-# Once every sleeper has emitted its value, close the Channel; draining it
-# then yields the values in the order they woke up — i.e. sorted.
-await @sleepers;
-$out.close;
+<span class="c1"># Once every sleeper has emitted its value, close the Channel; draining it</span>
+<span class="c1"># then yields the values in the order they woke up — i.e. sorted.</span>
+<span class="nb">await</span> <span class="nv">@sleepers</span>;
+<span class="nv">$out</span>.<span class="nb">close</span>;
 
-say "in:  @input[]";
-say "out: {$out.list}";</code></pre>
+<span class="nb">say</span> <span class="s">&quot;in:  @input[]&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;out: {$out.list}&quot;</span>;</code></pre>
 <p class="ex-links"><a href="https://github.com/ash/rakupp/blob/main/examples/sleep-sort.raku">Source on GitHub ↗</a></p>
 <div class="expected"><span class="expected-label">Output</span><pre class="output"><code>in:  5 1 8 2 9 3 7 4 6
 out: 1 2 3 4 5 6 7 8 9</code></pre></div>
@@ -83,6 +83,6 @@ out: 1 2 3 4 5 6 7 8 9</code></pre></div>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/theme/shell.js?v=5a208410" defer></script>
 </body>
 </html>
