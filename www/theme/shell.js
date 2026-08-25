@@ -18,6 +18,7 @@
     { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
+    { href: '/grid/',   label: 'Grid',   hue: 'grid'   },
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
     { href: '/book/',   label: 'Book',   hue: 'book'   },
     { href: '/ecosystem/', label: 'Modules', hue: 'eco' }

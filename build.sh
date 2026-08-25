@@ -64,6 +64,21 @@ build_spec() {
     cp -R "$ROOT/sites/spec/out" "$WWW/spec"
 }
 
+# The grid is built from the Rakugrid checkout, which only exists on the machine
+# that refreshes the data. Everywhere else the committed www/grid snapshot is the
+# site, and skipping the rebuild is correct, not a failure.
+build_grid() {
+    GRID_SRC="${RAKUGRID:-/Users/ash/rakugrid}"
+    if [ ! -d "$GRID_SRC" ]; then
+        echo "grid: no Rakugrid checkout at $GRID_SRC — keeping the committed www/grid"
+        return 0
+    fi
+    echo "grid -> www/grid"
+    ( cd "$ROOT/sites/grid" && "$RAKUPP" build.raku --clean --grid="$GRID_SRC" )
+    rm -rf "$WWW/grid"
+    cp -R "$ROOT/sites/grid/out" "$WWW/grid"
+}
+
 # Every /theme/ asset any page asks for must actually exist. The generators
 # reference assets by name, so adding a <script> without adding the file ships
 # a 404 that no page-existence check would catch.
@@ -83,7 +98,7 @@ check_shell() {
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/book/index.html" \
-                "$WWW/ecosystem/index.html"; do
+                "$WWW/ecosystem/index.html" "$WWW/grid/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
     done
@@ -101,9 +116,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" "$WWW/grid" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo)$' || true)
+            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -123,11 +138,12 @@ case "${1:-all}" in
     theme)     build_theme ;;
     tour)      build_tour ;;
     spec)      build_spec ;;
+    grid)      build_grid ;;
     faq)       build_faq ;;
     book)      build_book ;;
     ecosystem) build_ecosystem ;;
-    all)   build_theme; build_tour; build_spec; build_faq; build_book; build_ecosystem ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|faq|book|ecosystem]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_ecosystem ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|ecosystem]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
@@ -221,5 +237,20 @@ check_json_urls() {
     echo "check: every page is valid UTF-8"
 }
 check_json_urls
+
+# The grid's data files carry whatever the engines under test ever printed; the
+# generator folds invalid bytes and raw control characters into escapes, and
+# this catches a regression in that folding before it ships.
+check_grid_data() {
+    [ -d "$WWW/grid/data" ] || return 0
+    bad=$(find "$WWW/grid/data" -name '*.json' -print0 | xargs -0 -I{} sh -c \
+          'iconv -f UTF-8 -t UTF-8 "$1" >/dev/null 2>&1 || echo "$1"' _ {} || true)
+    [ -z "$bad" ] || { echo "grid data that is not valid UTF-8: $bad" >&2; exit 1; }
+    ctrl=$(printf '[\001-\010\013\014\016-\037]')
+    bad=$(LC_ALL=C grep -rlE "$ctrl" "$WWW/grid/data" 2>/dev/null || true)
+    [ -z "$bad" ] || { echo "grid data with raw control bytes: $bad" >&2; exit 1; }
+    echo "check: grid data is valid UTF-8 with no raw control bytes"
+}
+check_grid_data
 
 echo "www/ assembled."
