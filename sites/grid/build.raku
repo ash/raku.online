@@ -900,20 +900,89 @@ sub render-crashes() {
 
 # ---- the history charts ----------------------------------------------------
 
+# The plot area sits inside gutters: a left one wide enough for the y labels,
+# a bottom one for the dates. Everything is drawn against these four numbers.
 my $CH-W = 460;
-my $CH-H = 150;
-my $CH-PAD = 10;
+my $CH-H = 172;
+my $CH-L = 46;
+my $CH-R = 8;
+my $CH-T = 8;
+my $CH-B = 24;
 
 sub x-at(Int $i, Int $n) {
-    $CH-PAD + ($CH-W - 2 * $CH-PAD) * $i / (($n - 1) || 1)
+    $CH-L + ($CH-W - $CH-L - $CH-R) * $i / (($n - 1) || 1)
 }
 
 sub y-at($v, $max) {
-    $CH-H - $CH-PAD - ($CH-H - 2 * $CH-PAD) * $v / ($max || 1)
+    $CH-T + ($CH-H - $CH-T - $CH-B) * (1 - $v / ($max || 1))
 }
 
-sub chart-frame(Str $label, Str $last, Str $inner --> Str) {
-    '<figure class="hist-chart"><svg viewBox="0 0 ' ~ $CH-W ~ ' ' ~ $CH-H ~ '" role="img" aria-label="'
+# Round tick values: a step of 1, 2 or 5 times a power of ten, aiming for about
+# three intervals, always starting at zero — both charts are counts.
+sub nice-ticks($max) {
+    my $raw = $max / 3;
+    my $mag = 1;
+    while $mag * 10 <= $raw {
+        $mag *= 10;
+    }
+    my $step = (1, 2, 5, 10).map({ $_ * $mag }).first({ $_ >= $raw }) // $mag;
+    my @t;
+    my $t = 0;
+    while $t <= $max {
+        @t.push: $t;
+        $t += $step;
+    }
+    @t
+}
+
+sub knum($v --> Str) {
+    return commify($v.Int) if $v < 1000;
+    my $k = $v / 1000;
+    return $k == $k.Int ?? $k.Int ~ 'k' !! sprintf('%.1fk', $k);
+}
+
+# Gridlines and labels for one chart: a y gridline per tick, the two axis
+# lines, and a date label wherever the date changes (thinned if that gets
+# crowded — the x axis is run order, dates only orient it).
+sub hist-axes(@xticks, Int $n, $max --> Str) {
+    my @out;
+    for nice-ticks($max) -> $t {
+        my $y = y-at($t, $max);
+        @out.push: sprintf('<line class="grid" x1="%d" y1="%.1f" x2="%d" y2="%.1f"/>',
+                           $CH-L, $y, $CH-W - $CH-R, $y);
+        @out.push: sprintf('<text class="ylab" x="%d" y="%.1f">%s</text>',
+                           $CH-L - 6, $y + 3, knum($t));
+    }
+    @out.push: sprintf('<line class="axis" x1="%d" y1="%d" x2="%d" y2="%d"/>',
+                       $CH-L, $CH-H - $CH-B, $CH-W - $CH-R, $CH-H - $CH-B);
+    @out.push: sprintf('<line class="axis" x1="%d" y1="%d" x2="%d" y2="%d"/>',
+                       $CH-L, $CH-T, $CH-L, $CH-H - $CH-B);
+    for @xticks -> @t {
+        my $x = x-at(@t[0], $n);
+        @out.push: sprintf('<line class="axis" x1="%.1f" y1="%d" x2="%.1f" y2="%d"/>',
+                           $x, $CH-H - $CH-B, $x, $CH-H - $CH-B + 4);
+        @out.push: sprintf('<text class="xlab" x="%.1f" y="%d">%s</text>',
+                           $x, $CH-H - 8, @t[1]);
+    }
+    @out.join
+}
+
+# The dots carry their own tooltip payload; grid.js reads it back on hover.
+sub hist-dots(@rows, @vals, $max, Bool $fail --> Str) {
+    my @out;
+    my $n = @rows.elems;
+    for @rows.kv -> $i, %r {
+        @out.push: sprintf('<circle%s cx="%.1f" cy="%.1f" r="2.6" data-date="%s" data-v="%s" data-note="%s"/>',
+                           ($fail ?? ' class="fail"' !! ''),
+                           x-at($i, $n), y-at(@vals[$i], $max),
+                           attr(%r<date>), commify(@vals[$i]), attr(%r<note>));
+    }
+    @out.join
+}
+
+sub chart-frame(Str $key, Str $label, Str $last, Str $inner --> Str) {
+    '<figure class="hist-chart"><svg viewBox="0 0 ' ~ $CH-W ~ ' ' ~ $CH-H ~ '" data-key="'
+      ~ attr($key) ~ '" role="img" aria-label="'
       ~ attr($label) ~ '">' ~ $inner ~ '</svg><figcaption>' ~ esc($label)
       ~ ' <span class="hist-last">latest: ' ~ $last ~ '</span></figcaption></figure>'
 }
@@ -944,19 +1013,37 @@ sub history-html(--> Str) {
         @failed.push: %r<failed>;
     }
 
+    # One date label per distinct date, thinned to at most six so a long run of
+    # sweeps never turns the axis into a smear.
+    my @xticks;
+    my $prev-date = '';
+    for @rows.kv -> $i, %r {
+        if %r<date> ne $prev-date {
+            @xticks.push: [$i, %r<date>.substr(5)];
+            $prev-date = %r<date>;
+        }
+    }
+    if @xticks.elems > 6 {
+        my $keep = (@xticks.elems + 5) div 6;
+        my @thin;
+        for @xticks.kv -> $i, @t {
+            @thin.push: @t if $i %% $keep;
+        }
+        @xticks = @thin;
+    }
+
     my $ran-max = @ran.max;
     my @pts;
-    my @dots;
     for 0 ..^ $n -> $i {
         @pts.push: sprintf('%.1f,%.1f', x-at($i, $n), y-at(@ran[$i], $ran-max));
-        @dots.push: sprintf('<circle cx="%.1f" cy="%.1f" r="2.4"/>', x-at($i, $n), y-at(@ran[$i], $ran-max));
     }
-    my $svg-size = chart-frame('suite size (tests run)', commify(@ran[*-1]),
-        '<polyline class="hist-line" points="' ~ @pts.join(' ') ~ '"/>' ~ @dots.join);
+    my $svg-size = chart-frame('ran', 'suite size (tests run)', commify(@ran[*-1]),
+        hist-axes(@xticks, $n, $ran-max)
+        ~ '<polyline class="hist-line" points="' ~ @pts.join(' ') ~ '"/>'
+        ~ hist-dots(@rows, @ran, $ran-max, False));
 
     my $fail-max = @failed.max;
     my @parts;
-    my @fdots;
     my @cur;
     for 0 ..^ $n -> $i {
         if @cur.elems && @ran[$i] != @ran[@cur[*-1]] {
@@ -975,12 +1062,10 @@ sub history-html(--> Str) {
         }
         @segs.push: '<polyline class="hist-line fail" points="' ~ @sp.join(' ') ~ '"/>';
     }
-    for 0 ..^ $n -> $i {
-        @fdots.push: sprintf('<circle class="fail" cx="%.1f" cy="%.1f" r="2.4"/>',
-                             x-at($i, $n), y-at(@failed[$i], $fail-max));
-    }
-    my $svg-fail = chart-frame('failing on the engine under test', commify(@failed[*-1]),
-        @segs.join ~ @fdots.join);
+    my $svg-fail = chart-frame('failed', 'failing on the engine under test', commify(@failed[*-1]),
+        hist-axes(@xticks, $n, $fail-max)
+        ~ @segs.join
+        ~ hist-dots(@rows, @failed, $fail-max, True));
 
     my @trows;
     for @rows -> %r {

@@ -158,6 +158,47 @@
         repaintRibbons();
       });
     });
+
+    historyCharts();
+  }
+
+  // The sweep charts are static SVG; each dot carries its date, value and the
+  // sweep's note as data attributes. Hover snaps to the nearest run and shows
+  // them in the same tip box the ribbons use.
+  function historyCharts() {
+    document.querySelectorAll('.hist-chart svg').forEach(function (svg) {
+      var dots = [].slice.call(svg.querySelectorAll('circle'));
+      if (!dots.length) return;
+      var key = svg.getAttribute('data-key') || '';
+      var hot = null;
+      function cool() {
+        if (hot) hot.setAttribute('r', '2.6');
+        hot = null;
+      }
+      svg.addEventListener('mousemove', function (ev) {
+        var best = null, bd = Infinity;
+        dots.forEach(function (c) {
+          var r = c.getBoundingClientRect();
+          var d = Math.abs(r.left + r.width / 2 - ev.clientX);
+          if (d < bd) { bd = d; best = c; }
+        });
+        if (!best) return;
+        if (hot !== best) {
+          cool();
+          best.setAttribute('r', '4.2');
+          hot = best;
+        }
+        var frag = document.createDocumentFragment();
+        frag.appendChild(el('b', { text: best.getAttribute('data-date') + ' · ' + key + ' ' + best.getAttribute('data-v') }));
+        var note = best.getAttribute('data-note');
+        if (note) frag.appendChild(el('div', { class: 'tip-counts', text: note }));
+        tipbox(frag, ev);
+      });
+      svg.addEventListener('mouseleave', function () {
+        cool();
+        tipbox(null);
+      });
+    });
   }
 
   function debounce(fn, ms) {
