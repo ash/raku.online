@@ -1626,11 +1626,12 @@ sub render-divergences(@entries --> Str) {
     '<th>outcome</th></tr></thead><tbody>' ~ @orows.join ~ '</tbody></table></div>'
 }
 
-# The gap list needs care, because read carelessly it says the wrong thing. Most
-# entries are alternative UNICODE spellings whose ASCII form works perfectly —
-# `⩵` is unsupported while `==` is fine — and a flat list invites the reader to
-# conclude that equality is broken. So the two kinds are separated, and where the
-# documentation puts a working spelling under the same heading, it is named.
+# The gap list needs care, because read carelessly it says the wrong thing. An
+# entry can be an alternative spelling whose twin under the same documentation
+# heading works perfectly — while `⩵` was unsupported, `==` was always fine —
+# and a flat list invites the reader to conclude that equality is broken. So
+# gaps with a working spelling are separated from gaps where no spelling of the
+# construct parses, and the working spelling is named on the card.
 sub gaps-html(@entries --> Str) {
     my @gaps = @entries.grep({ .status eq 'gap' && .op });
     return '' unless @gaps;
@@ -1646,9 +1647,13 @@ sub gaps-html(@entries --> Str) {
         %bydoc{$d}.push(%o);
     }
 
+    sub working-sib($e) {
+        @(%bydoc{ $e.op<doc> // '' } // [])
+            .grep({ .<sym> ne $e.op<sym> && (.<rakupp>:exists) && .<rakupp> })
+    }
+
     sub card($e) {
-        my @sib = @(%bydoc{ $e.op<doc> // '' } // [])
-                    .grep({ .<sym> ne $e.op<sym> && (.<rakupp>:exists) && .<rakupp> });
+        my @sib = working-sib($e);
         my $alt = @sib
             ?? '<span class="sym-sub">works as <code>' ~ esc(@sib[0]<sym>) ~ '</code></span>'
             !! '<span class="sym-sub">' ~ esc($e.op<level> // $e.op<cat>) ~ '</span>';
@@ -1656,32 +1661,33 @@ sub gaps-html(@entries --> Str) {
         esc($e.op<sym>) ~ '</code>' ~ $alt ~ '</a>'
     }
 
-    my @ascii = @gaps.grep({ .op<sym> ~~ / ^ <[\x20..\x7E]>+ $ / }).sort({ .op<sym> });
-    my @uni   = @gaps.grep({ !(.op<sym> ~~ / ^ <[\x20..\x7E]>+ $ /) }).sort({ .op<sym> });
+    my @spelling = @gaps.grep({ working-sib($_).elems > 0 }).sort({ .op<sym> });
+    my @missing  = @gaps.grep({ working-sib($_).elems == 0 }).sort({ .op<sym> });
 
     my @out;
     @out.push('<h2 class="sec">Where Raku++ does not parse the spelling</h2>');
     @out.push('<p>Probed directly: a minimal use of each construct is fed to the ' ~
         'interpreter and classified by whether it parses. ' ~ @gaps.elems ~
-        ' spellings do not — but read the two groups separately, because they ' ~
-        'mean very different things.</p>');
+        ' spelling' ~ (@gaps.elems == 1 ?? ' does' !! 's do') ~ ' not' ~
+        (@spelling && @missing
+            ?? ' — but read the two groups separately, because they mean very ' ~
+               'different things.'
+            !! '.') ~ '</p>');
 
-    if @uni {
-        @out.push('<h3>Unicode spellings (' ~ @uni.elems ~ ')</h3>');
+    if @spelling {
+        @out.push('<h3>Alternative spellings (' ~ @spelling.elems ~ ')</h3>');
         @out.push('<p><b>These are alternative spellings, not missing operators.</b> ' ~
-            'Raku lets many operators be written with a mathematical symbol as well ' ~
-            'as in ASCII — <code>⩵</code> for <code>==</code>, <code>≼</code> for ' ~
-            '<code>(&lt;+)</code>. Raku++ not accepting the symbol says nothing about ' ~
-            'the operator itself: <code>==</code> works exactly as expected. Where the ' ~
-            'documentation puts a working spelling under the same heading, it is ' ~
-            'named on the card.</p>');
-        @out.push('<div class="sym-grid">' ~ @uni.map({ card($_) }).join ~ '</div>');
+            'Raku lets many operators be written more than one way — often with a ' ~
+            'mathematical symbol as well as in ASCII — and the documentation puts ' ~
+            'the spellings under one heading. For every entry here another spelling ' ~
+            'under the same heading parses fine; it is named on the card.</p>');
+        @out.push('<div class="sym-grid">' ~ @spelling.map({ card($_) }).join ~ '</div>');
     }
-    if @ascii {
-        @out.push('<h3>ASCII spellings (' ~ @ascii.elems ~ ')</h3>');
-        @out.push('<p>These are the ones that matter: an ordinary spelling the ' ~
-            'interpreter cannot parse at all.</p>');
-        @out.push('<div class="sym-grid">' ~ @ascii.map({ card($_) }).join ~ '</div>');
+    if @missing {
+        @out.push('<h3>Missing constructs (' ~ @missing.elems ~ ')</h3>');
+        @out.push('<p>These are the ones that matter: no documented spelling of ' ~
+            'the construct parses.</p>');
+        @out.push('<div class="sym-grid">' ~ @missing.map({ card($_) }).join ~ '</div>');
     }
     @out.join
 }

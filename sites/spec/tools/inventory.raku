@@ -186,7 +186,15 @@ my %SPECIAL-PROBE =
     'postcircumfix|« »' => 'my %h = a => 1; my $k = "a"; sink(%h«$k»)',
     # `!` is documented as an infix but is the negation METAOPERATOR: it glues
     # onto another infix (`!==`, `!eq`) and never stands between two operands.
-    'infix|!'           => 'my $a = 6; my $b = 3; sink($a !== $b)';
+    'infix|!'           => 'my $a = 6; my $b = 3; sink($a !== $b)',
+    # Composition needs callable operands: `6 o 3` dies with "Unsupported
+    # operator", which the classifier below cannot tell from a parse error.
+    'infix|o'           => 'my &f = { 1 }; my &g = { 2 }; sink(&f o &g)',
+    'infix|∘'           => 'my &f = { 1 }; my &g = { 2 }; sink(&f ∘ &g)',
+    # The dotty infix calls the method on its right; `$a . $b` instead hits the
+    # deliberate "Unsupported use of . to concatenate strings" rejection, which
+    # both engines give the Perl 5 spelling.
+    'infix|.'           => 'my $a = "hi"; sink($a . uc)';
 
 # Constructs with no probe that would mean anything. These are recorded as
 # "not probed" rather than as gaps.
