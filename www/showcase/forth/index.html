@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>forth — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>forth — a Forth interpreter</h1>
+<p class="sc-actions"><a class="sc-btn" href="/play/?ex=forth-interpreter">Run it in the playground ↗</a> <a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/forth">Source on GitHub ↗</a></p>
+<p>The stack-machine counterpart to the <a href="/showcase/lisp/">Lisp</a> tree-walker. Forth has no parse tree: source is a flat stream of whitespace-separated <em>words</em>, each of which pushes a number or runs a dictionary entry against a shared data stack. <code>: name … ;</code> defines new words from old ones, so the language grows itself from a handful of primitives.</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/forth/forth.raku showcase/forth/examples/demo.fth
+build/rakupp showcase/forth/forth.raku               # no file → a REPL
+# or compile a standalone binary:
+build/rakupp --exe -o forth showcase/forth/forth.raku</code></pre>
+<h2 id="a-taste">A taste</h2>
+<pre class="native-code"><code class="lang-forth">: square ( n -- n*n )  dup * ;
+: fact ( n -- n! )  1 swap 1+ 1 do i * loop ;
+5 square .      \ prints 25
+10 fact .       \ prints 3628800</code></pre>
+<p>The included <a href="https://github.com/ash/rakupp/blob/main/showcase/forth/examples/demo.fth"><code>examples/demo.fth</code></a> walks through arithmetic, word definitions, conditionals, both loop forms, and drawing with <code>emit</code>:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/forth/forth.raku showcase/forth/examples/demo.fth
+3 4 + 2 * = 14
+5 square = 25
+3 cube = 27
+sign 7: positive
+sign -3: negative
+sign 0: zero
+5! = 120
+10! = 3628800
+countdown from 5: 5 4 3 2 1
+fib 10 = 55
+a 10x3 box:
+**********
+**********
+**********</code></pre>
+<h2 id="words-it-knows">Words it knows</h2>
+<div class="tablewrap"><table><tr><th>Group</th><th>Words</th></tr><tr><td>arithmetic</td><td><code>+ - * / mod /mod negate abs min max 1+ 1- 2* 2/</code></td></tr>
+<tr><td>comparison</td><td><code>= &lt;&gt; &lt; &gt; &lt;= &gt;= 0= 0&lt; 0&gt;</code> (Forth truth: <code>0</code> false, <code>-1</code> true)</td></tr>
+<tr><td>bitwise</td><td><code>and or xor invert</code></td></tr>
+<tr><td>stack</td><td><code>dup ?dup drop swap over rot nip tuck depth</code></td></tr>
+<tr><td>control</td><td><code>if … else … then</code>, <code>begin … until</code>, <code>begin … while … repeat</code>, <code>do … loop</code> (<code>i</code>, <code>j</code>)</td></tr>
+<tr><td>output</td><td><code>. .s cr space spaces emit bl</code></td></tr>
+<tr><td>defining</td><td><code>: name … ;</code></td></tr></table></div>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>Reader</strong> — trivial: strip <code>\</code> and <code>( … )</code> comments, split on whitespace. The interest isn't the parsing, it's the execution model.</li><li><strong>Compile</strong> — the token stream is parsed once into a small node tree, so the structured control words (<code>if</code>/<code>else</code>/<code>then</code>, the loops) become nested nodes instead of being re-scanned every time.</li><li><strong>Execute</strong> — walk the nodes against a <code>@stack</code>: a literal pushes, a word runs its dictionary body (recursively) or a primitive block, <code>do</code>/<code>loop</code> tracks the index for <code>i</code>. A user definition is just its node list stored under a name.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brainfuck.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>brainfuck.raku</code></h1>
+<p class="tagline">A tiny Brainfuck interpreter.</p>
+<p>A compact interpreter for Brainfuck's eight instructions, operating on a byte tape with a single data pointer and matched-bracket loops. It runs the embedded classic "Hello World!" program, building up the ASCII codes on the tape and printing them.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# A tiny Brainfuck interpreter. Brainfuck has just eight instructions that
+# operate on a tape of byte cells and a single data pointer:
+#
+#   &gt;  move the pointer right      &lt;  move the pointer left
+#   +  increment the cell          -  decrement the cell
+#   .  output the cell as a char   ,  read a char (unused here)
+#   [  jump past the matching ]    ]  jump back to the matching [
+#      if the current cell is 0       if the current cell is non-zero
+#
+# The embedded program below is the classic "Hello World!" — the loops set
+# up the ASCII codes on the tape, and the `.` commands print them.
+#
+# Shows off array/pointer manipulation, character/string building, and a
+# small dispatch loop with matched-bracket control flow.
+
+my $program =
+    '++++++++[&gt;++++[&gt;++&gt;+++&gt;+++&gt;+&lt;&lt;&lt;&lt;-]&gt;+&gt;+&gt;-&gt;&gt;+[&lt;]&lt;-]' ~
+    '&gt;&gt;.&gt;---.+++++++..+++.&gt;&gt;.&lt;-.&lt;.+++.------.--------.&gt;&gt;+.&gt;++.';
+
+sub run($code) {
+    my @prog = $code.comb;
+    my @tape = 0 xx 30000;
+    my $ptr  = 0;
+    my $pc   = 0;
+    my $out  = '';
+
+    while $pc &lt; @prog.elems {
+        my $cmd = @prog[$pc];
+        if $cmd eq '&gt;' {
+            $ptr++;
+        }
+        elsif $cmd eq '&lt;' {
+            $ptr--;
+        }
+        elsif $cmd eq '+' {
+            @tape[$ptr] = (@tape[$ptr] + 1) % 256;
+        }
+        elsif $cmd eq '-' {
+            @tape[$ptr] = (@tape[$ptr] + 255) % 256;
+        }
+        elsif $cmd eq '.' {
+            $out ~= chr(@tape[$ptr]);
+        }
+        elsif $cmd eq '[' {
+            if @tape[$ptr] == 0 {
+                # Skip forward to the matching ']'.
+                my $depth = 1;
+                while $depth &gt; 0 {
+                    $pc++;
+                    $depth++ if @prog[$pc] eq '[';
+                    $depth-- if @prog[$pc] eq ']';
+                }
+            }
+        }
+        elsif $cmd eq ']' {
+            if @tape[$ptr] != 0 {
+                # Jump back to the matching '['.
+                my $depth = 1;
+                while $depth &gt; 0 {
+                    $pc--;
+                    $depth++ if @prog[$pc] eq ']';
+                    $depth-- if @prog[$pc] eq '[';
+                }
+            }
+        }
+        $pc++;
+    }
+    $out;
+}
+
+print run($program);</pre>
+<p class="ex-links"><a href="/play/?ex=brainfuck">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/brainfuck.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Hello World!</code></pre></div>
+<p class="focus">Feature focus: tape/pointer loop, dispatch.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/nqueens/">← nqueens.raku</a> <a class="nav-next" href="/examples/anagrams/">anagrams.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

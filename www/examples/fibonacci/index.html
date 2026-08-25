@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fibonacci.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>fibonacci.raku</code></h1>
+<p class="tagline">Fibonacci three ways, cross-checked.</p>
+<p>Reaches the Fibonacci numbers three ways and checks they agree: the lazy self-referential sequence <code>1, 1, * + * ... *</code>, a fast-doubling recursion that jumps to F(n) in about log₂(n) big-integer steps, and full arbitrary-precision printouts. Closes by watching consecutive ratios close in on the golden ratio.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Three ways to reach the Fibonacci numbers, and a check that they agree.
+# Shows off lazy self-referential sequences, a fast-doubling recursion that
+# reaches deep into the sequence in a handful of steps, and Raku's
+# arbitrary-precision integers (the 500th Fibonacci number has 105 digits).
+
+# (a) The whole sequence as a lazy, self-referential list: each term is the
+# sum of the previous two, and `... *` lets it run forever without computing
+# more than you ask for.
+my @fib = 1, 1, * + * ... *;
+
+say 'The lazy sequence, first 16 terms:';
+say @fib[^16];
+say '';
+
+# (b) Fast doubling: from (F(n), F(n+1)) you can jump straight to
+# (F(2n), F(2n+1)), so F(n) costs only about log2(n) steps of big-integer
+# arithmetic instead of n. Returns the pair (F(n), F(n+1)).
+sub fib-pair($n) {
+    return (0, 1) if $n == 0;
+    my ($a, $b) = fib-pair($n div 2);
+    my $c = $a * (2 * $b - $a);       # F(2k)   = F(k) * (2 F(k+1) - F(k))
+    my $d = $a * $a + $b * $b;        # F(2k+1) = F(k)^2 + F(k+1)^2
+    $n %% 2 ?? ($c, $d) !! ($d, $c + $d);
+}
+sub fib($n) { fib-pair($n)[0] }
+
+# (c) The two methods must agree. @fib is 1-indexed against the usual F(n)
+# (F(1) = F(2) = 1), so @fib[n-1] is F(n).
+say 'Lazy list and fast doubling agree for F(1)..F(30):';
+my $agree = True;
+for 1 .. 30 -&gt; $n {
+    $agree = False unless @fib[$n - 1] == fib($n);
+}
+say "  ", $agree ?? 'all 30 match' !! 'MISMATCH';
+say '';
+
+# Arbitrary precision: no 64-bit ceiling, so these print in full.
+say 'Big Fibonacci numbers, in full:';
+for 100, 250, 500 -&gt; $n {
+    my $f = fib($n);
+    say "  F($n) has {$f.Str.chars} digits: $f";
+}
+say '';
+
+# Consecutive ratios F(n+1)/F(n) close in on the golden ratio.
+say 'Ratios F(n+1)/F(n) approach the golden ratio phi:';
+my $phi = (1 + 5.sqrt) / 2;
+for 5, 10, 20, 40 -&gt; $n {
+    my $ratio = fib($n + 1) / fib($n);
+    say sprintf('  F(%d+1)/F(%d) = %.12f   (phi - ratio = %.2e)',
+                $n, $n, $ratio, $phi - $ratio);
+}
+say sprintf('  phi        = %.12f', $phi);</pre>
+<p class="ex-links"><a href="/play/?ex=fibonacci">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/fibonacci.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>The lazy sequence, first 16 terms:
+(1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987)
+
+Lazy list and fast doubling agree for F(1)..F(30):
+  all 30 match
+
+Big Fibonacci numbers, in full:
+  F(100) has 21 digits: 354224848179261915075
+  F(250) has 52 digits: 7896325826131730509282738943634332893686268675876375
+  F(500) has 105 digits: 139423224561697880139724382870407283950070256587697307264108962948325571622863290691557658876222521294125
+
+Ratios F(n+1)/F(n) approach the golden ratio phi:
+  F(5+1)/F(5) = 1.600000000000   (phi - ratio = 1.80e-02)
+  F(10+1)/F(10) = 1.618181818182   (phi - ratio = -1.48e-04)
+  F(20+1)/F(20) = 1.618033998522   (phi - ratio = -9.77e-09)
+  F(40+1)/F(40) = 1.618033988750   (phi - ratio = 0.00e+00)
+  phi        = 1.618033988750</code></pre></div>
+<p class="focus">Feature focus: lazy sequences, bignums.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/rationals/">← rationals.raku</a> <a class="nav-next" href="/examples/factorize/">factorize.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

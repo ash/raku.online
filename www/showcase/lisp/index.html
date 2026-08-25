@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lisp — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>lisp — a Scheme interpreter</h1>
+<p class="sc-actions"><a class="sc-btn" href="/play/?ex=lisp-interpreter">Run it in the playground ↗</a> <a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/lisp">Source on GitHub ↗</a></p>
+<p>A small but real Scheme, in two parts: a Raku <code>grammar</code> (plus an actions class) reads the source into Raku data structures, and a tree-walking evaluator runs them. The numeric tower rides directly on Raku's own, so exact <code>Rat</code>s and unbounded <code>Int</code>s come for free.</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/lisp/lisp.raku showcase/lisp/examples/fact.scm
+build/rakupp showcase/lisp/lisp.raku showcase/lisp/examples/closures.scm
+build/rakupp showcase/lisp/lisp.raku                 # no file → a REPL
+# or compile a standalone binary:
+build/rakupp --exe -o lisp showcase/lisp/lisp.raku</code></pre>
+<h2 id="what-it-can-do">What it can do</h2>
+<ul><li><strong>Exact bignums</strong> — <code>(fact 100)</code> prints all 158 digits, no overflow:</li></ul>
+<pre class="native-code"><code>$ build/rakupp showcase/lisp/lisp.raku showcase/lisp/examples/fact.scm
+5! = 120
+10! = 3628800
+20! = 2432902008176640000
+50! = 30414093201713378043612608166064768844377641568960512000000000000
+100! = 933262154439441526816992388562667004907159682643816214685929638952175999932299156089414639761565182862536979208272237582511852109168640000000…</code></pre>
+<ul><li><strong>Closures, mutable state, higher-order functions, recursion:</strong></li></ul>
+<pre class="native-code"><code>$ build/rakupp showcase/lisp/lisp.raku showcase/lisp/examples/closures.scm
+add5(10)   = 15
+add100(10) = 110
+counter: 1 2 3
+sum 1..10 = 55
+squares   = (1 4 9 16 25)
+even? 10  = #t
+odd?  7   = #t</code></pre>
+<h2 id="language">Language</h2>
+<div class="tablewrap"><table><tr><th>Feature</th><th>Notes</th></tr><tr><td><code>define</code> / <code>lambda</code> / <code>let</code></td><td>including <code>(define (f x) …)</code> function shorthand</td></tr>
+<tr><td><code>if</code> / <code>cond</code> / <code>and</code> / <code>or</code></td><td><code>cond</code> supports <code>else</code></td></tr>
+<tr><td><code>set!</code></td><td>mutate a binding in its defining scope</td></tr>
+<tr><td><code>quote</code> / <code>`quasiquote</code> / <code>,unquote</code> / <code>,@splice</code></td><td>list templating</td></tr>
+<tr><td>lexical closures</td><td>functions capture their defining environment</td></tr>
+<tr><td>numeric tower</td><td>exact <code>Int</code> / <code>Rat</code>, promotes to <code>Num</code> as Raku does</td></tr>
+<tr><td>builtins</td><td><code>+ - * / = &lt; &gt; cons car cdr list map filter fold-left append reverse length …</code></td></tr></table></div>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>Reader</strong> — a Raku <code>grammar</code> (<code>token</code>/<code>rule</code>) with an actions class turns text straight into Raku values: numbers become <code>Int</code>/<code>Rat</code>/<code>Num</code>, symbols an interned <code>Sym</code>, lists an <code>Array</code>. <code>;</code>-comments are stripped first so the grammar's whitespace rule stays trivial.</li><li><strong>Evaluator</strong> — a recursive <code>evaluate($form, $env)</code>: self-evaluating literals return themselves, symbols look up the environment chain, and a list is either a special form (<code>if</code>, <code>define</code>, …) or a procedure application.</li><li><strong>Environments</strong> — a chain of frames (<code>Env</code> with a parent), so closures just hold the environment they were defined in.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>quicksort.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>quicksort.raku</code></h1>
+<p class="tagline">Quicksort, merge sort, one-liner.</p>
+<p>The textbook recursive quicksort in idiomatic Raku: pick a pivot, <code>.grep</code> the rest into the elements below and above it, recurse on each half, and glue the pieces back. For contrast it also runs a merge sort and a one-line closure version, and confirms all three agree with the built-in <code>.sort</code> — including a sortedness check via the reduce metaop, <code>[≤] @list</code> (comparisons chain, so folding <code>≤</code> over the list is True exactly when it is non-decreasing).</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Quicksort the functional way: pick a pivot, partition the rest into the
+# elements below and above it with `.grep`, recurse on each half, and glue
+# the sorted pieces back together. Shows recursion, `.grep` with a pointy
+# block, list flattening with `|`, and multi-dispatch as a base case.
+
+# Multi-dispatch gives us the empty-list base case for free: the narrower
+# candidate wins when the argument matches, so no explicit `if` is needed.
+multi quicksort()        { () }
+multi quicksort($pivot, *@rest) {
+    my @less = @rest.grep(* &lt; $pivot);
+    my @more = @rest.grep(* &gt;= $pivot);
+    |quicksort(|@less), $pivot, |quicksort(|@more);
+}
+
+# For contrast, a merge sort: split in half, sort each half, then merge the
+# two sorted runs by repeatedly taking the smaller head element.
+sub merge-sort(@xs) {
+    return @xs if @xs &lt;= 1;
+    my $mid = @xs div 2;
+    merge(merge-sort(@xs[^$mid]), merge-sort(@xs[$mid .. *]));
+}
+sub merge(@a, @b) {
+    my @out;
+    my ($i, $j) = 0, 0;
+    while $i &lt; @a &amp;&amp; $j &lt; @b {
+        if @a[$i] &lt;= @b[$j] {
+            @out.push: @a[$i++];
+        }
+        else {
+            @out.push: @b[$j++];
+        }
+    }
+    |@out, |@a[$i .. *], |@b[$j .. *];
+}
+
+my @data = 5, 3, 8, 1, 9, 2, 7, 4, 6, 0;
+say 'Input:      ', @data;
+
+my @quick = quicksort(|@data);
+my @mergey = merge-sort(@data);
+my @builtin = @data.sort;
+
+say 'quicksort:  ', @quick;
+say 'merge-sort: ', @mergey;
+say 'builtin:    ', @builtin;
+
+# Confirm every method agrees with the built-in `.sort`.
+say '';
+say 'quicksort matches .sort?  ', @quick eqv @builtin;
+say 'merge-sort matches .sort? ', @mergey eqv @builtin;
+
+# Comparisons chain in Raku — `1 ≤ 2 ≤ 3` is a single True expression. So the
+# same reduce metaop that turns `*` into a product ([*] 1..5) turns `≤` into
+# a sortedness test: [≤] chains it across every neighbouring pair.
+say 'sorted, per [≤]?          ', [≤] @quick;
+
+# The whole algorithm also fits on one line as a recursive closure.
+my &amp;qs = -&gt; @x {
+    @x &lt;= 1 ?? @x !! (|qs(@x.grep(* &lt; @x[0])), @x[0], |qs(@x[1..*].grep(* &gt;= @x[0])))
+};
+say '';
+say 'one-liner:  ', qs(@data);</pre>
+<p class="ex-links"><a href="/play/?ex=quicksort">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/quicksort.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Input:      [5 3 8 1 9 2 7 4 6 0]
+quicksort:  [0 1 2 3 4 5 6 7 8 9]
+merge-sort: [0 1 2 3 4 5 6 7 8 9]
+builtin:    [0 1 2 3 4 5 6 7 8 9]
+
+quicksort matches .sort?  True
+merge-sort matches .sort? True
+sorted, per [≤]?          True
+
+one-liner:  (0 1 2 3 4 5 6 7 8 9)</code></pre></div>
+<p class="focus">Feature focus: recursion, <code>.grep</code>, multi-dispatch.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/matrix/">← matrix.raku</a> <a class="nav-next" href="/examples/hanoi/">hanoi.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

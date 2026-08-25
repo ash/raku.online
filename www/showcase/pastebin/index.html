@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pastebin — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>pastebin — an HTTP server on raw sockets</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/pastebin">Source on GitHub ↗</a></p>
+<p>A pastebin served over HTTP/1.1, written directly on <code>IO::Socket::INET</code> with no framework. It parses requests by hand, keeps pastes in memory, and serves a small HTML UI plus a raw-text endpoint. Compile it and you have a single native binary you can drop on a host and point a URL at.</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/pastebin/pastebin.raku       # then open http://127.0.0.1:8080
+PORT=9000 build/rakupp showcase/pastebin/pastebin.raku
+# or compile a standalone binary:
+build/rakupp --exe -o pastebin showcase/pastebin/pastebin.raku &amp;&amp; ./pastebin</code></pre>
+<p>Open <code>http://127.0.0.1:8080</code> in a browser: paste some text, submit, and you land on the paste's page. The server terminal logs each request (<code>  GET /</code>, <code>  POST /paste</code>).</p>
+<h2 id="routes">Routes</h2>
+<div class="tablewrap"><table><tr><th>Route</th><th>What it does</th></tr><tr><td><code>GET /</code></td><td>create form + list of recent pastes</td></tr>
+<tr><td><code>POST /paste</code></td><td>store form field <code>content=…</code> → <code>303</code> redirect to the new paste</td></tr>
+<tr><td><code>GET /p/&lt;id&gt;</code></td><td>view one paste (HTML)</td></tr>
+<tr><td><code>GET /raw/&lt;id&gt;</code></td><td>view one paste (<code>text/plain</code>)</td></tr></table></div>
+<h2 id="from-the-command-line">From the command line</h2>
+<pre class="native-code"><code>$ curl -i -X POST --data 'content=hello from curl' http://127.0.0.1:8080/paste
+HTTP/1.1 303 See Other
+Location: /p/100
+
+$ curl http://127.0.0.1:8080/raw/100
+hello from curl</code></pre>
+<p>Paste ids are short base-36 (<code>100</code>, <code>101</code>, …).</p>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>No HTTP library.</strong> Each accepted connection is read with <code>recv</code>; the request line and headers are split by hand, and for a <code>POST</code> the body is pulled until <code>Content-Length</code> bytes have arrived.</li><li><strong>Routing</strong> is a small <code>given</code>/<code>when</code> over the method and path (with a regex for <code>/p/&lt;id&gt;</code> and <code>/raw/&lt;id&gt;</code>); <code>handle-request</code> is a pure function of <code>(method, path, body)</code>, which is what the test suite drives.</li><li><strong>Responses</strong> are assembled as raw HTTP: a status line, <code>Content-Type</code> / <code>Content-Length</code> / <code>Connection: close</code>, a blank line, then the body. The CSS lives in a non-interpolating <code>Q</code> heredoc so its braces stay literal.</li><li><strong>Store</strong> — an in-memory hash plus an insertion-order list for the "recent" view.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

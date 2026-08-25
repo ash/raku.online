@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>modinfo — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>modinfo — a Raku distribution inspector</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/modinfo">Source on GitHub ↗</a></p>
+<p><code>modinfo</code> reads <code>META6.json</code> files, builds the dependency graph, validates the metadata, fingerprints the source, and reports in table / JSON / YAML / XML.</p>
+<p>It is the <strong>ecosystem showcase</strong>: almost nothing below the argument parser is hand-rolled. Seventeen distributions from the ecosystem's most-depended-on list do the work, and the program runs unchanged on Rakudo and on Raku++.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/modinfo/modinfo.raku list
+build/rakupp showcase/modinfo/modinfo.raku deps Gadget
+build/rakupp showcase/modinfo/modinfo.raku path JSON::Fast --installed
+build/rakupp showcase/modinfo/modinfo.raku rank --path=~/dists --top=20
+build/rakupp showcase/modinfo/modinfo.raku export --format=xml --out=/tmp/report</code></pre>
+<p><code>path</code> answers where a module (or every module of a distribution) lives on this machine: the real file under a scanned checkout, or the installation store's content-addressed source blob for <code>--installed</code> — resolved from the same repository chain the engine itself searches.</p>
+<h2 id="what-it-is-built-on">What it is built on</h2>
+<div class="tablewrap"><table><tr><th>Module</th><th>What it does here</th></tr><tr><td><strong>JSON::Fast</strong></td><td>reads every <code>META6.json</code>; writes the JSON report</td></tr>
+<tr><td><strong>YAMLish</strong></td><td>reads the config file; writes the YAML report</td></tr>
+<tr><td><strong>XML</strong></td><td>builds the XML report as a document, then indents the tree</td></tr>
+<tr><td><strong>Config</strong></td><td>layered configuration with dotted-path access (<code>report.width</code>)</td></tr>
+<tr><td><strong>Hash::Merge</strong></td><td>merges those layers: defaults &lt; file &lt; command line</td></tr>
+<tr><td><strong>IO::Glob</strong></td><td>finds <code>*/META6.json</code>, and the installed-distribution database</td></tr>
+<tr><td><strong>File::Find</strong></td><td>walks <code>lib/</code> to catch files <code>provides</code> forgot</td></tr>
+<tr><td><strong>File::Which</strong></td><td>locates the engine <code>modinfo about</code> is running under</td></tr>
+<tr><td><strong>File::Directory::Tree</strong></td><td>creates the <code>--out</code> directory</td></tr>
+<tr><td><strong>File::Temp</strong></td><td>atomic writes: temp file in place, then rename</td></tr>
+<tr><td><strong>Digest</strong> (SHA-1)</td><td>per-file content hashes</td></tr>
+<tr><td><strong>MIME::Base64</strong></td><td>turns those into npm-style <code>sha1-&lt;base64&gt;</code> integrity strings</td></tr>
+<tr><td><strong>Abbreviations</strong></td><td><code>modinfo show JSON::F</code> resolves to <code>JSON::Fast</code></td></tr>
+<tr><td><strong>Text::Utils</strong></td><td><code>wrap-paragraph</code>, <code>commify</code>, <code>list2text</code></td></tr>
+<tr><td><strong>Terminal::ANSIColor</strong></td><td>named styles</td></tr>
+<tr><td><strong>Color</strong></td><td>the green→red heat gradient on the count columns</td></tr>
+<tr><td><strong>Data::Dump</strong></td><td><code>--debug</code></td></tr></table></div>
+<p>Config ships only a NULL parser — every real format lives in its own distribution — so <code>modinfo.raku</code> defines a <code>Config::Parser::YAMLish</code> class that satisfies Config's parser interface on top of YAMLish. Composing two ecosystem distributions that were never written for each other is the point.</p>
+<h2 id="commands">Commands</h2>
+<div class="tablewrap"><table><tr><th>Command</th><th>What it prints</th></tr><tr><td><code>list</code></td><td>one row per distribution: version, auth, dependency counts, provides</td></tr>
+<tr><td><code>show &lt;dist&gt;</code></td><td>one distribution in full, with its fingerprint</td></tr>
+<tr><td><code>deps &lt;dist&gt;</code></td><td>what it depends on, as a tree, cycles cut and labelled</td></tr>
+<tr><td><code>rdeps &lt;dist&gt;</code></td><td>what depends on it, same shape</td></tr>
+<tr><td><code>graph</code></td><td>roots, leaves, topological build order, cycles, external references</td></tr>
+<tr><td><code>rank</code></td><td>distributions ranked by number of dependents</td></tr>
+<tr><td><code>check [&lt;dist&gt;]</code></td><td>metadata validation; exits non-zero when anything is an ERROR</td></tr>
+<tr><td><code>export</code></td><td>the whole model as <code>json</code>, <code>yaml</code>, <code>xml</code> or <code>all</code></td></tr>
+<tr><td><code>about</code></td><td>what modinfo is built on, and which engine is running it</td></tr></table></div>
+<p><code>&lt;dist&gt;</code> may be an exact name, its shortest unique abbreviation (which is what Abbreviations computes for the whole set), or any unique prefix — <code>modinfo show Core</code> and <code>modinfo show Corelib</code> agree.</p>
+<h2 id="where-the-distributions-come-from">Where the distributions come from</h2>
+<p>Two sources, and both engines read them the same way:</p>
+<pre class="native-code"><code class="lang-sh">modinfo list --path=DIR     # unpacked distributions under DIR (the default)
+modinfo list --installed    # Rakudo's installation database (~/.raku/dist/*)</code></pre>
+<p><code>rank</code> over a directory of unpacked distributions reproduces the measurement that produces an ecosystem's "most depended-on" list — the same reverse- dependency count that picked the modules in the table above.</p>
+<h2 id="the-bundled-corpus">The bundled corpus</h2>
+<p><code>fixtures/dists/</code> holds six small distributions, and they are what makes the two-engine claim checkable rather than hopeful:</p>
+<div class="tablewrap"><table><tr><th>Fixture</th><th>Why it exists</th></tr><tr><td><code>Corelib</code>, <code>Widget</code>, <code>Gadget</code></td><td>a clean three-level chain; Gadget also names an out-of-set dependency, so the graph has an external edge</td></tr>
+<tr><td><code>Loopy</code> ↔ <code>Knot</code></td><td>a deliberate dependency cycle: the topological sort must fail on exactly these two, and the tree walk must cut the loop</td></tr>
+<tr><td><code>Rusty</code></td><td>deliberately broken metadata — <code>version</code> is <code>*</code>, no description or license, a <code>provides</code> entry pointing at a missing file, a duplicated and a self-referential dependency, a <code>lib/</code> file nothing declares, a missing resource</td></tr></table></div>
+<p><code>modinfo check</code> finds thirteen distinct problems in <code>Rusty</code> and none in the other five.</p>
+<h2 id="both-engines-byte-for-byte">Both engines, byte for byte</h2>
+<pre class="native-code"><code class="lang-sh">RAKUPP=build/rakupp sh showcase/modinfo/compare.sh</code></pre>
+<p>runs all thirteen commands under <code>raku</code> and under <code>rakupp</code> and diffs STDOUT. <code>about</code> is left out on purpose — it reports the engine it is running under, so the two runs are <em>supposed</em> to differ there.</p>
+<p>The same comparison holds on a real corpus: over the 61 unpacked distributions of the module battery, <code>list</code>, <code>graph</code>, <code>rank</code>, <code>check</code> and all three export formats are byte-identical under both engines.</p>
+<p>If the distributions modinfo depends on are not installed, point <code>MODLIB</code> at a comma-separated list of <code>lib</code> directories that hold them — both engines accept the same <code>RAKULIB</code> spelling:</p>
+<pre class="native-code"><code class="lang-sh">MODLIB=$(ls -d ~/dists/*/lib | paste -sd, -) RAKUPP=build/rakupp sh compare.sh</code></pre>
+<h2 id="determinism">Determinism</h2>
+<p>A report that two engines can be diffed against has to be reproducible, and two things in Raku are not, unless you make them so:</p>
+<ul><li><strong>Hash order.</strong> Every listing sorts — distributions, provides, dependencies, findings, and the JSON/YAML keys. <code>IO::Glob</code>'s <code>.dir</code> yields filesystem order, so the scan sorts its results before reading anything.</li><li><strong>XML attributes.</strong> An element's attributes live in a <code>Hash</code>, so serialising two of them puts them in an unpredictable order — a run-to-run difference, not just an engine one. The report's own indenter emits attributes sorted.</li></ul>
+<p>There are no timestamps anywhere in the output, for the same reason.</p>
+<h2 id="configuration">Configuration</h2>
+<p><code>modinfo.yml</code> (or <code>~/.modinfo.yml</code>, or <code>--config=FILE</code>) sets the defaults:</p>
+<pre class="native-code"><code class="lang-yaml">scan:
+  path: fixtures/dists
+report:
+  width: 92
+  color: true
+rank:
+  top: 20</code></pre>
+<p>Command-line options win over the file, which wins over the built-in defaults.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>factorize.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>factorize.raku</code></h1>
+<p class="tagline">Prime factorization, gcd/lcm.</p>
+<p>A small number-theory workshop: trial-division prime factorization rendered as prime powers, the divisor count derived from the exponents, and gcd/lcm shown three ways — the built-in infix <code>gcd</code> / <code>lcm</code> operators, their <code>[gcd]</code> / <code>[lcm]</code> reductions across a list, and a hand-written Euclid that cross-checks the built-in.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# A little number-theory workshop: prime factorization, divisor counts, and
+# the two classic partners gcd and lcm. Shows trial-division factoring, hash
+# tallies for exponents, and Raku's built-in `gcd` / `lcm` infix operators
+# (which also work as reductions, `[gcd]` / `[lcm]`).
+
+# Trial division: pull out each prime factor and tally its exponent in a hash.
+sub prime-factors($n is copy) {
+    my %exp;
+    my $d = 2;
+    while $d * $d &lt;= $n {
+        while $n %% $d {
+            %exp{$d}++;
+            $n = $n div $d;
+        }
+        $d++;
+    }
+    %exp{$n}++ if $n &gt; 1;        # whatever is left is a prime
+    %exp;
+}
+
+# Render 360 as "2^3 * 3^2 * 5" (a lone prime keeps no exponent).
+sub factor-string(%exp) {
+    return '1' unless %exp;
+    %exp.keys.sort({ $^a &lt;=&gt; $^b }).map(-&gt; $p {
+        %exp{$p} == 1 ?? "$p" !! "$p^%exp{$p}"
+    }).join(' * ');
+}
+
+say 'Prime factorizations (with divisor counts):';
+for 360, 97, 1024, 5040, 600851475143 -&gt; $n {
+    my %e = prime-factors($n);
+    # The number of divisors is the product of (exponent + 1) over all primes.
+    my $divisors = [*] %e.values.map(* + 1);
+    $divisors = 1 unless %e;
+    say sprintf('  %-14d = %-22s  %d divisors',
+                $n, factor-string(%e), $divisors);
+}
+say '';
+
+# gcd and lcm as infix operators. gcd via Euclid is a one-liner too, shown
+# here as a check that the built-in agrees.
+sub my-gcd($a is copy, $b is copy) {
+    ($a, $b) = $b, $a % $b while $b;
+    $a;
+}
+
+say 'gcd and lcm (built-in infix vs. Euclid by hand):';
+for (48, 36), (1071, 462), (17, 5) -&gt; ($a, $b) {
+    my $g = $a gcd $b;
+    my $l = $a lcm $b;
+    my $check = my-gcd($a, $b) == $g ?? 'ok' !! 'MISMATCH';
+    say "  $a, $b:  gcd = $g  lcm = $l   (Euclid check: $check)";
+}
+say '';
+
+# Reductions fold the operator across a whole list.
+say 'Reductions across a list:';
+my @nums = 24, 60, 36, 90;
+say "  numbers      = @nums[]";
+say "  [gcd] @nums[] = ", [gcd] @nums;
+say "  [lcm] @nums[] = ", [lcm] @nums;</pre>
+<p class="ex-links"><a href="/play/?ex=factorize">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/factorize.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Prime factorizations (with divisor counts):
+  360            = 2^3 * 3^2 * 5           24 divisors
+  97             = 97                      2 divisors
+  1024           = 2^10                    11 divisors
+  5040           = 2^4 * 3^2 * 5 * 7       60 divisors
+  600851475143   = 71 * 839 * 1471 * 6857  16 divisors
+
+gcd and lcm (built-in infix vs. Euclid by hand):
+  48, 36:  gcd = 12  lcm = 144   (Euclid check: ok)
+  1071, 462:  gcd = 21  lcm = 23562   (Euclid check: ok)
+  17, 5:  gcd = 1  lcm = 85   (Euclid check: ok)
+
+Reductions across a list:
+  numbers      = 24 60 36 90
+  [gcd] 24 60 36 90 = 6
+  [lcm] 24 60 36 90 = 360</code></pre></div>
+<p class="focus">Feature focus: number theory, reductions.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/fibonacci/">← fibonacci.raku</a> <a class="nav-next" href="/examples/pascal/">pascal.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

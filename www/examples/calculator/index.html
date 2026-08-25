@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>calculator.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>calculator.raku</code></h1>
+<p class="tagline">Evaluates arithmetic expressions.</p>
+<p>A four-function calculator whose parser <em>is</em> a grammar: precedence and associativity come from the grammar's structure, and an actions class turns each match into a number as it reduces.</p>
+<pre class="native-code"><code>1 + 2 * 3              = 7
+(1 + 2) * 3            = 9
+10 / 4                 = 2.5
+2 * (3 + 4) - 5 / 2    = 11.5
+-3 + 4 * -2            = -11</code></pre>
+<p>Because arithmetic is done in <code>Rat</code>, <code>10 / 4</code> is the exact <code>5/2</code>, not a rounded float.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# A four-function calculator built from a Raku grammar and an actions class.
+#
+# The grammar describes the shape of an arithmetic expression; the actions
+# class turns each successful match into a number as it is reduced, so
+# precedence and associativity fall out of the grammar structure itself
+# rather than from a hand-written parser. `%` is the separator meta-operator:
+# `&lt;term&gt;+ % &lt;op&gt;` means "one or more terms separated by operators".
+
+grammar Expr {
+    rule  TOP     { &lt;sum&gt; }
+    rule  sum     { &lt;product&gt;+ % &lt;add-op&gt; }
+    rule  product { &lt;factor&gt;+  % &lt;mul-op&gt; }
+    rule  factor  { &lt;number&gt; | '(' &lt;sum&gt; ')' }
+    token number  { '-'? \d+ ['.' \d+]? }
+    token add-op  { '+' | '-' }
+    token mul-op  { '*' | '/' }
+}
+
+sub fold(@vals, @ops) {
+    my $acc = @vals[0];
+    for @ops.kv -&gt; $i, $op {
+        given $op {
+            when '+' { $acc += @vals[$i + 1] }
+            when '-' { $acc -= @vals[$i + 1] }
+            when '*' { $acc *= @vals[$i + 1] }
+            when '/' { $acc /= @vals[$i + 1] }
+        }
+    }
+    $acc;
+}
+
+class Calc {
+    method TOP     ($/) { make $&lt;sum&gt;.made }
+    method factor  ($/) { make $&lt;number&gt; ?? +$&lt;number&gt; !! $&lt;sum&gt;.made }
+    method product ($/) { make fold($&lt;factor&gt;».made, $&lt;mul-op&gt;».Str) }
+    method sum     ($/) { make fold($&lt;product&gt;».made, $&lt;add-op&gt;».Str) }
+}
+
+sub MAIN() {
+    my @tests =
+        '1 + 2 * 3',
+        '(1 + 2) * 3',
+        '10 / 4',                 # stays an exact Rat (5/2), never a float
+        '2 * (3 + 4) - 5 / 2',
+        '-3 + 4 * -2';
+
+    for @tests -&gt; $src {
+        my $result = Expr.parse($src, actions =&gt; Calc).made;
+        say sprintf('%-22s = %s', $src, $result);
+    }
+}</pre>
+<p class="ex-links"><a href="/play/?ex=calculator">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/calculator.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1 + 2 * 3              = 7
+(1 + 2) * 3            = 9
+10 / 4                 = 2.5
+2 * (3 + 4) - 5 / 2    = 11.5
+-3 + 4 * -2            = -11</code></pre></div>
+<p class="focus">Feature focus: grammars + an actions class.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/life/">← life.raku</a> <a class="nav-next" href="/examples/json/">json.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

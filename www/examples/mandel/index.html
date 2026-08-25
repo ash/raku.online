@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mandel.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>mandel.raku</code></h1>
+<p class="tagline">The Mandelbrot set as ASCII.</p>
+<p>The classic ASCII Mandelbrot set, a faithful modernisation of the ~2004 Parrot <code>examples/mandel.p6</code>. The header explains the two language changes since then that the original tripped over; <a href="https://github.com/ash/rakupp/blob/main/docs/dev/experiments/MANDEL.md">docs/dev/experiments/MANDEL.md</a> has the full story. It is the smallest program here that exercises tight numeric loops.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Print the Mandelbrot set.
+#
+# History:
+#   Originally languages/perl6/examples/mandel.p6 in the Parrot project
+#   (~2004), translated from C by Glenn Rhoads and ported to Perl 6 by
+#   Leopold Tötsch &lt;lt@toetsch.at&gt;. That file no longer compiles under
+#   present-day Raku (nor under raku++) because of two language changes
+#   since the Parrot era; see docs/dev/MANDEL.md for the full story.
+#
+# This is a faithful modernisation. Only two things changed, both forced
+# by the language rather than by any single implementation:
+#   1. Whitespace is now required around the  &lt;  and  &gt;  comparison
+#      operators. The original wrote  $k&lt;112 ; today  $k&lt;...&gt;  is
+#      angle-bracket subscript/word-quote syntax, so it must be  $k &lt; 112.
+#   2. A C-style comma expression used as a loop condition is now a List
+#      (always true) instead of "the value of the last element". The
+#      per-iteration side effects that used to live in the condition are
+#      moved into the loop init / body / step.
+#
+# The algorithm, the character ramp, and the 75x30 geometry are unchanged.
+# Output is byte-for-byte identical under Rakudo and raku++.
+
+sub MAIN() {
+    my ($x, $y, $k);
+    my @b = (' ', '.', ':', ',', ';', '!', '/', '&gt;', ')', '|', '&amp;', 'I', 'H', '%', '*', '#');
+
+    my ($r, $i, $z, $Z, $t, $c, $C);
+    loop ($y = 30; $y &gt; 0; $y--) {
+        $C = $y * 0.1 - 1.5;
+        loop ($x = 0; $x &lt; 75; $x++) {
+            $c = $x * 0.04 - 2.0;
+            $z = 0.0;
+            $Z = 0.0;
+            loop ($r = $c, $i = $C, $k = 0; $k &lt; 112; $k++) {
+                $t = $z * $z - $Z * $Z + $r;
+                $Z = 2.0 * $z * $Z + $i;
+                $z = $t;
+                last if $z * $z + $Z * $Z &gt; 10.0;
+            }
+            print @b[$k % 16];
+        }
+        print "\n";
+    }
+}
+</pre>
+<p class="ex-links"><a href="/play/?ex=mandel">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/mandel.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>................::::::::::::::::::::::::::::::::::::::::::::...............
+...........::::::::::::::::::::::::::::::::::::::::::::::::::::::..........
+........::::::::::::::::::::::::::::::::::,,,,,,,:::::::::::::::::::.......
+.....:::::::::::::::::::::::::::::,,,,,,,,,,,,,,,,,,,,,,:::::::::::::::....
+...::::::::::::::::::::::::::,,,,,,,,,,,,;;;!:H!!;;;,,,,,,,,:::::::::::::..
+:::::::::::::::::::::::::,,,,,,,,,,,,,;;;;!!/&gt;&amp;*|&amp; !;;;,,,,,,,:::::::::::::
+::::::::::::::::::::::,,,,,,,,,,,,,;;;;;!!//)|.*#|&gt;/!;;;;;,,,,,,:::::::::::
+::::::::::::::::::,,,,,,,,,,,,;;;;;;!!!!//&gt;|:    !:|//!!;;;;;,,,,,:::::::::
+:::::::::::::::,,,,,,,,,,;;;;;;;!!/&gt;&gt;I&gt;&gt;)||I#     H&amp;))&gt;////*!;;,,,,::::::::
+::::::::::,,,,,,,,,,;;;;;;;;;!!!!/&gt;H:  #|              IH&amp;*I#/;;,,,,:::::::
+::::::,,,,,,,,,;;;;;!!!!!!!!!!//&gt;|.H:                     #I&gt;!!;;,,,,::::::
+:::,,,,,,,,,;;;;!/||&gt;///&gt;&gt;///&gt;&gt;)|H                         %|&amp;/;;,,,,,:::::
+:,,,,,,,,;;;;;!!//)&amp; :;I*,H#&amp;||&amp;/                           *)/!;;,,,,,::::
+,,,,,,;;;;;!!!//&gt;)IH:,        ##                            #&amp;!!;;,,,,,::::
+,;;;;!!!!!///&gt;)H%.**           *                            )/!;;;,,,,,::::
+                                                          &amp;)/!!;;;,,,,,::::
+,;;;;!!!!!///&gt;)H%.**           *                            )/!;;;,,,,,::::
+,,,,,,;;;;;!!!//&gt;)IH:,        ##                            #&amp;!!;;,,,,,::::
+:,,,,,,,,;;;;;!!//)&amp; :;I*,H#&amp;||&amp;/                           *)/!;;,,,,,::::
+:::,,,,,,,,,;;;;!/||&gt;///&gt;&gt;///&gt;&gt;)|H                         %|&amp;/;;,,,,,:::::
+::::::,,,,,,,,,;;;;;!!!!!!!!!!//&gt;|.H:                     #I&gt;!!;;,,,,::::::
+::::::::::,,,,,,,,,,;;;;;;;;;!!!!/&gt;H:  #|              IH&amp;*I#/;;,,,,:::::::
+:::::::::::::::,,,,,,,,,,;;;;;;;!!/&gt;&gt;I&gt;&gt;)||I#     H&amp;))&gt;////*!;;,,,,::::::::
+::::::::::::::::::,,,,,,,,,,,,;;;;;;!!!!//&gt;|:    !:|//!!;;;;;,,,,,:::::::::
+::::::::::::::::::::::,,,,,,,,,,,,,;;;;;!!//)|.*#|&gt;/!;;;;;,,,,,,:::::::::::
+:::::::::::::::::::::::::,,,,,,,,,,,,,;;;;!!/&gt;&amp;*|&amp; !;;;,,,,,,,:::::::::::::
+...::::::::::::::::::::::::::,,,,,,,,,,,,;;;!:H!!;;;,,,,,,,,:::::::::::::..
+.....:::::::::::::::::::::::::::::,,,,,,,,,,,,,,,,,,,,,,:::::::::::::::....
+........::::::::::::::::::::::::::::::::::,,,,,,,:::::::::::::::::::.......
+...........::::::::::::::::::::::::::::::::::::::::::::::::::::::..........</code></pre></div>
+<p class="focus">Feature focus: loops, complex-plane arithmetic.</p>
+<nav class="ex-nav"><a class="nav-next" href="/examples/sierpinski/">sierpinski.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

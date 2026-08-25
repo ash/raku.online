@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kvstore — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>kvstore — a key-value server with its own protocol</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/kvstore">Source on GitHub ↗</a></p>
+<p>An in-memory key-value store with a Redis-flavoured text protocol, over raw TCP. Like the <a href="/showcase/chat/">chat</a> server it is concurrent — one <code>start</code> thread per connection — but instead of broadcasting, the connections share a single mutable store guarded by a <code>Lock</code>, and each command line gets a reply. It's the "network protocol" showcase: no HTTP, just a line protocol you can type by hand.</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/kvstore/kvstore.raku          # listens on 127.0.0.1:6380
+PORT=7000 build/rakupp showcase/kvstore/kvstore.raku
+# or compile a standalone binary:
+build/rakupp --exe -o kvstore showcase/kvstore/kvstore.raku &amp;&amp; ./kvstore</code></pre>
+<p>Then connect with any line-oriented TCP client:</p>
+<pre class="native-code"><code class="lang-sh">nc 127.0.0.1 6380</code></pre>
+<h2 id="a-session">A session</h2>
+<pre class="native-code"><code>$ nc 127.0.0.1 6380
+rakupp-kv ready. One command per line; HELP for the list.
+SET name ada
+OK
+GET name
+ada
+SET greeting "hello world"
+OK
+GET greeting
+hello world
+INCR hits
+1
+INCR hits
+2
+APPEND name " lovelace"
+12
+GET name
+ada lovelace
+KEYS
+greeting hits name
+DBSIZE
+3
+DEL name
+1
+GET name
+(nil)
+QUIT</code></pre>
+<p>(The short lines are what you type; the line under each is the server's reply.)</p>
+<h2 id="commands">Commands</h2>
+<div class="tablewrap"><table><tr><th>Command</th><th>Reply</th></tr><tr><td><code>SET key value…</code></td><td><code>OK</code> — value may be <code>"quoted to keep spaces"</code></td></tr>
+<tr><td><code>GET key</code></td><td>the value, or <code>(nil)</code></td></tr>
+<tr><td><code>DEL key…</code></td><td>count of keys removed</td></tr>
+<tr><td><code>EXISTS key</code></td><td><code>1</code> / <code>0</code></td></tr>
+<tr><td><code>INCR key</code> / <code>DECR key</code></td><td>the new integer value</td></tr>
+<tr><td><code>APPEND key value</code></td><td>the new string length</td></tr>
+<tr><td><code>KEYS</code></td><td>all keys, sorted</td></tr>
+<tr><td><code>DBSIZE</code></td><td>number of keys</td></tr>
+<tr><td><code>FLUSHALL</code></td><td><code>OK</code> — clears the store</td></tr>
+<tr><td><code>PING [msg]</code></td><td><code>PONG</code> (or the echoed message)</td></tr>
+<tr><td><code>HELP</code></td><td>the command list</td></tr>
+<tr><td><code>QUIT</code></td><td>closes the connection</td></tr></table></div>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>One thread per client.</strong> The accept loop does <code>start serve($conn)</code>, so many connections are handled at once; a blocking <code>recv</code> releases the interpreter lock and the others keep flowing.</li><li><strong>One shared store under a <code>Lock</code>.</strong> Every read and write goes through <code>$lock.protect { … }</code>, so concurrent <code>INCR</code>/<code>SET</code>/<code>DEL</code> stay consistent.</li><li><strong>Hand-rolled protocol.</strong> A line scanner splits each command into a verb and arguments, honouring <code>"double quotes"</code> so a value can contain spaces; a <code>given</code>/<code>when</code> dispatches to the handler, which returns the reply string.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

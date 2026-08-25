@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>perl — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>perl — a Perl 5 interpreter</h1>
+<p class="sc-actions"><a class="sc-btn" href="/play/?ex=perl-interpreter">Run it in the playground ↗</a> <a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/perl">Source on GitHub ↗</a></p>
+<p>A working interpreter for a practical slice of Perl 5 — the language Raku grew out of. One Raku grammar parses Perl into an AST; a tree-walking evaluator runs it, carrying Perl's sigil variables (<code>$</code>/<code>@</code>/<code>%</code>), scalar-vs-list context, string interpolation, statement modifiers, and regexes. The regex side is a small backtracking engine written inside the interpreter, because rakupp can't build a regex from a runtime string.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/perl/perl.raku showcase/perl/examples/fizzbuzz.pl
+build/rakupp showcase/perl/perl.raku showcase/perl/examples/regex.pl
+build/rakupp showcase/perl/perl.raku --ast=file.pl     # dump the parsed AST
+build/rakupp showcase/perl/perl.raku                   # no file → a REPL</code></pre>
+<p>Six example programs live in <a href="https://github.com/ash/rakupp/tree/main/showcase/perl/examples"><code>examples/</code></a>:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Shows off</th></tr><tr><td><code>fizzbuzz.pl</code></td><td>statement modifiers, <code>.=</code> concatenation, a C-style <code>for</code></td></tr>
+<tr><td><code>sieve.pl</code></td><td>arrays, <code>(x) x n</code> list repetition, nested loops, <code>grep</code></td></tr>
+<tr><td><code>quicksort.pl</code></td><td>recursion, <code>shift</code>, <code>grep</code> partitioning, list-returning subs</td></tr>
+<tr><td><code>wordfreq.pl</code></td><td><code>split</code> on whitespace, hashes, sort by value then key, <code>printf</code></td></tr>
+<tr><td><code>regex.pl</code></td><td><code>m//</code> capture, <code>s///</code> with backreferences, <code>//g</code> in list context</td></tr>
+<tr><td><code>histogram.pl</code></td><td><code>split</code>, hash counting, <code>x</code> repetition, formatted columns</td></tr></table></div>
+<p>All six produce byte-identical output under the system <code>perl</code> and under <code>perl.raku</code> — including Perl's <code>%.15g</code> float stringification (<code>10/3</code> prints <code>3.33333333333333</code>), string-<code>cmp</code> default sort, and scalar-context array counts.</p>
+<h2 id="what-runs">What runs</h2>
+<p><strong>Core.</strong> <code>my</code>/<code>our</code> declarations (scalar, list, array, hash), <code>sub</code> with <code>@_</code> and hoisting (a sub may be called before it is defined), <code>return</code> (including as a statement modifier), recursion, <code>if</code>/<code>elsif</code>/<code>else</code>, <code>unless</code>, <code>while</code>, <code>until</code>, C-style <code>for (init; cond; step)</code>, list <code>for</code>/<code>foreach</code> with an explicit or implicit <code>$_</code>, <code>last</code>/<code>next</code>, and bare blocks.</p>
+<p><strong>Values and context.</strong> Number/string duality on scalars, arrays and hashes as first-class containers, and scalar-vs-list context throughout: an array in scalar context yields its count, a comma list yields its last element, list assignment distributes and an array/hash slurps the rest, and <code>wantarray</code>-style list-returning subs flatten into their caller.</p>
+<p><strong>Operators.</strong> Arithmetic <code>+ - * / % **</code>, string <code>.</code> and <code>x</code> (with <code>(LIST) x n</code> list repetition), numeric compares <code>== != &lt; &gt; &lt;= &gt;= &lt;=&gt;</code>, string compares <code>eq ne lt gt le ge cmp</code>, logical <code>&amp;&amp; || // ! and or not xor</code> with short-circuit, ternary <code>?:</code>, ranges <code>..</code>, <code>++</code>/<code>--</code>, compound assignment (<code>+= -= .= x= //=</code> …), <code>=~</code>/<code>!~</code>, and the named-unary / list-operator call forms (<code>print LIST</code>, <code>sort keys %h</code>, <code>length</code>).</p>
+<p><strong>Variables.</strong> <code>$x</code>, <code>@a</code>, <code>%h</code>, elements <code>$a[i]</code> / <code>$h{k}</code> (with autovivification and negative indices), <code>$#a</code> last-index, <code>(LIST)[i]</code> subscripts, the default <code>$_</code>, <code>@ARGV</code>, and the regex capture variables <code>$1</code>…<code>$9</code> and <code>$&amp;</code>.</p>
+<p><strong>Strings.</strong> Single- and double-quoted literals, <code>qw(...)</code>, and double-quote interpolation of <code>$x</code>, <code>${x}</code>, <code>$a[i]</code>, <code>$h{k}</code>, <code>@a</code> (space-joined), <code>$#a</code>, and the usual <code>\n \t \r \0 \e</code> escapes.</p>
+<p><strong>Regex.</strong> <code>m//</code>, bare <code>/.../</code> after <code>=~</code>, and <code>s///</code>, matched by a backtracking engine that supports literals, <code>.</code>, <code>^ $</code>, <code>\b</code>/<code>\B</code>, character classes <code>[...]</code>/<code>[^...]</code> with ranges and <code>\d \w \s</code> (and negations), capturing and non-capturing <code>(?:...)</code> groups, alternation <code>|</code>, greedy and lazy <code>* + ? {n,m}</code>, and the flags <code>i</code> (fold case), <code>g</code> (global), <code>m</code> (<code>^</code>/<code>$</code> per line) and <code>s</code> (<code>.</code> matches newline). <code>s///</code> interpolates <code>$1</code>… into its replacement. <code>split</code> accepts a regex or a string separator.</p>
+<p><strong>Builtins.</strong> <code>print</code>, <code>say</code>, <code>printf</code>/<code>sprintf</code>, <code>warn</code>, <code>die</code>; <code>length</code>, <code>substr</code>, <code>index</code>, <code>rindex</code>, <code>uc</code>, <code>lc</code>, <code>ucfirst</code>, <code>lcfirst</code>, <code>join</code>, <code>split</code>, <code>reverse</code>, <code>sort</code> (default and <code>{ $a &lt;=&gt; $b }</code> block forms), <code>map</code>, <code>grep</code>; <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>; <code>keys</code>, <code>values</code>, <code>exists</code>, <code>delete</code>; <code>scalar</code>, <code>defined</code>, <code>chomp</code>, <code>abs</code>, <code>int</code>, <code>sqrt</code>, <code>chr</code>, <code>ord</code>.</p>
+<h2 id="what-s-out-of-scope">What's out of scope</h2>
+<p>Perl is the language famous for "only <code>perl</code> can parse Perl," and this is a slice, not the whole. Deliberately left out — the parts that make full Perl undecidable or that need machinery beyond a showcase:</p>
+<ul><li><strong>References and nested data structures</strong> (<code>\@</code>, <code>\%</code>, <code>$ref-&gt;[0]</code>, <code>$ref-&gt;{k}</code>, <code>@{ ... }</code>) — a <code>\</code> is parsed and ignored rather than making a ref.</li><li><strong>The <code>/</code>-divide-vs-regex parse ambiguity</strong> — a bare <code>/</code> is always division here; write <code>m/.../</code> (or <code>/.../ </code> on the right of <code>=~</code>) for a match.</li><li><strong><code>tr///</code></strong>, <strong><code>qr//</code></strong>, regex lookaround, backreferences and named captures.</li><li><strong>Packages, modules, OO</strong> (<code>package</code>, <code>bless</code>, <code>use</code>, <code>require</code>), <strong>prototypes</strong>, <strong>typeglobs</strong>, <strong><code>tie</code></strong>, <strong><code>local</code></strong>, <strong>source filters</strong>, and <strong>file I/O</strong> (<code>open</code>, <code>&lt;$fh&gt;</code>, <code>&lt;STDIN&gt;</code>).</li><li><strong><code>each</code></strong>, <code>wantarray</code>, and the long tail of builtins not listed above.</li></ul>
+<p>When the parser meets something outside the subset it fails cleanly rather than guessing.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>The pieces mirror the other language showcases:</p>
+<ol><li>A <strong>grammar</strong> (<code>PerlGrammar</code>) with a proto-rule statement dispatcher and a precedence ladder of expression rules. Comments are blanked before parsing.</li><li>An <strong>actions class</strong> that builds a plain-hash AST (<code>%( t =&gt; 'kind', … )</code>).</li><li>A <strong>tree-walking evaluator</strong> split into <code>eval-stmt</code>, <code>eval-scalar</code> and <code>eval-list</code> — the last two are how scalar-vs-list context is threaded.</li><li>A <strong>regex engine</strong> (<code>rx-compile</code> + a CPS backtracking matcher) for <code>m//</code>, <code>s///</code> and regex <code>split</code>.</li></ol>
+<p>Every program also compiles to a standalone native binary with <code>rakupp --exe showcase/perl/perl.raku -o perl.exe</code> (it bundles the interpreter, since the evaluator uses <code>CATCH</code> for control flow).</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

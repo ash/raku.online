@@ -15,6 +15,8 @@
 
   var SECTIONS = [
     { href: '/play/',   label: 'Play',   hue: 'play'   },
+    { href: '/examples/', label: 'Examples', hue: 'examples' },
+    { href: '/showcase/', label: 'Showcase', hue: 'showcase' },
     { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },

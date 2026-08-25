@@ -1,8 +1,9 @@
 # raku.online
 
-The whole of [raku.online](https://raku.online/) — a playground, a tour, a set
-of drills, a FAQ, a module handbook and the Raku++ specification, all on one
-origin and all running the same interpreter in the visitor's browser.
+The whole of [raku.online](https://raku.online/) — a playground, an example
+gallery, a showcase of projects, a tour, a set of drills, a FAQ, a module
+handbook and the Raku++ specification, all on one origin and all running the
+same interpreter in the visitor's browser.
 
 The interpreter is [Raku++](https://github.com/ash/rakupp), a Raku
 implementation in C++17, compiled to WebAssembly as
@@ -23,6 +24,9 @@ program still runs in a fraction of a second:
 | `/` | The front page: what Raku++ is, with live editors | `www/index.html` |
 | `/install/` | Every way to get it, and every supported platform | `www/install/` |
 | `/play/` | The full playground | `www/play/` |
+| `/examples/` | Raku by example — one page per program from `rakupp/examples`, in a live editor with its captured output | generated from `sites/examples/` |
+| `/showcase/` | The showcase — one page per `rakupp/showcase` project, from its README | generated from `sites/showcase/` |
+| `/live/` | Software that already existed — ecosystem tools run unmodified under Raku++ | generated from `sites/showcase/` |
 | `/tour/` | A Tour of Raku — 18 lessons | generated from `sites/tour/` |
 | `/drills/` | Raku Drills — practice questions | `www/drills/` |
 | `/spec/` | The Raku++ specification | generated from `sites/spec/` |

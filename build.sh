@@ -64,6 +64,26 @@ build_spec() {
     cp -R "$ROOT/sites/spec/out" "$WWW/spec"
 }
 
+# The example gallery never runs the programs here: their outputs are captured
+# separately (rakupp build.raku --capture, in sites/examples) and committed, so
+# an ordinary build is deterministic and runs nothing.
+build_examples() {
+    echo "examples -> www/examples"
+    ( cd "$ROOT/sites/examples" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/examples"
+    cp -R "$ROOT/sites/examples/out" "$WWW/examples"
+}
+
+# One generator, two sections: the showcase, and live/ beside it (two pages —
+# not worth a generator of its own).
+build_showcase() {
+    echo "showcase -> www/showcase + www/live"
+    ( cd "$ROOT/sites/showcase" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/showcase" "$WWW/live"
+    cp -R "$ROOT/sites/showcase/out/showcase" "$WWW/showcase"
+    cp -R "$ROOT/sites/showcase/out/live" "$WWW/live"
+}
+
 # The grid is built from the Rakugrid checkout, which only exists on the machine
 # that refreshes the data. Everywhere else the committed www/grid snapshot is the
 # site, and skipping the rebuild is correct, not a failure.
@@ -98,7 +118,8 @@ check_shell() {
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/book/index.html" \
-                "$WWW/ecosystem/index.html" "$WWW/grid/index.html"; do
+                "$WWW/ecosystem/index.html" "$WWW/grid/index.html" \
+                "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
     done
@@ -116,9 +137,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" "$WWW/grid" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/ecosystem" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo)$' || true)
+            | grep -vE '^/(tour|spec|grid|faq|book|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -142,8 +163,10 @@ case "${1:-all}" in
     faq)       build_faq ;;
     book)      build_book ;;
     ecosystem) build_ecosystem ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_ecosystem ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|ecosystem]" >&2; exit 2 ;;
+    examples)  build_examples ;;
+    showcase)  build_showcase ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_ecosystem; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|ecosystem|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>anagrams.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>anagrams.raku</code></h1>
+<p class="tagline">Groups words into anagram classes.</p>
+<p>Two words are anagrams when they share the same multiset of letters, so each word is keyed by its letters sorted into order (<code>.comb.sort.join</code>) and <code>.classify</code> drops matching words into the same bucket. The non-trivial groups are printed largest-first, ties broken by key so the output never changes.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Anagram classes. Two words are anagrams when they are the same multiset of
+# letters, so the trick is to give every word a canonical key — its letters
+# sorted into order — and let words with the same key fall into the same
+# bucket. `.classify` does exactly that grouping; the rest is string ops
+# (`.comb.sort.join`) and a deterministic sort of the buckets for printing.
+
+my @words = &lt;
+    listen silent enlist tinsel   evil live vile veil
+    stop tops pots spot opts post  night thing
+    cat act tac                    angle glean angel
+    dog god                        rat tar art
+    cab bac                        stressed desserts
+&gt;;
+
+# The canonical key: sort a word's letters. "listen" and "silent" both map
+# to "eilnst", so `.classify` drops them into the same group.
+my %groups = @words.classify(*.comb.sort.join);
+
+say "Anagram groups (largest first):";
+say '';
+
+# Keep only the real anagram groups (two or more words), and print them
+# biggest-first, breaking ties by key so the output is always the same.
+for %groups.pairs.sort({ $^b.value.elems &lt;=&gt; $^a.value.elems
+                         || $^a.key leg $^b.key }) -&gt; $group {
+    next if $group.value.elems &lt; 2;
+    printf "  %-9s  %s\n", $group.key, $group.value.sort.join(' ');
+}
+
+say '';
+my $classes = %groups.pairs.grep(*.value.elems &gt;= 2).elems;
+say "Found $classes anagram classes among {@words.elems} words.";</pre>
+<p class="ex-links"><a href="/play/?ex=anagrams">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/anagrams.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Anagram groups (largest first):
+
+  opst       opts post pots spot stop tops
+  eilnst     enlist listen silent tinsel
+  eilv       evil live veil vile
+  act        act cat tac
+  aegln      angel angle glean
+  art        art rat tar
+  abc        bac cab
+  deerssst   desserts stressed
+  dgo        dog god
+  ghint      night thing
+
+Found 10 anagram classes among 31 words.</code></pre></div>
+<p class="focus">Feature focus: hashes, <code>.classify</code>.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/brainfuck/">← brainfuck.raku</a> <a class="nav-next" href="/examples/wordcount/">wordcount.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

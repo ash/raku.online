@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>echo-server.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>echo-server.raku</code></h1>
+<p class="tagline">A TCP echo server and its client.</p>
+<p>A TCP echo server and its client in one program, talking over the loopback interface — real <code>IO::Socket::INET</code>, no internet required. The server runs on its own thread and upper-cases whatever the client sends.</p>
+<h2>The program</h2>
+<p class="native-note">This one needs TCP sockets, which the browser sandbox does not have — so there is no Run button here. <a href="/install/">Install Raku++</a> and run it from a checkout:</p>
+<pre class="native-code"><code>rakupp examples/echo-server.raku</code></pre>
+<pre class="native-code src-listing"><code>#!/usr/bin/env raku
+# A TCP echo server and its client, in one self-contained program.
+#
+# Everything runs over the loopback interface (127.0.0.1), so no internet
+# connection is needed and the output is deterministic. The server runs on
+# its own thread; the main thread is the client. This is real networking —
+# IO::Socket::INET is the same socket API you would point at a remote host.
+
+constant HOST = '127.0.0.1';
+constant PORT = 8099;
+
+# Create the listening socket up front. `:listen` binds the port here, in
+# the main thread, so the client below can connect without any race — only
+# `.accept` (waiting for a connection) is deferred to the server thread.
+my $listener = IO::Socket::INET.new(:localhost(HOST), :localport(PORT), :listen);
+
+my $server = start {
+    loop {
+        my $conn = $listener.accept;
+        my $request = $conn.recv;
+        last if $request eq 'BYE';
+        $conn.print($request.uc);          # shout the message back
+        $conn.close;
+    }
+    $listener.close;
+}
+
+# The client: send a few messages, print what the server echoes back.
+sub ask($message) {
+    my $sock = IO::Socket::INET.new(:host(HOST), :port(PORT));
+    $sock.print($message);
+    my $reply = $sock.recv;
+    $sock.close;
+    $reply;
+}
+
+say 'Client -&gt; server -&gt; client, over TCP on 127.0.0.1:';
+for 'hello', 'raku sockets', 'goodbye' -&gt; $msg {
+    say sprintf('  sent %-16s got back %s', "'$msg'", ask($msg));
+}
+
+# Tell the server to shut down, then wait for its thread to finish.
+my $bye = IO::Socket::INET.new(:host(HOST), :port(PORT));
+$bye.print('BYE');
+$bye.close;
+await $server;
+say 'Server stopped cleanly.';</code></pre>
+<p class="ex-links"><a href="https://github.com/ash/rakupp/blob/main/examples/echo-server.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Client -&gt; server -&gt; client, over TCP on 127.0.0.1:
+  sent 'hello'          got back HELLO
+  sent 'raku sockets'   got back RAKU SOCKETS
+  sent 'goodbye'        got back GOODBYE
+Server stopped cleanly.</code></pre></div>
+<p class="focus">Feature focus: <code>IO::Socket::INET</code>.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/sleep-sort/">← sleep-sort.raku</a> <a class="nav-next" href="/examples/quine/">quine.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

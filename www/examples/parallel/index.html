@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>parallel.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>parallel.raku</code></h1>
+<p class="tagline">Prime counting across threads.</p>
+<p>Counts the primes below 100,000 by splitting the range across eight threads with <code>start</code>, then <code>await</code>-ing and summing the results — and separately runs a producer/consumer pipeline over a <code>Channel</code>. The work runs concurrently but the merged output is always the same.</p>
+<h2>The program</h2>
+<p class="native-note">This one needs real threads, which the single-threaded WebAssembly build does not have — so there is no Run button here. <a href="/install/">Install Raku++</a> and run it from a checkout:</p>
+<pre class="native-code"><code>rakupp examples/parallel.raku</code></pre>
+<pre class="native-code src-listing"><code>#!/usr/bin/env raku
+# Concurrency: prime counting spread across worker threads, then a
+# producer/consumer pipeline over a Channel. Both are deterministic — the
+# work is split up and run in parallel, but the results are merged back in
+# order, so the output is always the same.
+
+# --- Promises: fan out, then await ---------------------------------------
+#
+# Split the range 2 .. LIMIT into CHUNKS slices, count the primes in each
+# slice on its own thread with `start`, then `await` all of them and sum.
+constant LIMIT  = 100_000;
+constant CHUNKS = 8;
+
+my $chunk = LIMIT div CHUNKS;
+
+my @jobs = (^CHUNKS).map: -&gt; $i {
+    my $lo = 2 max $i * $chunk;
+    my $hi = ($i + 1) * $chunk - 1;
+    start {
+        my $count = ($lo .. $hi).grep(*.is-prime).elems;
+        %( :$lo, :$hi, :$count );
+    }
+}
+
+my @done = await @jobs;
+my $total = @done.map(*&lt;count&gt;).sum;
+
+say "Primes below {LIMIT}, counted on {CHUNKS} threads:";
+for @done -&gt; $r {
+    say sprintf('  [%6d .. %6d] -&gt; %d primes', $r&lt;lo&gt;, $r&lt;hi&gt;, $r&lt;count&gt;);
+}
+say "  total = $total";
+say '';
+
+# --- Channel: a producer/consumer pipeline -------------------------------
+#
+# One thread pushes work onto a Channel and closes it; the main thread
+# drains it. `.list` on a Channel blocks and yields every value that was
+# sent, in order, until the Channel is closed.
+my $ch = Channel.new;
+
+start {
+    for 1 .. 12 -&gt; $n {
+        $ch.send($n * $n);
+    }
+    $ch.close;
+}
+
+my @squares = $ch.list;
+say "Squares received over a Channel: @squares[]";
+say "Their sum is {@squares.sum}";</code></pre>
+<p class="ex-links"><a href="https://github.com/ash/rakupp/blob/main/examples/parallel.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Primes below 100000, counted on 8 threads:
+  [     2 ..  12499] -&gt; 1492 primes
+  [ 12500 ..  24999] -&gt; 1270 primes
+  [ 25000 ..  37499] -&gt; 1206 primes
+  [ 37500 ..  49999] -&gt; 1165 primes
+  [ 50000 ..  62499] -&gt; 1142 primes
+  [ 62500 ..  74999] -&gt; 1118 primes
+  [ 75000 ..  87499] -&gt; 1099 primes
+  [ 87500 ..  99999] -&gt; 1100 primes
+  total = 9592
+
+Squares received over a Channel: 1 4 9 16 25 36 49 64 81 100 121 144
+Their sum is 650</code></pre></div>
+<p class="focus">Feature focus: <code>start</code>/<code>await</code>, <code>Channel</code>.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/roman/">← roman.raku</a> <a class="nav-next" href="/examples/sleep-sort/">sleep-sort.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

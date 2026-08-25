@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>js — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>js — a JavaScript/TypeScript interpreter</h1>
+<p class="sc-actions"><a class="sc-btn" href="/play/?ex=javascript-typescript">Run it in the playground ↗</a> <a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/js">Source on GitHub ↗</a></p>
+<p>A working interpreter for a practical slice of JavaScript — with enough TypeScript on top that everyday <code>.ts</code> files run unchanged. One Raku grammar parses both languages into an AST; a tree-walking evaluator runs it. TypeScript is handled the way <code>tsc</code> handles it: type annotations, interfaces, type aliases and generics are parsed and erased, while enums (the one TS construct with runtime output) become real objects.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/js/js.raku showcase/js/examples/fizzbuzz.js
+build/rakupp showcase/js/js.raku showcase/js/examples/bank.ts
+build/rakupp showcase/js/js.raku --ast=file.js     # dump the parsed AST
+build/rakupp showcase/js/js.raku --asi=file.js     # show semicolons ASI inserts
+build/rakupp showcase/js/js.raku                   # no file → a REPL</code></pre>
+<p>Semicolons are optional — a newline ends a statement wherever JavaScript's automatic semicolon insertion (ASI) would; see <a href="#semicolons-asi">Semicolons (ASI)</a>.</p>
+<p>Ten example programs live in <a href="https://github.com/ash/rakupp/tree/main/showcase/js/examples"><code>examples/</code></a>:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Shows off</th></tr><tr><td><code>fizzbuzz.js</code></td><td>data-driven rules instead of an if-chain</td></tr>
+<tr><td><code>fib.js</code></td><td>recursion, closures, memoization</td></tr>
+<tr><td><code>closures.js</code></td><td>currying, compose, private counters, <code>once</code>, memoize</td></tr>
+<tr><td><code>quicksort.js</code></td><td>quicksort + mergesort, array methods, non-destructive sorts</td></tr>
+<tr><td><code>wordcount.js</code></td><td>strings and objects — count, rank, report</td></tr>
+<tr><td><code>gameoflife.js</code></td><td>Conway's Game of Life on a wrap-around grid, nested loops</td></tr>
+<tr><td><code>bank.ts</code></td><td>classes, inheritance, <code>super</code>, enums, generics, param properties</td></tr>
+<tr><td><code>roman.ts</code></td><td>tuple types, <code>Record</code>, <code>[v, s]</code> destructuring, both-way conversion</td></tr>
+<tr><td><code>shapes.ts</code></td><td>an interface + a class hierarchy with polymorphic dispatch</td></tr>
+<tr><td><code>calculator.ts</code></td><td>a tokenizer + recursive-descent parser, in the language being parsed</td></tr>
+<tr><td><code>bits.js</code></td><td>bitwise ops, <code>switch</code> with fall-through, optional chaining <code>?.</code></td></tr></table></div>
+<p>The seven <code>.js</code> examples produce byte-identical output under <code>node</code> and under <code>js.raku</code> — including <code>0.1 + 0.2</code> printing <code>0.30000000000000004</code>, <code>-7 % 3</code> being <code>-1</code>, and default <code>sort()</code> ordering numbers as strings. (<code>console.log</code> of a long array is the one place they differ: node wraps arrays past six elements into a grid, so the sort demo joins its arrays for display.)</p>
+<h2 id="what-runs">What runs</h2>
+<p><strong>JavaScript.</strong> <code>let</code>/<code>const</code>/<code>var</code> (with multiple declarators), functions, closures, arrow functions (expression and block bodies, default parameters), <code>if</code>/<code>else</code>, <code>while</code>, <code>do</code>/<code>while</code>, classic <code>for</code>, <code>for…of</code> (arrays, strings, and <code>[k, v]</code> destructuring for <code>Object.entries</code>), <code>switch</code>/<code>case</code>/<code>default</code> with fall-through, <code>break</code>/<code>continue</code>, <code>return</code>, ternary, <code>&amp;&amp;</code>/<code>||</code>/<code>??</code> with short-circuit, <code>==</code>/<code>===</code> with JS coercion rules, <code>+</code> as concat-or-add, <code>**</code>, bitwise <code>&amp; | ^ ~ &lt;&lt; &gt;&gt; &gt;&gt;&gt;</code>, <code>typeof</code>/<code>void</code>/<code>delete</code>, <code>instanceof</code>, <code>in</code>, <code>x++</code>/<code>x--</code>, compound assignment (arithmetic, bitwise, and logical <code>&amp;&amp;=</code>/<code>||=</code>/<code>??=</code>), optional chaining <code>?.</code> (<code>a?.b</code>, <code>a?.[i]</code>, <code>a?.()</code>) with short-circuit, template literals with <code>${…}</code>, array and object literals (shorthand and method properties), <code>this</code>, classes with fields, <code>extends</code>, <code>super(...)</code>/<code>super.m(...)</code>, static members, <code>new</code>, <code>throw</code>/<code>try</code>/<code>catch</code>/<code>finally</code>, IIFEs, and <code>//</code> and <code>/* */</code> comments.</p>
+<p><strong>TypeScript.</strong> Type annotations on variables, parameters, returns and fields; <code>interface</code> and <code>type</code> declarations; generic functions and generic call sites (<code>identity&lt;string&gt;("x")</code>); union types; optional (<code>x?</code>) and <code>readonly</code>/access modifiers; constructor parameter properties (<code>constructor(public r: number)</code>, which really assign); <code>as</code> casts and <code>x!</code> non-null assertions (erased); <code>enum</code> with auto and explicit values plus reverse mapping (<code>Color[10]</code>).</p>
+<p><strong>Built-ins.</strong> <code>console.log/error/warn</code>; <code>Math</code> (floor, ceil, round, trunc, abs, sign, sqrt, pow, min, max, random, log, exp, hypot, PI, E); <code>JSON.stringify</code> (with indent); <code>Object.keys/values/entries</code>; <code>Array.isArray/from</code>; <code>Number(...)</code>, <code>String(...)</code>, <code>Boolean(...)</code>, <code>parseInt</code> (with radix), <code>parseFloat</code>, <code>isNaN</code>, <code>toFixed</code>, <code>toString(radix)</code>; array methods (push, pop, shift, unshift, slice, indexOf, includes, join, map, filter, forEach, reduce, find, findIndex, some, every, concat, reverse, sort, flat); string methods (toUpperCase, toLowerCase, trim, charAt, charCodeAt, indexOf, includes, startsWith, endsWith, slice, substring, split, repeat, replace, replaceAll, padStart, padEnd, concat); <code>new Error(msg)</code> with <code>.message</code>.</p>
+<h2 id="what-doesn-t">What doesn't</h2>
+<p>Not implemented: regex literals, labels, getters/setters, object/array destructuring outside <code>for…of</code>, spread/rest, <code>async</code>/<code>await</code>, promises, generators, modules (<code>import</code>/<code>export</code>), <code>Symbol</code>, <code>Map</code>/<code>Set</code>, prototypes (<code>Object.create</code>, <code>.prototype</code>), <code>JSON.parse</code>. <code>instanceof</code> covers user classes plus <code>Object</code>/<code>Array</code> (there's no global prototype chain otherwise). Keywords are not valid identifiers.</p>
+<h2 id="semicolons-asi">Semicolons (ASI)</h2>
+<p>Semicolons are optional — a newline ends a statement wherever JavaScript's <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#automatic_semicolon_insertion">automatic semicolon insertion</a> would end one. This is a preprocessing pass (<code>insert-asi</code>, alongside comment stripping) that inserts a real <code>;</code> at each statement-ending line break, since the grammar can't see newlines directly. It follows JS's own heuristic: end the statement at a line break <em>unless</em> the break is a continuation — inside <code>(</code>/<code>[</code>, inside an object literal, after a trailing operator, or before a leading continuation token (<code>.</code>, a binary operator, <code>)</code>, <code>else</code>…). It handles the subtle cases — method chains split across lines, <code>return</code>↵<code>expr</code> (which becomes <code>return; expr;</code>, per the "restricted production" rule), do-while, Allman braces, and object-vs-block <code>{</code> — but it is a heuristic, not the full ECMAScript algorithm, so pathological code (<code>a = b</code>↵<code>(c).d()</code>, which JS keeps as one call) follows JS by <em>not</em> inserting there. All six <code>.js</code> examples run identically with or without semicolons. See the transform with:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/js/js.raku --asi=file.js     # print the semicolon-inserted source</code></pre>
+<p><a href="https://github.com/ash/rakupp/blob/main/showcase/js/ASI.md"><code>ASI.md</code></a> is a full writeup: why the grammar can't see newlines, the decision rule and token alphabet, and the tricky cases (object-vs-block braces, IIFEs, <code>enum</code>, do-while, <code>else</code>) that each took a correction.</p>
+<h2 id="semantics-worth-knowing">Semantics worth knowing</h2>
+<p><em> Every number is an IEEE double, like JS. <code>1/0</code> is <code>Infinity</code>, <code>0/0</code> is   <code>NaN</code>, <code>%</code> truncates toward zero, integers print without a decimal point. </em> Truthiness, <code>==</code> coercion, string comparison with <code>&lt;</code>, and <code>+</code>   concat-or-add all follow JS rules. <em> <code>sort()</code> without a comparator sorts as strings; with <code>(a, b) =&gt; a - b</code> it   sorts numerically. Both mutate, like JS. </em> Objects preserve insertion order (a <code>JSObject</code> keeps its own key list —   a plain Raku <code>Hash</code> wouldn't). * <code>this</code> is bound at the call site for functions and methods; arrows inherit   it lexically. <code>return</code>, <code>break</code>, <code>continue</code> and <code>throw</code> unwind as typed   Raku exceptions.</p>
+<h2 id="speed">Speed</h2>
+<p>It's a tree-walking interpreter written in an interpreted language: naive <code>fib(15)</code> (1973 calls) takes about 1.5 s under rakupp on an M-class laptop; the other three examples run in well under 0.1 s. Function bodies that end in a lone <code>return</code> skip the exception-based unwind path, which cut about a third off call-heavy code.</p>
+<p><code>rakupp --exe</code> compiles it to a native binary that runs all four examples except <code>fib.js</code>'s deep memoized calls: the native binary currently has a smaller usable recursion budget than the interpreter (JS recursion deeper than ~15 levels hits it), so <code>fastFib(78)</code> only completes under the interpreter.</p>
+<h2 id="implementation-notes">Implementation notes</h2>
+<p>The pipeline is the same as the lisp and json showcases, scaled up: a <code>grammar</code> (~120 lines) with a precedence ladder of nine levels feeds an actions class that builds hash-based AST nodes, and <code>eval-stmt</code>/<code>eval-expr</code> walk them. Two pre-passes run before parsing, since ASI is a token-stream transform, not a grammar-shaped problem (see <a href="https://github.com/ash/rakupp/blob/main/showcase/js/ASI.md"><code>ASI.md</code></a>): comments are blanked out with newlines preserved, then <code>insert-asi</code> inserts real semicolons at statement-ending line breaks. A few rakupp-specific workarounds are marked with comments in the source: every <code>CATCH</code> carries a <code>default { .rethrow }</code>, and value keywords like <code>null</code> are classified in the ident action because proto-rule dispatch is longest-match. Captures reach the action methods through <code>mklist</code>, which normalises the three shapes a capture can have — a list of Matches when the rule quantified it, a bare Match when it matched once, <code>Nil</code> when it did not match at all.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

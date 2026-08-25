@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>python — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>python — a Python 3 interpreter</h1>
+<p class="sc-actions"><a class="sc-btn" href="/play/?ex=python-interpreter">Run it in the playground ↗</a> <a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/python">Source on GitHub ↗</a></p>
+<p>A working interpreter for a practical slice of Python 3. The interesting part is the <strong>off-side rule</strong>: Python delimits blocks by indentation, not braces. A Raku grammar can't track that directly (it needs a stateful indentation stack that survives block exit, which rakupp's dynamic variables don't restore), so — exactly like CPython — a <strong>tokenizer pass turns indentation into explicit <code>INDENT</code> / <code>DEDENT</code> markers</strong>, and a normal grammar parses the marker stream.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/python/python.raku showcase/python/examples/fizzbuzz.py
+build/rakupp showcase/python/python.raku --tokens=file.py    # show the marker stream
+build/rakupp showcase/python/python.raku --ast=file.py       # dump the AST
+build/rakupp showcase/python/python.raku                     # no file → a REPL</code></pre>
+<p>Five example programs live in <a href="https://github.com/ash/rakupp/tree/main/showcase/python/examples"><code>examples/</code></a>:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Shows off</th></tr><tr><td><code>fib.py</code></td><td>recursion, list comprehension, tuple-swap, arbitrary-precision ints</td></tr>
+<tr><td><code>fizzbuzz.py</code></td><td>the off-side rule — nested <code>if</code>/<code>elif</code>/<code>else</code> inside a <code>for</code></td></tr>
+<tr><td><code>wordcount.py</code></td><td>dicts, <code>sorted</code> with a <code>lambda</code> key, f-strings, <code>str</code> methods</td></tr>
+<tr><td><code>sieve.py</code></td><td>list building, slicing, <code>range</code> with a step, comprehensions</td></tr>
+<tr><td><code>classes.py</code></td><td>closures, <code>lambda</code>, <code>map</code>/<code>filter</code>, generator expressions</td></tr></table></div>
+<p>All five produce byte-identical output under CPython 3 and under <code>python.raku</code> — including <code>fib_big(100)</code> (a 21-digit int, since integers ride on Raku's own bignums), <code>0.1 + 0.2</code> printing <code>0.30000000000000004</code> (float literals are IEEE doubles and repr finds the shortest round-trip), and default string sort order.</p>
+<h2 id="the-indentation-tokenizer">The indentation tokenizer</h2>
+<p>Run any example with <code>--tokens</code> to see it. Source like</p>
+<pre class="native-code"><code class="lang-python">for i in range(3):
+    if i:
+        print(i)
+    print("done")</code></pre>
+<p>becomes a stream where <code>&lt;IN&gt;</code> is <code>INDENT</code>, <code>&lt;DE&gt;</code> is <code>DEDENT</code>, and each logical line ends in a newline:</p>
+<pre class="native-code"><code>for i in range(3):
+&lt;IN&gt;
+if i:
+&lt;IN&gt;
+print(i)
+&lt;DE&gt;
+print("done")
+&lt;DE&gt;</code></pre>
+<p>The tokenizer keeps an indentation stack: a deeper line pushes and emits one <code>INDENT</code>; a shallower line pops and emits one <code>DEDENT</code> per level unwound; at end of file it unwinds to zero. It also joins physical lines that continue inside brackets or after a <code>\</code>, skips blank and comment-only lines, and leaves the contents of triple-quoted strings untouched. The grammar then has an ordinary rule — <code>suite: NEWLINE INDENT stmt+ DEDENT</code> — with no indentation logic at all.</p>
+<h2 id="what-runs">What runs</h2>
+<p><strong>Statements.</strong> <code>if</code>/<code>elif</code>/<code>else</code>, <code>while</code>/<code>else</code>, <code>for … in …</code>/<code>else</code>, <code>break</code>, <code>continue</code>, <code>pass</code>, <code>def</code> (positional params, defaults, <code>*args</code>), <code>return</code>, <code>global</code>, <code>del</code>, augmented assignment, chained assignment (<code>a = b = c</code>), tuple/list unpacking (<code>a, b = b, a</code>), <code>;</code>-separated statements, and one-line suites (<code>if x: return y</code>).</p>
+<p><strong>Expressions.</strong> The full precedence ladder: <code>or</code>/<code>and</code>/<code>not</code>, chained comparisons (<code>1 &lt; x &lt; 10</code>), <code>in</code>/<code>not in</code>/<code>is</code>/<code>is not</code>, <code>| ^ &amp;</code>, <code>&lt;&lt; &gt;&gt;</code>, <code>+ - * / // % **</code>, unary <code>- + ~</code>, <code>**</code>, calls, indexing, slicing (<code>a[i:j:k]</code> with negative and open bounds), attribute-method calls, the ternary <code>a if c else b</code>, <code>lambda</code>, and list / set / dict / generator comprehensions (including multiple <code>for</code> clauses and <code>if</code> filters).</p>
+<p><strong>Types.</strong> <code>int</code> (arbitrary precision), <code>float</code> (IEEE double), <code>bool</code>, <code>str</code>, <code>None</code>, <code>list</code>, <code>tuple</code>, <code>dict</code> (insertion-ordered), <code>set</code>, and <code>range</code>. Value equality, truthiness, and <code>repr</code> all follow CPython.</p>
+<p><strong>Builtins.</strong> <code>print</code> (with <code>sep</code>/<code>end</code>), <code>len</code>, <code>range</code>, <code>int</code>, <code>float</code>, <code>str</code>, <code>repr</code>, <code>bool</code>, <code>list</code>, <code>tuple</code>, <code>dict</code>, <code>set</code>, <code>sorted</code> (<code>key</code>/<code>reverse</code>), <code>reversed</code>, <code>enumerate</code>, <code>zip</code>, <code>map</code>, <code>filter</code>, <code>sum</code>, <code>min</code>, <code>max</code>, <code>abs</code>, <code>round</code>, <code>any</code>, <code>all</code>, <code>ord</code>, <code>chr</code>, <code>type</code>, <code>divmod</code>, <code>input</code>. Plus common <code>str</code> methods (<code>split</code>, <code>join</code>, <code>upper</code>, <code>lower</code>, <code>strip</code>, <code>replace</code>, <code>startswith</code>, <code>find</code>, <code>format</code>, <code>zfill</code>, …), <code>list</code> methods (<code>append</code>, <code>pop</code>, <code>sort</code>, <code>extend</code>, <code>insert</code>, <code>index</code>, <code>count</code>, …) and <code>dict</code> methods (<code>keys</code>, <code>values</code>, <code>items</code>, <code>get</code>, <code>pop</code>, <code>setdefault</code>, <code>update</code>, …). f-strings support <code>{expr}</code>, <code>{x!r}</code>, and format specs (<code>{x:.2f}</code>, <code>{n:05d}</code>, <code>{v:,}</code>); <code>%</code>- and <code>.format()</code>-style formatting work too.</p>
+<h2 id="what-s-out-of-scope">What's out of scope</h2>
+<p>A slice, not the whole language — the parts left out either need machinery beyond a showcase or rarely appear in small programs:</p>
+<ul><li><strong>Classes and objects</strong> (<code>class</code>, <code>self</code>, inheritance, dunder methods), <strong>decorators</strong>, and <strong><code>with</code></strong>/context managers.</li><li><strong><code>import</code></strong> and the standard library.</li><li><strong>Exceptions</strong> (<code>try</code>/<code>except</code>/<code>raise</code>) — errors print a message and stop.</li><li><strong>Generators</strong> (<code>yield</code>) — generator <em>expressions</em> are evaluated eagerly into a list; there are no lazy generators or <code>yield</code>.</li><li><strong>Keyword-only args, <code>**kwargs</code>, positional-only params</strong>, and starred assignment targets (<code>a, *rest = …</code>).</li><li>Exact <code>UnboundLocalError</code> scoping (a function reads outer names it also assigns, rather than raising).</li></ul>
+<p>When the parser meets something outside the subset it fails cleanly rather than guessing.</p>
+<h2 id="how-it-works">How it works</h2>
+<ol><li>An <strong>indentation tokenizer</strong> (<code>preprocess</code>) turns source into the marker stream described above.</li><li>A <strong>grammar</strong> (<code>PyGrammar</code>) with a proto-rule statement dispatcher and a Python precedence ladder parses the stream. A custom <code>ws</code> matches horizontal space only, so newlines and markers stay significant.</li><li>An <strong>actions class</strong> builds a plain-hash AST (<code>%( t =&gt; 'kind', … )</code>).</li><li>A <strong>tree-walking evaluator</strong> (<code>exec-stmt</code> + <code>pyeval</code>) runs it, with CPython-matching <code>repr</code>/<code>str</code> formatting and value semantics.</li></ol>
+<p>Every program also compiles to a standalone native binary with <code>rakupp --exe showcase/python/python.raku -o python.exe</code> (it bundles the interpreter, since the evaluator uses <code>CATCH</code> for control flow).</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

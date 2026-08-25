@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wordcount.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>wordcount.raku</code></h1>
+<p class="tagline">Word-frequency bar chart.</p>
+<p>Word-frequency analysis of an embedded paragraph (Sandburg's "Fog"): the text is lower-cased, chopped into words with a regex, and tallied into a <code>Bag</code> — Raku's built-in counting multiset. The ten most common words are drawn as an ASCII bar chart, ties broken alphabetically so the ranking is stable.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Word-frequency analysis, the "wc | sort | uniq -c" of a single expression.
+# A paragraph is lower-cased and chopped into words with a regex (so commas
+# and full stops fall away), tallied into a `Bag` — Raku's built-in multiset,
+# which counts occurrences for you — and the most common words are drawn as a
+# little ASCII bar chart. Ties are broken alphabetically so the output is
+# stable from run to run.
+
+my $text = q:to/END/;
+    The fog comes on little cat feet. It sits looking over harbour and city
+    on silent haunches and then moves on. The fog is grey, the fog is soft,
+    the fog is everywhere the city looks; and the little cat of the fog moves
+    on and on over the harbour, over the city, and then the fog is gone.
+    END
+
+# Split into words: lower-case, then `.comb` out maximal runs of letters.
+# Feeding that list to `.Bag` gives a multiset mapping word =&gt; count.
+my $counts = $text.lc.comb(/ &lt;[a..z']&gt;+ /).Bag;
+
+my $total  = $counts.total;
+my $unique = $counts.elems;
+say "Words: $total total, $unique unique.";
+say '';
+
+# Top ten, most frequent first (ties broken by the word itself). The bar is
+# just the count rendered as that many '#'.
+say "Most frequent words:";
+for $counts.pairs.sort({ $^b.value &lt;=&gt; $^a.value || $^a.key leg $^b.key })[^10] -&gt; $w {
+    printf "  %-10s %2d  %s\n", $w.key, $w.value, '#' x $w.value;
+}</pre>
+<p class="ex-links"><a href="/play/?ex=wordcount">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/wordcount.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Words: 59 total, 25 unique.
+
+Most frequent words:
+  the        10  ##########
+  fog         6  ######
+  and         5  #####
+  on          5  #####
+  is          4  ####
+  city        3  ###
+  over        3  ###
+  cat         2  ##
+  harbour     2  ##
+  little      2  ##</code></pre></div>
+<p class="focus">Feature focus: <code>Bag</code>, regex, sort by value.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/anagrams/">← anagrams.raku</a> <a class="nav-next" href="/examples/cipher/">cipher.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

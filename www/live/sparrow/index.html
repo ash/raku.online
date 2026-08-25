@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sparrow — run under Raku++, unmodified</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/live/">← Software that already existed</a></p>
+<h1>sparrow — somebody else's framework, unchanged</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/live/sparrow">The harness on GitHub ↗</a></p>
+<p><a href="https://github.com/melezhik/Sparrow6">Sparrow6</a> is a Raku automation framework (<code>zef:sp1983</code>) — an alternative to Ansible or Chef, in its author's words. This directory is a five-task scenario that runs under it.</p>
+<p><strong>Sparrow6 itself is not in this directory.</strong> It is melezhik's, published to the ecosystem, installed from there and left alone — no patch, no copy, no adjustment. What is here is only the five tasks and the scenario that drive it, which we wrote.</p>
+<p>It is also where <strong>process startup</strong> becomes measurable, because of how Sparrow is built. A scenario is Raku glue, and every <code>task-run</code> spawns <em>separate processes</em> to do the actual work. That makes it a fair test of what an implementation charges to start — a cost a long-running program pays only once, and this one pays per task.</p>
+<p>What gets spawned, watched by putting logging shims for <code>raku</code>, <code>perl</code> and <code>bash</code> on <code>PATH</code> — in order, for the five tasks above:</p>
+<pre class="native-code"><code>1.  bash  cmd.bash                            tasks/hello
+2.  raku  -I… -Mglue -Msparrow6lib task.raku  tasks/greet — started directly
+3.  bash  cmd.bash                            tasks/report
+4.  bash  cmd.bash                            tasks/perl-check — the wrapper…
+5.  perl  -I… -Msparrow6lib task.pl           …which starts perl
+6.  bash  cmd.bash                            tasks/perl-check, a second time
+7.  perl  -I… -Msparrow6lib task.pl
+8.  raku  -I… -Mglue -Msparrow6lib task.raku  tasks/raku-ok — started directly</code></pre>
+<p>Each task runs in <strong>its own</strong> language: a Bash task does not start a Raku, and neither does a Perl one. Bash and Perl tasks are launched through a small generated <code>cmd.bash</code> wrapper — so those cost a shell process on top of whatever the task itself needs — while the Raku tasks are started directly, with no wrapper. Two tasks start a <code>raku</code>, and those spawns are most of the difference between the second and third rows of the table below.</p>
+<p>(Sparrow launches the Perl task twice for one line of output. That is Sparrow's own behaviour — verified identical under both engines — so it cancels out of the comparison rather than distorting it.)</p>
+<pre class="native-code"><code>tasks/hello/task.bash        echo, in Bash
+tasks/greet/task.raku        reads its parameters with Sparrow's config&lt;name&gt;
+tasks/report/task.bash       talks back to the scenario through stdout
+tasks/perl-check/task.pl     the same scenario driving Perl 5
+tasks/raku-ok/task.raku      its OUTPUT is verified by a task.check file</code></pre>
+<p><code>tasks/raku-ok</code> exercises the half of Sparrow the others do not: the <strong>check engine</strong>. A <code>task.check</code> file beside the task holds patterns its stdout must satisfy — here <code>regexp: ok</code> — and Sparrow verifies them after the run (<code>stdout match &lt;ok&gt; True</code>; a miss is <code>TASK CHECK FAIL</code>). That machinery is regex-heavy Raku (<code>$data.comb(/&lt;mymatch=$pattern&gt;/,:match)</code>), and adding this task found two engine faults the other four never touched: <code>&lt;alias=$var&gt;</code> interpolated as literal text and degraded to an always-matching no-op — so a failing check PASSED — and <code>.comb(:match)</code> answered strings, not Match objects. Both are pinned in <code>t/regression/regex-alias-interp-comb-match.raku</code>.</p>
+<h2 id="running-it">Running it</h2>
+<p>Sparrow6 is not shipped here — install it, with either installer. Both write the same store, so one copy serves both engines. It declares six direct dependencies (<code>JSON::Fast</code>, <code>Data::Dump</code>, <code>Hash::Merge</code>, <code>YAMLish</code>, <code>Terminal::ANSIColor</code>, <code>File::Directory::Tree</code>) and resolves to a plan of 17 distributions once theirs are counted; the installer handles all of it:</p>
+<pre class="native-code"><code class="lang-sh">rakupp install Sparrow6      # or: zef install Sparrow6</code></pre>
+<p>Then just run it — no <code>RAKULIB</code>, no <code>-I</code>:</p>
+<pre class="native-code"><code class="lang-sh">cd live/sparrow &amp;&amp; rakupp scenario.raku</code></pre>
+<p><code>compare.sh</code> runs the scenario under both engines and diffs stdout, with Sparrow's wall-clock line prefixes normalised:</p>
+<pre class="native-code"><code class="lang-sh">sh live/sparrow/compare.sh</code></pre>
+<p>Both take <code>rakupp</code> and <code>raku</code> from <code>PATH</code>. Running out of a build tree instead? Name it: <code>RAKUPP=./build/rakupp sh live/sparrow/compare.sh</code>.</p>
+<p>(If you would rather run against an unpacked checkout than an installed dist, both engines honour a comma-separated <code>RAKULIB</code>; Sparrow6 needs its <code>resources/</code> directory on the path as well as its <code>lib/</code>.)</p>
+<h2 id="what-it-costs-to-start-measured">What it costs to start, measured</h2>
+<pre class="native-code"><code class="lang-sh">sh live/sparrow/bench.sh          # or: RUNS=5 sh live/sparrow/bench.sh</code></pre>
+<p><code>bench.sh</code> times the three configurations below and prints this table. It warms each one first, because Rakudo's <em>very first</em> run compiles Sparrow6's module graph and can take tens of seconds — a real cost, but a one-off, and not what this measures. Best of five, warm, on one machine:</p>
+<div class="tablewrap"><table><tr><th>configuration</th><th>wall clock</th></tr><tr><td>Rakudo throughout</td><td>1560 ms</td></tr>
+<tr><td>Raku++ scenario, Raku tasks still spawning <code>raku</code></td><td>1332 ms</td></tr>
+<tr><td>Raku++ all the way down</td><td><strong>152 ms</strong></td></tr></table></div>
+<p>Absolute numbers are machine-specific and the Rakudo row is the load-sensitive one — run it yourself rather than trusting these. The ratio between the last two rows is what stays put.</p>
+<p>Each row is one command, if you would rather see them separately than trust a script:</p>
+<pre class="native-code"><code class="lang-sh">cd live/sparrow
+
+# 1. Rakudo throughout
+time raku scenario.raku
+
+# 2. Raku++ runs the scenario — but Sparrow6 still spawns `raku` for Raku tasks
+time rakupp scenario.raku
+
+# 3. Raku++ all the way down: a `raku` on PATH that is really rakupp
+mkdir -p /tmp/shim &amp;&amp; printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v rakupp)" &gt; /tmp/shim/raku
+chmod +x /tmp/shim/raku
+time PATH=/tmp/shim:$PATH rakupp scenario.raku</code></pre>
+<p>The middle row is not a curiosity, it is the thing to know before believing the bottom one. Sparrow6 builds its Raku task command with a <strong>literal <code>raku</code></strong> (<code>Sparrow6::Task::Runner::Helpers::Raku</code>), so running the scenario under Raku++ still starts a Rakudo for every Raku task — and that spawn is where the time is. The corollary is worth stating: for a scenario with <strong>no</strong> Raku tasks the gain is confined to the scenario process itself — its startup, plus however fast the engine runs Sparrow's own orchestration — because the Bash and Perl tasks cost the same either way. <code>compare.sh</code> puts a <code>raku</code> shim on PATH to get the bottom row; a cleaner fix would be for Sparrow6 to honour something like <code>SP6_RAKU_BIN</code>.</p>
+<h2 id="what-running-it-exposed">What running it exposed</h2>
+<p>Sparrow6 did not work here at all until four faults were fixed, none of them about Sparrow (<code>t/regression/sparrow6-blockers.raku</code> pins all four):</p>
+<ul><li><code>IO::Path.absolute</code> answered an <code>IO::Path</code> where Rakudo answers a <code>Str</code></li><li><code>Proc::Async.ready</code> did not exist</li><li><code>whenever $proc.stdout</code> never fired inside a <code>react</code>, so every task ran and printed nothing</li><li><code>config&lt;name&gt;</code> parsed as <code>config("name")</code> — Rakudo reads a tight <code>name&lt;key&gt;</code> as <code>name()&lt;key&gt;</code> — which is the API every Sparrow task and plugin uses</li></ul>
+<p>That is the argument for <a href="/live/">live/</a> existing at all: four general divergences in an afternoon, found by code we did not write and would not have thought to write.</p>
+<h2 id="not-in-t-run-raku">Not in <code>t/run.raku</code></h2>
+<p>Deliberately, as the <a href="/live/">live/</a> entries all are: the suite runs on machines that do not have Sparrow6's seventeen distributions installed, and the scenario writes under <code>~/sparrow6</code> and spawns processes. <code>compare.sh</code> is the check, run by hand.</p>
+<footer>
+<span>The tools here are other people's work — installed from the ecosystem, run unmodified, credited, and checked against Rakudo.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

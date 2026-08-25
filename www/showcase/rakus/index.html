@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rakus — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>rakus — a static HTTP file server</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/rakus">Source on GitHub ↗</a></p>
+<p>Point it at a directory and it serves the files inside over HTTP/1.1 — the Raku answer to <code>python3 -m http.server</code>, on nothing but <code>IO::Socket::INET</code>.</p>
+<blockquote class="note"><p>This is the <strong>showcase</strong> copy: one file, runnable straight from a checkout. The installable distribution lives in <a href="https://github.com/ash/raku-modules/tree/main/App-Rakus">raku-modules/App-Rakus</a> as <code>App::Rakus</code>, where the routing is split into a library so it can be tested without a socket. It is published to the zef ecosystem (<a href="https://raku.land/zef:ash/App::Rakus">raku.land</a>), so <code>zef install App::Rakus</code> puts a <code>rakus</code> command on <code>PATH</code> — one that serves the <em>current</em> directory by default, where this copy serves its bundled <code>public/</code>. Edits here do not reach there, or the other way about. Where the</p></blockquote>
+<p><a href="/showcase/pastebin/">pastebin</a> is a single-purpose app with a hand-wired route table, rakus is a reusable <em>server</em>: give it a folder and it figures out the rest.</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/rakus/rakus.raku                  # serves ./public on :8080
+build/rakupp showcase/rakus/rakus.raku 9000             # choose the port
+build/rakupp showcase/rakus/rakus.raku 9000 ~/site      # choose port and root
+# or compile a standalone binary:
+build/rakupp --exe -o rakus showcase/rakus/rakus.raku &amp;&amp; ./rakus 8080 ~/site</code></pre>
+<p>Then open <a href="http://127.0.0.1:8080/">http://127.0.0.1:8080/</a>. With no root given it serves the bundled <a href="https://github.com/ash/rakupp/tree/main/showcase/rakus/public"><code>public/</code></a> folder — a landing page, a stylesheet, an SVG logo, and a <code>files/</code> directory with no index (so you can see the auto listing).</p>
+<h2 id="what-it-does">What it does</h2>
+<ul><li><strong>Correct <code>Content-Type</code> by extension</strong> — text <em>and</em> binary. HTML, CSS, JS, JSON, SVG, PNG, JPEG, … (files are read as raw bytes and streamed back, so images arrive intact).</li><li><strong><code>index.html</code></strong> when a directory has one; otherwise an <strong>auto directory listing</strong> with sizes and links.</li><li><strong><code>GET</code> and <code>HEAD</code></strong>; other methods get <code>405</code>.</li><li><strong><code>301</code></strong> to add a missing trailing slash on a directory (so relative links resolve), <strong><code>403</code></strong> on <code>..</code> path traversal, <strong><code>404</code></strong> for anything missing.</li><li><strong>Concurrent</strong> — one <code>start</code> thread per connection.</li><li>Logs each request to stderr: <code>  200 GET  /style.css</code>.</li></ul>
+<h2 id="from-the-command-line">From the command line</h2>
+<pre class="native-code"><code>$ curl -sI http://127.0.0.1:8080/logo.svg
+HTTP/1.1 200 OK
+Content-Type: image/svg+xml
+Content-Length: 289
+Server: rakus
+Connection: close
+
+$ curl -s http://127.0.0.1:8080/files/ | grep -o 'Index of[^&lt;]*'
+Index of /files/
+
+$ curl -so /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/nope
+404</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>No HTTP library.</strong> Each connection is read with <code>recv</code> until the header terminator; the request line is split into method and target by hand.</li><li><strong>Path handling.</strong> The target is URL-decoded and the query stripped; a <code>..</code> segment is rejected; the rest is joined onto the (absolute) document root.</li><li><strong>Serving.</strong> A directory resolves to <code>index.html</code> or a generated listing; a file is <code>slurp</code>-ed as a <code>Buf</code> and its bytes written straight to the socket with a <code>Content-Length</code>. The headers go out with <code>print</code>, the body with <code>write</code> — so binary files are byte-exact.</li><li><strong>Byte-exact bodies.</strong> Every response body is a <code>Buf</code> (generated HTML is <code>.encode</code>-d), so <code>Content-Length</code> is always the true byte count.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

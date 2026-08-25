@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sqlite — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>sqlite — a SQLite client over NativeCall</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/sqlite">Source on GitHub ↗</a></p>
+<p>A working <code>sqlite3</code> client in which <strong>nothing is reimplemented</strong>. Every query is executed by the real <code>libsqlite3</code>, reached through <code>is native('sqlite3')</code>; the terminal is put into raw mode through the real <code>tcgetattr</code>/<code>tcsetattr</code>. There is no C of our own anywhere — this is the showcase for talking to the outside world.</p>
+<p>Where the language showcases (lisp, js, perl, python) prove Raku++ can <em>host</em> a language, this one proves it can <em>call</em> one: an existing C library, its opaque handles, its out-parameter protocol, and all five of its storage classes, marshalled in both directions.</p>
+<h2 id="usage">Usage</h2>
+<p>First make a database, or there is nothing for the rest of this to talk to. The bundled seed builds three related tables — <code>artists</code>, <code>albums</code> and <code>tracks</code> — and SQLite creates the file itself, so this is the whole setup:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/sqlite/sqlite.raku demo.db - &lt; showcase/sqlite/seed.sql</code></pre>
+<p><code>.read</code> does the same thing from inside a session, which is handy once you already have a database open:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/sqlite/sqlite.raku demo.db '.read showcase/sqlite/seed.sql'</code></pre>
+<p>Everything below works on that <code>demo.db</code>:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/sqlite/sqlite.raku demo.db 'select * from artists'
+build/rakupp showcase/sqlite/sqlite.raku --format=csv demo.db '.tables'
+build/rakupp showcase/sqlite/sqlite.raku demo.db - &lt; script.sql   # a whole script
+build/rakupp showcase/sqlite/sqlite.raku demo.db                  # no SQL → the browser
+build/rakupp --exe -o sqlite showcase/sqlite/sqlite.raku &amp;&amp; ./sqlite demo.db</code></pre>
+<div class="tablewrap"><table><tr><th>Option</th><th>What it does</th></tr><tr><td><code>--format=table</code></td><td>aligned columns with a rule (the default)</td></tr>
+<tr><td><code>--format=csv</code></td><td>header row — byte for byte what <code>sqlite3 -csv -header</code> writes</td></tr>
+<tr><td><code>--format=json</code></td><td>array of objects — matches <code>sqlite3 -json</code></td></tr>
+<tr><td><code>--format=list</code></td><td>pipe-separated, no header</td></tr>
+<tr><td><code>--readonly</code></td><td>open the database read-only</td></tr>
+<tr><td><code>--create</code> / <code>--/create</code></td><td>create the file if missing (on by default)</td></tr>
+<tr><td><code>--echo</code></td><td>with <code>-</code>, print each statement before running it</td></tr></table></div>
+<p>Options go before the database: the SQL argument is slurpy, so anything after it — flags included — is taken as more SQL.</p>
+<p>Dot commands, the ones a session actually reaches for: <code>.tables</code>, <code>.schema</code>, <code>.read</code>, <code>.version</code>, <code>.help</code>.</p>
+<p>Reading with <code>-</code> takes a real script, not a line at a time: statements are gathered until <code>sqlite3_complete()</code> says the semicolon that ends one is not inside a string, a comment or a <code>CREATE TRIGGER</code> body, so a <code>CREATE TABLE</code> spread over ten lines arrives in one piece. A statement left unterminated when the input runs out is run anyway, so <code>echo 'select 1' | … demo.db -</code> needs no semicolon.</p>
+<h2 id="the-browser">The browser</h2>
+<p>With no SQL argument and a terminal on both ends, it opens a full-screen browser on the alternate screen: tables on the left, rows on the right.</p>
+<div class="tablewrap"><table><tr><th>Key</th><th></th></tr><tr><td>arrows</td><td>move / scroll</td></tr>
+<tr><td>Tab</td><td>switch pane</td></tr>
+<tr><td>Enter</td><td>open the selected table</td></tr>
+<tr><td>PgUp / PgDn, Home / End</td><td>page through rows</td></tr>
+<tr><td><code>:</code></td><td>type SQL</td></tr>
+<tr><td><code>q</code></td><td>quit</td></tr></table></div>
+<p>Opening a <em>table</em> pages in SQL (<code>limit</code>/<code>offset</code>), so a million-row table costs the same to open as a small one. A result typed at the <code>:</code> prompt is a different matter — an arbitrary query cannot be paged that way, so its rows are materialised and sliced in memory. The alternate screen and raw mode are restored by <code>LEAVE</code> blocks, so the terminal survives even an exception.</p>
+<h2 id="what-the-binding-actually-exercises">What the binding actually exercises</h2>
+<p>Thirty-three native declarations: twenty-eight <code>sqlite3_*</code> functions plus <code>tcgetattr</code>, <code>tcsetattr</code>, <code>cfmakeraw</code>, <code>ioctl</code> and <code>isatty</code>. Keystrokes come from <code>$*IN</code> — reading the tty through <code>read(2)</code> was a workaround for an engine bug that is now fixed.</p>
+<ul><li><strong>Opaque handles.</strong> <code>sqlite3 *</code> and <code>sqlite3_stmt *</code> are Raku <code>Pointer</code>s, never inspected — exactly as the header intends.</li><li><strong>Out-parameters.</strong> <code>sqlite3_open_v2</code> and <code>sqlite3_prepare_v2</code> both write through a <code>sqlite3 **</code>, which is <code>Pointer is rw</code> here. This is the part of a binding most likely to be subtly wrong, which is why the compare below runs against the real client rather than trusting it.</li><li><strong>All five storage classes.</strong> <code>INTEGER</code> (64-bit, via <code>sqlite3_column_int64</code>), <code>FLOAT</code>, <code>TEXT</code>, <code>BLOB</code> and <code>NULL</code> are each marshalled to a Raku value and back. Blobs use <code>sqlite3_column_bytes</code> for the length rather than assuming a NUL terminator, because a blob may contain one.</li><li><strong>Parameter binding.</strong> <code>?</code> placeholders bind through the <code>sqlite3_bind_*</code> family, so values never go near string interpolation.</li><li><strong>The statement lifecycle.</strong> <code>prepare_v2</code> → <code>step</code> → <code>column_*</code> → <code>finalize</code>, with <code>reset</code> for re-execution, and errors read from <code>sqlite3_errmsg</code> and <code>sqlite3_extended_errcode</code>.</li></ul>
+<h2 id="the-compare">The compare</h2>
+<pre class="native-code"><code class="lang-sh">RAKUPP=build/rakupp sh showcase/sqlite/compare.sh</code></pre>
+<p>Two oracles, which is one more than the other showcases get:</p>
+<ol><li><strong>Against the real thing.</strong> The same queries through <code>sqlite3 -csv -header</code> and <code>sqlite3 -json</code>, diffed byte for byte. Those two formats are reproduced exactly on purpose: a difference means the binding or the value marshalling is wrong, and the real client says so immediately.</li><li><strong>Against the other engine.</strong> The same program under Rakudo and under Raku++, in every output format, plus the dot commands and the error paths — the same check <code>modinfo</code> and <code>jsonreq</code> run.</li></ol>
+<p>Leg 1 is skipped when there is no <code>sqlite3</code> on <code>PATH</code>, leg 2 when there is no <code>raku</code>. Queries live one per line, so a newline inside a value is written as <code>char(10)</code> rather than typed literally.</p>
+<h2 id="requirements">Requirements</h2>
+<p><code>libsqlite3</code> must be present as a shared library — it ships with macOS and with most Linux distributions (<code>libsqlite3-dev</code> or <code>sqlite-devel</code> where it does not). Nothing needs compiling here; <code>is native('sqlite3')</code> finds it at runtime.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>

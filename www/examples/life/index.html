@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>life.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>life.raku</code></h1>
+<p class="tagline">Conway's Game of Life on a torus.</p>
+<p>Conway's Game of Life on a 30×16 grid that wraps at the edges (a torus). The starting field is a fresh random "soup" every run — each cell alive with probability 0.28 — so no two runs evolve the same way; the frame header tracks the live population as it settles into still lifes and blinkers. It animates in place in the terminal (a <code>\e[H</code> cursor-home before each frame instead of scrolling); pass <code>--delay=0.2</code> to slow it down, <code>--delay=0</code> to run flat out.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Conway's Game of Life on a toroidal grid, rendered as ASCII frames.
+#
+# A cell lives into the next generation if it has 2 or 3 live neighbours;
+# a dead cell with exactly 3 live neighbours is born. The board wraps around
+# at the edges (a torus). The starting field is a fresh random "soup" every
+# run — each cell alive with probability DENSITY — so no two runs evolve the
+# same way; watch the population settle into still lifes and blinkers.
+
+constant \W = 30;
+constant \H = 16;
+constant \GENERATIONS = 100;
+constant \DENSITY = 0.28;
+
+# Seed: a random soup. `xx` re-evaluates `rand` for every cell, and builds
+# H independent rows.
+my @grid = [ [ (rand &lt; DENSITY) xx W ] xx H ];
+
+sub neighbours(@g, $r, $c) {
+    my $n = 0;
+    for -1, 0, 1 -&gt; $dr {
+        for -1, 0, 1 -&gt; $dc {
+            next if $dr == 0 &amp;&amp; $dc == 0;
+            $n++ if @g[($r + $dr) % H][($c + $dc) % W];
+        }
+    }
+    $n;
+}
+
+sub step(@g) {
+    my @next = [ [False xx W] xx H ];
+    for ^H -&gt; $r {
+        for ^W -&gt; $c {
+            my $n = neighbours(@g, $r, $c);
+            @next[$r][$c] = @g[$r][$c] ?? (2 &lt;= $n &lt;= 3) !! ($n == 3);
+        }
+    }
+    @next;
+}
+
+# Repaint a frame in place. `\e[H` moves the cursor back to the top-left
+# instead of scrolling, so each generation overwrites the previous one. Every
+# row is full width, so nothing from the old frame is ever left behind.
+sub show(@g, $gen) {
+    my $alive = @g.map({ .grep(?*).elems }).sum;
+    print "\e[H";
+    say "generation $gen ($alive alive)    ";
+    for ^H -&gt; $r {
+        say @g[$r].map({ $_ ?? '#' !! '.' }).join;
+    }
+}
+
+sub MAIN(Real :$delay = 0.08) {
+    print "\e[2J\e[?25l";          # clear the screen, hide the cursor
+    LEAVE print "\e[?25h\n";       # restore the cursor on the way out
+    for 0 ..^ GENERATIONS -&gt; $gen {
+        show(@grid, $gen);
+        @grid = step(@grid);
+        sleep $delay;
+    }
+}</pre>
+<p class="ex-links"><a href="/play/?ex=life">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/life.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><span class="out-note">from one run — it is random every time</span><pre class="output"><code>[?25lgeneration 0 (138 alive)    
+...........##...##.##.......#.
+.....#...##....##......#...#.#
+...#..##..#..##...#.....#...##
+....#.....###.###.#.#.##.##..#
+#...#..#...###.####......##...
+..#.#.#.....##...#......##.#.#
+..#....#.....#.#...##.#.#.....
+....#.......#.#....#.##..#...#
+....##.....#.#................
+.###...#...#.#....#..#...##.#.
+.#......#.#.#...#...#...#.....
+....##..#..##.......#...#..#.#
+...#..............#.#.#..##...
+#.....##........#.........#.##
+....#..#.##..#.#..##.........#
+#.......#.#....#.#......#...##
+generation 1 (160 alive)    
+#..........#.....##........#..
+......#..##.#####.##.......#.#
+#...###.....##.....#..#.####.#
+#..#####..#.......#....#..####
+#...#.....#.......##...#...###
+.#...###...#...#.#.#...##.....
+.....#............###.#.#.#.#.
+...###......#.#....#.###......
+..#.##.....#.##.....###..##...
+.####.....##.#...........#....
+##.##..####..#.....###..#.###.
+....#....#.##.......#..##.#...
+#...####...........#.#...##...
+#.....###........##......#####
+......##.##...##.##........#..
+#.......#.#.#.##.#..#.......#.
+generation 2 (124 alive)    
+#..........................#..</code></pre><div class="out-folded">⋯ 1665 more lines</div></div>
+<p class="focus">Feature focus: 2-D arrays, <code>given</code>/<code>when</code>.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/sierpinski/">← sierpinski.raku</a> <a class="nav-next" href="/examples/calculator/">calculator.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

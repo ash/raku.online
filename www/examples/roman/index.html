@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>roman.raku — Raku by example</title>
+<script>window.__SITE_BASE='/examples';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/examples.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/examples/">← All examples</a></p>
+<h1><code>roman.raku</code></h1>
+<p class="tagline">Roman numerals, both directions.</p>
+<p>Roman numerals in both directions. The forward pass is table-driven: a descending list of (value, symbol) pairs — subtractive forms included — is greedily subtracted from the number. The reverse walks the letters with a <code>given</code>/<code>when</code>. Round-tripping a spread of numbers proves the two conversions agree.</p>
+<h2>The program</h2>
+<p class="edit-note">Edit it and press Run — it executes in your browser.</p>
+<pre data-raku data-rows="24">#!/usr/bin/env raku
+# Roman numerals in both directions: integer to numeral and back again,
+# round-tripping a set of numbers so that both conversions must agree.
+#
+# The forward direction is table-driven: a list of (value, symbol) pairs in
+# descending order, including the subtractive forms (CM, XL, IV, ...), is
+# greedily subtracted from the number. The reverse walks the letters and uses
+# a `given`/`when` to decide whether each one adds or subtracts.
+
+# Ordered largest-first so the greedy loop always takes the biggest chunk.
+my @table =
+    1000 =&gt; 'M', 900 =&gt; 'CM', 500 =&gt; 'D', 400 =&gt; 'CD',
+     100 =&gt; 'C',  90 =&gt; 'XC',  50 =&gt; 'L',  40 =&gt; 'XL',
+      10 =&gt; 'X',   9 =&gt; 'IX',   5 =&gt; 'V',   4 =&gt; 'IV',
+       1 =&gt; 'I';
+
+sub to-roman($n is copy) {
+    my $out = '';
+    for @table -&gt; $pair {
+        while $n &gt;= $pair.key {
+            $out ~= $pair.value;
+            $n   -= $pair.key;
+        }
+    }
+    $out;
+}
+
+sub value-of($letter) {
+    given $letter {
+        when 'M' { 1000 }
+        when 'D' {  500 }
+        when 'C' {  100 }
+        when 'L' {   50 }
+        when 'X' {   10 }
+        when 'V' {    5 }
+        when 'I' {    1 }
+    }
+}
+
+# A smaller letter placed before a larger one is subtracted (IV = 5 - 1),
+# otherwise it is added. One left-to-right pass is enough.
+sub from-roman($s) {
+    my @letters = $s.comb;
+    my $total   = 0;
+    for ^@letters.elems -&gt; $i {
+        my $here = value-of(@letters[$i]);
+        if $i + 1 &lt; @letters.elems &amp;&amp; $here &lt; value-of(@letters[$i + 1]) {
+            $total -= $here;
+        }
+        else {
+            $total += $here;
+        }
+    }
+    $total;
+}
+
+my @numbers = 4, 9, 14, 40, 90, 444, 1984, 2026, 3888;
+
+say '  n     roman              back   ok';
+say '  ----  -----------------  -----  --';
+for @numbers -&gt; $n {
+    my $roman = to-roman($n);
+    my $back  = from-roman($roman);
+    say sprintf('  %4d  %-17s  %4d   %s', $n, $roman, $back, $n == $back);
+}</pre>
+<p class="ex-links"><a href="/play/?ex=roman">Open in the playground ↗</a> <a href="https://github.com/ash/rakupp/blob/main/examples/roman.raku">Source on GitHub ↗</a></p>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  n     roman              back   ok
+  ----  -----------------  -----  --
+     4  IV                    4   True
+     9  IX                    9   True
+    14  XIV                  14   True
+    40  XL                   40   True
+    90  XC                   90   True
+   444  CDXLIV              444   True
+  1984  MCMLXXXIV          1984   True
+  2026  MMXXVI             2026   True
+  3888  MMMDCCCLXXXVIII    3888   True</code></pre></div>
+<p class="focus">Feature focus: <code>given</code>/<code>when</code>, table-driven logic.</p>
+<nav class="ex-nav"><a class="nav-prev" href="/examples/cipher/">← cipher.raku</a> <a class="nav-next" href="/examples/parallel/">parallel.raku →</a></nav>
+<footer>
+<span>Every output on this page was printed by the program above it, captured from the real interpreter.</span>
+<span>The programs live in the <a href="https://github.com/ash/rakupp/tree/main/examples">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+<script src="/raku.js?v=eb0db9c6"></script>
+</body>
+</html>

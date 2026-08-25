@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>json — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=c7b5b9c7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/shell.css?v=c7b5b9c7">
+<link rel="stylesheet" href="/theme/showcase.css?v=c7b5b9c7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>json — a JSON parser &amp; formatter</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/json">Source on GitHub ↗</a></p>
+<p>Reads JSON into native Raku values with a grammar, and writes them back out — pretty-printed or minified — with an optional <code>jq</code>-style path to pull one value. Where <a href="/showcase/lisp/">lisp</a> and <a href="/showcase/forth/">forth</a> implement whole languages, this is the everyday job a grammar is for: read a data format, do something, write it back.</p>
+<p>(There's a smaller <a href="https://github.com/ash/rakupp/blob/main/examples/json.raku"><code>examples/json.raku</code></a> that only parses to a data structure; this one round-trips and queries.)</p>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/json/json.raku showcase/json/sample.json          # pretty-print
+build/rakupp showcase/json/json.raku --compact showcase/json/sample.json # minify
+build/rakupp showcase/json/json.raku --query='.users[0].name' showcase/json/sample.json
+cat data.json | build/rakupp showcase/json/json.raku                     # from stdin
+# or compile a standalone binary:
+build/rakupp --exe -o json showcase/json/json.raku</code></pre>
+<h2 id="examples">Examples</h2>
+<p>Pretty-printing sorts object keys, so the output is stable (nice for diffs):</p>
+<pre class="native-code"><code>$ echo '{"b":2,"a":[1,2],"c":{"x":true}}' | build/rakupp showcase/json/json.raku
+{
+  "a": [
+    1,
+    2
+  ],
+  "b": 2,
+  "c": {
+    "x": true
+  }
+}</code></pre>
+<p>Minify and query:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/json/json.raku --compact showcase/json/sample.json
+{"escapes":"a \"quote\", ...","maintainer":null,"name":"rakupp", ... }
+
+$ build/rakupp showcase/json/json.raku --query='.users[0].name' showcase/json/sample.json
+"Ada"</code></pre>
+<h2 id="what-it-handles">What it handles</h2>
+<ul><li><strong>Objects, arrays, strings, numbers, <code>true</code>/<code>false</code>/<code>null</code></strong> — objects become Hashes, arrays Arrays, scalars <code>Str</code>/<code>Int</code>/<code>Num</code>/<code>Bool</code>, <code>null</code> a sentinel.</li><li><strong>String escapes</strong> both ways: <code>\" \\ \/ \n \t \r \b \f</code> and <code>\uXXXX</code> (so <code>"café ❤"</code> decodes to <code>café ❤</code> and re-encodes cleanly).</li><li><strong>Numbers</strong>: integers stay <code>Int</code>, decimals and exponents become <code>Num</code>.</li><li><strong><code>--query</code></strong>: a path of <code>.key</code> and <code>[index]</code> steps, e.g. <code>.users[0].name</code>.</li></ul>
+<h2 id="how-it-works">How it works</h2>
+<ul><li><strong>Grammar</strong> — a <code>proto rule value {*}</code> with one <code>:sym&lt;…&gt;</code> alternative per JSON value kind (object / array / string / number / true / false / null); the actions class reduces each match into a native Raku value as it parses.</li><li><strong>Escape decoding</strong> is a single left-to-right pass (sequential global substs would corrupt an escaped backslash followed by a letter).</li><li><strong>Serializer</strong> — a recursive <code>to-json</code> walks the value: objects and arrays indent by depth (or collapse under <code>--compact</code>), strings are re-escaped, and every scalar is formatted for valid JSON.</li></ul>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=c7b5b9c7" defer></script>
+</body>
+</html>
