@@ -990,7 +990,7 @@ sub chart-frame(Str $key, Str $label, Str $last, Str $inner --> Str) {
 # The sweep log: date commit ran failed parked roast_pass roast_files note.
 # `failed` is only comparable while `ran` stays put, so the failed series is
 # drawn as separate segments with a visible break wherever the suite grew.
-sub history-html(--> Str) {
+sub history-html($total = 0 --> Str) {
     my $path = %SITE<history>.IO;
     return '' unless $path.e;
     my @rows;
@@ -1001,7 +1001,9 @@ sub history-html(--> Str) {
         my $ran = try @c[2].Int;
         my $failed = try @c[3].Int;
         next unless $ran.defined && $failed.defined;
-        @rows.push: { date => @c[0], ran => $ran, failed => $failed, note => (@c[7] // '') };
+        my $parked = (try @c[4].Int) // 0;
+        @rows.push: { date => @c[0], ran => $ran, failed => $failed,
+                      parked => $parked, note => (@c[7] // '') };
     }
     return '' if @rows.elems < 3;
     my $n = @rows.elems;
@@ -1077,10 +1079,26 @@ sub history-html(--> Str) {
       ~ @trows.join
       ~ '</tbody></table></div></details>';
 
+    # The suite outgrows its measurements between sweeps — at one point by 4×,
+    # which read as "172k tests, only 42k executed". Say the gap out loud, from
+    # the data, so the sentence appears exactly while it is true and removes
+    # itself the moment a fresh row lands in the TSV.
+    my $covered = @rows[*-1]<ran> + @rows[*-1]<parked>;
+    my $gap = '';
+    if $total > $covered {
+        $gap = '<p class="note-line">The newest point predates the suite\'s growth: that sweep '
+          ~ 'ran ' ~ commify(@rows[*-1]<ran>) ~ ' of the ' ~ commify($covered)
+          ~ ' tests the suite held then, and the suite holds ' ~ commify($total)
+          ~ ' today — a full-grid sweep has not been recorded since. Only these charts wait '
+          ~ 'for one: the colors above come from the observations each record already '
+          ~ 'carries, so they cover the whole grid.</p>';
+    }
+
     '<section class="grid-section"><h2 id="history">The sweep, over time</h2>'
       ~ '<p>Each point is one measured run of the whole suite against a rakupp build. '
       ~ 'The failing count only means something while the suite holds still, so its line '
       ~ 'breaks wherever the suite grew.</p>'
+      ~ $gap
       ~ '<div class="hist-charts">' ~ $svg-size ~ $svg-fail ~ '</div>'
       ~ $table
       ~ '</section>'
@@ -1218,7 +1236,7 @@ sub render-home(@families) {
       ~ commify($crash-total) ~ ' recorded crash observations have '
       ~ '<a href="' ~ $BASE ~ '/crashes/">their own</a>.</p>'
       ~ '</section>'
-      ~ history-html()
+      ~ history-html(%t<total>)
       ~ '<section class="grid-section"><h2 id="run">Run it yourself</h2>'
       ~ '<p>The suite is engine-neutral and lives at '
       ~ '<a href="' ~ %SITE<repo> ~ '">github.com/ash/rakugrid</a>. The harness runs unchanged '
