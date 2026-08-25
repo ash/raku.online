@@ -43,14 +43,15 @@
 <p><strong>The full ecosystem.</strong> Many zef modules work under Raku++, but not all; see <a href="https://github.com/ash/rakupp/blob/main/docs/status/ECOSYSTEM.md">ECOSYSTEM.md</a> and <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md">MODULES.md</a>.</p>
 <h2 id="differences-you-will-actually-run-into">Differences you will actually run into</h2>
 <p><strong>Output from a child process is buffered, not live.</strong> Without <code>:out</code>, Rakudo gives the child your terminal so output appears as produced; Raku++ captures and echoes when it exits. With <code>:out</code> both behave identically. See <a href="/faq/shell/">running external commands</a>.</p>
+<p><strong><code>Proc::Async</code>: sunk failures, <code>.signal</code>, stdin.</strong> Rakudo throws when a failed process's <code>Proc</code> result is sunk (<code>await $p.start;</code> as a bare statement) and reports a signal death as <code>exitcode 0</code> plus <code>.signal</code>; Raku++ keeps going — check <code>.so</code> — and reports <code>exitcode -1</code> with no <code>.signal</code>. Writing to the child's stdin (<code>:w</code>, <code>.print</code>, <code>.close-stdin</code>) is not implemented, and tapped output arrives when the promise is realized rather than live. See <a href="/faq/background-processes/">background processes and Proc::Async</a>.</p>
 <p><strong><code>Str.succ</code> on a trailing non-alphanumeric.</strong> <code>'a!'.succ</code> is <code>'b!'</code> here and <code>'a!'</code> in Rakudo. Deliberate: Rakudo's own source comments describe a rule its code does not implement, it ships a leftward-scanning helper matching ours that <code>Str.succ</code> does not call, and the spec tests pass under either reading. Ours also terminates where Rakudo's loops.</p>
 <p><strong>Multi-character string ranges.</strong> Rakudo iterates <code>('ab'..'ba')</code> as a per-position cross product — <code>ab aa bb ba</code>; Raku++ climbs by <code>.succ</code>. Known, and on the list.</p>
 <p><strong>Hash iteration order.</strong> Raku++ iterates sorted; Rakudo's order is its own and varies. Neither is guaranteed by the language — sort if you depend on it.</p>
 <p><strong><code>$*RAKU.compiler.version</code> reports a Rakudo era, not the Raku++ release.</strong> It answers <code>v2026.08</code> — the Rakudo release Raku++ is verified byte-identical against — while the rest of the object says who is actually running:</p>
 <pre class="native-code"><code class="lang-raku">say $*RAKU.compiler.name;       # → Raku++      (Rakudo says: rakudo)
 say $*RAKU.compiler.version;    # → v2026.08    (the era tracked, not our release)
-say $*RAKU.compiler.release;    # → 3.7.0       (Rakudo leaves this empty)
-say $*RAKU.compiler.id;         # → 3.7.0       (Rakudo: a commit SHA)
+say $*RAKU.compiler.release;    # → 3.6.0       (Rakudo leaves this empty)
+say $*RAKU.compiler.id;         # → 3.6.0       (Rakudo: a commit SHA)
 say $*RAKU.compiler.backend;    # → cpp         (Rakudo: moar)</code></pre>
 <p>Because <code>.id</code> is our release rather than Rakudo's per-build hash, two different builds of the same release are indistinguishable there. Raku++ adds the missing identity as its own pair of keys, which Rakudo has neither of:</p>
 <pre class="native-code"><code class="lang-raku">say $*RAKU.compiler.build;       # → v3.14.0-74-g9ff47ae   (git describe)
