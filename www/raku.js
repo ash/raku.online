@@ -11,10 +11,23 @@
 //
 //   <div data-raku data-run></div>
 //
-// Attributes (all optional):
+// Attributes on the block (all optional):
 //   data-run              run once as soon as the interpreter is ready
 //   data-stdin="…"        preset standard input (and reveal the input box)
 //   data-rows="N"         initial editor height in text rows (default: fit code)
+//   data-theme="…"        force light|dark (default: follow the host page)
+//
+// Attributes on the script tag (all optional):
+//   data-auto             also enhance ordinary highlighter code blocks
+//   data-selector="…"     what to enhance (default: [data-raku])
+//   data-theme="…"        a page-wide theme default
+//   data-playground="…"   where the ↗ button opens the program (see below)
+//
+// SELF-HOSTING. Everything is fetched relative to this script's own URL, so a
+// copy of these three files in one directory of your site is a complete,
+// offline install:
+//
+//   raku.js  rakujs.js  rakujs.wasm      (https://raku.online/embed/#host-it-yourself)
 //
 // Multiple blocks per page share ONE WebAssembly interpreter (one download, one
 // instance). Each editor lives in its own Shadow DOM, so the host page's CSS
@@ -32,6 +45,16 @@
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
   var VER = '?v=58c82128';                            // cache tag, stamped by build.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
+
+  // Where the ↗ button hands the current program: the full playground.
+  // Served from raku.online (or a local mirror of it), that is BASE — the
+  // playground sits right there. A self-hosted copy of this script is a widget
+  // with no playground behind it, so it points home instead. Override with
+  // <script … data-playground="https://example.com/play/">.
+  var HOST = new URL(BASE).hostname;
+  var PLAYGROUND = script.getAttribute('data-playground')
+    || (HOST === 'raku.online' || HOST === 'localhost' || HOST === '127.0.0.1'
+        ? BASE : 'https://raku.online/');
 
   // ---- the shared interpreter worker -------------------------------------
   // Built from a Blob so it runs even when raku.js is served cross-origin
@@ -428,13 +451,13 @@
     openExtBtn.addEventListener('click', function () {
       var w = window.open('about:blank', '_blank');
       var stdinText = inWrap.hidden ? '' : inTa.value;
-      if (!window.CompressionStream) { if (w) w.location = BASE; return; }
+      if (!window.CompressionStream) { if (w) w.location = PLAYGROUND; return; }
       Promise.all([encodeShare(ta.value), stdinText ? encodeShare(stdinText) : Promise.resolve('')])
         .then(function (r) {
-          var url = BASE + '#code=' + r[0] + (r[1] ? '&stdin=' + r[1] : '');
+          var url = PLAYGROUND + '#code=' + r[0] + (r[1] ? '&stdin=' + r[1] : '');
           if (w) w.location = url; else window.open(url, '_blank');
         })
-        .catch(function () { if (w) w.location = BASE; });
+        .catch(function () { if (w) w.location = PLAYGROUND; });
     });
     copyBtn.addEventListener('click', function () {
       copyTo(copyBtn, (self._screen || []).filter(function (p) { return p[1] !== 'meta'; })

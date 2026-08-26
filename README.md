@@ -32,19 +32,20 @@ program still runs in a fraction of a second:
 | `/drills/` | Raku Drills — practice questions | `www/drills/` |
 | `/spec/` | The Raku++ specification | generated from `sites/spec/` |
 | `/spec/rules/` | Raku Rules — the exhaustive rulebook | generated from `sites/spec/` |
+| `/grid/` | Rakugrid, browsable — every recorded test on every engine, with the divergences, rulings and crashes | generated from `sites/grid/` |
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
 | `/ecosystem/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/ecosystem/` |
-
-Every example on a module page is also a FILE, under [`examples/`](examples/) at
-the root of this repository, so it can be cloned and run rather than copied out
-of a page. Those files are generated from the pages, and `--verify` runs the
-FILES — so what is checked is exactly what a reader gets.
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
 | `/builder/` | Paste code → copy an embed snippet | `www/builder/` |
 | `/demo/` | Every embed pattern, side by side | `www/demo/` |
 | `/slides/` | The 13-slide deck, plus its PDF export | `www/slides/` — copied from `rakupp/presentation/` |
+
+Every example on a module page is also a FILE, under [`examples/`](examples/) at
+the root of this repository, so it can be cloned and run rather than copied out
+of a page. Those files are generated from the pages, and `--verify` runs the
+FILES — so what is checked is exactly what a reader gets.
 
 One origin means the ~6 MB WebAssembly interpreter is downloaded once for all
 of them, `localStorage` is shared, and the sections can link to each other.
@@ -227,12 +228,14 @@ https://raku.online/rakujs.wasm    located via locateFile, same base
 ```
 
 `build.sh` asserts all three exist on every run. Related: `raku.js` builds its
-"open in playground" button as the site root plus `#code=…`, so embeds already
-published elsewhere link to `/` expecting the playground. `www/index.html`
-forwards anything carrying `#code=`, `#stdin=`, `?url=` or `?file=` to `/play/`
-with the query and fragment intact. That forward is permanent — copies of the
-old script will be cached in browsers and sitting on other people's servers for
-a long time.
+"open in playground" button as the site root plus `#code=…` — for a copy served
+from anywhere else that root is `https://raku.online/`, and for one served from
+here (or a `localhost` mirror) it is the base the script itself came from, so
+embeds already published elsewhere link to `/` expecting the playground.
+`www/index.html` forwards anything carrying `#code=`, `#stdin=`, `?url=` or
+`?file=` to `/play/` with the query and fragment intact. That forward is
+permanent — copies of the old script will be cached in browsers and sitting on
+other people's servers for a long time.
 
 ## Shareable links
 
@@ -281,10 +284,12 @@ standard input and reveal the input box), `data-rows="N"` (initial height),
 `data-theme="light|dark"` (force a theme; default follows the OS).
 
 Script-tag options: `data-theme="…"` (page-wide theme default), `data-selector`
-(what to enhance, default `[data-raku]`), and `data-auto` — with it, ordinary
-highlighter code blocks (`<pre><code class="language-raku">`, what markdown /
-Prism / highlight.js emit) become runnable with no `data-raku`, so authors add
-the script once and change nothing else:
+(what to enhance, default `[data-raku]`), `data-playground="…"` (where the ↗
+button opens the program — only relevant to a self-hosted copy), and
+`data-auto` — with it, ordinary highlighter code blocks
+(`<pre><code class="language-raku">`, what markdown / Prism / highlight.js emit)
+become runnable with no `data-raku`, so authors add the script once and change
+nothing else:
 
 ```html
 <script src="https://raku.online/raku.js" data-auto></script>
@@ -299,6 +304,16 @@ The guide is at **[/embed/](https://raku.online/embed/)**; the
 **[builder](https://raku.online/builder/)** lets you paste code, tick options
 and copy a ready snippet with a live preview; **[/demo/](https://raku.online/demo/)**
 shows every pattern side by side.
+
+Nobody has to load it from here. `raku.js` resolves `rakujs.js` and
+`rakujs.wasm` relative to its own URL, so the three files copied into one
+directory of any site are a complete offline install — that is what
+[/embed/#host-it-yourself](https://raku.online/embed/#host-it-yourself)
+documents, and what the engine half of `rakujs-<tag>.zip` on each
+[rakupp release](https://github.com/ash/rakupp/releases) is for. The only thing
+that changes for a self-hoster is the ↗ button: with no playground behind their
+copy it opens raku.online, and `data-playground="…"` on the script tag sends it
+somewhere else.
 
 Design points that make it embed-safe:
 

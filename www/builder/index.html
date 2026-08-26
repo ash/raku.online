@@ -71,7 +71,8 @@
 <div class="page">
   <h1>Embed builder <span class="dot">·</span> raku<span class="dot">.</span>online</h1>
   <p class="sub">Paste Raku code, choose options, copy the snippet into your page. The preview below is live.
-     <a href="/demo/">Full embedding guide →</a></p>
+     <a href="/embed/">Full embedding guide →</a> &middot;
+     <a href="/demo/">Every pattern →</a></p>
 
   <label for="code">Raku code</label>
   <textarea id="code" spellcheck="false">my @squares = (1..10).map(* ** 2);
@@ -99,6 +100,12 @@ say "sum = ", @squares.sum;</textarea>
     <textarea id="stdin" spellcheck="false"></textarea>
   </div>
 
+  <label for="src">Script URL</label>
+  <input type="text" id="src" spellcheck="false" value="https://raku.online/raku.js">
+  <p class="note">Leave it as it is to load the editor from raku.online. If you
+     <a href="/embed/#host-it-yourself">host the three files yourself</a>, put the
+     path to your own copy here — say <code>/raku/raku.js</code>.</p>
+
   <h2>Live preview</h2>
   <div id="preview"></div>
 
@@ -109,15 +116,16 @@ say "sum = ", @squares.sum;</textarea>
   </div>
   <p class="note">Include the <code>&lt;script&gt;</code> line once per page; repeat only the
      <code>&lt;pre&gt;</code> block for more editors. On WordPress, add the script to your theme/footer
-     and put the <code>&lt;pre&gt;</code> block in the post.</p>
+     and put the <code>&lt;pre&gt;</code> block in the post. Nothing is sent to a server — the code
+     runs in the visitor's browser.</p>
 </div>
 
-<script src="/raku.js?v=eb0db9c6"></script>
+<script src="/raku.js?v=2cdc4759"></script>
 <script>
   var $ = function (id) { return document.getElementById(id); };
   var codeEl = $('code'), runEl = $('run'), themeEl = $('theme'), rowsEl = $('rows'),
       useStdinEl = $('useStdin'), stdinWrap = $('stdinWrap'), stdinEl = $('stdin'),
-      previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
+      srcEl = $('src'), previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
 
   var htmlEsc = function (s) { return s.replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -128,7 +136,8 @@ say "sum = ", @squares.sum;</textarea>
       run: runEl.checked,
       theme: themeEl.value,
       rows: rowsEl.value ? parseInt(rowsEl.value, 10) : 0,
-      stdin: useStdinEl.checked ? stdinEl.value : null
+      stdin: useStdinEl.checked ? stdinEl.value : null,
+      src: srcEl.value.trim() || 'https://raku.online/raku.js'
     };
   }
 
@@ -138,7 +147,7 @@ say "sum = ", @squares.sum;</textarea>
     if (o.theme) attrs += ' data-theme="' + o.theme + '"';
     if (o.rows) attrs += ' data-rows="' + o.rows + '"';
     if (o.stdin != null) attrs += ' data-stdin="' + htmlEsc(o.stdin) + '"';
-    return '<script src="' + location.origin + '/raku.js"><\/script>\n'
+    return '<script src="' + htmlEsc(o.src) + '"><\/script>\n'
          + '<pre data-raku' + attrs + '>' + htmlEsc(o.code) + '</pre>';
   }
 
@@ -158,7 +167,7 @@ say "sum = ", @squares.sum;</textarea>
   var timer = null;
   function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 350); }
 
-  [codeEl, stdinEl].forEach(function (el) { el.addEventListener('input', schedule); });
+  [codeEl, stdinEl, srcEl].forEach(function (el) { el.addEventListener('input', schedule); });
   [runEl, themeEl, rowsEl].forEach(function (el) { el.addEventListener('change', rebuild); });
   useStdinEl.addEventListener('change', function () { stdinWrap.hidden = !useStdinEl.checked; rebuild(); });
 

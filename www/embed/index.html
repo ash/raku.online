@@ -64,7 +64,58 @@
   <tr><td><code>data-rows="N"</code></td><td>Initial editor height in text rows. Defaults to fitting the code.</td></tr>
   <tr><td><code>data-theme="dark"</code></td><td>A page-wide default. Otherwise editors follow the host page's theme, live.</td></tr>
   <tr><td><code>data-selector="…"</code></td><td>Use your own selector instead of <code>[data-raku]</code>.</td></tr>
+  <tr><td><code>data-playground="…"</code></td><td>Where the ↗ button opens the program. Only matters if you <a href="#host-it-yourself">host the files yourself</a>.</td></tr>
 </table>
+
+<h2 id="host-it-yourself">Host it yourself <a class="anchor" href="#host-it-yourself" aria-label="link">#</a></h2>
+<p>
+  The script tag above loads everything from raku.online. Serving it yourself
+  instead costs you three files and no third-party requests — it works offline,
+  behind a firewall, and stays pinned to the version you copied.
+</p>
+<table class="opts">
+  <tr><td><code>raku.js</code></td><td>The widget — this page's script tag. 32 KB.</td></tr>
+  <tr><td><code>rakujs.js</code></td><td>The WebAssembly loader. 110 KB.</td></tr>
+  <tr><td><code>rakujs.wasm</code></td><td>The interpreter itself. 7 MB, ≈2 MB gzipped, downloaded once and cached.</td></tr>
+</table>
+<p>
+  <code>raku.js</code> resolves the other two <strong>relative to its own URL</strong>,
+  so the one rule is that all three sit in the same directory. Anywhere on your
+  site will do. Take them straight from here:
+</p>
+<pre class="native-code"><code>mkdir -p your-site/raku &amp;&amp; cd your-site/raku
+curl -O https://raku.online/raku.js
+curl -O https://raku.online/rakujs.js
+curl -O https://raku.online/rakujs.wasm</code></pre>
+<p>Then point the script tag at your copy. Everything else on this page is unchanged.</p>
+<pre class="native-code"><code>&lt;script src="/raku/raku.js"&gt;&lt;/script&gt;
+
+&lt;pre data-raku&gt;say "Hello from my own server!";&lt;/pre&gt;</code></pre>
+
+<p>
+  To pin the engine to a released interpreter instead, every
+  <a href="https://github.com/ash/rakupp/releases">Raku++ release</a> attaches
+  <code>rakujs-&lt;tag&gt;.zip</code> — the same <code>rakujs.js</code> and
+  <code>rakujs.wasm</code>, built by that release's CI:
+</p>
+<pre class="native-code"><code>gh release download -R ash/rakupp --pattern 'rakujs-v*.zip'</code></pre>
+<p>
+  The widget <code>raku.js</code> is not in that zip — it belongs to this site;
+  take it from the URL above.
+</p>
+
+<h3 id="what-your-server-must-do">What your server must do <a class="anchor" href="#what-your-server-must-do" aria-label="link">#</a></h3>
+<ul class="home-nav">
+  <li><strong>Serve <code>.wasm</code> as <code>application/wasm</code>.</strong> Most static hosts already do. Without it the browser cannot stream-compile and falls back to a slower path.</li>
+  <li><strong>Serve over <code>http(s)</code>.</strong> Opening the page as a <code>file://</code> URL will not work — the widget runs your visitors' code in a Web Worker, and <code>file://</code> cannot start one.</li>
+  <li><strong>Nothing else.</strong> Same-origin files need no CORS headers, and there is no build step, no npm package, and no server-side anything.</li>
+</ul>
+
+<h3 id="two-details">Two details <a class="anchor" href="#two-details" aria-label="link">#</a></h3>
+<ul class="home-nav">
+  <li><strong>Update the three together.</strong> They are built, stamped and tested as one set; a new widget against an old <code>.wasm</code> is not a combination anyone has tried.</li>
+  <li><strong>The ↗ button</strong> on each editor hands the current program to the full playground. From your own copy it opens <a href="/play/">raku.online</a>; send it somewhere else with <code>data-playground="https://example.com/play/"</code> on the script tag.</li>
+</ul>
 
 <h2 id="three-things-worth-knowing">Three things worth knowing <a class="anchor" href="#three-things-worth-knowing" aria-label="link">#</a></h2>
 <ul class="home-nav">
@@ -87,7 +138,7 @@
 </div>
 </main>
 
-<script src="/raku.js?v=eb0db9c6"></script>
+<script src="/raku.js?v=2cdc4759"></script>
 <script src="/theme/shell.js?v=b778d468" defer></script>
 </body>
 </html>
