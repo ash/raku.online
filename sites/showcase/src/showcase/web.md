@@ -59,8 +59,10 @@ these keystroke-fast apps.
 - **Output must end in a newline.** WebAssembly stdout is line-buffered — a final
   line printed with `print` (no `\n`) is held until the next run. The apps use
   `say` so every result flushes immediately.
-- **No sockets, no filesystem.** The sandbox can't run the server showcases
-  (pastebin, rakus, chat, kvstore) — those need real TCP.
+- **No sockets.** The sandbox can't run the server showcases (pastebin, rakus,
+  chat, kvstore) — those need real TCP. Files *do* work: the WASM build inherits
+  an in-memory filesystem from Emscripten, but it starts empty and is discarded
+  when the page reloads, so it is scratch space, not storage.
 - **Recursion is capped** at a few hundred levels (a WebAssembly stack limit, not
   a Raku one); deeply recursive programs that run fine natively can hit it here.
 - These are browser apps, so they aren't part of the `t/run.raku` suite; the Raku

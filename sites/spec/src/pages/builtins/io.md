@@ -3,15 +3,19 @@ title: File & process IO
 slug: io
 status: full
 browser: false
-browser-why: needs the filesystem and subprocesses
+browser-why: needs subprocesses
 order: 78
-summary: Read and write files, run subprocesses — real in Raku++, but there's no browser filesystem.
+summary: Read and write files, run subprocesses — real in Raku++; the browser has files but no processes.
 ---
 
 Raku++ can read and write files and launch subprocesses, exactly as Rakudo does. The
-browser playground has **no filesystem and can't spawn processes**, so these examples
-are shown with their verified output (from the interpreter and `--exe`) rather than a
-Run button.
+browser playground **can't spawn processes**, so these examples are shown with their
+verified output (from the interpreter and `--exe`) rather than a Run button.
+
+Files are a different story: the WebAssembly build inherits an in-memory filesystem
+from Emscripten, so the `spurt`/`slurp` example below does work in a browser — against
+a `/tmp` that lives in the tab's memory, starts empty and vanishes when the page
+reloads.
 
 ## Running a subprocess
 
@@ -48,5 +52,7 @@ beta
   to iterate, `IO::Path` methods (`.e`, `.d`, `.add`, `.unlink`) for paths.
 - `run`/`shell` start subprocesses; `:out`/`:err` capture their streams.
 - `$*TMPDIR`, `$*CWD`, `$*HOME` are `IO::Path` handles to standard locations.
-- None of this exists in the browser sandbox — run such programs with the interpreter
-  (`rakupp program.raku`) or a compiled binary (`rakupp --exe program.raku`).
+- Subprocesses don't exist in the browser sandbox. Files do, but in an in-memory
+  filesystem that starts empty and is discarded with the page. For real files on a real
+  disk, run the program with the interpreter (`rakupp program.raku`) or a compiled
+  binary (`rakupp --exe program.raku`).

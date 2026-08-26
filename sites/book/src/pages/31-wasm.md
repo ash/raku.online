@@ -1,7 +1,7 @@
 # Raku in the Browser
 
-The four modes in Chapter 25 all target a machine with a filesystem, threads
-and a dynamic loader. There is a fifth target that has none of those: the same
+The four modes in Chapter 25 all target a machine with threads, a dynamic
+loader and a disk. There is a fifth target that has none of those: the same
 runtime compiled to **WebAssembly**, which is Raku.js — the interpreter running
 in a browser tab, with no server.
 
@@ -459,7 +459,9 @@ Five decisions hold it up.
 
 **One interpreter per page.** Multiple blocks share a single WebAssembly
 instance — one download, one instance — so a page with twenty examples does not
-fetch twenty engines.
+fetch twenty engines. They share its memory too: a file one block writes is
+still there for the next block that runs (see below), which is occasionally
+useful and worth knowing before it surprises someone.
 
 **The worker is built from a Blob.** A plain `new Worker('https://…')` is
 blocked cross-origin; a Blob worker that `importScripts` the cross-origin engine
@@ -503,6 +505,41 @@ understands it, and keeps doing so as the reader types.
 
 Nothing is sent anywhere. The program runs in the visitor's browser.
 
+## The filesystem nobody asked for
+
+The build asks for no filesystem. There is no `-sFORCE_FILESYSTEM`, no `IDBFS`
+and no `NODERAWFS` anywhere in `rakujs/build.sh`; its flags are about stack,
+memory, exceptions and exports, and nothing else.
+
+A filesystem turns up regardless:
+
+```raku
+say '/'.IO.dir;                  # (/dev /home /proc /tmp)
+'/tmp/note.txt'.IO.spurt: 'some text';
+say '/tmp/note.txt'.IO.slurp;    # some text
+```
+
+Emscripten links its default filesystem as soon as the module calls `fopen` or
+`stat`, and the interpreter does both. That default backend is **MEMFS**: a tree
+of JavaScript objects in the instance's own memory, with `/home/web_user`,
+`/tmp`, `/dev` and `/proc` created by `FS.staticInit` before a line of Raku++
+runs. `$*CWD` is `/`, `$*HOME` is `/home/web_user`, `$*TMPDIR` is `/tmp`, and
+`spurt`, `slurp`, `open`, `dir`, `mkdir` and `unlink` all behave as they do
+natively.
+
+It is easy to describe this both too weakly and too strongly. Too weakly: *there
+are no files in the browser* — there are, and a program that writes one and
+reads it back needs no adaptation at all. Too strongly: this is not storage.
+Nothing reaches the visitor's disk, IndexedDB, or the server that sent the page,
+and the tree lives exactly as long as the module instance, which is replaced on
+Stop, on `exit`, on a recursion `RangeError` and on every reload. A file written
+by one run is there for the next run in the same tab, and no further.
+
+The host, in other words, took away the disk and left the filesystem. That is
+why the interpreter needed no adaptation to keep doing file IO here — and why
+the documentation spent a long time claiming a capability that had been working
+the whole time.
+
 ## What the host takes away
 
 | | |
@@ -510,6 +547,7 @@ Nothing is sent anywhere. The program runs in the visitor's browser.
 | **deep recursion** | around 200 Raku levels, then a `RangeError` the page reports as a recursion-limit message and recovers from |
 | **`start` / `Promise`** | needs real threads; a threaded build needs cross-origin isolation headers, awkward for static hosting (Chapter 37) |
 | **sockets** | not available in the browser sandbox |
+| **the disk** | there is a filesystem, but it is in memory and dies with the instance (above) |
 | **NativeCall** | takes its no-libffi fallback path by construction — there is no shared library to open (Chapter 35) |
 | **`--exe` and the code generator** | irrelevant: this ships the interpreter, not the transpiler |
 | **`exit`** | aborts the module instance; the worker rebuilds a fresh one |
