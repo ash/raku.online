@@ -55,6 +55,11 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath fill='%23888e99' d='M0 0h10L5 7z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 12px center; }
   input[type=number] { width: 5.5em; }
+  .accent-row { display: inline-flex; align-items: center; gap: 8px; }
+  input[type=color] { width: 44px; height: 30px; padding: 2px; cursor: pointer; }
+  #accentReset { width: auto; font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 7px; }
+  #accentReset:hover { color: var(--ink); border-color: var(--muted); }
   h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
   #preview { border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px;
              background: var(--panel2); }
@@ -94,6 +99,13 @@ say "sum = ", @squares.sum;</textarea>
       <label for="rows">Rows</label>
       <input type="number" id="rows" min="1" max="40" placeholder="auto">
     </div>
+    <div class="field">
+      <label for="accent">Accent</label>
+      <span class="accent-row">
+        <input type="color" id="accent" value="#d33682">
+        <button type="button" id="accentReset" title="Back to the raku.online magenta">Reset</button>
+      </span>
+    </div>
   </div>
   <div id="stdinWrap" hidden>
     <label for="stdin">Standard input (fed to get / lines / prompt)</label>
@@ -125,7 +137,10 @@ say "sum = ", @squares.sum;</textarea>
   var $ = function (id) { return document.getElementById(id); };
   var codeEl = $('code'), runEl = $('run'), themeEl = $('theme'), rowsEl = $('rows'),
       useStdinEl = $('useStdin'), stdinWrap = $('stdinWrap'), stdinEl = $('stdin'),
-      srcEl = $('src'), previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
+      srcEl = $('src'), accentEl = $('accent'), accentResetEl = $('accentReset'),
+      previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
+
+  var DEFAULT_ACCENT = '#d33682';   // raku.online magenta — the widget's own default
 
   var htmlEsc = function (s) { return s.replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -137,7 +152,8 @@ say "sum = ", @squares.sum;</textarea>
       theme: themeEl.value,
       rows: rowsEl.value ? parseInt(rowsEl.value, 10) : 0,
       stdin: useStdinEl.checked ? stdinEl.value : null,
-      src: srcEl.value.trim() || 'https://raku.online/raku.js'
+      src: srcEl.value.trim() || 'https://raku.online/raku.js',
+      accent: accentEl.value.toLowerCase() === DEFAULT_ACCENT ? '' : accentEl.value
     };
   }
 
@@ -147,8 +163,13 @@ say "sum = ", @squares.sum;</textarea>
     if (o.theme) attrs += ' data-theme="' + o.theme + '"';
     if (o.rows) attrs += ' data-rows="' + o.rows + '"';
     if (o.stdin != null) attrs += ' data-stdin="' + htmlEsc(o.stdin) + '"';
-    return '<script src="' + htmlEsc(o.src) + '"><\/script>\n'
-         + '<pre data-raku' + attrs + '>' + htmlEsc(o.code) + '</pre>';
+    var block = '<pre data-raku' + attrs + '>' + htmlEsc(o.code) + '</pre>';
+    // The accent is a CSS custom property, not an attribute: it inherits into the
+    // widget's Shadow DOM from any ancestor. On :root it tints every editor on the
+    // page; this wrapper tints just this one.
+    if (o.accent) block = '<div style="--rk-embed-accent: ' + o.accent + '">\n  '
+                        + block + '\n</div>';
+    return '<script src="' + htmlEsc(o.src) + '"><\/script>\n' + block;
   }
 
   // Rebuild the live preview from scratch each change (enhance replaces the
@@ -157,6 +178,7 @@ say "sum = ", @squares.sum;</textarea>
     var o = opts();
     snippetEl.value = buildSnippet(o);
     previewEl.innerHTML = '';
+    previewEl.style.setProperty('--rk-embed-accent', o.accent || DEFAULT_ACCENT);
     var pre = document.createElement('pre');
     pre.textContent = o.code;
     previewEl.appendChild(pre);
@@ -168,7 +190,9 @@ say "sum = ", @squares.sum;</textarea>
   function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 350); }
 
   [codeEl, stdinEl, srcEl].forEach(function (el) { el.addEventListener('input', schedule); });
-  [runEl, themeEl, rowsEl].forEach(function (el) { el.addEventListener('change', rebuild); });
+  [runEl, themeEl, rowsEl, accentEl].forEach(function (el) { el.addEventListener('change', rebuild); });
+  accentEl.addEventListener('input', schedule);
+  accentResetEl.addEventListener('click', function () { accentEl.value = DEFAULT_ACCENT; rebuild(); });
   useStdinEl.addEventListener('change', function () { stdinWrap.hidden = !useStdinEl.checked; rebuild(); });
 
   copyBtn.addEventListener('click', function () {

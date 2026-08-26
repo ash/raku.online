@@ -298,6 +298,17 @@ nothing else:
 `data-auto` matches `language-raku` on the `<code>` (highlighters) **or** a
 bare `raku`/`language-raku` class on the `<pre>` itself.
 
+The one thing a host page can restyle is the accent — the ▶ Run fill, the ■ Stop
+outline, and error text. `:host { all: initial }` isolates everything else, but
+custom properties inherit through a shadow boundary, so the widget takes its
+accent from one:
+
+```css
+:root { --rk-embed-accent: #0969da; }   /* or on a wrapper, for one editor */
+```
+
+course.raku.org uses exactly this to tint the editors its own blue.
+
 Attach programmatically with `RakuEmbed.enhance(el, opts)` / `RakuEmbed.enhanceAll()`.
 
 The guide is at **[/embed/](https://raku.online/embed/)**; the
