@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App::Rakus — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=b778d468"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b778d468">
+<link rel="stylesheet" href="/theme/shell.css?v=b778d468">
+<link rel="stylesheet" href="/theme/eco.css?v=b778d468">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · command line</div><h1>App::Rakus</h1><span class="status st-full">Works</span></div><p class="summary">A static HTTP file server as one installable command, on nothing but IO::Socket::INET — with the routing exposed as a pure function you can test without opening a port.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">zef:ash</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-26 <span class="fact-sub">against Raku++ 3.7.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:ash/App::Rakus">raku.land</a> · <a href="https://github.com/ash/raku-modules">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install App::Rakus</code></pre></div><p class="fact-sub"><code>zef install App::Rakus</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A directory that needs to answer HTTP. The site you just built and want to click through before publishing, a WebAssembly bundle that will not load off <code>file://</code>, a folder of PDFs to hand to the laptop across the room. The job <code>python3 -m http.server</code> does — as one installed command, written in Raku, on nothing but the <code>IO::Socket::INET</code> that ships with the language:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakus                      # serve . on http://127.0.0.1:8080/
+<span class="sh-p">$ </span>rakus 9000                 # choose the port
+<span class="sh-p">$ </span>rakus 9000 ~/site          # choose the port and the directory
+<span class="sh-p">$ </span>rakus --quiet 9000 ~/site  # without the request log</code></pre></div>
+<p>Installing the distribution puts <code>rakus</code> on <code>PATH</code> — a script in <code>bin/</code> is discovered and wrapped by the installer on its own, nothing to declare. What it serves: files with the <code>Content-Type</code> their extension implies, read and written as <strong>bytes</strong>, so images and WebAssembly arrive intact and <code>Content-Length</code> is always the true byte count; <code>index.html</code> when a directory has one, a generated listing when it does not; <code>GET</code> and <code>HEAD</code>, and nothing else. No TLS, no compression, no caching headers, no keep-alive — it is a development and local-network server, in the same spirit as the Python one-liner, and it says so rather than implying otherwise.</p>
+<h2 id="the-routing-is-a-pure-function">The routing is a pure function <a class="anchor" href="#the-routing-is-a-pure-function" aria-label="link">#</a></h2>
+<p>The part of a file server that has opinions — which path answers what — is <code>handle</code>, and it is a pure function from (method, target, root) to the whole response. It touches no socket, so what the server would answer is something you can simply compute, in a program that never opens a port:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="k">my</span> <span class="nv">$site</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;rakus-page-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$site</span>;
+<span class="nv">$site</span>.<span class="n">add</span>(<span class="s">'index.html'</span>).<span class="nb">spurt</span>(<span class="s">&quot;&lt;h1&gt;served&lt;/h1&gt;\n&quot;</span>);
+
+<span class="k">my</span> (<span class="nv">$status</span>, <span class="nv">$type</span>, <span class="nv">$body</span>, $) = <span class="n">handle</span>(<span class="s">'GET'</span>, <span class="s">'/'</span>, <span class="nv">$site</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="nv">$status</span>;
+<span class="nb">say</span> <span class="nv">$type</span>;
+<span class="nb">print</span> <span class="nv">$body</span>.<span class="n">decode</span>;
+
+<span class="nv">$site</span>.<span class="n">add</span>(<span class="s">'index.html'</span>).<span class="nb">unlink</span>;
+<span class="n">rmdir</span> <span class="nv">$site</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>200
+text/html; charset=utf-8
+&lt;h1&gt;served&lt;/h1&gt;</code></pre></div>
+<p><code>handle</code> returns four things: the status, the <code>Content-Type</code>, the body as a <code>Buf</code>, and one extra header or <code>Nil</code>. A <code>HEAD</code> gets the same answer as a <code>GET</code>, body included — the caller drops the bytes but keeps the <code>Content-Length</code>, which is what <code>HEAD</code> means. This function is where 18 of the suite's 37 assertions live: ordinary calls, no port, no race, no cleanup.</p>
+<h2 id="every-refusal-by-status">Every refusal, by status <a class="anchor" href="#every-refusal-by-status" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/02-routing.raku" title="This example as a file: 02-routing.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;rakus-routes-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>;
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'docs'</span>);
+
+<span class="k">for</span> [<span class="s">'POST'</span>, <span class="s">'/'</span>], [<span class="s">'GET'</span>, <span class="s">'/../secret'</span>], [<span class="s">'GET'</span>, <span class="s">'/docs'</span>], [<span class="s">'GET'</span>, <span class="s">'/missing.png'</span>] -&gt; (<span class="nv">$method</span>, <span class="nv">$target</span>) {
+    <span class="k">my</span> (<span class="nv">$status</span>, $, $, <span class="nv">$extra</span>) = <span class="n">handle</span>(<span class="nv">$method</span>, <span class="nv">$target</span>, <span class="nv">$root</span>.<span class="nb">Str</span>);
+    <span class="nb">say</span> <span class="s">&quot;$status $method $target&quot;</span> ~ (<span class="nv">$extra</span> ?? <span class="s">&quot;  {$extra.key}: {$extra.value}&quot;</span> !! <span class="s">''</span>);
+}
+
+<span class="n">rmdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'docs'</span>);
+<span class="n">rmdir</span> <span class="nv">$root</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>405 POST /
+403 GET /../secret
+301 GET /docs  Location: /docs/
+404 GET /missing.png</code></pre></div>
+<p>Three of those lines carry the correctness of a static server. A <code>..</code> segment is <strong>refused rather than resolved</strong> — a served root is a boundary, and the cheapest way to keep it one is never to leave it. A directory URL without its trailing slash gets a <code>301</code> to the slashed form, because until it has one, every relative link inside the page resolves one level too high. And a method the server does not implement is a <code>405</code>, not a surprise.</p>
+<h2 id="content-type-by-extension-or-honestly-not"><code>Content-Type</code> by extension — or honestly not <a class="anchor" href="#content-type-by-extension-or-honestly-not" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/03-mime.raku" title="This example as a file: 03-mime.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="nb">say</span> <span class="n">mime-for</span>(<span class="nv">$_</span>) <span class="k">for</span> &lt;<span class="n">page</span>.<span class="n">html</span> <span class="n">app</span>.<span class="n">wasm</span> <span class="n">chart</span>.<span class="n">svg</span> <span class="n">data</span>.<span class="n">json</span> <span class="n">notes</span>.<span class="n">md</span> <span class="n">movie</span>.<span class="n">mkv</span>&gt;;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>text/html; charset=utf-8
+application/wasm
+image/svg+xml
+application/json; charset=utf-8
+text/markdown; charset=utf-8
+application/octet-stream</code></pre></div>
+<p>An extension it does not recognise is served as <code>application/octet-stream</code> rather than guessed at. The entry worth noticing is <code>application/wasm</code>: browsers stream-compile WebAssembly only when the server says exactly that, and with anything else the engine behind this site falls back to a slower non-streaming compile. A development server that gets the header right by default is much of the point of having one.</p>
+<h2 id="what-a-directory-answers">What a directory answers <a class="anchor" href="#what-a-directory-answers" aria-label="link">#</a></h2>
+<p><code>index.html</code> wins when it is present — that is the first example on this page. Without one the directory answers a generated listing:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/04-listing.raku" title="This example as a file: 04-listing.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;rakus-list-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'README.md'</span>).<span class="nb">spurt</span>(<span class="s">'x'</span> <span class="n">x</span> <span class="mi">2048</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.env'</span>).<span class="nb">spurt</span>(<span class="s">'SECRET=1'</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'assets'</span>);
+
+<span class="k">my</span> (<span class="nv">$status</span>, <span class="nv">$type</span>, <span class="nv">$body</span>, $) = <span class="n">handle</span>(<span class="s">'GET'</span>, <span class="s">'/'</span>, <span class="nv">$root</span>.<span class="nb">Str</span>);
+<span class="k">my</span> <span class="nv">$page</span> = <span class="nv">$body</span>.<span class="n">decode</span>;
+<span class="nb">say</span> <span class="nv">$page</span>.<span class="n">contains</span>(<span class="s">'README.md'</span>);
+<span class="nb">say</span> <span class="nv">$page</span>.<span class="n">contains</span>(<span class="s">'2.0 KB'</span>);
+<span class="nb">say</span> <span class="nv">$page</span>.<span class="n">contains</span>(<span class="s">'assets/'</span>);
+<span class="nb">say</span> <span class="nv">$page</span>.<span class="n">contains</span>(<span class="s">'.env'</span>);
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'README.md'</span>), <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.env'</span>);
+<span class="n">rmdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'assets'</span>);
+<span class="n">rmdir</span> <span class="nv">$root</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+True
+True
+False</code></pre></div>
+<p>Directories first, sizes humanised, and that last <code>False</code> is a decision: dotfiles stay out of the listing. What the machine across the room can browse is what you meant to publish, not your <code>.env</code>.</p>
+<h2 id="the-response-head-is-data-too">The response head is data too <a class="anchor" href="#the-response-head-is-data-too" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/05-response-head.raku" title="This example as a file: 05-response-head.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="k">my</span> <span class="nv">$head</span> = <span class="n">head-for</span>(<span class="mi">301</span>, <span class="s">'text/html; charset=utf-8'</span>, <span class="mi">0</span>, (<span class="s">'Location'</span> =&gt; <span class="s">'/docs/'</span>));
+.<span class="nb">say</span> <span class="k">for</span> <span class="nv">$head</span>.<span class="nb">lines</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>HTTP/1.1 301 Moved Permanently
+Content-Type: text/html; charset=utf-8
+Content-Length: 0
+Location: /docs/
+Server: rakus
+Connection: close</code></pre></div>
+<p><code>head-for</code> builds the status line and headers from the four values <code>handle</code> returns, so the wire format is one function deep and testable like everything else. Every response says <code>Connection: close</code> — one request per connection is part of the deliberately small scope.</p>
+<h2 id="a-real-request-in-process">A real request, in-process <a class="anchor" href="#a-real-request-in-process" aria-label="link">#</a></h2>
+<p>The pure function settles what is answered; what is left to prove is that the bytes survive TCP. This is the whole server and a raw client in one program — and its shape is worth copying, because two lines of it are rules:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/app-rakus/06-live.raku" title="This example as a file: 06-live.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">App::Rakus</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;rakus-live-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'hello.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;hello over HTTP\n&quot;</span>);
+
+<span class="k">my</span> (<span class="nv">$listener</span>, <span class="nv">$port</span>);
+<span class="k">for</span> <span class="mi">31_700</span> .. <span class="mi">31_800</span> -&gt; <span class="nv">$candidate</span> {
+    <span class="nv">$listener</span> = <span class="k">try</span> <span class="n">listen-on</span>(<span class="nv">$candidate</span>, <span class="s">'127.0.0.1'</span>);
+    <span class="k">if</span> <span class="nv">$listener</span> { <span class="nv">$port</span> = <span class="nv">$candidate</span>; <span class="k">last</span> }
+}
+<span class="nb">Thread</span>.<span class="nb">start</span>({ <span class="n">accept-loop</span>(<span class="nv">$listener</span>, <span class="nv">$root</span>.<span class="nb">Str</span>, :!<span class="nb">log</span>) }, :<span class="n">app_lifetime</span>);
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">IO::Socket::INET</span>.<span class="nb">new</span>(:<span class="n">host</span>&lt;<span class="mf">127.0</span>.<span class="mf">0.1</span>&gt;, :<span class="nv">$port</span>);
+<span class="nv">$c</span>.<span class="nb">print</span>(<span class="s">&quot;GET /hello.txt HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n&quot;</span>);
+<span class="k">my</span> <span class="nv">$reply</span> = <span class="nb">Buf</span>.<span class="nb">new</span>;
+<span class="k">loop</span> {
+    <span class="k">my</span> <span class="nv">$chunk</span> = <span class="nv">$c</span>.<span class="n">recv</span>(<span class="mi">2048</span>, :<span class="n">bin</span>);
+    <span class="k">last</span> <span class="k">unless</span> <span class="nv">$chunk</span>.<span class="nb">defined</span> &amp;&amp; <span class="nv">$chunk</span>.<span class="nb">bytes</span>;
+    <span class="nv">$reply</span>.<span class="nb">append</span>(<span class="nv">$chunk</span>);
+}
+<span class="nv">$c</span>.<span class="nb">close</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="nv">$reply</span>.<span class="n">decode</span>;
+<span class="nb">say</span> <span class="nv">$text</span>.<span class="nb">lines</span>.<span class="nb">head</span>;
+<span class="nb">say</span> <span class="nv">$text</span>.<span class="nb">lines</span>.<span class="nb">grep</span>(*.<span class="n">starts-with</span>(<span class="s">'Content-Type'</span>)).<span class="nb">head</span>;
+<span class="nb">print</span> <span class="nv">$text</span>.<span class="nb">split</span>(<span class="s">&quot;\r\n\r\n&quot;</span>)[<span class="mi">1</span>];
+
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'hello.txt'</span>).<span class="nb">unlink</span>;
+<span class="n">rmdir</span> <span class="nv">$root</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+hello over HTTP</code></pre></div>
+<p>The accept loop runs on <code>Thread.start(…, :app_lifetime)</code>, because a thread blocked in <code>accept()</code> never returns on its own — without that flag the program prints its three lines and then waits for ever for a connection nobody will make. And the reply is read as <strong>binary chunks</strong> that stop on an empty one, not as a string loop. Both rules exist for a reason the next section owes you.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing the module answers: every example above prints the same bytes under Raku++ and under Rakudo, twice on each, and the site build fails if that stops being true. The differences sit in the <em>client and lifecycle code around</em> an in-process server, and the live example is shaped by two of them — both re-checked the day this page was built.</p>
+<p><strong><code>.recv</code> in string mode does not return at connection close under Rakudo.</strong> The natural loop — <code>while my $chunk = $c.recv { … }</code> — finishes under Raku++, where <code>recv</code> answers an empty string once the server has closed, and blocks for ever under Rakudo. Read with <code>$c.recv($n, :bin)</code> and stop on an empty chunk, as the example does, and both engines finish.</p>
+<p><strong>Closing a listener another thread is blocked accepting on wedges Rakudo.</strong> The tidy-up you want to write — <code>$listener.close</code> on the way out — returns at once under Raku++ and puts Rakudo's main thread into a wait <em>inside the close</em>. So the example never closes it: <code>:app_lifetime</code> lets the process end with the accept thread still blocked, and process exit reclaims the socket. A descriptor leaked for the last milliseconds of a program is the cheaper of the two evils, which is also how the distribution's own server test is written.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install App::Rakus</code>, nothing to pull; the installer writes the <code>rakus</code> wrapper onto <code>PATH</code>.</li><li><strong>Test</strong> — the distribution's own suite: 3 files, 37 assertions, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Nothing had to be fixed to put this page here — a first for this site, and before that reads as praise it should read as disclosure: this distribution and the engine share an author, and it was released only once its suite passed on both engines. The road was not smooth; it was walked earlier. Writing the module found four Raku++ bugs, all fixed before release: a synchronous socket reported its type as <code>Socket</code>, so <code>sub accept-loop(IO::Socket::INET $listener)</code> — the one signature a server naturally writes — rejected its own listener; <code>$( … )</code> interpolated nothing inside a regex, so a test like <code>/'Content-Length: ' $($body.bytes)/</code> silently matched nothing; <code>IO::Handle.flush</code> did not exist; and the usage text a multi-candidate <code>MAIN</code> generates differed from Rakudo's in five ways. That last fix is why <code>rakus --help</code> now prints the same bytes under <code>rakupp</code> and under <code>raku</code> — a comparison worth stealing for anything that ships a command.</p>
+<p>It began as <a href="https://github.com/ash/rakupp/tree/main/showcase/rakus"><code>showcase/rakus</code></a> in the engine's repository — a demonstration that raw <code>IO::Socket::INET</code> is enough for a real server — and that copy stays, runnable straight from a checkout. This one exists to be installed.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.7.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b778d468" defer></script>
+<script src="/theme/copy.js?v=b778d468" defer></script>
+</body>
+</html>

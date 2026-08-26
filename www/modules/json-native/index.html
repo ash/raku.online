@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Native — The Raku Ecosystem, Working</title>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=b778d468"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b778d468">
+<link rel="stylesheet" href="/theme/shell.css?v=b778d468">
+<link rel="stylesheet" href="/theme/eco.css?v=b778d468">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Native</h1><span class="status st-full">Works</span></div><p class="summary">JSON::Fast's interface with a native fast path — a C extension compiled at install time, or Raku++'s own codec — and JSON::Fast itself everywhere else. Same program, same answers, on both engines.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">zef:ash</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Fast</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-26 <span class="fact-sub">against Raku++ 3.7.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:ash/JSON::Native">raku.land</a> · <a href="https://github.com/ash/raku-modules">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Native</code></pre></div><p class="fact-sub"><code>zef install JSON::Native</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The same job as <a href="/modules/json-fast/">JSON::Fast</a>, whose page sits next to this one: JSON in, Raku data out, and back again. The interface is JSON::Fast's on purpose — the same two subs, the same adverbs, the same answers. What <code>use JSON::Native</code> adds is a promise about <em>how</em>: parsing and serialising run native where something native exists to run, and fall back to <code>JSON::Fast</code> where it does not, so one program leans on native speed under Raku++ and runs unchanged under Rakudo.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/01-tour.raku" title="This example as a file: 01-tour.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="k">my</span> <span class="nv">$data</span> = <span class="n">from-json</span>(<span class="s">'{&quot;name&quot;:&quot;raku&quot;,&quot;versions&quot;:[6,&quot;d&quot;],&quot;fast&quot;:true,&quot;pi&quot;:3.14}'</span>);
+<span class="nb">say</span> <span class="nv">$data</span><span class="s">&lt;name&gt;</span>;
+<span class="nb">say</span> <span class="nv">$data</span><span class="s">&lt;versions&gt;</span>[<span class="mi">1</span>];
+<span class="nb">say</span> <span class="nv">$data</span><span class="s">&lt;fast&gt;</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$data</span><span class="s">&lt;pi&gt;</span> * <span class="mi">100</span>;
+<span class="nb">say</span> <span class="n">to-json</span>(<span class="nv">$data</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>raku
+d
+Bool
+314
+{"fast":true,"name":"raku","pi":3.14,"versions":[6,"d"]}</code></pre></div>
+<p>The numbers come back as Raku numerics — <code>3.14</code> is a <code>Rat</code>, so multiplying by 100 gives exactly <code>314</code>, no floating-point tail. And that <code>to-json</code> call names <code>:sorted-keys</code>, an adverb the native path does not claim, so it was answered by <code>JSON::Fast</code> itself — same string either way, which is the whole contract.</p>
+<h2 id="three-backends-and-who-is-answering">Three backends, and who is answering <a class="anchor" href="#three-backends-and-who-is-answering" aria-label="link">#</a></h2>
+<p><code>from-json</code> and <code>to-json</code> are served by the first of three backends that exists, and <code>json-backend</code> tells you which one that was:</p>
+<ul><li><strong>native</strong> — the C extension this distribution ships as <em>source</em> and compiles against Raku++'s extension ABI while it installs;</li><li><strong>engine</strong> — Raku++ with no compiled extension: <code>from-json</code> still runs native, through the interpreter's own built-in codec, no C compiler needed;</li><li><strong>JSON::Fast</strong> — Rakudo, and anywhere else. Nothing breaks; it costs speed, never function.</li></ul>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/02-backend.raku" title="This example as a file: 02-backend.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="nb">say</span> <span class="n">json-backend</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>engine</code></pre></div>
+<p>That run is labelled a sample because it is the one line of this page whose answer is <em>meant</em> to vary: under Rakudo it says <code>JSON::Fast</code>, and what it says under Raku++ depends on what the install could build. It is also this build machine's honest answer today: <code>rakupp install</code> compiled the extension, but what reached the store was the empty placeholder the build starts from rather than the built library — an installer gap on the engine's side, not a module choice, and exactly the situation the fallback ladder is designed to absorb. On the <code>engine</code> backend, <code>from-json</code> is still the interpreter's C++ parser; <code>to-json</code> stands aside for <code>JSON::Fast</code>, whose calls Raku++ fast-paths anyway. Every other example on this page answers the same on every backend — that is what the ladder is for.</p>
+<h2 id="the-types-you-get-back-are-jsonfasts">The types you get back are JSON::Fast's <a class="anchor" href="#the-types-you-get-back-are-jsonfasts" aria-label="link">#</a></h2>
+<p>Checked value by value, because "compatible" is a claim about types, not just about values:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/03-types.raku" title="This example as a file: 03-types.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="k">my</span> <span class="nv">%n</span> = <span class="n">from-json</span>(<span class="s">'{&quot;i&quot;:42,&quot;r&quot;:0.1,&quot;e&quot;:2e3,&quot;big&quot;:123456789012345678901234567890}'</span>);
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;i&gt;</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;i&gt;</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;r&gt;</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">%n</span><span class="s">&lt;r&gt;</span> + <span class="mf">0.2</span> == <span class="mf">0.3</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;e&gt;</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">%n</span><span class="s">&lt;big&gt;</span> + <span class="mi">1</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Int 42
+Rat True
+Num
+123456789012345678901234567891</code></pre></div>
+<p>An integer token is an <code>Int</code> of arbitrary precision — the last line does exact arithmetic on a number no machine word holds. A decimal is a <code>Rat</code>, which is why <code>0.1 + 0.2 == 0.3</code> is <code>True</code> here and famously is not in float-land. Only an exponent form becomes the lossy <code>Num</code>. <code>true</code>/<code>false</code> are <code>Bool</code>, <code>null</code> is <code>Any</code>, objects and arrays are <code>Hash</code> and <code>Array</code>.</p>
+<h2 id="byte-for-byte-checked-against-the-original">Byte for byte, checked against the original <a class="anchor" href="#byte-for-byte-checked-against-the-original" aria-label="link">#</a></h2>
+<p>A serialiser's exact output is a contract programs already depend on, so the native path's output is <code>JSON::Fast</code>'s down to the choice of escape — and you can check that claim the same way the test suite does, by asking <code>JSON::Fast</code> itself. The <code>do { use … }</code> trick works because <code>use</code> is lexically scoped: the import lives inside the block, hands back its <code>&amp;to-json</code>, and never collides with the one this module exports.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/04-byte-for-byte.raku" title="This example as a file: 04-byte-for-byte.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="k">my</span> <span class="nv">&amp;reference</span> = <span class="k">do</span> { <span class="k">use</span> <span class="n">JSON::Fast</span>; <span class="nv">&amp;to-json</span> };
+
+<span class="k">my</span> <span class="nv">$value</span> = [<span class="s">&quot;back\bspace&quot;</span>, <span class="s">&quot;𝄞&quot;</span>, <span class="mf">2.5</span>];
+<span class="nb">say</span> <span class="n">to-json</span>(<span class="nv">$value</span>, :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">to-json</span>(<span class="nv">$value</span>, :!<span class="n">pretty</span>) <span class="n">eq</span> <span class="n">reference</span>(<span class="nv">$value</span>, :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">from-json</span>(<span class="n">to-json</span>(<span class="nv">$value</span>))[<span class="mi">1</span>] <span class="n">eq</span> <span class="s">&quot;𝄞&quot;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>["back\u0008space","\uD834\uDD1E",2.5]
+True
+True</code></pre></div>
+<p>Both quirks in that first line are inherited deliberately: backspace is written as the six-character <code>\u0008</code> rather than the shorter <code>\b</code>, and the G-clef — outside the Basic Multilingual Plane — goes out as <code>\uD834\uDD1E</code>, the surrogate pair JSON requires, and comes back as one character.</p>
+<h2 id="immutable-is-claimed-everything-else-is-delegated"><code>:immutable</code> is claimed; everything else is delegated <a class="anchor" href="#immutable-is-claimed-everything-else-is-delegated" aria-label="link">#</a></h2>
+<p>The native parser takes the text plus one adverb, <code>:immutable</code>, which answers <code>Map</code> and <code>List</code> instead of <code>Hash</code> and <code>Array</code> — parsed configuration is read many times and written never, and this way an accidental assignment fails at the moment of the mistake:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/05-immutable.raku" title="This example as a file: 05-immutable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="k">my</span> <span class="nv">$config</span> = <span class="n">from-json</span>(<span class="s">'{&quot;a&quot;:[1,2]}'</span>, :<span class="n">immutable</span>);
+<span class="nb">say</span> <span class="nv">$config</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$config</span><span class="s">&lt;a&gt;</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="nv">$config</span><span class="s">&lt;a&gt;</span>[<span class="mi">0</span>] = <span class="mi">9</span>; <span class="s">'assigned'</span> }) // <span class="s">'refused'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Map
+List
+refused</code></pre></div>
+<p>Every <em>other</em> adverb — <code>:allow-jsonc</code> today, whatever <code>JSON::Fast</code> grows next — is delegated to <code>JSON::Fast</code> untouched, never refused:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-native/06-delegate.raku" title="This example as a file: 06-delegate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Native</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="s">q:to/JSONC/</span>;
+    {
+        <span class="sr">//</span> <span class="k">not</span> <span class="n">JSON</span>, <span class="k">until</span> <span class="n">you</span> <span class="n">allow</span> <span class="n">it</span>
+        <span class="s">&quot;a&quot;</span>: <span class="mi">1</span>
+    }
+    <span class="n">JSONC</span>
+<span class="nb">say</span> <span class="n">from-json</span>(<span class="nv">$text</span>, :<span class="n">allow-jsonc</span>)<span class="s">&lt;a&gt;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1</code></pre></div>
+<p>That rule was learned, not designed: an early version answered an unknown adverb with <code>Unexpected named argument</code>, which made <code>use JSON::Native</code> a downgrade from the module it stands in for. Being exactly right or standing aside is the whole bargain; being approximately right would be worse than being slow.</p>
+<h2 id="the-xs-pattern-for-raku">The XS pattern, for Raku++ <a class="anchor" href="#the-xs-pattern-for-raku" aria-label="link">#</a></h2>
+<p>The distribution carries <code>src/json.c</code> and no binary. At install time a build hook compiles it against Raku++'s extension ABI — the headers a released Raku++ installs as <code>&lt;prefix&gt;/include/rakupp/rakupp_ext.h</code>, or a checkout's, pointed at with <code>RAKUPP_SRC</code>. The compiled library resolves its <code>rk_*</code> symbols from the host executable at load time, the way a Python C extension does. And if any of that is missing — no compiler, no headers, no Raku++ at all — the build leaves a stub, the install still succeeds, and the module runs on its fallbacks.</p>
+<p>The extension pays an ABI tax: every value crosses as an opaque handle and is copied once into its container. That is the price of a compiled library outliving the engine release it was built against, and it is the right trade — with ABI 2's O(1) hash walk the extension outruns the engine's own in-tree codec anyway.</p>
+<h2 id="speed-measured">Speed, measured <a class="anchor" href="#speed-measured" aria-label="link">#</a></h2>
+<p>Measured for the distribution's README on 2026-08-23 — a 278 KB document, escaped and non-ASCII strings included, best of N. (The JSON::Fast page on this site measures a different corpus, so compare ratios, not cells.)</p>
+<div class="tablewrap"><table><thead><tr><th></th><th>parse</th><th>serialise</th></tr></thead><tbody><tr><td>Rakudo + <code>JSON::Fast</code></td><td>42.0 ms</td><td>41.3 ms</td></tr><tr><td>Raku++ + <code>JSON::Fast</code> (engine fast path)</td><td>~6 ms</td><td>6.1 ms</td></tr><tr><td>Raku++ + <code>JSON::Native</code>, engine backend</td><td>7.7 ms</td><td>2.5 ms</td></tr><tr><td>Raku++ + <code>JSON::Native</code>, extension</td><td><strong>5.0 ms</strong></td><td>3.5 ms</td></tr></tbody></table></div>
+<p>The engine-backend serialise cell is <code>JSON::Fast</code> doing the writing — that backend delegates <code>to-json</code>, so the cell is the engine fast path writing this module's parsed data. And the numbers scale: parse holds ~50–55 MB/s and serialise ~72 MB/s from 278 KB up to 4.5 MB, linear at every rung — worth stating, because a table at a single size is exactly the shape of benchmark that cannot tell you.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>One printed line on this page: <code>json-backend</code>, the sample above — and that difference is the module's reason to exist. Everything else is identical by contract, and the contract is enforced rather than hoped for: the distribution's own suite compares values, types and serialised bytes against <code>JSON::Fast</code> itself on whichever engine is running, and this site runs every example here under both engines, twice on each, every time it is built.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install JSON::Native</code>, which pulls <a href="/modules/json-fast/">JSON::Fast</a> with it and compiles the extension.</li><li><strong>Test</strong> — the distribution's own suite: 2 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Disclosure, as on every page where it applies: this distribution and the engine share an author. The module exists partly as proof that Raku++'s extension ABI carries a real XS-style workflow — C source in the archive, a compile at install time, graceful fallback everywhere else. Nothing in the module had to be fixed to put this page here; putting it here did surface the installer gap recorded in the backends section, where the library the build step compiles is not yet the file the store serves back, and the module's answer on this machine is <code>engine</code> until that is fixed. The measured cost of that gap is one row of the table above.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.7.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b778d468" defer></script>
+<script src="/theme/copy.js?v=b778d468" defer></script>
+</body>
+</html>
