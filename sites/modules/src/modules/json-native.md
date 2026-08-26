@@ -68,20 +68,20 @@ say json-backend;
 ```
 
 ```output
-engine
+native
 ```
 
 That run is labelled a sample because it is the one line of this page whose
-answer is *meant* to vary: under Rakudo it says `JSON::Fast`, and what it says
-under Raku++ depends on what the install could build. It is also this build
-machine's honest answer today: `rakupp install` compiled the extension, but
-what reached the store was the empty placeholder the build starts from rather
-than the built library — an installer gap on the engine's side, not a module
-choice, and exactly the situation the fallback ladder is designed to absorb.
-On the `engine` backend, `from-json` is still the interpreter's C++ parser;
-`to-json` stands aside for `JSON::Fast`, whose calls Raku++ fast-paths anyway.
-Every other example on this page answers the same on every backend — that is
-what the ladder is for.
+answer is *meant* to vary: under Rakudo it says `JSON::Fast`, and under Raku++
+it says what the install could build — `native` here, the compiled extension
+loaded back out of the store. For one day it said `engine`: the extension
+compiled during `rakupp install`, but the store received the empty placeholder
+the build starts from rather than the built library, and the module ran on the
+middle rung — `from-json` still native through the interpreter's own parser,
+`to-json` standing aside for `JSON::Fast`, whose calls Raku++ fast-paths
+anyway. Nothing on this page printed a byte differently while it did, which is
+the point of the ladder: a backend is a speed, never an answer. What that gap
+was, and where it is pinned, is recorded at the end of this page.
 
 ## The types you get back are JSON::Fast's
 
@@ -248,8 +248,15 @@ Disclosure, as on every page where it applies: this distribution and the
 engine share an author. The module exists partly as proof that Raku++'s
 extension ABI carries a real XS-style workflow — C source in the archive, a
 compile at install time, graceful fallback everywhere else. Nothing in the
-module had to be fixed to put this page here; putting it here did surface the
-installer gap recorded in the backends section, where the library the build
-step compiles is not yet the file the store serves back, and the module's
-answer on this machine is `engine` until that is fixed. The measured cost of
-that gap is one row of the table above.
+module had to be fixed to put this page here — but putting it here found one
+bug beside it. The engine's installer copied each declared resource by its
+logical name, `libraries/json`, while a build hook writes the platform's
+spelling, `libjson.dylib` — so the compiled extension never left the build
+directory, the store served the empty placeholder, and the installed module
+answered `engine`. The ladder absorbed it so completely that it took this
+page's sample line to notice. It is fixed the same day it was found: the
+installer now applies the same platform mapping `%?RESOURCES` applies on
+lookup, records the file under both spellings so a Rakudo reading the shared
+store finds it too, and the fix is pinned by the `native-lib` checks in the
+engine's installer gate (`t/install/run.raku`). The sample above says what the
+store serves now.
