@@ -613,6 +613,26 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     }
     say "  modules: {@mods.elems} battery points";
 
+    # Whole-ecosystem sweeps: one point per docs/dev/findings/ECOSWEEP-*.md in
+    # the rakupp repo. The anchor line is "**Green total: N of M**" — keep
+    # writing exactly that in future sweep write-ups; it is what this mines.
+    # The chart's point (the user's framing): the graph shows how many modules
+    # RUN under Raku++, and the curated battery was only where that started —
+    # the sweep line is the ecosystem-scale answer. Dated by the file's last
+    # commit; the working tree wins at HEAD, same rule as status-doc().
+    my @sweep;
+    for run-lines('git', '-C', $rakupp-repo, 'ls-files', 'docs/dev/findings/ECOSWEEP-*.md').sort -> $f {
+        my $txt = "$rakupp-repo/$f".IO.e ?? "$rakupp-repo/$f".IO.slurp !! show-file($rakupp-repo, 'HEAD', $f);
+        next unless $txt ~~ / 'Green total:' \s* (<[0..9,]>+) \s+ 'of' \s+ (<[0..9,]>+) /;
+        my ($n, $total) = denum(~$0), denum(~$1);
+        my $date = run-lines('git', '-C', $rakupp-repo, 'log', '-1', '--format=%as', '--', $f).head // '';
+        next unless $date;
+        @sweep.push({ date => $date, n => $n, total => $total });
+    }
+    @sweep = @sweep.sort(*.<date>);
+    my @sweepj = @sweep.map({ '{"date":' ~ json-esc(.<date>) ~ ',"n":' ~ .<n> ~ ',"total":' ~ .<total> ~ '}' });
+    say "  sweep: {@sweepj.elems} whole-ecosystem points";
+
     # Documentation conformance over time, straight off the snapshots
     # tools/snapshot.raku appends — one record per run of the three-way
     # comparison. This series is only as dense as snapshot.raku has been run,
@@ -638,7 +658,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                ',"dev":['      ~ @dev.join(',')     ~ ']' ~
                ',"releases":[' ~ @entries.join(',') ~ ']' ~
                ',"conformance":[' ~ @conf.join(',') ~ ']' ~
-               ',"modules":['  ~ @mods.join(',')    ~ ']}';
+               ',"modules":['  ~ @mods.join(',')    ~ ']' ~
+               ',"sweep":['    ~ @sweepj.join(',')  ~ ']}';
     mkdir('src/data');
     spurt('src/data/dashboard.json', $json);
     say "wrote src/data/dashboard.json ({@entries.elems} releases)";

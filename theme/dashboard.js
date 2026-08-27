@@ -40,7 +40,10 @@
       tile((100 * last.tests_pass / last.tests_total).toFixed(1) + '%',
            'declared Roast tests passing — ' + fmt(last.tests_pass) + ' / ' + fmt(last.tests_total));
       tile(fmt(last.files_pass) + ' / ' + fmt(last.files_total), 'Roast files fully passing');
-      if (lastMod) tile(lastMod.n + ' / ' + lastMod.total, 'battery dists passing their own suites');
+      var sweep = data.sweep || [];
+      var lastSweep = sweep.length ? sweep[sweep.length - 1] : null;
+      if (lastSweep) tile(fmt(lastSweep.n) + ' / ' + fmt(lastSweep.total), 'zef ecosystem dists passing their own suites');
+      if (lastMod) tile(lastMod.n + ' / ' + lastMod.total, 'curated-battery dists passing their own suites');
       // Only the version-tagged entries count: the series also carries dated
       // points for past `main` sittings (a re-measure between releases), which
       // are readings, not releases.
@@ -150,18 +153,34 @@
       }
 
       // ---- modules chart -----------------------------------------------
-      if (mods.length) {
+      // The chart's question is "how many modules run under Raku++". The
+      // curated battery is where measuring started; the whole-ecosystem
+      // sweep answers it at zef scale. One log axis holds both lines
+      // (dozens beside hundreds), and each series keeps its own denominator
+      // in the tooltip.
+      if (mods.length || sweep.length) {
+        var pts = mods.map(function (m) { return { d: m.date, bat: m, sw: null }; })
+          .concat(sweep.map(function (s) { return { d: s.date, bat: null, sw: s }; }))
+          .sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+        var vals = pts.map(function (p) { return (p.bat || p.sw).n; });
         lineChart(document.getElementById('dash-modules'), {
-          labels: mods.map(function (m, i) { return 'batch ' + (m.batch || i + 1); }),
+          labels: pts.map(function (p) { return p.d.slice(5); }),
           series: [
-            { name: 'modules running byte-identical', cls: 's1',
-              values: mods.map(function (m) { return m.n; }) }
+            { name: 'curated battery, own tests', cls: 's1',
+              values: pts.map(function (p) { return p.bat ? p.bat.n : null; }) },
+            { name: 'whole zef ecosystem', cls: 's2',
+              values: pts.map(function (p) { return p.sw ? p.sw.n : null; }) }
           ],
-          yMax: lastMod.total,
-          yFmt: function (v) { return String(Math.round(v)); },
-          height: 200,
+          log: true,
+          dataMin: Math.min.apply(null, vals),
+          yMax: Math.max.apply(null, vals),
+          yFmt: function (v) { return fmt(Math.round(v)); },
+          height: 220,
           tipRow: function (si, i) {
-            return 'modules: ' + mods[i].n + ' / ' + mods[i].total + ' (' + mods[i].date + ')';
+            var p = pts[i];
+            var r = si === 1 ? (p.sw || p.bat) : (p.bat || p.sw);
+            var kind = r === p.sw ? 'ecosystem sweep' : 'battery';
+            return kind + ': ' + fmt(r.n) + ' / ' + fmt(r.total) + ' (' + p.d + ')';
           }
         });
       }
