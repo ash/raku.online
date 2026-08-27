@@ -40,7 +40,7 @@
       tile((100 * last.tests_pass / last.tests_total).toFixed(1) + '%',
            'declared Roast tests passing — ' + fmt(last.tests_pass) + ' / ' + fmt(last.tests_total));
       tile(fmt(last.files_pass) + ' / ' + fmt(last.files_total), 'Roast files fully passing');
-      if (lastMod) tile(lastMod.n + ' / ' + lastMod.total, 'top-50 modules running byte-identical');
+      if (lastMod) tile(lastMod.n + ' / ' + lastMod.total, 'battery dists passing their own suites');
       // Only the version-tagged entries count: the series also carries dated
       // points for past `main` sittings (a re-measure between releases), which
       // are readings, not releases.

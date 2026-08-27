@@ -644,7 +644,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
     the comparison, not one release, so the line is only as dense as the
     snapshot has been taken.</p>
     <div class="dash-chart" id="dash-conformance"></div>
-    <h2 class="conf-areas-title">Ecosystem <span>— top-50 module battery, byte-identical runs</span></h2>
+    <h2 class="conf-areas-title">Ecosystem <span>— the most-depended-on module battery, each dist&rsquo;s own tests</span></h2>
     <div class="dash-chart" id="dash-modules"></div>
     <h2 class="conf-areas-title">Benchmarks <span>— kernel wall time in ms, lower is better</span></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++

@@ -9,8 +9,11 @@
 #             carrying the Roast standing (docs/status/ROAST.md) and the
 #             benchmark kernels (docs/status/BENCHMARKS.md) as committed at that
 #             tag — see status-doc() for why the path is not hardcoded;
-#   modules   the Tier-2 top-50 battery standing over time, read straight off
-#             the battery repo's commit subjects ("Tier-2: N/50 …").
+#   modules   the module-battery standing over time, read straight off the
+#             battery repo's commit subjects — "Tier-2: N/50 …" (the probe
+#             bar, through Aug 2026) then "battery: N/59 …" (each dist's own
+#             test suite vs a Rakudo reference run). The denominator is the
+#             battery's size at that sitting, so it may grow between points.
 #
 # The output is a committed snapshot (like roast-map.json): the site build
 # never needs the other repos present. Re-run at each release (runbook step).
