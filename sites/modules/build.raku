@@ -720,12 +720,17 @@ sub render-ecosystem(--> Str) {
     my @rows;
     my %tally;
     for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
-        my ($name, $version, $verdict, $err) = $line.split("\t");
+        my ($name, $version, $verdict, $deps, $err) = $line.split("\t");
         next unless $name && $verdict;
         %tally{$verdict}++;
         @rows.push({ name => $name, version => $version // '',
-                     verdict => $verdict, error => $err // '' });
+                     verdict => $verdict, deps => ($deps // 0).Int,
+                     error => $err // '' });
     }
+    # The default order is the ecosystem's own: most-depended-on first
+    # (runtime reverse-deps from the battery repo's rank-ecosystem.raku),
+    # names breaking ties. The headers re-sort client-side.
+    @rows = @rows.sort({ -.<deps>, .<name>.lc });
     my $total = @rows.elems;
     my $green = %tally<pass> // 0;
 
@@ -737,8 +742,9 @@ sub render-ecosystem(--> Str) {
 
     my $trs = @rows.map(-> %r {
         my $err = %r<error> ?? '<div class="eco-err">' ~ esc(%r<error>) ~ '</div>' !! '';
-        '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '">'
+        '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '" data-d="' ~ %r<deps> ~ '">'
           ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
+          ~ '<td class="num">' ~ (%r<deps> ?? comma(%r<deps>) !! '&mdash;') ~ '</td>'
           ~ '<td><code>' ~ esc(%r<version>) ~ '</code></td>'
           ~ '<td><span class="eco-v v-' ~ esc-attr(%r<verdict>) ~ '">' ~ esc(%r<verdict>) ~ '</span></td>'
           ~ '</tr>'
@@ -768,6 +774,10 @@ sub render-ecosystem(--> Str) {
         .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
             overflow-wrap:anywhere; }
         .eco-all td { padding:.45rem .6rem; vertical-align:top; }
+        .eco-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+        .eco-sort:after { content:'\2195'; opacity:.35; margin-left:.3rem; font-size:.8em; }
+        .eco-sort.on.desc:after { content:'\2193'; opacity:.9; }
+        .eco-sort.on.asc:after  { content:'\2191'; opacity:.9; }
         .eco-count { margin:.6rem 0; }
         </style>
         CSS
@@ -778,13 +788,17 @@ sub render-ecosystem(--> Str) {
       ~ 'A verdict names the first rung that failed, so a fix tends to move a dist one rung: '
       ~ $legend ~ '. The sweep, the fix campaign it drove, and the per-dist raw results live in '
       ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
-      ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>.</p>'
+      ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>. '
+      ~ 'The table opens most-depended-on first; click a header to re-sort.</p>'
       ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name…" '
       ~ 'aria-label="Filter by name"> ' ~ $chips ~ '</div>'
       ~ '<p class="fact-sub eco-count" id="eco-count"></p>'
       ~ '<div class="tablewrap"><table class="eco-index eco-all"><thead><tr>'
-      ~ '<th>Distribution</th><th>Version</th><th>Verdict</th>'
-      ~ '</tr></thead><tbody>' ~ $trs ~ '</tbody></table></div>'
+      ~ '<th class="eco-sort" data-k="n" data-dir="asc">Distribution</th>'
+      ~ '<th class="eco-sort num on desc" data-k="d" data-dir="desc" title="How many other dists&rsquo; runtime dependencies resolve to this one">Used by</th>'
+      ~ '<th>Version</th>'
+      ~ '<th class="eco-sort" data-k="v" data-dir="asc">Verdict</th>'
+      ~ '</tr></thead><tbody id="eco-body">' ~ $trs ~ '</tbody></table></div>'
       ~ q:to/JS/;
         <script>
         (function () {
@@ -807,6 +821,29 @@ sub render-ecosystem(--> Str) {
               : fmtN(shown) + ' of ' + fmtN(rows.length) + ' distributions shown';
           }
           q.addEventListener('input', apply);
+          var body = document.getElementById('eco-body');
+          var heads = [].slice.call(document.querySelectorAll('.eco-sort'));
+          heads.forEach(function (h) {
+            h.addEventListener('click', function () {
+              var k = h.getAttribute('data-k');
+              var dir = h.classList.contains('on')
+                ? (h.classList.contains('desc') ? 'asc' : 'desc')
+                : h.getAttribute('data-dir');
+              heads.forEach(function (x) { x.classList.remove('on', 'asc', 'desc'); });
+              h.classList.add('on', dir);
+              var mul = dir === 'desc' ? -1 : 1;
+              rows.sort(function (a, b) {
+                var av, bv;
+                if (k === 'd') { av = +a.getAttribute('data-d'); bv = +b.getAttribute('data-d'); }
+                else { av = a.getAttribute('data-' + k); bv = b.getAttribute('data-' + k); }
+                if (av < bv) return -1 * mul;
+                if (av > bv) return 1 * mul;
+                var an = a.getAttribute('data-n'), bn = b.getAttribute('data-n');
+                return an < bn ? -1 : an > bn ? 1 : 0;
+              });
+              rows.forEach(function (r) { body.appendChild(r); });
+            });
+          });
           flts.forEach(function (b) {
             b.addEventListener('click', function () {
               var v = b.getAttribute('data-v');

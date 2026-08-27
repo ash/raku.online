@@ -31,18 +31,30 @@ sub read-tsv(Str $path --> Hash) {
     %rows
 }
 
-sub MAIN(Str :$results!, Str :$rerun = '', Str :$out = 'src/data/ecosweep.tsv') {
+sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '',
+         Str :$out = 'src/data/ecosweep.tsv') {
     my %all = read-tsv($results);
     if $rerun && $rerun.IO.e {
         my %over = read-tsv($rerun);
         %all{$_} = %over{$_} for %over.keys;
     }
+    # Reverse-dependency counts from harness/rank-ecosystem.raku's output
+    # (battery repo): columns rank/dist/run/…, `run` = how many OTHER dists'
+    # runtime depends resolve to this one (self excluded). A dist absent from
+    # the ranking has zero dependents.
+    my %deps;
+    if $rank && $rank.IO.e {
+        for $rank.IO.lines.skip(1) -> $line {
+            my @c = $line.split("\t");
+            %deps{@c[1]} = @c[2].Int if @c.elems >= 3 && @c[1];
+        }
+    }
     my @names = %all.keys.sort(*.lc);
     my $fh = open($out, :w);
-    $fh.say("name\tversion\tverdict\terror");
+    $fh.say("name\tversion\tverdict\tdeps\terror");
     for @names -> $n {
         my %r = %all{$n};
-        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<error>}");
+        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%deps{$n} // 0}\t{%r<error>}");
     }
     $fh.close;
     my %tally;
