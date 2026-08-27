@@ -570,8 +570,16 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                                  || (!$rev && !$main-rev && sitting-date($line) eq $main-date)
         };
         my @past = @log.grep({ !$is-main($_) });
-        @entries.splice(*-1, 0, |@past) if @past;
-        say "  past sittings: {@past.elems} dated bench points before main";
+        # Each sitting goes in at its own DATE, not as a block before `main`:
+        # a positional splice was right while nothing postdated the sittings,
+        # but a release tagged after them (v3.20.x vs the Aug 21-22 sittings)
+        # then charted BEFORE them and the x-axis ran backwards.
+        for @past -> $p {
+            my $at = @entries.first(:k,
+                { (sitting-date($_) || '9999-99-99') gt sitting-date($p) }) // @entries.end;
+            @entries.splice($at, 0, $p);
+        }
+        say "  past sittings: {@past.elems} dated bench points merged by date";
         unless @log.first({ $is-main($_) }) {
             spurt SITTINGS, (|@log, $main-log).join("\n") ~ "\n";
             say "  logged main's $main-date sitting to {SITTINGS}";
