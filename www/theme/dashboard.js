@@ -28,8 +28,6 @@
     .then(function (data) {
       var rel = data.releases;
       var last = rel[rel.length - 1];
-      var mods = data.modules;
-      var lastMod = mods.length ? mods[mods.length - 1] : null;
 
       // ---- stat tiles --------------------------------------------------
       function tile(n, l) {
@@ -40,10 +38,12 @@
       tile((100 * last.tests_pass / last.tests_total).toFixed(1) + '%',
            'declared Roast tests passing — ' + fmt(last.tests_pass) + ' / ' + fmt(last.tests_total));
       tile(fmt(last.files_pass) + ' / ' + fmt(last.files_total), 'Roast files fully passing');
+      // The one ecosystem number: the whole-zef sweep. The curated battery
+      // that measuring started with stays a per-release gate in the rakupp
+      // repo, not a public statistic.
       var sweep = data.sweep || [];
       var lastSweep = sweep.length ? sweep[sweep.length - 1] : null;
       if (lastSweep) tile(fmt(lastSweep.n) + ' / ' + fmt(lastSweep.total), 'zef ecosystem dists passing their own suites');
-      if (lastMod) tile(lastMod.n + ' / ' + lastMod.total, 'curated-battery dists passing their own suites');
       // Only the version-tagged entries count: the series also carries dated
       // points for past `main` sittings (a re-measure between releases), which
       // are readings, not releases.
@@ -153,34 +153,26 @@
       }
 
       // ---- modules chart -----------------------------------------------
-      // The chart's question is "how many modules run under Raku++". The
-      // curated battery is where measuring started; the whole-ecosystem
-      // sweep answers it at zef scale. One log axis holds both lines
-      // (dozens beside hundreds), and each series keeps its own denominator
-      // in the tooltip.
-      if (mods.length || sweep.length) {
-        var pts = mods.map(function (m) { return { d: m.date, bat: m, sw: null }; })
-          .concat(sweep.map(function (s) { return { d: s.date, bat: null, sw: s }; }))
-          .sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
-        var vals = pts.map(function (p) { return (p.bat || p.sw).n; });
+      // One line, one question: how many of the zef ecosystem's dists pass
+      // their own test suites under Raku++. Linear from zero with nice
+      // headroom — the level is the story; the tile carries the fraction.
+      if (sweep.length) {
+        var swMax = Math.max.apply(null, sweep.map(function (s) { return s.n; }));
+        var pow = Math.pow(10, Math.floor(Math.log10(swMax)));
+        var mant = swMax / pow;
+        var niceCeil = (mant <= 1 ? 1 : mant <= 2 ? 2 : mant <= 2.5 ? 2.5 : mant <= 4 ? 4 : mant <= 5 ? 5 : mant <= 8 ? 8 : 10) * pow;
         lineChart(document.getElementById('dash-modules'), {
-          labels: pts.map(function (p) { return p.d.slice(5); }),
+          labels: sweep.map(function (s) { return s.date.slice(5); }),
           series: [
-            { name: 'curated battery, own tests', cls: 's1',
-              values: pts.map(function (p) { return p.bat ? p.bat.n : null; }) },
-            { name: 'whole zef ecosystem', cls: 's2',
-              values: pts.map(function (p) { return p.sw ? p.sw.n : null; }) }
+            { name: 'dists passing their own suites', cls: 's1',
+              values: sweep.map(function (s) { return s.n; }) }
           ],
-          log: true,
-          dataMin: Math.min.apply(null, vals),
-          yMax: Math.max.apply(null, vals),
+          yMax: niceCeil,
           yFmt: function (v) { return fmt(Math.round(v)); },
           height: 220,
           tipRow: function (si, i) {
-            var p = pts[i];
-            var r = si === 1 ? (p.sw || p.bat) : (p.bat || p.sw);
-            var kind = r === p.sw ? 'ecosystem sweep' : 'battery';
-            return kind + ': ' + fmt(r.n) + ' / ' + fmt(r.total) + ' (' + p.d + ')';
+            return fmt(sweep[i].n) + ' / ' + fmt(sweep[i].total) +
+                   ' dists passing their own suites (' + sweep[i].date + ')';
           }
         });
       }

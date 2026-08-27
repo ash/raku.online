@@ -645,6 +645,11 @@ sub render-dashboard(%site, %by-cat --> Str) {
     snapshot has been taken.</p>
     <div class="dash-chart" id="dash-conformance"></div>
     <h2 class="conf-areas-title">Ecosystem <span>— how many modules run under Raku++</span></h2>
+    <p class="dash-note">The whole zef ecosystem — every distribution in the
+    REA index, latest release of each — swept end to end: a dist counts when
+    <em>its own</em> test suite passes under Raku++.
+    <a href="https://raku.online/modules/ecosystem/">Every distribution and its
+    result, listed →</a></p>
     <div class="dash-chart" id="dash-modules"></div>
     <h2 class="conf-areas-title">Benchmarks <span>— kernel wall time in ms, lower is better</span></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++

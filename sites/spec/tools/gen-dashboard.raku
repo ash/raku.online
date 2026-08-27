@@ -613,16 +613,26 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     }
     say "  modules: {@mods.elems} battery points";
 
-    # Whole-ecosystem sweeps: one point per docs/dev/findings/ECOSWEEP-*.md in
-    # the rakupp repo. The anchor line is "**Green total: N of M**" — keep
-    # writing exactly that in future sweep write-ups; it is what this mines.
+    # Whole-ecosystem sweeps, one dated point each, from the sweep write-ups:
+    # docs/dev/findings/ECOSWEEP-*.md carry a Timeline block of
+    # `- YYYY-MM-DD: N of M` lines (keep the shape in every future write-up —
+    # it is what this mines; a write-up without one falls back to its
+    # "**Green total: N of M**" line dated by the file's last commit).
     # The chart's point (the user's framing): the graph shows how many modules
-    # RUN under Raku++, and the curated battery was only where that started —
-    # the sweep line is the ecosystem-scale answer. Dated by the file's last
-    # commit; the working tree wins at HEAD, same rule as status-doc().
+    # RUN under Raku++ — the ecosystem-scale answer, not the curated battery
+    # the measuring happened to start with. Working tree wins at HEAD, same
+    # rule as status-doc().
     my @sweep;
     for run-lines('git', '-C', $rakupp-repo, 'ls-files', 'docs/dev/findings/ECOSWEEP-*.md').sort -> $f {
         my $txt = "$rakupp-repo/$f".IO.e ?? "$rakupp-repo/$f".IO.slurp !! show-file($rakupp-repo, 'HEAD', $f);
+        my $found = False;
+        for $txt.lines -> $line {
+            if $line ~~ / ^ '- ' (\d**4 '-' \d\d '-' \d\d) ':' \s* (<[0..9,]>+) \s+ 'of' \s+ (<[0..9,]>+) $ / {
+                @sweep.push({ date => ~$0, n => denum(~$1), total => denum(~$2) });
+                $found = True;
+            }
+        }
+        next if $found;
         next unless $txt ~~ / 'Green total:' \s* (<[0..9,]>+) \s+ 'of' \s+ (<[0..9,]>+) /;
         my ($n, $total) = denum(~$0), denum(~$1);
         my $date = run-lines('git', '-C', $rakupp-repo, 'log', '-1', '--format=%as', '--', $f).head // '';

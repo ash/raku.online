@@ -683,6 +683,8 @@ sub render-index(@mods --> Str) {
       ~ 'and <strong>run</strong> the examples on its page. Every example below is executed under '
       ~ esc(%SITE<engine>) ~ ' and under ' ~ esc(%SITE<oracle>) ~ ' as the build runs, twice on each, '
       ~ 'and the build fails if an output moves. What you copy is what ran.</p>'
+      ~ '<p><strong><a href="' ~ $BASE ~ '/ecosystem/">The whole zef ecosystem — '
+      ~ 'all 2,524 distributions and how each ran &rarr;</a></strong></p>'
       ~ '<div class="tablewrap"><table class="eco-index"><thead><tr>'
       ~ '<th>Module</th><th>Version</th><th>State</th><th class="num">Examples</th>'
       ~ '</tr></thead><tbody>' ~ $rows ~ '</tbody></table></div>'
@@ -692,6 +694,132 @@ sub render-index(@mods --> Str) {
       ~ '<a href="/faq/modules/">module FAQ</a> for how installing works, and '
       ~ '<a href="/spec/">the conformance site</a> for the engine itself.</p>';
     page(%SITE<title>, $body, :index)
+}
+
+# ---------------------------------------------------------------------------
+# The whole-ecosystem listing: every REA distribution and its sweep verdict.
+# Data: src/data/ecosweep.tsv, folded from the rakupp repo's sweep TSVs by
+# tools/distill-ecosweep.raku (the re-run's verdict wins over the first
+# pass's). Re-distill at each sweep; the dashboard's Ecosystem chart and this
+# page must tell the same story.
+# ---------------------------------------------------------------------------
+
+sub comma(Int $n --> Str) { $n.Str.flip.comb(3).join(',').flip }
+
+my %V-LABEL =
+    'pass'           => 'passes its own test suite',
+    'self-fail'      => 'its own suite fails',
+    'dep-fail'       => 'a dependency fails first',
+    'build-fail'     => 'its native build step fails',
+    'dep-build-fail' => 'a dependency&rsquo;s build fails',
+    'other'          => 'timeout / abnormal exit',
+    'fetch-fail'     => 'could not be fetched',
+    'unresolved'     => 'could not be resolved';
+
+sub render-ecosystem(--> Str) {
+    my @rows;
+    my %tally;
+    for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
+        my ($name, $version, $verdict, $err) = $line.split("\t");
+        next unless $name && $verdict;
+        %tally{$verdict}++;
+        @rows.push({ name => $name, version => $version // '',
+                     verdict => $verdict, error => $err // '' });
+    }
+    my $total = @rows.elems;
+    my $green = %tally<pass> // 0;
+
+    my @order = %tally.keys.sort({ $_ eq 'pass' ?? '' !! $_ });  # pass first
+    my $chips = @order.map(-> $v {
+        '<button class="eco-flt" data-v="' ~ esc-attr($v) ~ '">'
+          ~ esc($v) ~ ' <span>' ~ comma(%tally{$v}) ~ '</span></button>'
+    }).join(' ');
+
+    my $trs = @rows.map(-> %r {
+        my $err = %r<error> ?? '<div class="eco-err">' ~ esc(%r<error>) ~ '</div>' !! '';
+        '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '">'
+          ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
+          ~ '<td><code>' ~ esc(%r<version>) ~ '</code></td>'
+          ~ '<td><span class="eco-v v-' ~ esc-attr(%r<verdict>) ~ '">' ~ esc(%r<verdict>) ~ '</span></td>'
+          ~ '</tr>'
+    }).join("\n");
+
+    my $legend = @order.map(-> $v {
+        '<span class="eco-v v-' ~ esc-attr($v) ~ '">' ~ esc($v) ~ '</span> '
+          ~ (%V-LABEL{$v} // '')
+    }).join(' &middot; ');
+
+    my $body = q:to/CSS/
+        <style>
+        .eco-tools { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:1rem 0; }
+        .eco-tools input { flex:1 1 14rem; padding:.45rem .7rem; font:inherit;
+            border:1px solid var(--line, #ccc); border-radius:.4rem;
+            background:var(--bg, transparent); color:inherit; }
+        .eco-flt { font:inherit; font-size:.85rem; padding:.3rem .6rem; cursor:pointer;
+            border:1px solid var(--line, #ccc); border-radius:1rem; background:transparent; color:inherit; }
+        .eco-flt span { opacity:.65; }
+        .eco-flt.on { border-color: currentColor; font-weight:600; }
+        .eco-v { font-size:.78rem; padding:.1rem .5rem; border-radius:1rem; white-space:nowrap; }
+        .v-pass { background:#1a7f3722; color:#1a7f37; }
+        .v-self-fail { background:#b3261e18; color:#b3261e; }
+        .v-dep-fail, .v-dep-build-fail { background:#9a6a0018; color:#9a6a00; }
+        .v-build-fail { background:#8250df18; color:#8250df; }
+        .v-other, .v-fetch-fail, .v-unresolved { background:#65656518; color:#656565; }
+        .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
+            overflow-wrap:anywhere; }
+        .eco-all td { padding:.45rem .6rem; vertical-align:top; }
+        .eco-count { margin:.6rem 0; }
+        </style>
+        CSS
+      ~ '<h1>The zef ecosystem under Raku++</h1>'
+      ~ '<p class="tagline">Every distribution in the REA index — latest release of each — '
+      ~ 'fetched, built, installed and its own test suite run under Raku++.</p>'
+      ~ '<p>' ~ $green ~ ' of ' ~ comma($total) ~ ' distributions pass <em>their own</em> tests. '
+      ~ 'A verdict names the first rung that failed, so a fix tends to move a dist one rung: '
+      ~ $legend ~ '. The sweep, the fix campaign it drove, and the per-dist raw results live in '
+      ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
+      ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>.</p>'
+      ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name…" '
+      ~ 'aria-label="Filter by name"> ' ~ $chips ~ '</div>'
+      ~ '<p class="fact-sub eco-count" id="eco-count"></p>'
+      ~ '<div class="tablewrap"><table class="eco-index eco-all"><thead><tr>'
+      ~ '<th>Distribution</th><th>Version</th><th>Verdict</th>'
+      ~ '</tr></thead><tbody>' ~ $trs ~ '</tbody></table></div>'
+      ~ q:to/JS/;
+        <script>
+        (function () {
+          var q = document.getElementById('eco-q');
+          var rows = [].slice.call(document.querySelectorAll('tr[data-v]'));
+          var count = document.getElementById('eco-count');
+          var flts = [].slice.call(document.querySelectorAll('.eco-flt'));
+          var verdict = '';
+          function apply() {
+            var needle = q.value.trim().toLowerCase(), shown = 0;
+            rows.forEach(function (r) {
+              var ok = (!verdict || r.getAttribute('data-v') === verdict)
+                    && (!needle || r.getAttribute('data-n').indexOf(needle) !== -1);
+              r.style.display = ok ? '' : 'none';
+              if (ok) shown++;
+            });
+            var fmtN = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+            count.textContent = shown === rows.length
+              ? fmtN(rows.length) + ' distributions'
+              : fmtN(shown) + ' of ' + fmtN(rows.length) + ' distributions shown';
+          }
+          q.addEventListener('input', apply);
+          flts.forEach(function (b) {
+            b.addEventListener('click', function () {
+              var v = b.getAttribute('data-v');
+              verdict = (verdict === v) ? '' : v;
+              flts.forEach(function (x) { x.classList.toggle('on', x === b && verdict); });
+              apply();
+            });
+          });
+          apply();
+        })();
+        </script>
+        JS
+    page('The zef ecosystem under Raku++ — ' ~ %SITE<title>, $body)
 }
 
 sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
@@ -711,6 +839,12 @@ sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
         write-examples($mod);
     }
     spurt('out/index.html', render-index(@mods));
+
+    if 'src/data/ecosweep.tsv'.IO.e {
+        mkdir('out/ecosystem');
+        spurt('out/ecosystem/index.html', render-ecosystem());
+        say "built the whole-ecosystem listing -> out/ecosystem/";
+    }
 
     say "built {@mods.elems} module page(s) + index -> out/";
 
