@@ -683,7 +683,7 @@ sub render-index(@mods --> Str) {
       ~ 'and <strong>run</strong> the examples on its page. Every example below is executed under '
       ~ esc(%SITE<engine>) ~ ' and under ' ~ esc(%SITE<oracle>) ~ ' as the build runs, twice on each, '
       ~ 'and the build fails if an output moves. What you copy is what ran.</p>'
-      ~ '<p><strong><a href="' ~ $BASE ~ '/ecosystem/">The whole zef ecosystem — '
+      ~ '<p><strong><a href="' ~ $BASE ~ '/ecosystem/">The whole Raku ecosystem — '
       ~ 'all 2,524 distributions and how each ran &rarr;</a></strong></p>'
       ~ '<div class="tablewrap"><table class="eco-index"><thead><tr>'
       ~ '<th>Module</th><th>Version</th><th>State</th><th class="num">Examples</th>'
@@ -781,7 +781,7 @@ sub render-ecosystem(--> Str) {
         .eco-count { margin:.6rem 0; }
         </style>
         CSS
-      ~ '<h1>The zef ecosystem under Raku++</h1>'
+      ~ '<h1>The Raku ecosystem under Raku++</h1>'
       ~ '<p class="tagline">Every distribution in the REA index — latest release of each — '
       ~ 'fetched, built, installed and its own test suite run under Raku++.</p>'
       ~ '<p>' ~ $green ~ ' of ' ~ comma($total) ~ ' distributions pass <em>their own</em> tests. '
@@ -856,7 +856,7 @@ sub render-ecosystem(--> Str) {
         })();
         </script>
         JS
-    page('The zef ecosystem under Raku++ — ' ~ %SITE<title>, $body)
+    page('The Raku ecosystem under Raku++ — ' ~ %SITE<title>, $body)
 }
 
 sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,

@@ -38,12 +38,12 @@
       tile((100 * last.tests_pass / last.tests_total).toFixed(1) + '%',
            'declared Roast tests passing — ' + fmt(last.tests_pass) + ' / ' + fmt(last.tests_total));
       tile(fmt(last.files_pass) + ' / ' + fmt(last.files_total), 'Roast files fully passing');
-      // The one ecosystem number: the whole-zef sweep. The curated battery
+      // The one ecosystem number: the whole-ecosystem sweep. The curated battery
       // that measuring started with stays a per-release gate in the rakupp
       // repo, not a public statistic.
       var sweep = data.sweep || [];
       var lastSweep = sweep.length ? sweep[sweep.length - 1] : null;
-      if (lastSweep) tile(fmt(lastSweep.n) + ' / ' + fmt(lastSweep.total), 'zef ecosystem dists passing their own suites');
+      if (lastSweep) tile(fmt(lastSweep.n) + ' / ' + fmt(lastSweep.total), 'Raku ecosystem dists passing their own suites');
       // Only the version-tagged entries count: the series also carries dated
       // points for past `main` sittings (a re-measure between releases), which
       // are readings, not releases.
