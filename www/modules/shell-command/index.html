@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shell::Command — The Raku Ecosystem, Working</title>
+<meta name="description" content="cp -r, rm -rf, mkpath, cat and which as portable Raku subs — the shell one-liners your script was about to shell out for, without the shell.">
+<link rel="canonical" href="https://raku.online/modules/shell-command/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shell::Command — The Raku Ecosystem, Working">
+<meta property="og:description" content="cp -r, rm -rf, mkpath, cat and which as portable Raku subs — the shell one-liners your script was about to shell out for, without the shell.">
+<meta property="og:url" content="https://raku.online/modules/shell-command/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Shell::Command","description":"cp -r, rm -rf, mkpath, cat and which as portable Raku subs — the shell one-liners your script was about to shell out for, without the shell.","programmingLanguage":"Raku","version":"1.2","url":"https://raku.online/modules/shell-command/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/raku-community-modules/Shell-Command"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>Shell::Command</h1><span class="status st-full">Works</span></div><p class="summary">cp -r, rm -rf, mkpath, cat and which as portable Raku subs — the shell one-liners your script was about to shell out for, without the shell.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.2</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>File::Find</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Shell::Command">raku.land</a> · <a href="https://github.com/raku-community-modules/Shell-Command">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Shell::Command</code></pre></div><p class="fact-sub"><code>zef install Shell::Command</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Every build script reaches a line where the author thinks "this is just <code>cp -r</code>" — and then either shells out (goodbye Windows, hello quoting bugs) or writes a recursive copy by hand. This module is the middle path: the famous shell verbs as plain Raku subs that walk the filesystem through Raku's own IO, so they behave the same everywhere Raku runs:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shell-command/01-cp-and-rm.raku" title="This example as a file: 01-cp-and-rm.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shell::Command</span>;
+
+<span class="k">my</span> <span class="nv">$work</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;sc-demo-$*PID&quot;</span>).<span class="nb">Str</span>;
+<span class="n">mkpath</span> <span class="s">&quot;$work/src/deep&quot;</span>;
+<span class="s">&quot;$work/src/a.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'first'</span>);
+<span class="s">&quot;$work/src/deep/b.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'second'</span>);
+
+<span class="n">cp</span> <span class="s">&quot;$work/src&quot;</span>, <span class="s">&quot;$work/backup&quot;</span>, :<span class="n">r</span>;
+<span class="nb">say</span> <span class="s">&quot;$work/backup/deep/b.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+
+<span class="n">rm_rf</span> <span class="nv">$work</span>;
+<span class="nb">say</span> <span class="nv">$work</span>.<span class="nb">IO</span>.<span class="n">e</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>second
+False</code></pre></div>
+<p><code>mkpath</code> is <code>mkdir -p</code>; <code>cp</code> copies one file, or with <code>:r</code> a whole tree — creating the destination directories as it goes; <code>rm_rf</code> takes the tree down again, files and all, and does not blink at a path that is already gone. The names keep their shell spelling, underscores and all, so the line reads like what it does.</p>
+<h2 id="the-rest-of-the-toolbox">The rest of the toolbox <a class="anchor" href="#the-rest-of-the-toolbox" aria-label="link">#</a></h2>
+<p>Three more verbs round it out. <code>rm_f</code> unlinks files (no directories, no error if absent); <code>cat</code> prints files in order — the workhorse for concatenating build fragments; and <code>which</code> walks <code>PATH</code> for an executable:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shell-command/02-cat-and-which.raku" title="This example as a file: 02-cat-and-which.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shell::Command</span>;
+
+<span class="k">my</span> <span class="nv">$work</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;sc-cat-$*PID&quot;</span>).<span class="nb">Str</span>;
+<span class="n">mkpath</span> <span class="nv">$work</span>;
+<span class="s">&quot;$work/one.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'line one'</span>);
+<span class="s">&quot;$work/two.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'line two'</span>);
+
+<span class="n">cat</span> <span class="s">&quot;$work/one.txt&quot;</span>, <span class="s">&quot;$work/two.txt&quot;</span>;
+
+<span class="nb">say</span> <span class="n">which</span>(<span class="s">'sh'</span>);
+<span class="n">rm_rf</span> <span class="nv">$work</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>line one
+line two
+/bin/sh</code></pre></div>
+<p>One habit to know: <code>cat</code> prints each file with <code>say</code>, so a file that already ends in a newline gets a blank line after it — the files above deliberately do not, and for byte-exact concatenation you would <code>print</code> the slurps yourself.</p>
+<p>If <code>which</code> is the main thing you came for, the dedicated <a href="/modules/file-which/">File::Which</a> distribution does that one job with more care — <code>:all</code> results, Windows <code>PATHEXT</code> handling — where this <code>which</code> is the simple Unix walk. The overlap is honest: this module is a toolbox, that one is a tool.</p>
+<p>There is also <code>run-command</code>, a thin wrapper over <code>run</code> that invokes an external program portably — on Windows it routes through <code>cmd.exe</code> for you — and hands back the <code>Proc</code>. It is the escape hatch for the verb this module does not have.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. The tree copy, the recursive removal, path creation, concatenation and the PATH walk answer identically under Raku++ and Rakudo — File::Find, which powers the recursion and has <a href="/modules/file-find/">a page of its own</a>, already made the same claim.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install Shell::Command</code>, which brings <code>File::Find</code> with it.</li><li><strong>Test</strong> — the distribution's own suite: 1 file, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Twelve distributions depend on it — mostly build tooling, which is exactly the code that cannot afford to assume a shell.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP::Status — The Raku Ecosystem, Working</title>
+<meta name="description" content="Every registered HTTP status code as an object that knows its title, its class, its RFC and where it came from — plus the one-line predicates for &quot;is this an error?&quot;.">
+<link rel="canonical" href="https://raku.online/modules/http-status/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP::Status — The Raku Ecosystem, Working">
+<meta property="og:description" content="Every registered HTTP status code as an object that knows its title, its class, its RFC and where it came from — plus the one-line predicates for &quot;is this an error?&quot;.">
+<meta property="og:url" content="https://raku.online/modules/http-status/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"HTTP::Status","description":"Every registered HTTP status code as an object that knows its title, its class, its RFC and where it came from — plus the one-line predicates for \"is this an error?\".","programmingLanguage":"Raku","version":"0.0.5","url":"https://raku.online/modules/http-status/","codeRepository":"https://github.com/lizmat/HTTP-Status"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · web</div><h1>HTTP::Status</h1><span class="status st-full">Works</span></div><p class="summary">Every registered HTTP status code as an object that knows its title, its class, its RFC and where it came from — plus the one-line predicates for "is this an error?".</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.5</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/HTTP::Status">raku.land</a> · <a href="https://github.com/lizmat/HTTP-Status">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install HTTP::Status</code></pre></div><p class="fact-sub"><code>zef install HTTP::Status</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Somewhere in every HTTP-touching program a bare <code>404</code> needs to become words — in a log line, an error page, a metrics label. This module is the registry as data: call the class with a code and you get an object carrying everything the IANA list (and the well-known extensions beyond it) says about that code:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-status/01-lookup.raku" title="This example as a file: 01-lookup.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::Status</span>;
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">HTTP::Status</span>(<span class="mi">418</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">code</span>, <span class="s">' '</span>, <span class="nv">$s</span>.<span class="n">title</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">type</span>;
+<span class="nb">say</span> <span class="s">&quot;and 404 reads as: {HTTP::Status(404)}&quot;</span>;
+<span class="nb">say</span> <span class="n">HTTP::Status</span>(<span class="mi">999</span>) // <span class="s">'unknown code'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>418 I'm a teapot
+Client Error
+and 404 reads as: Not Found
+unknown code</code></pre></div>
+<p>The object stringifies to its title, so it drops straight into interpolation, and an unregistered code gives you an undefined value rather than an exception — <code>//</code> your fallback in, as the last line does. Note that <code>.type</code> names the hundred-class in words: Informational, Success, Redirection, Client Error, Server Error.</p>
+<h2 id="the-predicates-and-a-log-line">The predicates, and a log line <a class="anchor" href="#the-predicates-and-a-log-line" aria-label="link">#</a></h2>
+<p>For branching you rarely want the object at all — you want one boolean. Six exported subs test a bare code without constructing anything: <code>is-info</code>, <code>is-success</code>, <code>is-redirect</code>, <code>is-error</code>, and the pair that splits errors into whose fault they are:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-status/02-predicates.raku" title="This example as a file: 02-predicates.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::Status</span>;
+
+<span class="nb">say</span> <span class="n">is-client-error</span>(<span class="mi">404</span>), <span class="s">' '</span>, <span class="n">is-server-error</span>(<span class="mi">404</span>);
+
+<span class="k">for</span> <span class="mi">301</span>, <span class="mi">404</span>, <span class="mi">503</span> -&gt; <span class="nv">$code</span> {
+    <span class="k">my</span> <span class="nv">$st</span> = <span class="n">HTTP::Status</span>(<span class="nv">$code</span>);
+    <span class="nb">say</span> <span class="nv">$code</span> ~ <span class="s">' '</span> ~ <span class="nv">$st</span> ~ <span class="s">' — '</span> ~ <span class="nv">$st</span>.<span class="n">type</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True False
+301 Moved Permanently — Redirection
+404 Not Found — Client Error
+503 Service Unavailable — Server Error</code></pre></div>
+<p><code>is-client-error(404)</code>/<code>is-server-error(503)</code> is the pair to reach for in retry logic — a 4xx will fail again exactly the same way, a 5xx might not, and that one distinction is most of what "handle errors properly" means against an HTTP API.</p>
+<h2 id="deeper-than-the-title">Deeper than the title <a class="anchor" href="#deeper-than-the-title" aria-label="link">#</a></h2>
+<p>Each object also knows <em>why it exists</em>: <code>.RFC</code> names the defining document, <code>.since</code> the protocol version that introduced it, and <code>.origin</code> who registered it — which is where the registry gets interesting, because it includes the codes you meet in the wild that are not IANA's at all, from Cloudflare's 5xx family to nginx's internals:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-status/03-provenance.raku" title="This example as a file: 03-provenance.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::Status</span>;
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">HTTP::Status</span>(<span class="mi">451</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">title</span>;
+<span class="nb">say</span> <span class="s">'RFC '</span>, <span class="nv">$s</span>.<span class="n">RFC</span>;
+
+<span class="nb">say</span> <span class="n">HTTP::Status</span>(<span class="mi">525</span>).<span class="n">title</span>;
+<span class="nb">say</span> <span class="n">HTTP::Status</span>(<span class="mi">525</span>).<span class="n">origin</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Unavailable For Legal Reasons
+RFC 7725
+SSL Handshake Failed
+Cloudflare</code></pre></div>
+<p>There is also <code>.summary</code> — a sentence or three of prose per code, enough to power a status reference page by itself — and the class-level <code>HTTP::Status.pairs</code> hands you the whole registry at once. Code that predates this API keeps working: the legacy <code>get_http_status_msg(503)</code> sub is still exported and answers <code>Service Unavailable</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The module's answers are identical on both engines. One engine-level caution its objects happen to expose: formatting an object with <code>printf</code>/<code>sprintf</code> <code>%s</code> currently prints Raku++'s default representation (<code>HTTP::Status&lt;…id…&gt;</code>) instead of calling the class's own <code>Str</code>, where Rakudo prints the title. Interpolation, <code>~</code> concatenation and <code>say</code> all stringify correctly on both engines — so write <code>"$st"</code> rather than <code>sprintf '%s', $st</code> until that lands, on this or any class with a custom <code>Str</code>.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install HTTP::Status</code>; it depends on nothing outside the core.</li><li><strong>Test</strong> — the distribution's own suite: 3 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>A detail for connoisseurs: the registry loads through a <code>sink</code> method — each <code>HTTP::Status.new: 404, …</code> at module load time registers itself by being discarded, so the whole table is built by statements that appear to do nothing. That idiom working is a small conformance statement about sink context on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>
