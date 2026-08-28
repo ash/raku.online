@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: Math::SpecialFunctions
 suite: 4 files, green
-tested: 2026-08-24
+tested: 2026-08-28
 raku-land: https://raku.land/zef:antononcube/Statistics::Distributions
 source: https://github.com/antononcube/Raku-Statistics-Distributions
 ---

@@ -228,6 +228,27 @@ stamp_cache_tag() {
 }
 stamp_cache_tag
 
+# One URL per page, so a crawler does not have to discover the site by walking
+# it — and robots.txt to say where the map is. Every index.html is a page;
+# the redirect stubs (old /ecosystem/ addresses) declare themselves with a
+# meta refresh and are left out, since their canonical target is already in.
+build_sitemap() {
+    {
+        echo '<?xml version="1.0" encoding="UTF-8"?>'
+        echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        find "$WWW" -name index.html | LC_ALL=C sort | while read -r f; do
+            grep -qi 'http-equiv="refresh"' "$f" && continue
+            rel="${f#"$WWW"/}"
+            echo "  <url><loc>https://raku.online/${rel%index.html}</loc></url>"
+        done
+        echo '</urlset>'
+    } > "$WWW/sitemap.xml"
+    printf 'User-agent: *\nAllow: /\n\nSitemap: https://raku.online/sitemap.xml\n' \
+        > "$WWW/robots.txt"
+    echo "sitemap: $(grep -c '<loc>' "$WWW/sitemap.xml") URLs -> www/sitemap.xml (+ robots.txt)"
+}
+build_sitemap
+
 # Links a script assembles at runtime are invisible to the HTML checks above,
 # and they are where the base prefix keeps getting forgotten — the tour's
 # Continue button and the spec's data fetches were both missed this way. Any

@@ -10,7 +10,7 @@ status: full
 license: Artistic-2.0
 depends: JSON::Fast
 suite: 2 files, green
-tested: 2026-08-26
+tested: 2026-08-28
 raku-land: https://raku.land/zef:ash/JSON::Native
 source: https://github.com/ash/raku-modules
 ---

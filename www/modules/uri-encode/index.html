@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URI::Encode — The Raku Ecosystem, Working</title>
+<meta name="description" content="Percent-encoding and decoding per RFC 3986 — with the distinction that matters kept intact, between escaping a whole URL and escaping one value going into it.">
+<link rel="canonical" href="https://raku.online/modules/uri-encode/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="URI::Encode — The Raku Ecosystem, Working">
+<meta property="og:description" content="Percent-encoding and decoding per RFC 3986 — with the distinction that matters kept intact, between escaping a whole URL and escaping one value going into it.">
+<meta property="og:url" content="https://raku.online/modules/uri-encode/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"URI::Encode","description":"Percent-encoding and decoding per RFC 3986 — with the distinction that matters kept intact, between escaping a whole URL and escaping one value going into it.","programmingLanguage":"Raku","version":"1.0","url":"https://raku.online/modules/uri-encode/","license":"https://spdx.org/licenses/BSD-2-Clause-FreeBSD","codeRepository":"https://github.com/raku-community-modules/URI-Encode"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · web</div><h1>URI::Encode</h1><span class="status st-full">Works</span></div><p class="summary">Percent-encoding and decoding per RFC 3986 — with the distinction that matters kept intact, between escaping a whole URL and escaping one value going into it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>BSD-2-Clause-FreeBSD</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/URI::Encode">raku.land</a> · <a href="https://github.com/raku-community-modules/URI-Encode">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install URI::Encode</code></pre></div><p class="fact-sub"><code>zef install URI::Encode</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Somewhere a string of yours is about to travel inside a URL — a search term, a filename, a redirect target — and it contains a space, an ampersand, or an <code>é</code>. Percent-encoding is the fix, and the entire skill is knowing <strong>which of two questions you are asking</strong>. This module gives each question its own sub, the same split JavaScript makes between <code>encodeURI</code> and <code>encodeURIComponent</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri-encode/01-two-questions.raku" title="This example as a file: 01-two-questions.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI::Encode</span>;
+
+<span class="k">my</span> <span class="nv">$url</span> = <span class="s">'https://example.com/search?q=café au lait&amp;lang=fr'</span>;
+<span class="nb">say</span> <span class="n">uri_encode</span>(<span class="nv">$url</span>);
+<span class="nb">say</span> <span class="n">uri_encode_component</span>(<span class="s">'café au lait &amp; more'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>https://example.com/search?q=caf%C3%A9%20au%20lait&amp;lang=fr
+caf%C3%A9%20au%20lait%20%26%20more</code></pre></div>
+<p><code>uri_encode</code> treats the string as <em>already being a URL</em>: it escapes what cannot appear at all (the space, the <code>é</code> as UTF-8 bytes) but leaves RFC 3986's reserved characters — <code>: / ? # &amp; =</code> and friends — alone, because in a URL they are structure. <code>uri_encode_component</code> treats the string as <em>one value</em>: everything but the unreserved characters is escaped, so the <code>&amp;</code> inside the value can no longer be mistaken for a parameter separator. Passing a whole URL to the component form, or a raw value to the URL form, is the classic bug this module's two names exist to prevent.</p>
+<h2 id="building-a-query-string">Building a query string <a class="anchor" href="#building-a-query-string" aria-label="link">#</a></h2>
+<p>The component form is the one you want in the everyday job of putting values into a query. Ampersands in the data survive, spaces become <code>%20</code>, and the URL's own structure stays yours:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri-encode/02-query-string.raku" title="This example as a file: 02-query-string.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI::Encode</span>;
+
+<span class="k">my</span> <span class="nv">@params</span> = <span class="n">department</span> =&gt; <span class="s">'R&amp;D'</span>, <span class="n">q</span> =&gt; <span class="s">'raku modules'</span>, <span class="n">page</span> =&gt; <span class="mi">2</span>;
+<span class="k">my</span> <span class="nv">$query</span> = <span class="nv">@params</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ <span class="n">uri_encode_component</span>(.<span class="n">value</span>.<span class="nb">Str</span>) }).<span class="nb">join</span>(<span class="s">'&amp;'</span>);
+<span class="nb">say</span> <span class="s">'https://example.com/search?'</span> ~ <span class="nv">$query</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>https://example.com/search?department=R%26D&amp;q=raku%20modules&amp;page=2</code></pre></div>
+<p>An array of pairs, not a hash — a hash would shuffle the parameter order from run to run, and while servers should not care, cache keys, signed URLs and test assertions all do.</p>
+<h2 id="decoding-and-the-plus-sign">Decoding, and the plus sign <a class="anchor" href="#decoding-and-the-plus-sign" aria-label="link">#</a></h2>
+<p><code>uri_decode</code> reverses the percent-escapes, decoding the bytes as UTF-8. One thing it deliberately does <strong>not</strong> do: turn <code>+</code> into a space. That rule belongs to HTML form encoding (<code>application/x-www-form-urlencoded</code>), not to RFC 3986 — a <code>+</code> in a path or query is just a plus. If you are parsing form bodies, split on <code>&amp;</code>, translate <code>+</code> to space, <em>then</em> decode:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uri-encode/03-decoding.raku" title="This example as a file: 03-decoding.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">URI::Encode</span>;
+
+<span class="nb">say</span> <span class="n">uri_decode</span>(<span class="s">'caf%C3%A9%20au%20lait'</span>);
+<span class="nb">say</span> <span class="n">uri_decode</span>(<span class="s">'a+b%20c'</span>);
+<span class="nb">say</span> <span class="n">uri_decode_component</span>(<span class="s">'100%25%20%2B%2020%25'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>café au lait
+a+b c
+100% + 20%</code></pre></div>
+<p>Round-tripping holds by construction: <code>uri_decode(uri_encode_component($s))</code> gives back <code>$s</code> for any string, since the component form escapes everything ambiguous and the decoder only touches escapes.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. Encoding, decoding, and the UTF-8 byte handling for non-ASCII text answer identically under Raku++ and Rakudo.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install URI::Encode</code>; it depends on nothing outside the core.</li><li><strong>Test</strong> — the distribution's own suite: 2 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>Nothing had to be fixed anywhere. Worth knowing: the heavier <a href="/modules/uri/">URI</a> distribution — full URL parsing rather than just escaping — carries its own <code>uri-escape</code>/<code>uri-unescape</code> subs in a <code>URI::Escape</code> module; this one is the standalone version of that job, at twenty-four dependent distributions to URI's thirty-four.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

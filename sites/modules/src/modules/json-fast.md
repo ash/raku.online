@@ -8,7 +8,7 @@ summary: JSON in, Raku data out, and back again. Two exported subs, a handful
 status: full
 license: Artistic-2.0
 suite: 14 files, green
-tested: 2026-08-24
+tested: 2026-08-28
 raku-land: https://raku.land/zef:timo/JSON::Fast
 source: https://github.com/timo/json_fast
 ---

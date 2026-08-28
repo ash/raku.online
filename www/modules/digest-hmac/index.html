@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digest::HMAC — The Raku Ecosystem, Working</title>
+<meta name="description" content="Keyed message authentication (RFC 2104) over any digest you hand it — verify a webhook signature or sign an API request in one line, in pure Raku.">
+<link rel="canonical" href="https://raku.online/modules/digest-hmac/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Digest::HMAC — The Raku Ecosystem, Working">
+<meta property="og:description" content="Keyed message authentication (RFC 2104) over any digest you hand it — verify a webhook signature or sign an API request in one line, in pure Raku.">
+<meta property="og:url" content="https://raku.online/modules/digest-hmac/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Digest::HMAC","description":"Keyed message authentication (RFC 2104) over any digest you hand it — verify a webhook signature or sign an API request in one line, in pure Raku.","programmingLanguage":"Raku","version":"1.0.7","url":"https://raku.online/modules/digest-hmac/","codeRepository":"https://github.com/JJ/Raku-Digest-HMAC"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · crypto</div><h1>Digest::HMAC</h1><span class="status st-full">Works</span></div><p class="summary">Keyed message authentication (RFC 2104) over any digest you hand it — verify a webhook signature or sign an API request in one line, in pure Raku.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.7</code> <span class="fact-sub">zef:jjmerelo</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Digest</code></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jjmerelo/Digest::HMAC">raku.land</a> · <a href="https://github.com/JJ/Raku-Digest-HMAC">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Digest::HMAC</code></pre></div><p class="fact-sub"><code>zef install Digest::HMAC</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A hash proves a message was not corrupted; an HMAC proves it was not corrupted <strong>and came from someone holding the key</strong>. That is the mechanism behind webhook signatures, signed cookies, and most API request signing. This module is the RFC 2104 construction in about twenty lines of Raku — and instead of hard-coding a hash, <code>hmac</code> takes the digest <em>function</em> as an argument, so one implementation serves them all:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-hmac/01-first-hmac.raku" title="This example as a file: 01-first-hmac.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::HMAC</span>;
+<span class="k">use</span> <span class="n">Digest::SHA1</span>;
+
+<span class="nb">say</span> <span class="n">hmac-hex</span>(<span class="s">'key'</span>, <span class="s">'The quick brown fox jumps over the lazy dog'</span>, <span class="nv">&amp;sha1</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9</code></pre></div>
+<p>That output is the published test vector for HMAC-SHA1 — you can check it against any other language's <code>hmac</code> library, and this page's build effectively does. The digest functions come from the <a href="https://raku.land/zef:grondilu/Digest">Digest</a> distribution, which is installed as a dependency: <code>use Digest::SHA1</code>, <code>use Digest::SHA2</code> (for <code>sha256</code>, <code>sha384</code>, <code>sha512</code>), <code>use Digest::MD5</code>, and so on. Anything that maps a <code>Blob</code> to a <code>Blob</code> works, including a digest you wrote yourself.</p>
+<h2 id="verifying-a-webhook">Verifying a webhook <a class="anchor" href="#verifying-a-webhook" aria-label="link">#</a></h2>
+<p>The everyday use: a service POSTs you JSON and puts <code>sha256=&lt;hex&gt;</code> in a header. You recompute the tag over the raw body with the shared secret and compare:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-hmac/02-webhook-signature.raku" title="This example as a file: 02-webhook-signature.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::HMAC</span>;
+<span class="k">use</span> <span class="n">Digest::SHA2</span>;
+
+<span class="k">my</span> <span class="nv">$secret</span>  = <span class="s">'webhook-secret'</span>;
+<span class="k">my</span> <span class="nv">$payload</span> = <span class="s">'{&quot;action&quot;:&quot;opened&quot;,&quot;number&quot;:1}'</span>;
+
+<span class="k">my</span> <span class="nv">$expected</span> = <span class="s">'sha256='</span> ~ <span class="n">hmac-hex</span>(<span class="nv">$secret</span>, <span class="nv">$payload</span>, <span class="nv">&amp;sha256</span>);
+<span class="nb">say</span> <span class="nv">$expected</span>;
+
+<span class="k">my</span> <span class="nv">$header</span> = <span class="s">'sha256=b41572a08af38c59c7736ef55ac89a408ce86f4ac8474b077a7a8962ab87bd15'</span>;
+<span class="nb">say</span> <span class="nv">$header</span> <span class="n">eq</span> <span class="nv">$expected</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sha256=b41572a08af38c59c7736ef55ac89a408ce86f4ac8474b077a7a8962ab87bd15
+True</code></pre></div>
+<p>Two production notes the module leaves to you. Compute over the <strong>raw request body</strong>, exactly as received — re-serialized JSON reorders keys and the tag dies. And <code>eq</code> bails out at the first differing character, which in principle leaks timing; for internet-facing verification, compare digests of the two strings, or use a constant-time comparison.</p>
+<h2 id="raw-bytes-and-the-blocksize-trap">Raw bytes, and the blocksize trap <a class="anchor" href="#raw-bytes-and-the-blocksize-trap" aria-label="link">#</a></h2>
+<p><code>hmac</code> (without <code>-hex</code>) returns the tag as a <code>Blob</code>, for when the protocol wants base64 or raw bytes rather than hex. And both subs take a fourth argument, the hash's <strong>block size</strong>, defaulting to 64 — which is correct for MD5, SHA-1 and SHA-256, and silently wrong for SHA-384 and SHA-512, whose blocks are 128 bytes:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-hmac/03-blocksize.raku" title="This example as a file: 03-blocksize.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::HMAC</span>;
+<span class="k">use</span> <span class="n">Digest::SHA2</span>;
+
+<span class="k">my</span> <span class="nv">$tag</span> = <span class="n">hmac</span>(<span class="s">'key'</span>, <span class="s">'message'</span>, <span class="nv">&amp;sha256</span>);
+<span class="nb">say</span> <span class="nv">$tag</span> ~~ <span class="nb">Blob</span>;
+<span class="nb">say</span> <span class="nv">$tag</span>.<span class="nb">elems</span>;
+
+<span class="nb">say</span> <span class="n">hmac-hex</span>(<span class="s">'key'</span>, <span class="s">'message'</span>, <span class="nv">&amp;sha512</span>, <span class="mi">128</span>).<span class="nb">substr</span>(<span class="mi">0</span>, <span class="mi">16</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+32
+e477384d7ca229dd</code></pre></div>
+<p>With the <code>128</code>, the SHA-512 tag above matches every other HMAC implementation; leave it at the default and you get a well-formed value that nothing else on earth agrees with — the kind of bug that surfaces as "signature mismatch" in someone else's log. If you use <code>sha512</code>, write the <code>128</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>One cosmetic thing, kept off the examples above: the tag's type prints as <code>Blob[uint8]</code> under Rakudo and plain <code>Blob</code> under Raku++ — the bytes, the <code>elems</code>, and every hex digit are identical, so smartmatching <code>~~ Blob</code> is the portable spelling.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install Digest::HMAC</code>, which brings the pure-Raku <code>Digest</code> distribution with it.</li><li><strong>Test</strong> — the distribution's own suite: 2 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built — and the three tags shown were additionally checked against an independent implementation (Python's <code>hmac</code>), so the page agrees with the world, not just with itself.</li></ol>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

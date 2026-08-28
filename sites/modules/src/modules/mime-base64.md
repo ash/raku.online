@@ -8,7 +8,7 @@ summary: Bytes to ASCII and back — the encoding behind Basic auth, data URIs,
 status: full
 license: Artistic-2.0
 suite: 4 files, green
-tested: 2026-08-24
+tested: 2026-08-28
 raku-land: https://raku.land/zef:raku-community-modules/MIME::Base64
 source: https://github.com/raku-community-modules/MIME-Base64
 ---

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Which — The Raku Ecosystem, Working</title>
+<meta name="description" content="The shell's which, as a function — find the full path of an executable on PATH, on every platform, before you try to run it.">
+<link rel="canonical" href="https://raku.online/modules/file-which/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Which — The Raku Ecosystem, Working">
+<meta property="og:description" content="The shell's which, as a function — find the full path of an executable on PATH, on every platform, before you try to run it.">
+<meta property="og:url" content="https://raku.online/modules/file-which/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Which","description":"The shell's which, as a function — find the full path of an executable on PATH, on every platform, before you try to run it.","programmingLanguage":"Raku","version":"1.0.4","url":"https://raku.online/modules/file-which/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/azawawi/raku-file-which"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>File::Which</h1><span class="status st-full">Works</span></div><p class="summary">The shell's which, as a function — find the full path of an executable on PATH, on every platform, before you try to run it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.4</code> <span class="fact-sub">github:azawawi</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>7 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:azawawi/File::Which">raku.land</a> · <a href="https://github.com/azawawi/raku-file-which">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Which</code></pre></div><p class="fact-sub"><code>zef install File::Which</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Your program is about to <code>run</code> an external tool — <code>git</code>, <code>ffmpeg</code>, a compiler — and there are two ways to learn it is missing: a confusing failure from <code>run</code> at the worst moment, or a clear answer <em>now</em>. <code>which</code> is the clear answer: the same lookup the shell's <code>which</code> does, as a function, with the platform differences (Windows' <code>PATHEXT</code> extensions, macOS, plain Unix) chosen for you at load time:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-which/01-which.raku" title="This example as a file: 01-which.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Which</span>;
+
+<span class="nb">say</span> <span class="n">which</span>(<span class="s">'ls'</span>);
+<span class="nb">say</span> <span class="n">which</span>(<span class="s">'sh'</span>);
+<span class="nb">say</span> <span class="n">which</span>(<span class="s">'definitely-not-a-program-2026'</span>).<span class="nb">defined</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>/bin/ls
+/bin/sh
+False</code></pre></div>
+<p>The paths are what this machine answered — yours may differ, which is the point of asking. The result is a <code>Str</code> (or an undefined value for a miss), so the idiomatic guard is a <code>with</code>/<code>without</code> or <code>.defined</code>, and the result drops straight into <code>run</code>:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="k">my</span> <span class="nv">$git</span> = <span class="n">which</span>(<span class="s">'git'</span>) // <span class="nb">die</span> <span class="s">&quot;this tool needs git on PATH&quot;</span>;
+<span class="nb">run</span> <span class="nv">$git</span>, <span class="s">'status'</span>, <span class="s">'--short'</span>;</code></pre></div>
+<h2 id="every-hit-and-fallback-chains">Every hit, and fallback chains <a class="anchor" href="#every-hit-and-fallback-chains" aria-label="link">#</a></h2>
+<p><code>:all</code> returns every match in PATH order rather than the first — the tool for diagnosing "which <code>python</code> am I actually getting" — and because a miss is undefined, a preference list collapses into <code>first</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-which/02-all-and-fallbacks.raku" title="This example as a file: 02-all-and-fallbacks.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Which</span>;
+
+<span class="k">my</span> <span class="nv">@sh</span> = <span class="n">which</span>(<span class="s">'sh'</span>, :<span class="n">all</span>);
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">@sh</span>.<span class="nb">elems</span> &gt;= <span class="mi">1</span>;
+<span class="nb">say</span> <span class="nv">@sh</span>[<span class="mi">0</span>];
+
+<span class="k">my</span> <span class="nv">$pager</span> = <span class="s">&lt;a-fancy-pager-you-lack cat&gt;</span>.<span class="nb">map</span>({ <span class="n">which</span>(<span class="nv">$_</span>) }).<span class="nb">first</span>(*.<span class="nb">defined</span>);
+<span class="nb">say</span> <span class="nv">$pager</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+/bin/sh
+/bin/cat</code></pre></div>
+<p>The first executable that exists wins; a box with the fancy pager installed would answer differently, and that is the behaviour being asked for. There is also <code>whence</code>, an alias for <code>which</code> imported with <code>use File::Which :whence</code>, for people porting code that used the Perl module of the same name.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. The PATH walk, the executability test and the platform dispatch answer identically under Raku++ and Rakudo — including <code>$*DISTRO</code>-based selection at <code>BEGIN</code> time, which is how the right per-platform implementation gets picked before the first call.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install File::Which</code>. This distribution is not in the zef index, so the installer resolved it from the REA archive; its one dependency is Windows-only (<code>Win32::Registry</code>, behind a <code>by-distro.name</code> gate) and is correctly skipped on this platform.</li><li><strong>Test</strong> — the distribution's own suite: 7 files, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>The install step is quietly the interesting one: platform-conditional dependencies (<code>depends</code> entries that name a different module per operating system) are a META6 corner few distributions use, and this module is where <code>rakupp install</code> proved it handles them.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

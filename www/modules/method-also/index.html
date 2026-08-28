@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method::Also — The Raku Ecosystem, Working</title>
+<meta name="description" content="An &quot;is also&quot; trait that gives one method several names — aliases for a friendlier API, or for the protocol hooks Raku itself looks up, with no forwarder methods to write.">
+<link rel="canonical" href="https://raku.online/modules/method-also/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Method::Also — The Raku Ecosystem, Working">
+<meta property="og:description" content="An &quot;is also&quot; trait that gives one method several names — aliases for a friendlier API, or for the protocol hooks Raku itself looks up, with no forwarder methods to write.">
+<meta property="og:url" content="https://raku.online/modules/method-also/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Method::Also","description":"An \"is also\" trait that gives one method several names — aliases for a friendlier API, or for the protocol hooks Raku itself looks up, with no forwarder methods to write.","programmingLanguage":"Raku","version":"0.0.10","url":"https://raku.online/modules/method-also/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/Method-Also"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · language</div><h1>Method::Also</h1><span class="status st-full">Works</span></div><p class="summary">An "is also" trait that gives one method several names — aliases for a friendlier API, or for the protocol hooks Raku itself looks up, with no forwarder methods to write.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.10</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/Method::Also">raku.land</a> · <a href="https://github.com/lizmat/Method-Also">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Method::Also</code></pre></div><p class="fact-sub"><code>zef install Method::Also</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Sometimes one method honestly has two names. You renamed <code>add</code> to <code>push</code> and owe your users a release of overlap; your queue class wants to read naturally to people arriving from either <code>.enqueue</code> or <code>.push</code> habits; or you want the <em>same</em> body to serve both your public name and a protocol name Raku looks up by convention. Without this module each alias is a forwarder method you write and keep in sync. With it, the alias is part of the declaration:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/method-also/01-aliases.raku" title="This example as a file: 01-aliases.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Method::Also</span>;
+
+<span class="k">class</span> <span class="n">Queue</span> {
+    <span class="k">has</span> <span class="nv">@!items</span>;
+    <span class="k">method</span> <span class="n">push</span>(<span class="nv">$x</span>) <span class="k">is</span> <span class="n">also</span>&lt;<span class="n">enqueue</span> <span class="n">add</span>&gt; { <span class="nv">@!items</span>.<span class="nb">push</span>(<span class="nv">$x</span>); <span class="nb">self</span> }
+    <span class="k">method</span> <span class="n">shift</span>() <span class="k">is</span> <span class="n">also</span><span class="s">&lt;dequeue&gt;</span> { <span class="nv">@!items</span>.<span class="nb">shift</span> }
+    <span class="k">method</span> <span class="n">elems</span>() <span class="k">is</span> <span class="n">also</span><span class="s">&lt;Numeric&gt;</span> { <span class="nv">@!items</span>.<span class="nb">elems</span> }
+}
+
+<span class="k">my</span> <span class="nv">$q</span> = <span class="n">Queue</span>.<span class="nb">new</span>;
+<span class="nv">$q</span>.<span class="n">enqueue</span>(<span class="s">'a'</span>);
+<span class="nv">$q</span>.<span class="n">add</span>(<span class="s">'b'</span>);
+<span class="nv">$q</span>.<span class="nb">push</span>(<span class="s">'c'</span>);
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">dequeue</span>;
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="nv">$q</span> + <span class="mi">0</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a
+2
+2</code></pre></div>
+<p>Every name in the angle brackets is a real method on the class — same body, same object, shown by the last line: aliasing <code>elems</code> to <code>Numeric</code> is all it takes for a <code>Queue</code> to numify, because <code>+ 0</code> makes Raku call <code>.Numeric</code>. That trick — pointing a protocol name at a method you already have — is the quiet superpower here: <code>Str</code>, <code>Bool</code>, <code>Numeric</code>, <code>gist</code> are all just method names something else agrees to call.</p>
+<h2 id="it-composes-with-multis-and-coercions">It composes with multis and coercions <a class="anchor" href="#it-composes-with-multis-and-coercions" aria-label="link">#</a></h2>
+<p>The trait goes per candidate, so one spelling of a <code>multi</code> can carry the alias while its siblings stay single-named — and aliasing <code>gist</code> to <code>Str</code> makes stringification and <code>say</code> agree with one body:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/method-also/02-multi-and-gist.raku" title="This example as a file: 02-multi-and-gist.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Method::Also</span>;
+
+<span class="k">class</span> <span class="n">Temperature</span> {
+    <span class="k">has</span> <span class="nv">$.celsius</span>;
+    <span class="k">multi</span> <span class="k">method</span> <span class="n">in</span>(<span class="nb">Str</span> <span class="nv">$unit</span> <span class="k">where</span> <span class="s">'C'</span>) <span class="k">is</span> <span class="n">also</span><span class="s">&lt;as&gt;</span> { <span class="nv">$!celsius</span> }
+    <span class="k">multi</span> <span class="k">method</span> <span class="n">in</span>(<span class="nb">Str</span> <span class="nv">$unit</span> <span class="k">where</span> <span class="s">'F'</span>) { <span class="nv">$!celsius</span> * <span class="mi">9</span>/<span class="mi">5</span> + <span class="mi">32</span> }
+    <span class="k">method</span> <span class="n">gist</span>() <span class="k">is</span> <span class="n">also</span><span class="s">&lt;Str&gt;</span> { <span class="s">&quot;{$!celsius}°C&quot;</span> }
+}
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Temperature</span>.<span class="nb">new</span>(:<span class="n">celsius</span>(<span class="mi">21</span>));
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">in</span>(<span class="s">'F'</span>);
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">as</span>(<span class="s">'C'</span>);
+<span class="nb">say</span> ~<span class="nv">$t</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>69.8
+21
+21°C</code></pre></div>
+<p>Note what <code>is also</code> on a <code>multi</code> candidate means: <code>as</code> is an alias for the whole dispatch under that name — but only candidates declared with the trait travel; here <code>.as('F')</code> would not dispatch, which is the behaviour you asked for by aliasing one candidate.</p>
+<p>Keep the trait on <strong>class</strong> methods. Aliasing methods in roles is where the module's own documentation waves a flag, and this page's testing agrees — see below.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Aliases declared in a <strong>role</strong> with several names behave differently: composing the role above as written works fully under Raku++, while under Rakudo some of the alias names fail to appear on the composing class (<code>.count is also&lt;elems size length&gt;</code> in a role yielded a working <code>elems</code> and a missing <code>size</code> under Rakudo 2026.08). This is upstream-acknowledged territory rather than a Raku++ gap — the module registers aliases through compiler internals that treat role specialization differently — but the portable rule is simple: alias in classes, and everything on this page holds on both engines.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install Method::Also</code>; it depends on nothing outside the core.</li><li><strong>Test</strong> — the distribution's own suite: 1 file, green.</li><li><strong>Run</strong> — every example on this page, twice under each engine, as the site is built.</li></ol>
+<p>This module is worth a pause: it works by adding methods through the metaobject protocol at composition time, so its suite going green is a statement about Raku++'s MOP — <code>add_method</code> on a <code>ClassHOW</code>, trait handlers running at compile time, and <code>is hidden-from-backtrace</code> all behaving — not about string handling in some <code>also</code> helper. Twenty-one distributions depend on it, <code>lizmat</code>'s own among them.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

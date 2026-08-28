@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UUID — The Raku Ecosystem, Working</title>
+<meta name="description" content="Version-4 UUIDs — 122 random bits in the one format every database, log pipeline and API on earth already accepts.">
+<link rel="canonical" href="https://raku.online/modules/uuid/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="UUID — The Raku Ecosystem, Working">
+<meta property="og:description" content="Version-4 UUIDs — 122 random bits in the one format every database, log pipeline and API on earth already accepts.">
+<meta property="og:url" content="https://raku.online/modules/uuid/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"UUID","description":"Version-4 UUIDs — 122 random bits in the one format every database, log pipeline and API on earth already accepts.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/uuid/","codeRepository":"https://github.com/retupmoca/P6-UUID"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · identifiers</div><h1>UUID</h1><span class="status st-full">Works</span></div><p class="summary">Version-4 UUIDs — 122 random bits in the one format every database, log pipeline and API on earth already accepts.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">github:retupmoca</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:retupmoca/UUID">raku.land</a> · <a href="https://github.com/retupmoca/P6-UUID">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install UUID</code></pre></div><p class="fact-sub"><code>zef install UUID</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>You need an identifier that is unique without asking anyone — no counter to coordinate, no database round-trip, safe to mint on two machines at once. That is what a version-4 UUID is: 122 random bits dressed in the <code>8-4-4-4-12</code> hex format everything already parses. This module makes them and nothing else:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uuid/01-mint-one.raku" title="This example as a file: 01-mint-one.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UUID</span>;
+
+<span class="k">my</span> <span class="nv">$id</span> = <span class="n">UUID</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="s">&quot;report-{$id}.json&quot;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>report-6decb98e-62d2-4532-abff-e5f3139f4ade.json</code></pre></div>
+<p>Interpolation calls <code>.Str</code>, which renders the canonical dashed form. Note that <code>say $id</code> on its own prints the object's constructor gist — bytes and all — so when you want the familiar string, interpolate or call <code>.Str</code> yourself.</p>
+<h2 id="what-the-format-promises">What the format promises <a class="anchor" href="#what-the-format-promises" aria-label="link">#</a></h2>
+<p>Two nibbles in a v4 UUID are not random: the third group starts with <code>4</code> (the version) and the fourth with one of <code>8 9 a b</code> (the variant). Those are the bits a validator checks, and this page can check them the same way — everything below is deterministic even though every UUID is fresh:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uuid/02-format-guarantees.raku" title="This example as a file: 02-format-guarantees.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UUID</span>;
+
+<span class="k">my</span> <span class="nv">$id</span> = <span class="n">UUID</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="nb">Str</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">$id</span>.<span class="nb">Str</span> ~~ <span class="sr">/^ &lt;xdigit&gt;**8 '-' &lt;xdigit&gt;**4 '-' 4 &lt;xdigit&gt;**3 '-' &lt;[89ab]&gt; &lt;xdigit&gt;**3 '-' &lt;xdigit&gt;**12 $/</span>;
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="n">version</span>;
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="nb">Blob</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">UUID</span>.<span class="nb">new</span>.<span class="nb">Str</span> <span class="n">ne</span> <span class="n">UUID</span>.<span class="nb">new</span>.<span class="nb">Str</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>36
+True
+4
+16
+True</code></pre></div>
+<p><code>.Blob</code> hands you the sixteen raw bytes for the protocols that want binary, and <code>.version</code> reports the <code>4</code>. The last line is the practical guarantee: two calls, two values — with 122 random bits, a collision is not something to code for.</p>
+<p>Only version 4 is implemented; <code>UUID.new(:version(1))</code> — the timestamp-and-MAC flavour — dies with <em>UUID version 1 not supported</em>, which is the module telling you its whole scope honestly. If you need the newer sortable kinds (v7), this is not the distribution for them.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing on this page. The random source, the version and variant bit stamping, the string form and the raw bytes behave identically under Raku++ and Rakudo — including the unhelpful default <code>say</code> gist, which both engines print the same way.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install UUID</code>; it depends on nothing outside the core.</li><li><strong>Test</strong> — the distribution's own suite: 1 file, green.</li><li><strong>Run</strong> — every example on this page under each engine as the site is built — the first example once per engine (its output is fresh every run, so it is shown as one run), the second twice, with every line compared.</li></ol>
+<p>Seventeen distributions depend on it, which for a module this small — one class, forty lines — is the ecosystem saying the scope is exactly right.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

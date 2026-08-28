@@ -9,7 +9,7 @@ rakupp install Terminal::ANSIColor   # or: zef install Terminal::ANSIColor
 rakupp 01-tour.raku
 ```
 
-Each file is run under Raku++ 3.7.0 and under Rakudo 2026.08, twice on each,
+Each file is run under Raku++ 3.20.1 and under Rakudo 2026.08, twice on each,
 whenever the site is built. A file whose output has moved fails that build, so
 the "Output:" comment at the bottom of a file is what it printed, not what it
 was once expected to print. The ones marked *varies* draw random numbers —

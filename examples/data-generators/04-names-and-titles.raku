@@ -6,7 +6,7 @@
 #     rakupp install Data::Generators
 #     rakupp 04-names-and-titles.raku
 #
-# Run under Raku++ 3.7.0 and Rakudo 2026.08 every time the site is
+# Run under Raku++ 3.20.1 and Rakudo 2026.08 every time the site is
 # built; the build fails if the output below stops matching.
 
 use Data::Generators;

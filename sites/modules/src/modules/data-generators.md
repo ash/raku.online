@@ -9,7 +9,7 @@ status: full
 license: Artistic-2.0
 depends: Statistics::Distributions, Math::SpecialFunctions
 suite: 9 files, green
-tested: 2026-08-24
+tested: 2026-08-28
 raku-land: https://raku.land/zef:antononcube/Data::Generators
 source: https://github.com/antononcube/Raku-Data-Generators
 ---

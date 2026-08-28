@@ -9,7 +9,7 @@ summary: A static HTTP file server as one installable command, on nothing but
 status: full
 license: Artistic-2.0
 suite: 3 files, green
-tested: 2026-08-26
+tested: 2026-08-28
 raku-land: https://raku.land/zef:ash/App::Rakus
 source: https://github.com/ash/raku-modules
 ---

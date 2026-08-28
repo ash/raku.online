@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test::META — The Raku Ecosystem, Working</title>
+<meta name="description" content="One test that proves your distribution's META6.json is complete, parseable and honest — before an installer or the ecosystem indexer finds out it is not.">
+<link rel="canonical" href="https://raku.online/modules/test-meta/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Test::META — The Raku Ecosystem, Working">
+<meta property="og:description" content="One test that proves your distribution's META6.json is complete, parseable and honest — before an installer or the ecosystem indexer finds out it is not.">
+<meta property="og:url" content="https://raku.online/modules/test-meta/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Test::META","description":"One test that proves your distribution's META6.json is complete, parseable and honest — before an installer or the ecosystem indexer finds out it is not.","programmingLanguage":"Raku","version":"0.0.20","url":"https://raku.online/modules/test-meta/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/Test-META"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/eco.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · testing</div><h1>Test::META</h1><span class="status st-div">Divergent</span></div><p class="summary">One test that proves your distribution's META6.json is complete, parseable and honest — before an installer or the ecosystem indexer finds out it is not.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.20</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Test</code>, <code>META6</code>, <code>URI</code>, <code>License::SPDX</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-08-28 <span class="fact-sub">against Raku++ 3.20.1 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/Test::META">raku.land</a> · <a href="https://github.com/jonathanstowe/Test-META">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Test::META</code></pre></div><p class="fact-sub"><code>zef install Test::META</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Every distribution ships a <code>META6.json</code>, and everything downstream trusts it: <code>zef</code> and <code>rakupp install</code> resolve dependencies from it, raku.land renders it, the REA archives it. A typo in it does not fail loudly at your desk — it fails quietly at someone else's, weeks later. This module is the smoke alarm: one exported sub, <code>meta-ok</code>, which runs a subtest over the file and tells you <em>today</em>.</p>
+<p>Thirty-four distributions call it from their own suites, which makes it the most-depended-on module of the "test your project, not your code" kind. The usual installation is one file, <code>t/030-meta.t</code>, containing exactly this:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="k">use</span> <span class="n">Test</span>;
+<span class="k">use</span> <span class="n">Test::META</span>;
+
+<span class="n">plan</span> <span class="mi">1</span>;
+<span class="n">meta-ok</span>;</code></pre></div>
+<p>For this page the example has to carry its own distribution with it, so it builds a tiny one in a temporary directory and points the test at it — the two dynamic variables at the end are hooks the module provides for exactly that, and everything before them is a perfectly ordinary dist:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/test-meta/01-meta-ok-passes.raku" title="This example as a file: 01-meta-ok-passes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Test</span>;
+<span class="k">use</span> <span class="n">Test::META</span>;
+
+<span class="k">my</span> <span class="nv">$dist</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;meta-demo-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$dist</span>;
+<span class="nb">mkdir</span> <span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'lib'</span>);
+<span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'lib/Greeter.rakumod'</span>).<span class="nb">spurt</span>(<span class="s">'unit module Greeter;'</span>);
+<span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'META6.json'</span>).<span class="nb">spurt</span>(<span class="s">q:to/END/</span>);
+    {
+        <span class="s">&quot;perl&quot;</span>: <span class="s">&quot;6.d&quot;</span>,
+        <span class="s">&quot;name&quot;</span>: <span class="s">&quot;Greeter&quot;</span>,
+        <span class="s">&quot;version&quot;</span>: <span class="s">&quot;0.0.1&quot;</span>,
+        <span class="s">&quot;description&quot;</span>: <span class="s">&quot;Says hello&quot;</span>,
+        <span class="s">&quot;auth&quot;</span>: <span class="s">&quot;zef:example&quot;</span>,
+        <span class="s">&quot;authors&quot;</span>: [<span class="s">&quot;A. Author&quot;</span>],
+        <span class="s">&quot;license&quot;</span>: <span class="s">&quot;Artistic-2.0&quot;</span>,
+        <span class="s">&quot;provides&quot;</span>: { <span class="s">&quot;Greeter&quot;</span>: <span class="s">&quot;lib/Greeter.rakumod&quot;</span> },
+        <span class="s">&quot;source-url&quot;</span>: <span class="s">&quot;https://github.com/example/Greeter.git&quot;</span>
+    }
+    <span class="k">END</span>
+
+<span class="k">my</span> <span class="nv">$*META-FILE</span> = <span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'META6.json'</span>);
+<span class="k">my</span> <span class="nv">$*DIST-DIR</span>  = <span class="nv">$dist</span>;
+<span class="n">plan</span> <span class="mi">1</span>;
+<span class="n">meta-ok</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>1..1
+# Subtest: Project META file is good
+    ok 1 - have a META file
+    ok 2 - META parses okay
+    ok 3 - have all required entries
+    ok 4 - 'provides' looks sane
+    ok 5 - Optional 'authors' and not 'author'
+    ok 6 - License is correct
+    ok 7 - name has a '::' rather than a hyphen (if this is intentional please pass :relaxed-name to meta-ok)
+    ok 8 - no 'v' in version strings (meta-version greater than 0)
+    ok 9 - version is present and doesn't have an asterisk
+    ok 10 - have usable source
+    1..10
+ok 1 - Project META file is good</code></pre></div>
+<p>Ten checks in the one subtest, and the list is the documentation: the file exists, it parses, the mandatory fields are all present, every module named under <code>provides</code> maps to a file that actually exists, <code>authors</code> (plural) is used rather than the obsolete <code>author</code>, the license is a known SPDX identifier, the name uses <code>::</code> rather than a hyphen, no version string carries a stray <code>v</code> prefix, the version is not <code>*</code>, and <code>source-url</code> points somewhere usable.</p>
+<h2 id="when-it-fails-it-says-why">When it fails, it says why <a class="anchor" href="#when-it-fails-it-says-why" aria-label="link">#</a></h2>
+<p>Break the distribution — here, <code>provides</code> names a file that does not exist, the classic casualty of a rename — and the subtest pinpoints it. The <em>reason</em> arrives as a TAP diagnostic on standard error (<code># file for 'Greeter' 'lib/Greeter.rakumod' does not exist</code>), so it shows in your <code>prove6</code> output but not in the pass/fail stream below:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/test-meta/02-meta-ok-fails.raku" title="This example as a file: 02-meta-ok-fails.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Test</span>;
+<span class="k">use</span> <span class="n">Test::META</span>;
+
+<span class="k">my</span> <span class="nv">$dist</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;meta-broken-$*PID&quot;</span>);
+<span class="nb">mkdir</span> <span class="nv">$dist</span>;
+<span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'META6.json'</span>).<span class="nb">spurt</span>(<span class="s">q:to/END/</span>);
+    {
+        <span class="s">&quot;perl&quot;</span>: <span class="s">&quot;6.d&quot;</span>,
+        <span class="s">&quot;name&quot;</span>: <span class="s">&quot;Greeter&quot;</span>,
+        <span class="s">&quot;version&quot;</span>: <span class="s">&quot;0.0.1&quot;</span>,
+        <span class="s">&quot;description&quot;</span>: <span class="s">&quot;Says hello&quot;</span>,
+        <span class="s">&quot;auth&quot;</span>: <span class="s">&quot;zef:example&quot;</span>,
+        <span class="s">&quot;authors&quot;</span>: [<span class="s">&quot;A. Author&quot;</span>],
+        <span class="s">&quot;license&quot;</span>: <span class="s">&quot;Artistic-2.0&quot;</span>,
+        <span class="s">&quot;provides&quot;</span>: { <span class="s">&quot;Greeter&quot;</span>: <span class="s">&quot;lib/Greeter.rakumod&quot;</span> },
+        <span class="s">&quot;source-url&quot;</span>: <span class="s">&quot;https://github.com/example/Greeter.git&quot;</span>
+    }
+    <span class="k">END</span>
+
+<span class="k">my</span> <span class="nv">$*META-FILE</span> = <span class="nv">$dist</span>.<span class="n">add</span>(<span class="s">'META6.json'</span>);
+<span class="k">my</span> <span class="nv">$*DIST-DIR</span>  = <span class="nv">$dist</span>;
+<span class="n">plan</span> <span class="mi">1</span>;
+<span class="n">meta-ok</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">One run</span><pre class="output"><code>1..1
+# Subtest: Project META file is good
+    ok 1 - have a META file
+    ok 2 - META parses okay
+    ok 3 - have all required entries
+    not ok 4 - 'provides' looks sane
+    ok 5 - Optional 'authors' and not 'author'
+    ok 6 - License is correct
+    ok 7 - name has a '::' rather than a hyphen (if this is intentional please pass :relaxed-name to meta-ok)
+    ok 8 - no 'v' in version strings (meta-version greater than 0)
+    ok 9 - version is present and doesn't have an asterisk
+    ok 10 - have usable source
+    1..10
+not ok 1 - Project META file is good</code></pre></div>
+<p>The one adverb is <code>:relaxed-name</code>, for the handful of distributions whose hyphenated name is intentional — <code>meta-ok(:relaxed-name)</code> turns check 7 from a failure into a pass and says so in its description.</p>
+<p>In your own distribution you need neither <code>$*META-FILE</code> nor <code>$*DIST-DIR</code>: by default the module looks for the META file in the directory above the test file, which is the repository root of every conventionally laid-out dist. Authors who keep author-only tests separate put this in <code>xt/</code> instead of <code>t/</code>, so their users' installs do not depend on Test::META being present.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Both outputs above are labelled <em>one run</em> because the two engines format a subtest differently, and one check answers differently.</p>
+<p><strong>The formatting</strong>: Rakudo's Test prints a <code># Subtest:</code> banner line before the indented tests and closes them with their own plan (<code>1..10</code>), as shown above. Raku++'s Test currently prints neither — the indented lines and the final verdict only. Harnesses accept both, but strict TAP consumers (the <a href="/modules/tap/">TAP</a> module's subtest parser among them) expect the inner plan, so this is on the engine's list.</p>
+<p><strong>The answer</strong>: check 9 — <em>version is present and doesn't have an asterisk</em> — currently <strong>passes under Raku++ for a version of <code>"*"</code></strong>, which is precisely what it exists to reject; Rakudo fails it, correctly. A wildcard version in a real dist would sail through this check under Raku++ alone. That is an engine-side comparison bug, found writing this page, and it is why the badge at the top says <em>divergent</em> — run your META tests under Rakudo until it is fixed.</p>
+<h2 id="what-was-run-to-put-this-page-here">What was run to put this page here <a class="anchor" href="#what-was-run-to-put-this-page-here" aria-label="link">#</a></h2>
+<ol><li><strong>Parse</strong> — every file of the distribution is parsed by Raku++ itself.</li><li><strong>Install</strong> — <code>rakupp install Test::META</code>, which brings <code>META6</code>, <code>URI</code> and <code>License::SPDX</code> with it — ten distributions in all.</li><li><strong>Test</strong> — the distribution's own suite: 3 files, green.</li><li><strong>Run</strong> — both examples on this page under each engine, as the site is built; their outputs are recorded as one run each, for the formatting reason above.</li></ol>
+<p>The version-check divergence is pinned for the engine to fix; the badge flips to <em>full</em> when <code>meta-ok</code> answers the same on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.20.1 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+<script src="/theme/copy.js?v=acf5aed9" defer></script>
+</body>
+</html>

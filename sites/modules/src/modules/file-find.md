@@ -8,7 +8,7 @@ summary: Walk a directory tree as a lazy sequence, filtered by name, type or
 status: full
 license: MIT
 suite: 1 file, green
-tested: 2026-08-24
+tested: 2026-08-28
 raku-land: https://raku.land/zef:raku-community-modules/File::Find
 source: https://github.com/raku-community-modules/File-Find
 ---

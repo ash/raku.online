@@ -375,10 +375,41 @@ class Renderer {
 
 # ---- the page shell -------------------------------------------------------
 
-sub page(Str $title, Str $body, :$index = False --> Str) {
+# A string inside a JSON-LD block; the summaries are prose, so quotes and
+# backslashes are all that needs escaping. `</script` cannot appear either —
+# '<' is folded to <, which JSON permits and browsers cannot misread.
+sub json-str(Str $s --> Str) {
+    '"' ~ $s.subst('\\', '\\\\', :g).subst('"', '\\"', :g)
+             .subst('<', '\\u003c', :g).trans("\n" => ' ') ~ '"'
+}
+
+# What a page tells a crawler about itself: one description (the summary the
+# reader sees is also the one a search result shows), one canonical URL so
+# the page cannot compete with itself, and the social-card duplicates of
+# both. $path is the page's path under the site base ('/tap/', '/'); $jsonld
+# is an optional ready-made structured-data block from the caller.
+sub seo-head(Str $title, Str :$desc = '', Str :$path, Str :$jsonld = '' --> Str) {
+    my $d = $desc || %SITE<tagline>;
+    my $canonical = %SITE<site-url> ~ $BASE ~ $path;
+    my @h =
+        '<meta name="description" content="' ~ esc-attr($d) ~ '">',
+        '<link rel="canonical" href="' ~ esc-attr($canonical) ~ '">',
+        '<meta property="og:site_name" content="raku.online">',
+        '<meta property="og:type" content="' ~ ($path eq '/' ?? 'website' !! 'article') ~ '">',
+        '<meta property="og:title" content="' ~ esc-attr($title) ~ '">',
+        '<meta property="og:description" content="' ~ esc-attr($d) ~ '">',
+        '<meta property="og:url" content="' ~ esc-attr($canonical) ~ '">',
+        '<meta name="twitter:card" content="summary">';
+    @h.push('<script type="application/ld+json">' ~ $jsonld ~ '</script>') if $jsonld;
+    @h.join("\n")
+}
+
+sub page(Str $title, Str $body, :$index = False, Str :$desc = '', Str :$path = '/',
+         Str :$jsonld = '' --> Str) {
     my $repo   = esc-attr(%SITE<repo>);
     my $engine = esc(%SITE<engine>);
     my $oracle = esc(%SITE<oracle>);
+    my $seo    = seo-head($title, :$desc, :$path, :$jsonld);
     qq:to/HTML/;
     <!DOCTYPE html>
     <html lang="en">
@@ -386,6 +417,7 @@ sub page(Str $title, Str $body, :$index = False --> Str) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{esc($title)}</title>
+    $seo
     <script>window.__SITE_BASE='{$BASE}';</script>
     <script src="/theme/boot.js"></script>
     <link rel="stylesheet" href="/theme/base.css">
@@ -499,6 +531,77 @@ sub write-examples($mod) {
 
     spurt("$dir/README.md", examples-readme($mod));
     say "  {@($mod.examples).elems} example file(s) -> $dir/";
+}
+
+# The top level of examples/ — the README a visitor to the repository lands
+# on. Generated with the pages so its table cannot fall behind the directory
+# listing beside it (it sat at one row of twelve directories for a while,
+# still pointing at the handbook's pre-rename URLs).
+sub write-examples-index(@mods) {
+    my $rows = @mods.map(-> $mod {
+        my %m = $mod.meta;
+        my $page = %SITE<site-url> ~ %SITE<base> ~ '/' ~ $mod.slug ~ '/';
+        "| [`{$mod.slug}/`]({$mod.slug}/) | [{%m<name>}]($page) | `rakupp install {%m<name>}` |"
+    }).join("\n");
+    my $first = @mods ?? @mods[0] !! Nil;
+    my $clone-dir  = $first ?? $first.slug !! 'some-module';
+    my $clone-mod  = $first ?? $first.meta<name> !! 'Some::Module';
+    my $clone-file = $first && @($first.examples) ?? @($first.examples)[0].file !! '01-example.raku';
+    spurt(%SITE<examples-dir> ~ '/README.md', qq:to/MD/);
+    # Examples
+
+    Working programs from [raku.online]({%SITE<site-url>}), one file each — clone
+    this repository and run them, rather than copying them out of a web page.
+
+    ```sh
+    git clone https://github.com/ash/raku.online
+    cd raku.online/examples/$clone-dir
+    rakupp install $clone-mod
+    rakupp $clone-file
+    ```
+
+    Everything here runs under **Raku++** and under **Rakudo** — these are Raku
+    programs, not Raku++ programs. Swap `rakupp` for `raku` and they behave the
+    same; where the two engines genuinely differ, the page the example comes from
+    says so, and so does the file.
+
+    ## What is here
+
+    | Directory | From the page | What it needs |
+    |---|---|---|
+    $rows
+
+    One directory per module of [the module handbook]({%SITE<site-url>}{%SITE<base>}/).
+    Each has its own README listing its files.
+
+    ## Where they come from, and why they can be trusted
+
+    These files are **generated from the pages they appear on**, so a file and its
+    page cannot drift apart. Each one is then *run* — under both engines, twice on
+    each — every time the site is built, and its output compared against the
+    `# Output:` comment at the bottom of the file. A file whose output has moved
+    fails that build.
+
+    So the output in a file is what it printed, not what it was once expected to
+    print. The exception is the files whose comment says *One run printed* — those
+    draw random numbers or show a run whose formatting the engines are still
+    converging on, and are run to prove they still work rather than to compare
+    what they say.
+
+    To re-run that check yourself:
+
+    ```sh
+    cd sites/modules
+    rakupp build.raku --verify --oracle=raku
+    ```
+
+    ## Editing them
+
+    Edit the page, not the file: the module pages live in
+    `sites/modules/src/modules/`, and `./build.sh modules` regenerates both the
+    page and the files here.
+    MD
+    say "examples index -> {%SITE<examples-dir>}/README.md";
 }
 
 sub examples-readme($mod --> Str) {
@@ -660,7 +763,21 @@ sub render-module($mod --> Str) {
       ~ install-html(%m)
       ~ '<p class="fact-sub">' ~ inline('`zef install ' ~ %m<name> ~ '` writes the same store; '
         ~ 'either installer leaves the module usable by both engines.') ~ '</p>';
-    page("{%m<name>} — {%SITE<title>}", $head ~ $body)
+    # Structured data: the page is ABOUT a piece of software with a name, a
+    # version, a license and a repository — exactly the fields the frontmatter
+    # already records, so a crawler gets them as facts rather than prose.
+    my @ld = '"@context":"https://schema.org"', '"@type":"SoftwareSourceCode"',
+             '"name":' ~ json-str(%m<name>),
+             '"description":' ~ json-str(%m<summary>),
+             '"programmingLanguage":"Raku"',
+             '"version":' ~ json-str(%m<version>),
+             '"url":' ~ json-str(%SITE<site-url> ~ $BASE ~ '/' ~ $mod.slug ~ '/');
+    @ld.push('"license":' ~ json-str('https://spdx.org/licenses/' ~ %m<license>)) if %m<license>;
+    @ld.push('"codeRepository":' ~ json-str(%m<source>)) if %m<source>;
+    page("{%m<name>} — {%SITE<title>}", $head ~ $body,
+         desc   => %m<summary>,
+         path   => '/' ~ $mod.slug ~ '/',
+         jsonld => '{' ~ @ld.join(',') ~ '}')
 }
 
 sub render-index(@mods --> Str) {
@@ -693,7 +810,7 @@ sub render-index(@mods --> Str) {
       ~ 'Modules are added as they are checked — see the '
       ~ '<a href="/faq/modules/">module FAQ</a> for how installing works, and '
       ~ '<a href="/spec/">the conformance site</a> for the engine itself.</p>';
-    page(%SITE<title>, $body, :index)
+    page(%SITE<title>, $body, :index, desc => %SITE<tagline>, path => '/')
 }
 
 # ---------------------------------------------------------------------------
@@ -889,7 +1006,11 @@ sub render-ecosystem(--> Str) {
         })();
         </script>
         JS
-    page('The Raku ecosystem under Raku++ — ' ~ %SITE<title>, $body)
+    page('The Raku ecosystem under Raku++ — ' ~ %SITE<title>, $body,
+         desc => 'Every distribution in the REA index — latest release of each — '
+               ~ 'fetched, built, installed and its own test suite run under Raku++, '
+               ~ 'with a verdict for each.',
+         path => '/ecosystem/')
 }
 
 sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
@@ -909,6 +1030,7 @@ sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
         write-examples($mod);
     }
     spurt('out/index.html', render-index(@mods));
+    write-examples-index(@mods);
 
     if 'src/data/ecosweep.tsv'.IO.e {
         mkdir('out/ecosystem');
