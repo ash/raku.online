@@ -17,5 +17,5 @@ they are run, but their output is not compared.
 
 | File | Section | Output |
 |---|---|---|
-| [`01-meta-ok-passes.raku`](01-meta-ok-passes.raku) | What it is for | varies (random) |
-| [`02-meta-ok-fails.raku`](02-meta-ok-fails.raku) | When it fails, it says why | varies (random) |
+| [`01-meta-ok-passes.raku`](01-meta-ok-passes.raku) | What it is for | checked |
+| [`02-meta-ok-fails.raku`](02-meta-ok-fails.raku) | When it fails, it says why | checked |

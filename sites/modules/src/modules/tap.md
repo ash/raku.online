@@ -6,7 +6,7 @@ kind: Distribution · testing
 summary: The Test Anything Protocol as a library — parse TAP from a string, a
   file or a running program, add runs up into one verdict, and print the
   report you know from prove6.
-status: partial
+status: full
 license: Artistic-2.0
 suite: 2 files, green
 tested: 2026-08-28
@@ -284,38 +284,44 @@ produce them all funnel through here.
 
 ## Where the two engines differ
 
-This page is honest about a gap: it is why the badge at the top says
-*partial* rather than *full*.
-
-**Running live programs through the harness does not work under Raku++
-yet.** A `.rakutest` file handed to `TAP::Harness` is executed via
-`TAP::Source::Proc`, which taps `Proc::Async.stdout.lines(:!chomp)` — and
-Raku++ currently hands those taps the child's output as one raw chunk with
-the line terminators stripped, where Rakudo delivers decoded lines with
-their newlines kept. TAP's grammar requires the newline to close an entry,
-so under Raku++ the child runs, exits cleanly, and the harness counts zero
-tests:
+Nothing on this page any more — and getting that sentence took four engine
+fixes. When this page was first written the badge said *partial*: a
+`.rakutest` file handed to `TAP::Harness` ran, exited cleanly, and counted
+for nothing —
 
 ```raku fragment
-# Raku++ 3.20.1 today — the file runs, its TAP is lost:
+# Raku++ 3.20.1, the day this page was written:
 await TAP::Harness.new.run('t/math.rakutest');   # Files=1, Tests=0 … NOTESTS
 ```
 
-Everything this page demonstrates — string sources, `.tap` file sources, the
-aggregator, the formatter, streaming handlers — behaves identically on both
-engines. The gap is confined to `Source::Proc`, it was found while writing
-this page, and it is in the engine's queue; the badge flips to *full* when
-it lands.
+— because `TAP::Source::Proc` reads the child through
+`Proc::Async.stdout.lines(:!chomp)`, and Raku++ handed that tap one raw
+chunk with the terminators stripped, where TAP's grammar needs the newline
+to close each entry. Chasing the NOTESTS pulled a whole chain into the
+light, each gap hiding the next: proc-stream taps also arrived as
+undecoded `Blob`s where Rakudo emits `Str` lines; `whenever
+$proc.stdout.lines(:!chomp)` *inside* a `supply { }` block — the exact
+shape of the module's `parse-stream` — wired nothing at all, so the child
+ran uncaptured; `$start.then({ … })` fired at registration with a
+still-Planned promise, and `.result` answered the `Proc::Async` itself
+where the module's `Status.new(Proc $proc)` needs the finished `Proc`; and
+a relative `IO::Path` carrying its own `:CWD` resolved file operations
+against the process directory, which broke `run(..., :cwd($dir))` — the
+harness probes every source through exactly such paths.
 
-Two smaller notes from the same investigation. `run(..., :cwd($dir))` under
-Raku++ can fail with *Failed to open file*, because a relative `IO::Path`
-carrying its own `CWD` still resolves file operations against the process
-directory — run inside `indir $dir, { … }` instead, as the examples above
-do. And a **`.tap` file whose tests fail** trips a bug in the module itself,
-on either engine: the harness reaps the finished parser twice and dies with
-*"You already have a parser for…"*. Failing *programs* are reported fine
-under Rakudo; failing *files* are not, so treat saved `.tap` replays as a
-green-path tool.
+All of it is fixed in the engine, each piece pinned by a regression file
+([proc-stream-tap-fidelity.raku and
+io-path-cwd-operations.raku](https://github.com/ash/rakupp/tree/main/t/regression)
+carry this page's finds). Every example above prints the same bytes under
+both engines, and so does what the examples do not show: a *failing*
+`.rakutest` is reported with Rakudo's exact words, down to `Dubious, test
+returned 1` and `Wstat: 256`.
+
+One caveat remains, and it is the module's, not either engine's: a
+**`.tap` file whose tests fail** makes the harness reap the finished
+parser twice and die (the message differs by engine; under Rakudo it is
+*"You already have a parser for…"*). Failing *programs* are reported fine;
+failing saved *files* are not — treat `.tap` replays as a green-path tool.
 
 ## What was run to put this page here
 
@@ -340,5 +346,7 @@ share no prefix with the base — which on macOS is every path under
 passes under both engines, and the delegation and supply fixes alone moved
 twelve Roast files.
 
-The `Source::Proc` gap above is the eighth in that series, still open — a
-page that says *partial* today is how it gets its number.
+The `Source::Proc` gap became the eighth in that series — and unwinding it
+surfaced three more, so the row now stands at eleven. A page that said
+*partial* on the day it was written is how they got their numbers; the
+badge flipped to *full* the day they landed.

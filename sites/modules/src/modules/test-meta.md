@@ -6,7 +6,7 @@ kind: Distribution · testing
 summary: One test that proves your distribution's META6.json is complete,
   parseable and honest — before an installer or the ecosystem indexer finds
   out it is not.
-status: divergent
+status: full
 license: Artistic-2.0
 depends: Test, META6, URI, License::SPDX
 suite: 3 files, green
@@ -41,7 +41,7 @@ builds a tiny one in a temporary directory and points the test at it — the
 two dynamic variables at the end are hooks the module provides for exactly
 that, and everything before them is a perfectly ordinary dist:
 
-```raku sample name="meta-ok-passes"
+```raku name="meta-ok-passes"
 use Test;
 use Test::META;
 
@@ -102,7 +102,7 @@ the classic casualty of a rename — and the subtest pinpoints it. The
 (`# file for 'Greeter' 'lib/Greeter.rakumod' does not exist`), so it shows
 in your `prove6` output but not in the pass/fail stream below:
 
-```raku sample name="meta-ok-fails"
+```raku name="meta-ok-fails"
 use Test;
 use Test::META;
 
@@ -158,23 +158,34 @@ being present.
 
 ## Where the two engines differ
 
-Both outputs above are labelled *one run* because the two engines format a
-subtest differently, and one check answers differently.
+Nothing on this page any more: both outputs above are the same bytes under
+Raku++ and under Rakudo — banner, indented checks, closing inner plan,
+verdict — and the site build fails if that stops being true. The badge
+said *divergent* when this page was first written, for two reasons this
+section used to name, and their story is worth keeping.
 
-**The formatting**: Rakudo's Test prints a `# Subtest:` banner line before
-the indented tests and closes them with their own plan (`1..10`), as shown
-above. Raku++'s Test currently prints neither — the indented lines and the
-final verdict only. Harnesses accept both, but strict TAP consumers (the
-[TAP](/modules/tap/) module's subtest parser among them) expect the inner
-plan, so this is on the engine's list.
+**The formatting** was the visible one. Raku++'s Test printed neither the
+`# Subtest:` banner nor the subtest's own closing plan (`    1..10`), so
+the two engines' outputs could only be shown as "one run" apiece.
+Harnesses accept both shapes, but strict TAP consumers — the
+[TAP](/modules/tap/) module's own subtest parser among them — key nested
+blocks off exactly those lines.
 
-**The answer**: check 9 — *version is present and doesn't have an
-asterisk* — currently **passes under Raku++ for a version of `"*"`**, which
-is precisely what it exists to reject; Rakudo fails it, correctly. A wildcard
-version in a real dist would sail through this check under Raku++ alone.
-That is an engine-side comparison bug, found writing this page, and it is
-why the badge at the top says *divergent* — run your META tests under
-Rakudo until it is fixed.
+**The answer** was the serious one: check 9 — *version is present and
+doesn't have an asterisk* — **passed under Raku++ for a version of
+`"*"`**, precisely what it exists to reject. The cause sat two layers
+down. `Version.new('*').parts` held a `Whatever` where Rakudo stores the
+plain string `'*'`; META6's innocent `$ver.parts[0] eq 'v'` probe curried
+that Whatever into a closure, a closure is true, so the strip-the-v branch
+ran and left an *empty* version — whose empty parts the asterisk check
+then waved through vacuously. A wildcard version in a real dist would have
+sailed into the ecosystem under Raku++ alone.
+
+Both fixes landed in the engine the day this page found them, pinned by
+[subtest-tap-format.raku and
+version-star-parts.raku](https://github.com/ash/rakupp/tree/main/t/regression);
+`meta-ok` now answers — and spells — its verdicts identically on both
+engines.
 
 ## What was run to put this page here
 
@@ -182,9 +193,9 @@ Rakudo until it is fixed.
 2. **Install** — `rakupp install Test::META`, which brings `META6`, `URI`
    and `License::SPDX` with it — ten distributions in all.
 3. **Test** — the distribution's own suite: 3 files, green.
-4. **Run** — both examples on this page under each engine, as the site is
-   built; their outputs are recorded as one run each, for the formatting
-   reason above.
+4. **Run** — both examples on this page, twice under each engine, as the
+   site is built; their outputs are compared byte for byte.
 
-The version-check divergence is pinned for the engine to fix; the badge
-flips to *full* when `meta-ok` answers the same on both engines.
+The two divergences this page uncovered are fixed and pinned by regression
+files; the badge flipped from *divergent* to *full* the day `meta-ok`
+started answering the same on both engines.

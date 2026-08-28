@@ -35,7 +35,7 @@ my $*DIST-DIR  = $dist;
 plan 1;
 meta-ok;
 
-# One run printed:
+# Output:
 #     1..1
 #     # Subtest: Project META file is good
 #         ok 1 - have a META file
