@@ -1,7 +1,9 @@
 # Raku++ showcases
 
 Mid-size programs that each stress a different part of Raku++, chosen so that
-together they answer "what can it actually build?"
+together they answer "what can it actually build?" Each project is also a page
+at [raku.online/showcase](https://raku.online/showcase/), rendered from its
+README below.
 
 | Project | Axis it showcases | How you run it |
 |---|---|---|
@@ -19,6 +21,7 @@ together they answer "what can it actually build?"
 | [**modinfo/**](modinfo) | Ecosystem — 17 zef distributions doing the work | inspects Raku distributions: graph, validation, reports |
 | [**jsonreq/**](jsonreq) | Ecosystem — our own modules composing | curl+jq for JSON APIs: request, query, pretty-print |
 | [**sqlite/**](sqlite) | C libraries — NativeCall and a raw-mode terminal | database client: query, browse, dump; the real libsqlite3 does the work |
+| [**gui/**](gui) | GUI — one program, three backends; `react`/`whenever` as the event loop | native desktop apps: the Counter and a Calculator, Cocoa or GTK |
 
 All paths below are from the repository root, after building `rakupp` (see the
 top-level [README](../README.md)). Every program also compiles to a standalone
@@ -380,6 +383,31 @@ causes are in
 
 [`sqlite/README.md`](sqlite/README.md) has the option table, the browser keys,
 and what each part of the binding exercises.
+
+## gui — the GUI story
+
+**sqlite** proves NativeCall can talk to a C library; **gui** points the same
+machinery at the Objective-C runtime and gets a real desktop app: NSWindow,
+NSTextField, NSButton, reached through `objc_msgSend` with no glue code. The
+framework on top is the `GUI::Wings` module from
+[raku-modules](https://github.com/ash/raku-modules), and its event loop is not
+a callback registry — it is `react`, with a button's clicks, a one-second clock
+and SIGINT as three `whenever` streams.
+
+```sh
+export RAKULIB=$HOME/raku-modules/GUI-Wings/lib
+RAKUPP_MAIN_THREAD=1 build/rakupp showcase/gui/counter.raku    # Raku++
+RAKUPP_MAIN_THREAD=1 build/rakupp showcase/gui/calculator.raku # the calculator
+raku showcase/gui/counter.raku                                 # Rakudo, unchanged
+WINGS_AUTODRIVE=3 raku showcase/gui/counter.raku               # clicks itself, ~4 s
+```
+
+The pump thread owns the toolkit and reconciles widget state each pump turn; the
+program body runs on a worker so `react` can park; a click crosses from AppKit
+into a Raku closure through a runtime-minted Objective-C class. No NSRect ever
+crosses the FFI — only NSPoint/NSSize, two doubles, which both macOS ABIs pass
+like two `num64`s — so the identical module serves arm64 Raku++ and an x86-64
+Rosetta Rakudo. macOS only, by nature of the backend.
 
 ## In the browser — [`web/`](web)
 

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gui — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=acf5aed9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/shell.css?v=acf5aed9">
+<link rel="stylesheet" href="/theme/showcase.css?v=acf5aed9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>gui — native desktop apps, <code>react</code>/<code>whenever</code> as the event loop</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/gui">Source on GitHub ↗</a></p>
+<p>Two desktop apps whose widgets are Supplies. In the Counter, a button click, a once-a-second clock and Ctrl+C are three <code>whenever</code> blocks inside one <code>react</code>; the Calculator adds a keypad of sixteen more. The GUI is real native widgets — NSWindow, NSTextField, NSButton on macOS; GtkWindow, GtkLabel, GtkButton on Linux — reached through NativeCall, with no C glue and no bindings distribution.</p>
+<p>The framework is the <strong>GUI::Wings</strong> module from <a href="https://github.com/ash/raku-modules">github.com/ash/raku-modules</a>:</p>
+<pre class="native-code"><code class="lang-sh">export RAKULIB=$HOME/raku-modules/GUI-Wings/lib</code></pre>
+<pre class="native-code"><code class="lang-raku">use GUI::Wings;
+
+app 'Counter', {
+    my $n = 0;
+    window :title('Camelia counts'), :size(480, 220), {
+        my $l = label 'clicked 0 times', :font(28);
+        my $b = button 'Click me';
+
+        react {
+            whenever $b.clicks        { $l.text = "clicked {++$n} times" }
+            whenever Supply.interval(1) { window.title = DateTime.now.hh-mm-ss }
+            whenever signal(SIGINT)   { done }
+        }
+    }
+}</code></pre>
+<h2 id="run-it">Run it</h2>
+<pre class="native-code"><code class="lang-sh">RAKUPP_MAIN_THREAD=1 build/rakupp showcase/gui/counter.raku    # Raku++
+RAKUPP_MAIN_THREAD=1 build/rakupp showcase/gui/calculator.raku                # the calculator
+raku showcase/gui/counter.raku                                 # Rakudo, unchanged</code></pre>
+<p>The window comes up, the title ticks like a clock, the label counts your clicks; close the window or Ctrl+C to quit. <code>WINGS_AUTODRIVE=3</code> makes the app click its own button three times and then end through its own SIGINT path — the whole demo self-verifies in about four seconds. <code>WINGS_DEBUG=1</code> narrates clicks and reconciliations on stderr.</p>
+<p>AppKit accepts windows only on the process main thread, which is what <code>RAKUPP_MAIN_THREAD=1</code> provides under Raku++; under Rakudo the mainline is already the main thread. The API floor is macOS 10.12.2 (tested on 15.7), arm64 and x86-64 alike; the Raku++ side needs a build from current <code>main</code> — release binaries predate the main-thread hook — while any recent Rakudo works as released.</p>
+<p>Neither program mentions Cocoa, so neither is macOS-only: <code>GUI::Wings</code> splits into a toolkit-free front and <code>GUI::Wings::Backend::{Cocoa,Gtk,Win32}</code>, chosen by OS and overridable with <code>WINGS_BACKEND</code>. The same two files run on GTK3 unchanged — <code>WINGS_BACKEND=Gtk raku showcase/gui/counter.raku</code> — which is how they were verified here against Homebrew GTK. The Win32 backend is written but has never been run.</p>
+<h2 id="how-it-holds-together">How it holds together</h2>
+<ul><li>The <strong>pump thread</strong> owns the toolkit: it pumps events inside an autorelease pool (on Cocoa), drains a Channel of marshalled UI closures, and <em>reconciles</em> widget state — <code>$l.text</code>, <code>window.title</code> — into the toolkit only when it changed. On macOS that thread must be the process main thread; GTK and Win32 only require that one thread does all the calls, which this is.</li><li>The <strong><code>app</code> body runs on a worker</strong>, so <code>react</code> can park there without freezing the GUI. Builders (<code>window</code>, <code>label</code>, <code>button</code>) send their toolkit work to the pump thread and wait for the ack.</li><li>A <strong>click</strong> travels from the toolkit into a Raku closure — on Cocoa through a runtime-minted Objective-C class whose action method is a Raku sub (<code>class_addMethod</code> with a NativeCall closure), on GTK through <code>g_signal_connect_data</code> — then a <code>Supplier.emit</code> → the worker's <code>whenever</code>.</li><li><strong>No NSRect ever crosses the FFI.</strong> Both macOS ABIs pass an NSPoint/NSSize (two doubles) exactly like two <code>num64</code> arguments, so geometry goes through <code>setContentSize:</code> / <code>setFrameOrigin:</code> / <code>setFrameSize:</code> and the same module binary-honestly serves arm64 Raku++ and an x86-64 Rakudo.</li></ul>
+<p><code>raw-cocoa.raku</code> is the same idea with no framework at all — sixty lines of bare <code>objc_msgSend</code> that open a window, mint a target class and pump events — kept as the reference for what Wings wraps:</p>
+<pre class="native-code"><code class="lang-sh">RAKUPP_MAIN_THREAD=1 build/rakupp showcase/gui/raw-cocoa.raku</code></pre>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=acf5aed9" defer></script>
+</body>
+</html>

@@ -9,6 +9,11 @@
 # software run unmodified — is two pages and does not warrant a generator of
 # its own, so this one builds out/showcase/ and out/live/ side by side.
 #
+# It also builds out/in-use/ — the hub the three sections hang off, and the
+# adoptions list behind it. The hub used to be hand-written HTML in www/, which
+# meant a row added to rakupp's live/ADOPTIONS.md had to be re-typed here; now
+# both the cards and the page behind them come from that one synced file.
+#
 # The sources are synced in by ./sync.sh; the Markdown handled here is what
 # those READMEs actually use — headings, fenced code, lists, tables, quotes,
 # inline emphasis/code/links — and nothing more, on purpose.
@@ -82,6 +87,7 @@ sub link-target(Str $t --> Str) {
 
     return $BASE ~ '/' if $path eq 'showcase';
     return $LIVE ~ '/' if $path eq 'live';
+    return '/in-use/adoptions/' if $path eq 'live/ADOPTIONS.md';
     if @path.elems == 2 && @path[0] eq 'showcase' && @path[1] eq any(@PROJECTS) {
         return $BASE ~ '/' ~ @path[1] ~ '/';
     }
@@ -102,7 +108,9 @@ sub anchor(Str $text --> Str) {
 }
 
 sub heading(Int $level, Str $text --> Str) {
-    my $id = anchor($text);
+    # A heading may carry a link ("## The other direction — [ADOPTIONS.md](…)").
+    # The id is made from what a reader sees, not from the Markdown around it.
+    my $id = anchor($text.subst(/ '[' (<-[\]]>+) ']' '(' <-[)]>+ ')' /, { ~$0 }, :g));
     "<h$level id=\"$id\">" ~ inline($text) ~ "</h$level>"
 }
 
@@ -243,22 +251,24 @@ sub table-html(@rows --> Str) {
 
 # ---- the page shell -------------------------------------------------------
 
-sub page(Str $title, Str $body, Str $foot --> Str) {
+sub page(Str $title, Str $body, Str $foot, :$css = 'showcase',
+         :$body-class = 'home', :$desc = '' --> Str) {
     my $repo = %SITE<repo>;
+    my $meta = $desc ?? "\n<meta name=\"description\" content=\"{esc($desc)}\">" !! '';
     qq:to/HTML/;
     <!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{esc($title)}</title>
+    <title>{esc($title)}</title>$meta
     <script>window.__SITE_BASE='{$BASE}';</script>
     <script src="/theme/boot.js"></script>
     <link rel="stylesheet" href="/theme/base.css">
     <link rel="stylesheet" href="/theme/shell.css">
-    <link rel="stylesheet" href="/theme/showcase.css">
+    <link rel="stylesheet" href="/theme/{$css}.css">
     </head>
-    <body class="home">
+    <body class="{$body-class}">
     <span class="theme-switch">
       <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
       <ul class="theme-menu" hidden>
@@ -284,6 +294,8 @@ sub page(Str $title, Str $body, Str $foot --> Str) {
 
 my constant FOOT-SHOWCASE =
     'Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.';
+my constant FOOT-INUSE =
+    'Everything here runs under the same interpreter — in your browser, from the command line, or compiled to a standalone native binary.';
 my constant FOOT-LIVE =
     'The tools here are other people\'s work — installed from the ecosystem, run unmodified, credited, and checked against Rakudo.';
 
@@ -360,6 +372,180 @@ sub live-index(--> Str) {
     page(%SITE<live-title>, $body, FOOT-LIVE)
 }
 
+# ---- /in-use/ — the hub, and the adoptions list behind it ------------------
+
+# The table at the top of live/ADOPTIONS.md, one row per adoption:
+#   | [**Name**](https://the-project/) | Who | what it does with Raku++ |
+# Its first cell links to the thing itself, so a row is already a whole card
+# and the hub needs nothing this generator has to be told separately.
+sub parse-adoptions(Str $md) {
+    my @rows;
+    for $md.lines -> $line {
+        next unless $line.starts-with('|');
+        my @c = cells($line);
+        next unless @c[0] ~~ / '[' '**' (<-[*]>+) '**' ']' '(' (< h > 'ttp' <-[)]>+) ')' /;
+        @rows.push({ name => ~$0, url => ~$1, who => @c[1] // '', what => @c[2] // '' });
+    }
+    @rows
+}
+
+sub adoptions-page(--> Str) {
+    my $md = slurp('src/live/ADOPTIONS.md');
+    @CTX = 'live',;
+    my $title = (title-of($md) || 'adoptions').tc;
+    my $body = '<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>'
+        ~ "\n<h1>" ~ inline($title) ~ '</h1>'
+        ~ "\n<p class=\"sc-actions\"><a class=\"sc-btn ghost\" href=\"" ~ %SITE<gh-base>
+        ~ 'live/ADOPTIONS.md">The list on GitHub ↗</a></p>'
+        ~ "\n" ~ render($md);
+    page('Adoptions — software that adopted Raku++', $body, FOOT-INUSE)
+}
+
+# Counts on the hub are written out, and they change: the showcase card said
+# "Fifteen" for a sixteenth project's first day on the site. Spell what was
+# actually built rather than what someone last typed.
+sub spell(Int $n --> Str) {
+    my @w = <zero one two three four five six seven eight nine ten eleven twelve
+             thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty
+             twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six
+             twenty-seven twenty-eight twenty-nine thirty>;
+    $n < @w.elems ?? @w[$n] !! ~$n
+}
+
+# The hub, in the order a stranger needs it: what other people did with the
+# engine on their own, then what is here to try. Both halves are generated —
+# the cards below come from the same file as the page behind them.
+sub inuse-page(@adoptions, Int $showcases --> Str) {
+    @CTX = 'live',;
+    my @body;
+    @body.push(q:to/HERO/);
+        <div class="sr-hero">
+          <p class="sr-eyebrow"><a href="/">← the front page</a> · <b>Raku++ in use</b></p>
+
+          <h1>The Raku language, in use</h1>
+
+          <p class="sr-lede">
+            Two kinds of evidence, and neither of them is slides. Software other
+            people built that reached for this engine on its own — and, from the
+            repository, working code you can read and re-run here: complete
+            programs with live editors, mid-size projects, and ecosystem tools
+            driven unmodified. Every output on these pages was printed by the
+            program beside it, captured from the interpreter itself.
+          </p>
+        </div>
+
+        <section class="sr-sec" id="adoptions">
+          <p class="sr-kicker">Elsewhere</p>
+          <h2>Adoptions <a class="anchor" href="#adoptions" aria-label="link">#</a></h2>
+          <p class="sr-intro">
+            Nobody here wrote these, and nobody here was asked: a paclet in
+            Wolfram's own repository, a browser playground that offers Raku++ as
+            one runtime among four, a Guix channel, a port of the release matrix
+            to somebody else's CI. Each link goes to whoever built it.
+          </p>
+        HERO
+
+    my @cards;
+    for @adoptions -> %a {
+        my $what = %a<what> ?? %a<what>.tc ~ '.' !! '';
+        @cards.push('  <div class="sr-card link">'
+            ~ "\n    <h3><a href=\"" ~ %a<url> ~ '">' ~ esc(%a<name>) ~ ' ↗</a></h3>'
+            ~ "\n    <p>" ~ inline($what) ~ '</p>'
+            ~ "\n    <p class=\"sr-more\">" ~ inline(%a<who>) ~ '</p>'
+            ~ "\n  </div>");
+    }
+    @body.push('  <div class="sr-grid two">' ~ "\n" ~ @cards.join("\n") ~ "\n  </div>");
+
+    @body.push(qq:to/REST/);
+
+          <p class="sr-cta" style="margin-top:1.6rem">
+            <a class="sr-btn ghost" href="/in-use/adoptions/">What each one actually does →</a>
+          </p>
+        </section>
+
+        <section class="sr-sec" id="try-it">
+          <p class="sr-kicker">Try it yourself</p>
+          <h2>Code from the repository <a class="anchor" href="#try-it" aria-label="link">#</a></h2>
+          <p class="sr-intro">
+            Not snippets: working code, on three shelves. Complete programs you
+            can edit and re-run on their own page; mid-size projects that answer
+            "what can it actually build?"; and software other people wrote,
+            installed from the ecosystem and run unmodified.
+          </p>
+
+          <div class="sr-grid three">
+            <div class="sr-card link">
+              <h3><a href="/examples/">Raku by example</a></h3>
+              <p>
+                Twenty-four self-contained programs, one page each: the README's story,
+                the full source in a live editor, and what it prints. Twenty-one run
+                right on the page, in your browser; the three that need real threads or
+                sockets say so and show their native output.
+              </p>
+              <p class="sr-more">
+                <a href="/examples/mandel/">The Mandelbrot set</a>
+                <span class="sep">·</span>
+                <a href="/examples/calculator/">a grammar as a calculator</a>
+                <span class="sep">·</span>
+                <a href="/examples/nqueens/">8 queens</a>
+              </p>
+            </div>
+
+            <div class="sr-card link">
+              <h3><a href="/showcase/">The showcase</a></h3>
+              <p>
+                {spell($showcases).tc} mid-size projects, each stressing a different part of the
+                language: interpreters for five other languages, servers on raw sockets,
+                a SQLite client over NativeCall, seventeen ecosystem distributions
+                composing. Each page is the project's own README; each project compiles
+                to a standalone binary.
+              </p>
+              <p class="sr-more">
+                <a href="/showcase/lisp/">A Scheme interpreter</a>
+                <span class="sep">·</span>
+                <a href="/showcase/sqlite/">the SQLite client</a>
+                <span class="sep">·</span>
+                <a href="/showcase/pastebin/">a pastebin server</a>
+              </p>
+            </div>
+
+            <div class="sr-card link">
+              <h3><a href="/live/">Software that already existed</a></h3>
+              <p>
+                The opposite discipline: whole tools from the Raku ecosystem — other
+                people's work — installed the way any user installs them, run
+                unmodified, and diffed against Rakudo's output. Code nobody wrote for
+                this implementation reaches for corners nobody here would have thought
+                to test.
+              </p>
+              <p class="sr-more">
+                <a href="/live/sparrow/">Sparrow6, and what starting an interpreter costs</a>
+              </p>
+            </div>
+          </div>
+
+          <p class="sr-fine" style="margin-top:1.6rem">
+            The example outputs are captured from the native interpreter and committed —
+            a page cannot show output its program did not produce — and every
+            deterministic capture is verified byte-identical under Rakudo. The five
+            showcase interpreters are also loaded in
+            <a href="/play/">the playground</a>, program in the input box, ready to run.
+          </p>
+
+          <p class="sr-cta" style="margin-top:1.6rem">
+            <a class="sr-btn" href="/examples/">Start with the examples</a>
+            <a class="sr-btn ghost" href="/showcase/">Browse the showcase</a>
+          </p>
+        </section>
+        REST
+
+    page('The Raku language, in use', @body.join("\n"), FOOT-INUSE,
+         css => 'showroom', body-class => 'showroom',
+         desc => 'Two halves: software other people built on Raku++ — a Wolfram '
+               ~ 'paclet, a browser playground, a Guix channel — and the example '
+               ~ 'programs, showcase projects and ecosystem tools you can run here.')
+}
+
 sub index-page(@projects --> Str) {
     @CTX = 'showcase',;
     my @body;
@@ -411,9 +597,15 @@ sub MAIN(Bool :$clean = False) {
         @projects.push(%x);
     }
     @PROJECTS = @projects.map({ $_<slug> });
+    # ADOPTIONS.md sits in live/ but is not a live entry — it is the list of
+    # software that adopted Raku++ rather than the other way round, and it
+    # becomes /in-use/ and /in-use/adoptions/ instead.
     @ENTRIES  = dir('src/live').grep(*.Str.ends-with('.md'))
                     .map(*.basename.subst(/ '.md' $ /, ''))
-                    .grep(* ne 'README').sort;
+                    .grep({ $_ ne 'README' && $_ ne 'ADOPTIONS' }).sort;
+    my @adoptions = parse-adoptions(slurp('src/live/ADOPTIONS.md'));
+    die 'no rows parsed out of live/ADOPTIONS.md — has its table changed shape?'
+        unless @adoptions;
 
     # The synced pages and the index table must agree, loudly: a project the
     # table does not know stays off the site (that is the raytracer rule), and
@@ -435,6 +627,8 @@ sub MAIN(Bool :$clean = False) {
     mkdir('out');
     mkdir('out/showcase');
     mkdir('out/live');
+    mkdir('out/in-use');
+    mkdir('out/in-use/adoptions');
 
     for @PROJECTS -> $slug {
         mkdir("out/showcase/$slug");
@@ -448,5 +642,9 @@ sub MAIN(Bool :$clean = False) {
     }
     spurt('out/live/index.html', live-index());
 
-    say "built {@PROJECTS.elems} showcase page(s) + {@ENTRIES.elems} live page(s) + 2 indexes -> out/";
+    spurt('out/in-use/index.html', inuse-page(@adoptions, @PROJECTS.elems));
+    spurt('out/in-use/adoptions/index.html', adoptions-page());
+
+    say "built {@PROJECTS.elems} showcase page(s) + {@ENTRIES.elems} live page(s)"
+        ~ " + 2 indexes + the /in-use/ hub ({@adoptions.elems} adoptions) -> out/";
 }

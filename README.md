@@ -24,7 +24,8 @@ program still runs in a fraction of a second:
 | `/` | The front page: what Raku++ is, with live editors | `www/index.html` |
 | `/install/` | Every way to get it, and every supported platform | `www/install/` |
 | `/play/` | The full playground | `www/play/` |
-| `/in-use/` | Raku++ in use — the hub for the three sections below, and the "In use" tab's home | `www/in-use/` |
+| `/in-use/` | The Raku language, in use — adoptions (software other people built on Raku++) above the three sections below; the "In use" tab's home | generated from `sites/showcase/` |
+| `/in-use/adoptions/` | The adoptions list in full — rendered from `rakupp/live/ADOPTIONS.md`, synced in like every other README here | generated from `sites/showcase/` |
 | `/examples/` | Raku by example — one page per program from `rakupp/examples`, in a live editor with its captured output | generated from `sites/examples/` |
 | `/showcase/` | The showcase — one page per `rakupp/showcase` project, from its README | generated from `sites/showcase/` |
 | `/live/` | Software that already existed — ecosystem tools run unmodified under Raku++ | generated from `sites/showcase/` |

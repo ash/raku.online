@@ -77,14 +77,18 @@ build_examples() {
     cp -R "$ROOT/sites/examples/out" "$WWW/examples"
 }
 
-# One generator, two sections: the showcase, and live/ beside it (two pages —
-# not worth a generator of its own).
+# One generator, three sections: the showcase, live/ beside it (two pages — not
+# worth a generator of its own), and the /in-use/ hub they both hang off. The
+# hub was hand-written HTML until its adoptions list arrived: that list is
+# rakupp's live/ADOPTIONS.md, synced in like every other README here, so it has
+# to be generated to stay in step. Run sites/showcase/sync.sh first.
 build_showcase() {
-    echo "showcase -> www/showcase + www/live"
+    echo "showcase -> www/showcase + www/live + www/in-use"
     ( cd "$ROOT/sites/showcase" && "$RAKUPP" build.raku --clean )
-    rm -rf "$WWW/showcase" "$WWW/live"
+    rm -rf "$WWW/showcase" "$WWW/live" "$WWW/in-use"
     cp -R "$ROOT/sites/showcase/out/showcase" "$WWW/showcase"
     cp -R "$ROOT/sites/showcase/out/live" "$WWW/live"
+    cp -R "$ROOT/sites/showcase/out/in-use" "$WWW/in-use"
 }
 
 # The grid is built from the Rakugrid checkout, which only exists on the machine
@@ -141,7 +145,7 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
             | grep -vE '^/(tour|spec|grid|faq|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }

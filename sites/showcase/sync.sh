@@ -1,5 +1,6 @@
 #!/bin/sh
-# Pull the showcase and live READMEs in from the rakupp repo.
+# Pull the showcase and live READMEs — and live/ADOPTIONS.md — in from the
+# rakupp repo.
 #
 #   ./sync.sh [path-to-rakupp-checkout]
 #
@@ -32,5 +33,10 @@ for d in "$ROOT/live"/*/; do
     name="$(basename "$d")"
     [ -f "$d/README.md" ] && cp "$d/README.md" "$DEST/live/$name.md"
 done
+
+# Not a live entry: the list of software that adopted Raku++ rather than the
+# other way round. It is what /in-use/ and /in-use/adoptions/ are built from,
+# so a row added in rakupp reaches the site through this same sync.
+cp "$ROOT/live/ADOPTIONS.md" "$DEST/live/ADOPTIONS.md"
 
 echo "synced $(ls "$DEST/showcase"/*.md | wc -l | tr -d ' ') showcase + $(ls "$DEST/live"/*.md | wc -l | tr -d ' ') live file(s) from $ROOT"

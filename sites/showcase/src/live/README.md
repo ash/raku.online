@@ -1,7 +1,8 @@
 # live — software that already existed
 
 Whole tools from the Raku ecosystem, run under Raku++ exactly as their authors
-wrote them.
+wrote them. These pages are also browsable at
+[raku.online/live](https://raku.online/live/).
 
 **The tools are other people's work, and they are not copied into this
 repository.** Each is a published distribution, installed from the ecosystem
@@ -26,6 +27,16 @@ we run somebody else's software; there we run our own, every day.
 | Project | What it is | What it exercises |
 |---|---|---|
 | [**sparrow/**](sparrow) | [Sparrow6](https://github.com/melezhik/Sparrow6), an automation framework (`zef:sp1983`) | a process per task, in Bash, Raku and Perl — so it measures what starting an interpreter costs |
+
+## The other direction — [ADOPTIONS.md](ADOPTIONS.md)
+
+Everything above is other people's software running on this engine.
+**[ADOPTIONS.md](ADOPTIONS.md)** is the mirror image: other people's software
+that reached for *the engine* — a Wolfram paclet in Wolfram's own repository, a
+browser playground that offers rakupp as one of four runtimes, a Guix channel, a
+port of the release matrix to somebody else's CI. Nothing to run there and
+nothing checked in there either; it is a record of what other people have done
+with Raku++, links and credits only.
 
 ## How an entry works
 
