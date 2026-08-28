@@ -700,8 +700,9 @@ sub render-index(@mods --> Str) {
 # The whole-ecosystem listing: every REA distribution and its sweep verdict.
 # Data: src/data/ecosweep.tsv, folded from the rakupp repo's sweep TSVs by
 # tools/distill-ecosweep.raku (the re-run's verdict wins over the first
-# pass's). Re-distill at each sweep; the dashboard's Ecosystem chart and this
-# page must tell the same story.
+# pass's; authors join from the installer's cached REA index via --index).
+# Re-distill at each sweep; the dashboard's Ecosystem chart and this page
+# must tell the same story.
 # ---------------------------------------------------------------------------
 
 sub comma(Int $n --> Str) { $n.Str.flip.comb(3).join(',').flip }
@@ -720,11 +721,12 @@ sub render-ecosystem(--> Str) {
     my @rows;
     my %tally;
     for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
-        my ($name, $version, $verdict, $deps, $err) = $line.split("\t");
+        my ($name, $version, $verdict, $deps, $auth, $authors, $err) = $line.split("\t");
         next unless $name && $verdict;
         %tally{$verdict}++;
         @rows.push({ name => $name, version => $version // '',
                      verdict => $verdict, deps => ($deps // 0).Int,
+                     auth => $auth // '', authors => $authors // '',
                      error => $err // '' });
     }
     # The default order is the ecosystem's own: most-depended-on first
@@ -742,8 +744,34 @@ sub render-ecosystem(--> Str) {
 
     my $trs = @rows.map(-> %r {
         my $err = %r<error> ?? '<div class="eco-err">' ~ esc(%r<error>) ~ '</div>' !! '';
-        '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '" data-d="' ~ %r<deps> ~ '">'
+        # The zef/github identity is the column; the human names sit under it
+        # the way a dist's summary sits under its name. Emails shed for
+        # DISPLAY only — the TSV keeps what REA records, and the search
+        # haystack still matches them. The ecosystem writes them four ways:
+        # `Name <email>`, `Name <email` (six dists never close the bracket),
+        # `Name (email)`, and entries that are nothing but an address — those
+        # drop out entirely, and a name repeated with two emails shows once.
+        # An auth that is one clean token links to its raku.land author page;
+        # the few dists whose declared auth is free text stay plain.
+        my $names = %r<authors>.split(',')
+            .map({ .subst(/ '<' <-[>]>* '>' /, '', :g)
+                    .subst(/ '<' <-[>]>* $ /, '')
+                    .subst(/ '(' <-[)]>* '@' <-[)]>* ')' /, '', :g)
+                    .trim })
+            .unique.grep({ .chars && !.contains('@') }).join(', ');
+        my $who = %r<auth>
+            ?? (%r<auth> ~~ / \s /
+                ?? '<span>' ~ esc(%r<auth>) ~ '</span>'
+                !! '<a href="https://raku.land/' ~ esc-attr(%r<auth>) ~ '">'
+                     ~ esc(%r<auth>) ~ '</a>')
+               ~ ($names ?? '<div class="eco-who">' ~ esc($names) ~ '</div>' !! '')
+            !! '&mdash;';
+        my $hay = (%r<name>, %r<auth>, %r<authors>).grep(*.chars).join(' ').lc;
+        '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '"'
+          ~ ' data-a="' ~ esc-attr(%r<auth>.lc) ~ '" data-s="' ~ esc-attr($hay) ~ '"'
+          ~ ' data-d="' ~ %r<deps> ~ '">'
           ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
+          ~ '<td class="eco-auth">' ~ $who ~ '</td>'
           ~ '<td class="num">' ~ (%r<deps> ?? comma(%r<deps>) !! '&mdash;') ~ '</td>'
           ~ '<td><code>' ~ esc(%r<version>) ~ '</code></td>'
           ~ '<td><span class="eco-v v-' ~ esc-attr(%r<verdict>) ~ '">' ~ esc(%r<verdict>) ~ '</span></td>'
@@ -773,6 +801,7 @@ sub render-ecosystem(--> Str) {
         .v-other, .v-fetch-fail, .v-unresolved { background:#65656518; color:#656565; }
         .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
             overflow-wrap:anywhere; }
+        .eco-who { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:16rem; }
         .eco-all td { padding:.45rem .6rem; vertical-align:top; }
         .eco-sort { cursor:pointer; user-select:none; white-space:nowrap; }
         .eco-sort:after { content:'\2195'; opacity:.35; margin-left:.3rem; font-size:.8em; }
@@ -789,12 +818,14 @@ sub render-ecosystem(--> Str) {
       ~ $legend ~ '. The sweep, the fix campaign it drove, and the per-dist raw results live in '
       ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
       ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>. '
-      ~ 'The table opens most-depended-on first; click a header to re-sort.</p>'
-      ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name…" '
-      ~ 'aria-label="Filter by name"> ' ~ $chips ~ '</div>'
+      ~ 'The table opens most-depended-on first; click a header to re-sort, '
+      ~ 'and the filter matches distribution names and authors alike.</p>'
+      ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name or author…" '
+      ~ 'aria-label="Filter by name or author"> ' ~ $chips ~ '</div>'
       ~ '<p class="fact-sub eco-count" id="eco-count"></p>'
       ~ '<div class="tablewrap"><table class="eco-index eco-all"><thead><tr>'
       ~ '<th class="eco-sort" data-k="n" data-dir="asc">Distribution</th>'
+      ~ '<th class="eco-sort" data-k="a" data-dir="asc" title="The dist&rsquo;s declared auth, with the human names it lists">Author</th>'
       ~ '<th class="eco-sort num on desc" data-k="d" data-dir="desc" title="How many other dists&rsquo; runtime dependencies resolve to this one">Used by</th>'
       ~ '<th>Version</th>'
       ~ '<th class="eco-sort" data-k="v" data-dir="asc">Verdict</th>'
@@ -811,7 +842,7 @@ sub render-ecosystem(--> Str) {
             var needle = q.value.trim().toLowerCase(), shown = 0;
             rows.forEach(function (r) {
               var ok = (!verdict || r.getAttribute('data-v') === verdict)
-                    && (!needle || r.getAttribute('data-n').indexOf(needle) !== -1);
+                    && (!needle || r.getAttribute('data-s').indexOf(needle) !== -1);
               r.style.display = ok ? '' : 'none';
               if (ok) shown++;
             });
@@ -836,6 +867,8 @@ sub render-ecosystem(--> Str) {
                 var av, bv;
                 if (k === 'd') { av = +a.getAttribute('data-d'); bv = +b.getAttribute('data-d'); }
                 else { av = a.getAttribute('data-' + k); bv = b.getAttribute('data-' + k); }
+                // rows with no author sit at the bottom whichever way it sorts
+                if (k === 'a' && !av !== !bv) return av ? -1 : 1;
                 if (av < bv) return -1 * mul;
                 if (av > bv) return 1 * mul;
                 var an = a.getAttribute('data-n'), bn = b.getAttribute('data-n');
