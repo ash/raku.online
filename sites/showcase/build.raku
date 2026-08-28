@@ -418,50 +418,24 @@ sub spell(Int $n --> Str) {
 sub inuse-page(@adoptions, Int $showcases --> Str) {
     @CTX = 'live',;
     my @body;
-    @body.push(q:to/HERO/);
+    # The shelves first — what a visitor can open right now — then what other
+    # people did with the engine somewhere else.
+    @body.push(qq:to/SHELVES/);
         <div class="sr-hero">
           <p class="sr-eyebrow"><a href="/">← the front page</a> · <b>Raku++ in use</b></p>
 
           <h1>The Raku language, in use</h1>
 
           <p class="sr-lede">
-            Two kinds of evidence, and neither of them is slides. Software other
-            people built that reached for this engine on its own — and code
-            running under it here: complete programs with live editors,
+            Two kinds of evidence, and neither of them is slides. Code running
+            under the engine here — complete programs with live editors,
             mid-size projects, and whole tools from the ecosystem driven
-            unmodified. Every output on these pages was printed by the program
-            beside it, captured from the interpreter itself.
+            unmodified — and, elsewhere, software other people built that
+            reached for the engine on its own. Every output on these pages was
+            printed by the program beside it, captured from the interpreter
+            itself.
           </p>
         </div>
-
-        <section class="sr-sec" id="adoptions">
-          <p class="sr-kicker">Elsewhere</p>
-          <h2>Adoptions <a class="anchor" href="#adoptions" aria-label="link">#</a></h2>
-          <p class="sr-intro">
-            Nobody here wrote these, and nobody here was asked: a paclet in
-            Wolfram's own repository, a browser playground that offers Raku++ as
-            one runtime among four, a Guix channel, a port of the release matrix
-            to somebody else's CI. Each link goes to whoever built it.
-          </p>
-        HERO
-
-    my @cards;
-    for @adoptions -> %a {
-        my $what = %a<what> ?? %a<what>.tc ~ '.' !! '';
-        @cards.push('  <div class="sr-card link">'
-            ~ "\n    <h3><a href=\"" ~ %a<url> ~ '">' ~ esc(%a<name>) ~ ' ↗</a></h3>'
-            ~ "\n    <p>" ~ inline($what) ~ '</p>'
-            ~ "\n    <p class=\"sr-more\">" ~ inline(%a<who>) ~ '</p>'
-            ~ "\n  </div>");
-    }
-    @body.push('  <div class="sr-grid two">' ~ "\n" ~ @cards.join("\n") ~ "\n  </div>");
-
-    @body.push(qq:to/REST/);
-
-          <p class="sr-cta" style="margin-top:1.6rem">
-            <a class="sr-btn ghost" href="/in-use/adoptions/">What each one actually does →</a>
-          </p>
-        </section>
 
         <section class="sr-sec" id="try-it">
           <p class="sr-kicker">Try it yourself</p>
@@ -540,7 +514,36 @@ sub inuse-page(@adoptions, Int $showcases --> Str) {
             <a class="sr-btn ghost" href="/showcase/">Browse the showcase</a>
           </p>
         </section>
-        REST
+
+        <section class="sr-sec" id="adoptions">
+          <p class="sr-kicker">Elsewhere</p>
+          <h2>Adoptions <a class="anchor" href="#adoptions" aria-label="link">#</a></h2>
+          <p class="sr-intro">
+            Nobody here wrote these, and nobody here was asked: a paclet in
+            Wolfram's own repository, a browser playground that offers Raku++ as
+            one runtime among four, a Guix channel, a port of the release matrix
+            to somebody else's CI. Each link goes to whoever built it.
+          </p>
+        SHELVES
+
+    my @cards;
+    for @adoptions -> %a {
+        my $what = %a<what> ?? %a<what>.tc ~ '.' !! '';
+        @cards.push('  <div class="sr-card link">'
+            ~ "\n    <h3><a href=\"" ~ %a<url> ~ '">' ~ esc(%a<name>) ~ ' ↗</a></h3>'
+            ~ "\n    <p>" ~ inline($what) ~ '</p>'
+            ~ "\n    <p class=\"sr-more\">" ~ inline(%a<who>) ~ '</p>'
+            ~ "\n  </div>");
+    }
+    @body.push('  <div class="sr-grid two">' ~ "\n" ~ @cards.join("\n") ~ "\n  </div>");
+
+    @body.push(q:to/TAIL/);
+
+          <p class="sr-cta" style="margin-top:1.6rem">
+            <a class="sr-btn ghost" href="/in-use/adoptions/">What each one actually does →</a>
+          </p>
+        </section>
+        TAIL
 
     page('The Raku language, in use', @body.join("\n"), FOOT-INUSE,
          css => 'showroom', body-class => 'showroom',
