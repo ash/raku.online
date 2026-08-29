@@ -236,18 +236,18 @@ b => C
 (:b(75),)
 ', '', '' ],
     [ 'Any', '38', 'rakudo-differs', '(Þor Oðin Freija)
-', '(Þor Freija Oðin)
+', '(Freija Þor Oðin)
 ', '', '' ],
     [ 'Any', '39', 'all-differ', 'ð
-(ß ð ð ß ß)
-', 'ð
-(ß ß ð ð þ)
+(ß þ þ þ þ)
+', 'ß
+(ð þ ß ð þ)
 ', '', '' ],
     [ 'Any', '40', 'ok', '3
 ', '3
 ', '', '' ],
-    [ 'Any', '41', 'all-differ', '(θ χ γ)
-', '(π μ ω)
+    [ 'Any', '41', 'all-differ', '(θ η δ)
+', '(ψ ο θ)
 ', '', '' ],
     [ 'Any', '43', 'ok', '(Int)
 (Str)
@@ -382,8 +382,8 @@ Nil
     [ 'Any', '69', 'ok', '()
 ', '()
 ', '', '' ],
-    [ 'Any', '70', 'rakupp-differs', '(1 => 1 2 => 2 3 => 3)
-', '(1 => 1 3 => 3 2 => 2)
+    [ 'Any', '70', 'all-differ', '(1 => 1 2 => 2 3 => 3)
+', '(3 => 3 2 => 2 1 => 1)
 ', '', '' ],
     [ 'Any', '71', 'ok', '()
 ', '()
@@ -391,8 +391,8 @@ Nil
     [ 'Any', '72', 'all-differ', '(1 => s 2 => t 3 => u)
 ', '(3 => u 2 => t 1 => s)
 ', '', '' ],
-    [ 'Any', '73', 'all-differ', '(3 => a 2 => b 4 => c)
-', '(4 => c 2 => b 3 => a)
+    [ 'Any', '73', 'doc-drift', '(3 => a 2 => b 4 => c)
+', '(3 => a 2 => b 4 => c)
 ', '', '' ],
     [ 'Any', '74', 'ok', '()
 ', '()
@@ -551,10 +551,10 @@ def
 ', '[a 42 c]
 [a b c 72]
 ', '', '' ],
-    [ 'Array', '10', 'all-differ', '(1 0.32228072784836215 0.9972776917467812)
-(1 0.9626308081081625 0.9913815636066232)
-', '(1 0.6401253043737201 0.8903559285335321)
-(1 0.6401253043737201 0.8903559285335321)
+    [ 'Array', '10', 'all-differ', '(1 0.5549053512071893 0.7184184715496293)
+(1 0.3219020302120441 0.48392337379665307)
+', '(1 0.637432984232912 0.9344761240305517)
+(1 0.637432984232912 0.9344761240305517)
 ', '', '' ],
     [ 'Array', '11', 'ok', 'Seq
 ', 'Seq
@@ -717,10 +717,10 @@ True
 4
 0
 ', '', '' ],
-    [ 'Bag', '3', 'all-differ', '(:a(0), :b(1), :c(2)).Seq
+    [ 'Bag', '3', 'doc-drift', '(:a(0), :b(1), :c(2)).Seq
 ((Pair) (Pair) (Pair))
 (1, 1, 2).Seq
-', '(:b(1), :a(0), :c(2)).Seq
+', '(:a(0), :b(1), :c(2)).Seq
 ((Pair) (Pair) (Pair))
 (1, 1, 2).Seq
 ', '', '' ],
@@ -795,8 +795,8 @@ Bag(2(3) 3(2) 4(2))
 ', '', '' ],
     [ 'BagHash', '5', 'all-differ', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("b"=>1,"c"=>4).BagHash
-', '("c"=>2,"a"=>1,"b"=>1).BagHash
-("c"=>4,"b"=>1).BagHash
+', '("c"=>2,"b"=>1,"a"=>1).BagHash
+("b"=>1,"c"=>4).BagHash
 ', '', '' ],
     [ 'BagHash', '6', 'ok', '2
 0
@@ -821,8 +821,8 @@ Bag(2(3) 3(2) 4(2))
 ("a"=>1,"b"=>1,"c"=>3).BagHash
 ("a"=>1,"b"=>0,"c"=>3).BagHash
 ("b"=>0,"c"=>3).BagHash
-', '("a"=>1,"c"=>2,"b"=>1).BagHash
-("a"=>1,"c"=>3,"b"=>1).BagHash
+', '("b"=>1,"a"=>1,"c"=>2).BagHash
+("b"=>1,"a"=>1,"c"=>3).BagHash
 ("a"=>1,"c"=>3).BagHash
 ("c"=>3).BagHash
 ', '', '' ],
@@ -853,19 +853,19 @@ BagHash(2(3) 3(2) 4(2))
     [ 'Baggy', '1', 'ok', 'Mix(butter(0.22) sugar(0.12))
 ', 'Mix(butter(0.22) sugar(0.12))
 ', '', '' ],
-    [ 'Baggy', '2', 'all-differ', 'Rover
-(Rover Ford)
-(Rover Ford)
-', 'Ford
+    [ 'Baggy', '2', 'rakupp-differs', 'Ford
 (Rover Rover)
 (Ford Rover)
+', 'Ford
+(Rover Rover)
+(Rover Ford)
 ', '', '' ],
     [ 'Baggy', '3', 'ok', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '4', 'all-differ', 'bacon => 3
-BagHash(eggs(2))
-(eggs => 2)
+    [ 'Baggy', '4', 'doc-drift', 'eggs => 2
+BagHash(bacon(3))
+(bacon => 3)
 ()
 ', 'eggs => 2
 BagHash(bacon(3))
@@ -875,21 +875,21 @@ BagHash(bacon(3))
     [ 'Baggy', '5', 'ok', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '6', 'doc-drift', 'bacon
+    [ 'Baggy', '6', 'all-differ', 'eggs
 (bacon eggs)
 ', 'bacon
 (bacon eggs)
 ', '', '' ],
     [ 'Baggy', '7', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'Baggy', '8', 'rakupp-differs', 'bacon => 3
-(bacon => 3)
-(bacon => 3 eggs => 1)
-', 'eggs => 1
-(bacon => 3)
+    [ 'Baggy', '8', 'all-differ', 'eggs => 1
+(eggs => 1)
+(eggs => 1 bacon => 3)
+', 'bacon => 3
+(eggs => 1)
 (eggs => 1 bacon => 3)
 ', '', '' ],
-    [ 'Baggy', '9', 'doc-drift', 'bacon
-(eggs bacon bacon)
+    [ 'Baggy', '9', 'all-differ', 'bacon
+(eggs eggs bacon)
 ', 'bacon
 (eggs bacon bacon)
 ', '', '' ],
@@ -915,8 +915,8 @@ BagHash(bacon(3))
     [ 'Baggy', '21', 'ok', '(2 6)
 ', '(2 6)
 ', '', '' ],
-    [ 'Baggy', '22', 'doc-drift', '(eggs 1 spam 3)
-', '(eggs 1 spam 3)
+    [ 'Baggy', '22', 'rakupp-differs', '(eggs 1 spam 3)
+', '(spam 3 eggs 1)
 ', '', '' ],
     [ 'Baggy', '23', 'rakudo-differs', '(a 6 b 2)
 ', '(b 2 a 6)
@@ -1064,17 +1064,17 @@ Map.new((False => 0, True => 1))
     [ 'Bool', '5', 'rakudo-differs', 'True
 ', 'False
 ', '', '' ],
-    [ 'Bool', '6', 'doc-drift', '(True)
-', '(True)
+    [ 'Bool', '6', 'ok', '(False)
+', '(False)
 ', '', '' ],
-    [ 'Bool', '7', 'ok', '(False True)
+    [ 'Bool', '7', 'rakupp-differs', '(True False)
 ', '(False True)
 ', '', '' ],
-    [ 'Bool', '8', 'all-differ', 'True
-(False False True)
+    [ 'Bool', '8', 'all-differ', 'False
+(True True True)
 (...)
 ', 'False
-(False False False)
+(False False True)
 (...)
 ', '', '' ],
     [ 'Bool', '9', 'ok', '0
@@ -1257,7 +1257,7 @@ Inf
 ', '', '' ],
     [ 'Code', '15', 'all-differ', '(sub { ... })
 ()
-', '(-> $a { #`(Block|4873371052312) ... })
+', '(-> $a { #`(Block|3186786363672) ... })
 ()
 ', '', '' ],
     [ 'Code', '16', 'all-differ', 'marine
@@ -1265,7 +1265,7 @@ Inf
 &marine
 ', 'marine
 marine
-sub marine { #`(Sub|3264905080000) ... }
+sub marine { #`(Sub|2576099699904) ... }
 ', 'Sub object coerced to string (please use .gist or .raku to do that)', 'Sub object coerced to string (please use .gist or .raku to do that)' ],
     [ 'Code', '17', 'rakupp-differs', '', 'SETTING::src/core.c/Numeric.rakumod
 ', 'No such method \'file\' for invocant of type \'Sub\'', '' ],
@@ -1615,8 +1615,8 @@ forty two (but complicated)
 -1
 0
 ', '', '' ],
-    [ 'Cool', '9', 'all-differ', '11823.1669567038
-', '6487.249448652888
+    [ 'Cool', '9', 'all-differ', '84163.89315431303
+', '53023.573028930085
 ', '', '' ],
     [ 'Cool', '10', 'doc-drift', '0
 0.7071067811865475
@@ -2001,7 +2001,7 @@ The|quick
     [ 'Cool', '99', 'ok', '   Þor
 ', '   Þor
 ', '', '' ],
-    [ 'Cool', '100', 'all-differ', '-0.00000191', '-0.00008013', '', '' ],
+    [ 'Cool', '100', 'all-differ', '-0.00000215', '-0.00008004', '', '' ],
     [ 'Cool', '101', 'ok', '1+1i
 3.141592653589793+0i
 1.3+0i
@@ -2161,12 +2161,12 @@ Failure
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-12:33
+20:32
 ', '2015-11-21T16:01:00Z
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-12:33
+20:32
 ', '', '' ],
     [ 'DateTime', '3', 'ok', '2016-08-10T18:26:23.300000Z
 ', '2016-08-10T18:26:23.300000Z
@@ -2174,8 +2174,8 @@ Failure
     [ 'DateTime', '4', 'ok', '2023-03-04T00:00:00Z
 ', '2023-03-04T00:00:00Z
 ', '', '' ],
-    [ 'DateTime', '5', 'all-differ', '2026-08-29T12:33:13.320424+02:00
-', '2026-08-29T12:33:13.486665+02:00
+    [ 'DateTime', '5', 'all-differ', '2026-08-29T20:32:57.009488+02:00
+', '2026-08-29T20:32:57.182013+02:00
 ', '', '' ],
     [ 'DateTime', '6', 'doc-drift', '2026
 ', '2026
@@ -2388,9 +2388,9 @@ False
 ', '49987
 ', '', '' ],
     [ 'Dateish', '19', 'all-differ', '"2026-08-29".IO
-"2026-08-29T12:33:22.840659+02:00".IO
+"2026-08-29T20:33:06.554707+02:00".IO
 ', '"2026-08-29".IO
-"2026-08-29T12:33:23.007889+02:00".IO
+"2026-08-29T20:33:06.720490+02:00".IO
 ', '', '' ],
     [ 'Dateish', '20', 'ok', '2014-09-25
 2015-01-25T00:00:00Z
@@ -2491,7 +2491,7 @@ Cannot convert string to number: base-10 number must begin with valid digits or 
 ', 'Dead
 ', '', '' ],
     [ 'Failure', '2', 'all-differ', 'Any: 
-', 'X::AdHoc: 2026-08-29T10:33:28.958349ZWELP‼
+', 'X::AdHoc: 2026-08-29T18:33:12.723363ZWELP‼
 ', '', '' ],
     [ 'Failure', '3', 'ok', 'False
 ', 'False
@@ -2929,7 +2929,7 @@ Binary
 Buf[uint8]:0x<42 69 6E 61 72 79>
 ', '', '' ],
     [ 'IO::Handle', '12', 'not-runnable', '', '', 'Failed to open file 50GB-file: no such file or directory', 'Failed to open file /private/tmp/typerun-sandbox/50GB-file: No such file or directory' ],
-    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/90727/statm: No such file or directory', 'Failed to open file /proc/90730/statm: No such file or directory' ],
+    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/74906/statm: No such file or directory', 'Failed to open file /proc/74908/statm: No such file or directory' ],
     [ 'IO::Handle', '15', 'ok', 'I ♥ Raku!
 ', 'I ♥ Raku!
 ', '', '' ],
@@ -3121,7 +3121,7 @@ False
 True
 False
 ', '', '' ],
-    [ 'IO::Path', '45', 'all-differ', '12324952
+    [ 'IO::Path', '45', 'all-differ', '12325176
 ', '14952
 ', '', '' ],
     [ 'IO::Path', '46', 'all-differ', '"./.bash_aliases".IO
@@ -3210,7 +3210,7 @@ False
 ', '', '' ],
     [ 'IO::Spec::Unix', '8', 'all-differ', '(__curupdir)
 ()
-', '-> str $dir { #`(Block|5063150199312) ... }
+', '-> str $dir { #`(Block|6528270918160) ... }
 (foo bar)
 ', '', '' ],
     [ 'IO::Spec::Unix', '10', 'ok', '/
@@ -3463,8 +3463,8 @@ IO::Path::Parts.new("","","")
 ', 'Instant:1769925782
 2026-02-01
 ', 'No such method \'Date\' for invocant of type \'Instant\'', '' ],
-    [ 'Instant', '4', 'all-differ', '2026-08-29T10:34:08.339094Z
-', '2026-08-29T10:34:08.502733Z
+    [ 'Instant', '4', 'all-differ', '2026-08-29T18:33:52.296190Z
+', '2026-08-29T18:33:52.458480Z
 ', '', '' ],
     [ 'Instant', '5', 'rakupp-differs', '[2017-01-01T00:00:09Z 1483228809]
 [2017-01-01T00:00:10Z 1483228810]
@@ -3978,15 +3978,15 @@ True
 ', 'True
 ', '', '' ],
     [ 'List', '63', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'List', '64', 'all-differ', 'b
-(a c d)
-(a c b e d)
+    [ 'List', '64', 'all-differ', 'e
+(c d e)
+(c b e a d)
 ', 'e
-(d b e)
-(b a e c d)
+(e c a)
+(d a b c e)
 ', '', '' ],
-    [ 'List', '65', 'all-differ', '(c a b)
-', '(c b a a b c b c a c)
+    [ 'List', '65', 'all-differ', '(b c a)
+', '(b c a a b c a c b a)
 ', '', '' ],
     [ 'List', '69', 'not-runnable', '', '', 'Undefined routine \'ll\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '70', 'ok', '(world! hello)
@@ -4215,11 +4215,11 @@ More
     [ 'Map', '10', 'ok', '2
 ', '2
 ', '', '' ],
-    [ 'Map', '11', 'ok', '(a b)
-', '(a b)
+    [ 'Map', '11', 'rakudo-differs', '(a b)
+', '(b a)
 ', '', '' ],
-    [ 'Map', '12', 'rakudo-differs', '((2 3) 17)
-', '(17 (2 3))
+    [ 'Map', '12', 'ok', '((2 3) 17)
+', '((2 3) 17)
 ', '', '' ],
     [ 'Map', '13', 'rakudo-differs', '(a => (2 3) b => 17)
 ', '(b => 17 a => (2 3))
@@ -4230,8 +4230,8 @@ More
     [ 'Map', '15', 'ok', '(2 => a 3 => a 17 => b)
 ', '(2 => a 3 => a 17 => b)
 ', '', '' ],
-    [ 'Map', '17', 'doc-drift', '(a => (2 3) b => 17)
-', '(a => (2 3) b => 17)
+    [ 'Map', '17', 'rakupp-differs', '(a => (2 3) b => 17)
+', '(b => 17 a => (2 3))
 ', '', '' ],
     [ 'Map', '18', 'ok', '(a => 1 b => 2 c => 3)
 (a => 1 b => 2 c => 3)
@@ -4321,7 +4321,7 @@ Int
     [ 'Metamodel::ClassHOW', '1', 'all-differ', 'True
 Nil
 ', 'True
-unival
+NFKD
 ', '', '' ],
     [ 'Metamodel::ClassHOW', '2', 'all-differ', '1
 0
@@ -4330,7 +4330,7 @@ unival
 2
 ', '', '' ],
     [ 'Metamodel::ClassHOW', '3', 'all-differ', '&Int
-', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|3566073385968) ... }
+', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|2715669861360) ... }
 method `uppercase` not found
 FOO
 ', 'Variable \'$meth\' is not declared', '' ],
@@ -4374,7 +4374,7 @@ True
 Mu
 (Mu)
 ', 'proto method sqrt (Cool $:: *%_) {*}
-submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|2331538733208) ... }
+submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|6152717449368) ... }
 (Mu)
 ', '', '' ],
     [ 'Metamodel::MethodDelegation', '1', 'all-differ', 'Role
@@ -4488,8 +4488,8 @@ github:Kaiepi
 ', '', '' ],
     [ 'Mix', '3', 'all-differ', '(Str Pair Rat Num)
 (a => 2 (b => 0) => 1 3.14 => 1 3.141592653589793 => 2)
-', '(Rat Num Str Pair)
-(3.14 => 1 3.141592653589793 => 2 a => 2 (b => 0) => 1)
+', '(Pair Num Rat Str)
+((b => 0) => 1 3.141592653589793 => 2 3.14 => 1 a => 2)
 ', '', '' ],
     [ 'Mix', '4', 'ok', '((Str) (Str))
 (a => 2 c => 3.14)
@@ -4533,24 +4533,24 @@ True
 (butter => 0.22 flour => 0.275 sugar => 0.12)
 0.615
 ', '', '' ],
-    [ 'MixHash', '2', 'doc-drift', '0.22
+    [ 'MixHash', '2', 'all-differ', '0.22
 0.12
 0
 (sugar => 0.12 flour => 0.275 chocolate => 0.3)
 ', '0.22
 0.12
 0
-(sugar => 0.12 flour => 0.275 chocolate => 0.3)
+(sugar => 0.12 chocolate => 0.3 flour => 0.275)
 ', '', '' ],
-    [ 'MixHash', '3', 'all-differ', '((Str) (Pair) (Pair))
+    [ 'MixHash', '3', 'rakupp-differs', '((Str) (Pair) (Pair))
 (a => 2 (b => 0) => 1 (c => 3.14) => 1)
-', '((Pair) (Str) (Pair))
-((b => 0) => 1 a => 2 (c => 3.14) => 1)
+', '((Str) (Pair) (Pair))
+(a => 2 (c => 3.14) => 1 (b => 0) => 1)
 ', '', '' ],
-    [ 'MixHash', '4', 'ok', '((Str) (Str))
+    [ 'MixHash', '4', 'rakudo-differs', '((Str) (Str))
 (a => 2 c => 3.14)
 ', '((Str) (Str))
-(a => 2 c => 3.14)
+(c => 3.14 a => 2)
 ', '', '' ],
     [ 'MixHash', '6', 'ok', '2
 0
@@ -4660,7 +4660,7 @@ Mu.new
 ', 'Str
 ', '', '' ],
     [ 'Mu', '13', 'rakudo-differs', 'Set.new(1,2,3)
-', 'Set.new(2,1,3)
+', 'Set.new(2,3,1)
 ', '', '' ],
     [ 'Mu', '14', 'ok', '$[1, 2, 3]
 ${:apple(10)}
@@ -4687,8 +4687,8 @@ Point(2, -5)
 Foo.new(foo => 70, boo => sub { ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
-', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3183302518392) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
-Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3183302521200) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3500050589304) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|3500050592112) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
 ', '', '' ],
@@ -5324,10 +5324,10 @@ X::AdHoc: Cannot return minmax on Range with excluded ends
 ', '(5 4 3 2)
 (d c b a)
 ', 'Cannot reverse an infinite range', 'Cannot .reverse a lazy list' ],
-    [ 'Range', '31', 'all-differ', '3.2277173312006795
-0.12303998664929737
-', '2.579979835519111
-0.29765561613155544
+    [ 'Range', '31', 'all-differ', '1.8705960756683595
+0.22474732207999182
+', '1.187835128034774
+0.11784611635128978
 ', '', '' ],
     [ 'Range', '32', 'ok', 'True
 False
@@ -5659,12 +5659,12 @@ False
 ', '', '' ],
     [ 'SetHash', '6', 'all-differ', '(:zero(0), :one(1), :two(2)).Seq
 ((Pair) (Pair) (Pair))
-', '(:zero(0), :two(2), :one(1)).Seq
+', '(:one(1), :zero(0), :two(2)).Seq
 ((Pair) (Pair) (Pair))
 ', '', '' ],
-    [ 'SetHash', '7', 'rakudo-differs', '("one", "two").Seq
+    [ 'SetHash', '7', 'ok', '("one", "two").Seq
 ((Str) (Str))
-', '("two", "one").Seq
+', '("one", "two").Seq
 ((Str) (Str))
 ', '', '' ],
     [ 'SetHash', '8', 'ok', 'SetHash(key1 key2)
@@ -5704,22 +5704,22 @@ SetHash(1 2 3 4)
 ', '', '' ],
     [ 'Setty', '2', 'all-differ', '4 => True
 (4 => True)
-(2 => True 4 => True 3 => True)
+(3 => True 4 => True 2 => True)
 ', '4 => True
-(3 => True)
+(4 => True)
 (3 => True 2 => True 4 => True)
 ', '', '' ],
     [ 'Setty', '3', 'ok', '(True => 1 True => 2 True => 3)
 ', '(True => 1 True => 2 True => 3)
 ', '', '' ],
     [ 'Setty', '4', 'all-differ', '(1 2 3)
-', '(1 3 2)
+', '(2 3 1)
 ', '', '' ],
     [ 'Setty', '5', 'ok', '(True True True)
 ', '(True True True)
 ', '', '' ],
     [ 'Setty', '6', 'all-differ', '(1 True 2 True 3 True)
-', '(3 True 2 True 1 True)
+', '(2 True 3 True 1 True)
 ', '', '' ],
     [ 'Setty', '7', 'ok', 'True
 False
@@ -6256,7 +6256,7 @@ ComplexStr
     [ 'Sub', '4', 'all-differ', 'start
 ⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|&bar
 bar has been called
-', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|3365026607160
+', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|5663907852344
 start
 bar has been called
 ', '', '' ],
@@ -6411,7 +6411,7 @@ ok 1 - The object is-a \'Numeric\'
     [ 'Unicode', '3', 'all-differ', '', 'True
 ', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
     [ 'ValueObjAt', '1', 'all-differ', '"Hash|a\\t42"
-', 'ObjAt.new("Hash|4157978558000")
+', 'ObjAt.new("Hash|4264815869488")
 ', '', '' ],
     [ 'ValueObjAt', '2', 'rakupp-differs', '"Date|2025-07-20"
 ', 'ValueObjAt.new("Date|60876")
@@ -6501,12 +6501,12 @@ False
 False
 ', '', '' ],
     [ 'WhateverCode', '6', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'WhateverCode', '9', 'all-differ', '0.2595623324079135
-0.1379538374189906
-0.5012869487696143
-', '0.5775822920969508
-0.36951763979452035
-0.38033567238993005
+    [ 'WhateverCode', '9', 'all-differ', '0.06534643171712418
+0.0660874207721669
+0.8925381753586521
+', '0.5732113126054625
+0.12165083269702537
+0.9583848371268362
 ', '', '' ],
     [ 'X::AdHoc', '2', 'rakupp-differs', '', 'Capture+{X::AdHoc::SlurpySentry}3FalseNot here', 'No such method \'payload\' for invocant of type \'X::Method::NotFound\'', '' ],
     [ 'X::Assignment::RO', '1', 'all-differ', 'X::Assignment::RO: Target is not assignable
@@ -6743,8 +6743,8 @@ Mjölnir\'s weight is 3.34 kg
 ', '(42 42)
 (42)
 ', '', '' ],
-    [ 'routines', '75', 'all-differ', '2.5101318359375
-', '2.510945274
+    [ 'routines', '75', 'all-differ', '2.505194902420044
+', '2.50128332
 ', '', '' ],
     [ 'routines', '76', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
     [ 'routines', '77', 'ok', '0
