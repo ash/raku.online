@@ -6,7 +6,7 @@ both engines reject the expression count as agreement, however differently they
 word the diagnostic — only value-vs-value differences and accept-vs-reject are
 listed. Every entry is a Raku++ fix candidate.
 
-**24** disagreements across **133** operators.
+**23** disagreements across **133** operators.
 
 ## Type mismatches by root cause
 
@@ -18,13 +18,12 @@ These collapse hard: fixing one defect clears every row it produced.
 | `Any` | `Int` | 1 | `Nil min 1` |
 | `Any` | `Slip` | 1 | `Nil andthen 1` |
 
-## Result value differs (10)
+## Result value differs (9)
 
 | Operator | Expression | Raku++ | Rakudo |
 |---|---|---|---|
 | `prefix:<^>` | `^ (True)` | `Range — ^1` | `Range — ^True` |
 | `prefix:<^>` | `^ (1/2)` | `Range — ^0` | `Range — 0..^0.5` |
-| `infix:<mod>` | `1/2 mod 1/3` | `Rat — 0` | `Rat — 0.166667` |
 | `infix:<∪>` | `Nil ∪ 1` | `Set — Set(Nil 1)` | `Set — Set(1 Nil)` |
 | `infix:<⊎>` | `Nil ⊎ 1` | `Bag — Bag(Nil 1)` | `Bag — Bag(1 Nil)` |
 | `infix:<⊖>` | `Nil ⊖ 1` | `Set — Set(Nil 1)` | `Set — Set(1 Nil)` |

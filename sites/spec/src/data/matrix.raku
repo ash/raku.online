@@ -151,7 +151,7 @@
     [ '(1, 2) mod (3, 4, 5)', 'Int | 2', 'Int | 2', 'agree' ],
     [ 'True mod False', 'ERR Attempt to divide True by zero using infix:<mod>', 'ERR Attempt to divide True by zero using div', 'both-reject' ],
     [ 'Nil mod 1', 'Int | 0', 'Int | 0', 'agree' ],
-    [ '1/2 mod 1/3', 'Rat | 0', 'Rat | 0.166667', 'differ' ],
+    [ '1/2 mod 1/3', 'Rat | 0.166667', 'Rat | 0.166667', 'agree' ],
   ],
   'infix|+&' => [
     [ '1 +& 2', 'Int | 0', 'Int | 0', 'agree' ],
