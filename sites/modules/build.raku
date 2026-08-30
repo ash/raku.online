@@ -837,15 +837,22 @@ my %V-LABEL =
 sub render-ecosystem(--> Str) {
     my @rows;
     my %tally;
-    my %blame;   # dist name -> how many dists its failure stops
+    my %blame;    # dist name -> how many dists its failure stops
+    my %err-of;   # dist name -> its own first error, to show beside the blame
     for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
-        my ($name, $version, $verdict, $culprit, $deps, $auth, $authors, $err)
+        my ($name, $version, $verdict, $blockers, $deps, $auth, $authors, $err)
             = $line.split("\t");
         next unless $name && $verdict;
         %tally{$verdict}++;
-        %blame{$culprit}++ if $culprit;
+        my @blockers = ($blockers // '').split(';').grep(*.chars);
+        # Ranked by how many blocked dists each one appears in, not by how
+        # often it happened to be met first: a dist is stuck until EVERY
+        # failing dependency in its chain is fixed, so appearing anywhere in
+        # a chain is what counts.
+        %blame{$_}++ for @blockers;
+        %err-of{$name} = $err if $err;
         @rows.push({ name => $name, version => $version // '',
-                     verdict => $verdict, culprit => $culprit // '',
+                     verdict => $verdict, blockers => @blockers,
                      deps => ($deps // 0).Int,
                      auth => $auth // '', authors => $authors // '',
                      error => $err // '' });
@@ -864,23 +871,28 @@ sub render-ecosystem(--> Str) {
     }).join(' ');
 
     my $trs = @rows.map(-> %r {
-        # A dependency verdict is only actionable if it names the dependency:
-        # the error underneath a dep-fail row is that DIST'S error, not this
-        # one's, and a dep-build-fail row carries no error text at all — so
-        # without the name those rows said only that something, somewhere,
-        # broke. The name filters the table to every dist the same failure
-        # stops, which is the shape of the repair: fix one, unblock the set.
-        my $blame = %r<culprit>
-            ?? '<button class="eco-blame" data-c="' ~ esc-attr(%r<culprit>.lc) ~ '"'
-                 ~ ' title="Show every distribution blocked by '
-                 ~ esc-attr(%r<culprit>) ~ '">' ~ esc(%r<culprit>) ~ '</button>'
-            !! '';
-        my $err = (%r<error> || $blame)
-            ?? '<div class="eco-err">'
-                 ~ ($blame ?? 'blocked by ' ~ $blame
-                              ~ (%r<error> ?? ' &mdash; ' !! '') !! '')
-                 ~ esc(%r<error>) ~ '</div>'
-            !! '';
+        # A dependency verdict is only actionable if it names the dependency,
+        # and naming ONE is not enough: half these dists are stuck behind
+        # several, and the chain has to be walked to the end before the dist
+        # itself ever runs. The count is the honest headline; the list under
+        # it gives each dependency its own error, and each name filters the
+        # table to everything that one failure stops.
+        my @b = |%r<blockers>;
+        my $err = do if @b {
+            '<details class="eco-blocked"><summary>blocked by ' ~ @b.elems
+              ~ (@b.elems == 1 ?? ' dependency' !! ' dependencies') ~ '</summary><ul>'
+              ~ @b.map(-> $b {
+                    '<li><button class="eco-blame" data-c="' ~ esc-attr($b.lc) ~ '"'
+                      ~ ' title="Show every distribution blocked by ' ~ esc-attr($b)
+                      ~ '">' ~ esc($b) ~ '</button>'
+                      ~ (%err-of{$b} ?? ' &mdash; ' ~ esc(%err-of{$b}) !! '')
+                      ~ '</li>'
+                }).join
+              ~ '</ul></details>'
+        }
+        # Its own error, for the dists that failed on their own code.
+        elsif %r<error> { '<div class="eco-err">' ~ esc(%r<error>) ~ '</div>' }
+        else { '' };
         # The zef/github identity is the column; the human names sit under it
         # the way a dist's summary sits under its name. Emails shed for
         # DISPLAY only — the TSV keeps what REA records, and the search
@@ -903,11 +915,11 @@ sub render-ecosystem(--> Str) {
                      ~ esc(%r<auth>) ~ '</a>')
                ~ ($names ?? '<div class="eco-who">' ~ esc($names) ~ '</div>' !! '')
             !! '&mdash;';
-        my $hay = (%r<name>, %r<auth>, %r<authors>, %r<culprit>)
+        my $hay = (%r<name>, %r<auth>, %r<authors>, |%r<blockers>)
                       .grep(*.chars).join(' ').lc;
         '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '"'
           ~ ' data-a="' ~ esc-attr(%r<auth>.lc) ~ '" data-s="' ~ esc-attr($hay) ~ '"'
-          ~ ' data-c="' ~ esc-attr(%r<culprit>.lc) ~ '"'
+          ~ ' data-c="' ~ esc-attr(@b.map(*.lc).join(' ')) ~ '"'
           ~ ' data-d="' ~ %r<deps> ~ '">'
           ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
           ~ '<td class="eco-auth">' ~ $who ~ '</td>'
@@ -922,15 +934,20 @@ sub render-ecosystem(--> Str) {
           ~ (%V-LABEL{$v} // '')
     }).join(' &middot; ');
 
-    # The dep-blocked dists queue behind far fewer distinct distributions than
-    # there are of them, so naming the worst few turns a wall of amber rows
-    # into a work list: fix one, and everything behind it gets to run.
+    # Naming the worst blockers turns a wall of amber rows into a work list.
+    # The number beside each is how many blocked dists have it somewhere in
+    # their chain — every one of which stays stuck until it is fixed, though
+    # most wait on several, so these are not 104 dists one repair sets free.
+    my $blocked = +@rows.grep({ .<blockers>.elems });
+    my $multi   = +@rows.grep({ .<blockers>.elems > 1 });
     my @top = %blame.keys.sort({ -%blame{$_}, $_.lc }).head(8);
     my $blockers = %blame
-        ?? '<p>' ~ comma([+] %blame.values) ~ ' distributions are stopped by a '
-             ~ 'dependency rather than by their own code, and they queue behind '
-             ~ comma(%blame.elems) ~ ' distinct distributions &mdash; so one repair '
-             ~ 'can unblock many at once. The dependencies that block the most: '
+        ?? '<p>' ~ comma($blocked) ~ ' distributions never reach their own test '
+             ~ 'suite because something in their dependency chain fails first, and '
+             ~ comma($multi) ~ ' of those wait on more than one &mdash; a row opens '
+             ~ 'to show every dependency it is stuck behind, with that dependency&rsquo;s '
+             ~ 'own error. Between them they wait on ' ~ comma(%blame.elems)
+             ~ ' distinct distributions. The ones the most dists wait on: '
              ~ @top.map(-> $b {
                    '<button class="eco-blame" data-c="' ~ esc-attr($b.lc) ~ '">'
                      ~ esc($b) ~ '</button>&nbsp;<span class="eco-bn">'
@@ -966,6 +983,11 @@ sub render-ecosystem(--> Str) {
             background:transparent; color:inherit; font-weight:600; }
         .eco-blamed[hidden] { display:none; }
         .eco-bn { opacity:.65; font-size:.85rem; }
+        .eco-blocked { font-size:.78rem; margin-top:.15rem; max-width:44rem; }
+        .eco-blocked > summary { cursor:pointer; opacity:.72; }
+        .eco-blocked[open] > summary { margin-bottom:.3rem; }
+        .eco-blocked ul { margin:0; padding-left:1.1rem; }
+        .eco-blocked li { opacity:.72; margin:.15rem 0; overflow-wrap:anywhere; }
         .eco-who { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:16rem; }
         .eco-all td { padding:.45rem .6rem; vertical-align:top; }
         .eco-sort { cursor:pointer; user-select:none; white-space:nowrap; }
@@ -984,8 +1006,8 @@ sub render-ecosystem(--> Str) {
       ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
       ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>. '
       ~ 'The table opens most-depended-on first; click a header to re-sort, '
-      ~ 'and the filter matches distribution names, authors, and the dependency '
-      ~ 'that blocked a dist alike.</p>'
+      ~ 'and the filter matches distribution names, authors, and the dependencies '
+      ~ 'a dist is blocked by alike.</p>'
       ~ $blockers
       ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name, author or blocking dependency…" '
       ~ 'aria-label="Filter by name, author or blocking dependency"> ' ~ $chips
@@ -1012,7 +1034,8 @@ sub render-ecosystem(--> Str) {
             var needle = q.value.trim().toLowerCase(), shown = 0;
             rows.forEach(function (r) {
               var ok = (!verdict || r.getAttribute('data-v') === verdict)
-                    && (!blame || r.getAttribute('data-c') === blame)
+                    && (!blame || (' ' + r.getAttribute('data-c') + ' ')
+                                    .indexOf(' ' + blame + ' ') !== -1)
                     && (!needle || r.getAttribute('data-s').indexOf(needle) !== -1);
               r.style.display = ok ? '' : 'none';
               if (ok) shown++;

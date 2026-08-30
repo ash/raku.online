@@ -27,16 +27,14 @@ sub read-tsv(Str $path --> Hash) {
         my @c = $line.split("\t");
         next unless @c.elems >= 4;
         # name version released verdict detail seconds exit first-error
-        # `detail` is a DIST NAME for the two dependency verdicts — the dist
-        # whose suite or build stopped the run before the target was reached —
-        # and free text for every other verdict (a diagnosis line for `other`,
-        # a URL for `fetch-fail`). Only the two that name a dist carry it
-        # through, so the page never blames a distribution for a sentence.
+        # `detail` is kept only as a fallback for the handful of dists whose
+        # log is missing — see the note above blockers-of for why it cannot
+        # be trusted as the answer on its own.
         my $verdict = @c[3];
         my $culprit = $verdict eq 'dep-fail' | 'dep-build-fail'
                       ?? (@c[4] // '').trim !! '';
         %rows{@c[0]} = { version => @c[1], verdict => $verdict,
-                         culprit => $culprit,
+                         culprit => $culprit, blockers => '',
                          error   => trim-err(@c[7] // '') };
     }
     %rows
@@ -77,7 +75,43 @@ sub read-index(Str $path) {
     $(%exact), $(%latest)
 }
 
+# Which dependency actually blocks a dist is NOT the sweep's `detail` column.
+# The sweep shares one module store across every run and skips a dependency
+# that is already installed rather than re-testing it, so `detail` names the
+# first dependency that run happened to have to fetch and test from scratch —
+# a property of store state, not of the dependency graph. BSON::Simple
+# recorded Getopt::Long that way; from a cold store you meet Path::Finder
+# first, and in truth five of its dependencies fail on their own code. Across
+# the sweep only 137 of 437 `detail` names were even the first failing
+# dependency in install order.
+#
+# So the blockers are reconstructed: each log opens with the plan the
+# installer resolved — `plan (N distributions, dependencies first)` — and
+# every entry in it that earned a self-fail or build-fail verdict IN ITS OWN
+# RIGHT is a dependency this dist cannot get past, listed in the order the
+# install would meet them. That answer is the same whatever is in the store.
+sub plan-of(Str $name, @dirs) {
+    my $file = $name.subst('::', '-', :g) ~ '.log';
+    for @dirs -> $dir {
+        my $p = $dir.IO.add($file);
+        next unless $p.e;
+        my @out;
+        my $in = False;
+        for $p.lines -> $l {
+            unless $in {
+                $in = True if $l ~~ / ^ 'plan (' \d+ ' distribution' /;
+                next;
+            }
+            last unless $l.starts-with('  ');
+            @out.push(~$0) if $l ~~ / ^ \s+ (.+?) ':ver<' /;
+        }
+        return @out if @out;
+    }
+    ()
+}
+
 sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
+         Str :$logs = '', Str :$rerun-logs = '',
          Str :$out = 'src/data/ecosweep.tsv') {
     my %all = read-tsv($results);
     if $rerun && $rerun.IO.e {
@@ -88,6 +122,35 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
     # (battery repo): columns rank/dist/run/…, `run` = how many OTHER dists'
     # runtime depends resolve to this one (self excluded). A dist absent from
     # the ranking has zero dependents.
+    # The re-run's logs answer for the dists it re-measured, the first
+    # sweep's for the rest — the same precedence the verdicts follow.
+    my @logdirs = ($rerun-logs, $logs).grep({ $_ && $_.IO.d });
+    if @logdirs {
+        my %verdict = %all.keys.map({ $_ => %all{$_}<verdict> });
+        my $reconstructed = 0;
+        my $fellback = 0;
+        for %all.keys -> $n {
+            next unless %all{$n}<verdict> eq 'dep-fail' | 'dep-build-fail';
+            my @blockers = plan-of($n, @logdirs)
+                .grep({ $_ ne $n && (%verdict{$_} // '') eq 'self-fail' | 'build-fail' })
+                .unique;
+            if @blockers {
+                %all{$n}<blockers> = @blockers.join(';');
+                $reconstructed++;
+            }
+            # No log, or a log with no plan block: the sweep's own name is
+            # better than nothing, provided that dist really does fail on
+            # its own code.
+            elsif %all{$n}<culprit>
+                  && (%verdict{%all{$n}<culprit>} // '') eq 'self-fail' | 'build-fail' {
+                %all{$n}<blockers> = %all{$n}<culprit>;
+                $fellback++;
+            }
+        }
+        say "blockers: $reconstructed reconstructed from plans, $fellback from the sweep's own name";
+    }
+    else { note "no --logs/--rerun-logs given: blockers fall back to the sweep's `detail` name, which is store-dependent" }
+
     my %deps;
     if $rank && $rank.IO.e {
         for $rank.IO.lines.skip(1) -> $line {
@@ -103,7 +166,7 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
 
     my @names = %all.keys.sort(*.lc);
     my $fh = open($out, :w);
-    $fh.say("name\tversion\tverdict\tculprit\tdeps\tauth\tauthors\terror");
+    $fh.say("name\tversion\tverdict\tblockers\tdeps\tauth\tauthors\terror");
     for @names -> $n {
         my %r = %all{$n};
         # The entry for the swept version names its author; a version the
@@ -112,7 +175,7 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
         my $hit = $exact{$n ~ "\0" ~ %r<version>} // $latest{$n};
         my $auth    = $hit ?? $hit[0] !! '';
         my $authors = $hit ?? $hit[1] !! '';
-        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<culprit>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}");
+        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<blockers> || %r<culprit>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}");
     }
     $fh.close;
     my %tally;
