@@ -837,12 +837,16 @@ my %V-LABEL =
 sub render-ecosystem(--> Str) {
     my @rows;
     my %tally;
+    my %blame;   # dist name -> how many dists its failure stops
     for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
-        my ($name, $version, $verdict, $deps, $auth, $authors, $err) = $line.split("\t");
+        my ($name, $version, $verdict, $culprit, $deps, $auth, $authors, $err)
+            = $line.split("\t");
         next unless $name && $verdict;
         %tally{$verdict}++;
+        %blame{$culprit}++ if $culprit;
         @rows.push({ name => $name, version => $version // '',
-                     verdict => $verdict, deps => ($deps // 0).Int,
+                     verdict => $verdict, culprit => $culprit // '',
+                     deps => ($deps // 0).Int,
                      auth => $auth // '', authors => $authors // '',
                      error => $err // '' });
     }
@@ -860,7 +864,23 @@ sub render-ecosystem(--> Str) {
     }).join(' ');
 
     my $trs = @rows.map(-> %r {
-        my $err = %r<error> ?? '<div class="eco-err">' ~ esc(%r<error>) ~ '</div>' !! '';
+        # A dependency verdict is only actionable if it names the dependency:
+        # the error underneath a dep-fail row is that DIST'S error, not this
+        # one's, and a dep-build-fail row carries no error text at all — so
+        # without the name those rows said only that something, somewhere,
+        # broke. The name filters the table to every dist the same failure
+        # stops, which is the shape of the repair: fix one, unblock the set.
+        my $blame = %r<culprit>
+            ?? '<button class="eco-blame" data-c="' ~ esc-attr(%r<culprit>.lc) ~ '"'
+                 ~ ' title="Show every distribution blocked by '
+                 ~ esc-attr(%r<culprit>) ~ '">' ~ esc(%r<culprit>) ~ '</button>'
+            !! '';
+        my $err = (%r<error> || $blame)
+            ?? '<div class="eco-err">'
+                 ~ ($blame ?? 'blocked by ' ~ $blame
+                              ~ (%r<error> ?? ' &mdash; ' !! '') !! '')
+                 ~ esc(%r<error>) ~ '</div>'
+            !! '';
         # The zef/github identity is the column; the human names sit under it
         # the way a dist's summary sits under its name. Emails shed for
         # DISPLAY only — the TSV keeps what REA records, and the search
@@ -883,9 +903,11 @@ sub render-ecosystem(--> Str) {
                      ~ esc(%r<auth>) ~ '</a>')
                ~ ($names ?? '<div class="eco-who">' ~ esc($names) ~ '</div>' !! '')
             !! '&mdash;';
-        my $hay = (%r<name>, %r<auth>, %r<authors>).grep(*.chars).join(' ').lc;
+        my $hay = (%r<name>, %r<auth>, %r<authors>, %r<culprit>)
+                      .grep(*.chars).join(' ').lc;
         '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '"'
           ~ ' data-a="' ~ esc-attr(%r<auth>.lc) ~ '" data-s="' ~ esc-attr($hay) ~ '"'
+          ~ ' data-c="' ~ esc-attr(%r<culprit>.lc) ~ '"'
           ~ ' data-d="' ~ %r<deps> ~ '">'
           ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
           ~ '<td class="eco-auth">' ~ $who ~ '</td>'
@@ -899,6 +921,23 @@ sub render-ecosystem(--> Str) {
         '<span class="eco-v v-' ~ esc-attr($v) ~ '">' ~ esc($v) ~ '</span> '
           ~ (%V-LABEL{$v} // '')
     }).join(' &middot; ');
+
+    # The dep-blocked dists queue behind far fewer distinct distributions than
+    # there are of them, so naming the worst few turns a wall of amber rows
+    # into a work list: fix one, and everything behind it gets to run.
+    my @top = %blame.keys.sort({ -%blame{$_}, $_.lc }).head(8);
+    my $blockers = %blame
+        ?? '<p>' ~ comma([+] %blame.values) ~ ' distributions are stopped by a '
+             ~ 'dependency rather than by their own code, and they queue behind '
+             ~ comma(%blame.elems) ~ ' distinct distributions &mdash; so one repair '
+             ~ 'can unblock many at once. The dependencies that block the most: '
+             ~ @top.map(-> $b {
+                   '<button class="eco-blame" data-c="' ~ esc-attr($b.lc) ~ '">'
+                     ~ esc($b) ~ '</button>&nbsp;<span class="eco-bn">'
+                     ~ comma(%blame{$b}) ~ '</span>'
+               }).join(' &middot; ')
+             ~ '.</p>'
+        !! '';
 
     my $body = q:to/CSS/
         <style>
@@ -918,6 +957,15 @@ sub render-ecosystem(--> Str) {
         .v-other, .v-fetch-fail, .v-unresolved { background:#65656518; color:#656565; }
         .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
             overflow-wrap:anywhere; }
+        .eco-blame { font:inherit; font-size:1em; padding:0; border:0; background:none;
+            color:inherit; cursor:pointer; font-weight:600;
+            text-decoration:underline; text-decoration-style:dotted; }
+        .eco-blame:hover { text-decoration-style:solid; }
+        .eco-blamed { margin-left:.15rem; font:inherit; font-size:.85rem; padding:.3rem .6rem;
+            cursor:pointer; border:1px solid currentColor; border-radius:1rem;
+            background:transparent; color:inherit; font-weight:600; }
+        .eco-blamed[hidden] { display:none; }
+        .eco-bn { opacity:.65; font-size:.85rem; }
         .eco-who { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:16rem; }
         .eco-all td { padding:.45rem .6rem; vertical-align:top; }
         .eco-sort { cursor:pointer; user-select:none; white-space:nowrap; }
@@ -936,9 +984,12 @@ sub render-ecosystem(--> Str) {
       ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
       ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>. '
       ~ 'The table opens most-depended-on first; click a header to re-sort, '
-      ~ 'and the filter matches distribution names and authors alike.</p>'
-      ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name or author…" '
-      ~ 'aria-label="Filter by name or author"> ' ~ $chips ~ '</div>'
+      ~ 'and the filter matches distribution names, authors, and the dependency '
+      ~ 'that blocked a dist alike.</p>'
+      ~ $blockers
+      ~ '<div class="eco-tools"><input type="search" id="eco-q" placeholder="Filter by name, author or blocking dependency…" '
+      ~ 'aria-label="Filter by name, author or blocking dependency"> ' ~ $chips
+      ~ '<button class="eco-blamed" id="eco-blamed" hidden></button></div>'
       ~ '<p class="fact-sub eco-count" id="eco-count"></p>'
       ~ '<div class="tablewrap"><table class="eco-index eco-all"><thead><tr>'
       ~ '<th class="eco-sort" data-k="n" data-dir="asc">Distribution</th>'
@@ -955,10 +1006,13 @@ sub render-ecosystem(--> Str) {
           var count = document.getElementById('eco-count');
           var flts = [].slice.call(document.querySelectorAll('.eco-flt'));
           var verdict = '';
+          var blame = '';
+          var blamed = document.getElementById('eco-blamed');
           function apply() {
             var needle = q.value.trim().toLowerCase(), shown = 0;
             rows.forEach(function (r) {
               var ok = (!verdict || r.getAttribute('data-v') === verdict)
+                    && (!blame || r.getAttribute('data-c') === blame)
                     && (!needle || r.getAttribute('data-s').indexOf(needle) !== -1);
               r.style.display = ok ? '' : 'none';
               if (ok) shown++;
@@ -969,6 +1023,20 @@ sub render-ecosystem(--> Str) {
               : fmtN(shown) + ' of ' + fmtN(rows.length) + ' distributions shown';
           }
           q.addEventListener('input', apply);
+          // Every blocking-dependency name on the page — in a row and in the
+          // list of worst offenders above — narrows the table to the dists
+          // that one failure stops. Delegated, so re-sorting keeps it live.
+          function setBlame(c, label) {
+            if (blame === c) { blame = ''; }
+            else { blame = c; blamed.textContent = 'blocked by ' + label + ' \u2715'; }
+            blamed.hidden = !blame;
+            apply();
+          }
+          document.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('.eco-blame');
+            if (b) setBlame(b.getAttribute('data-c'), b.textContent);
+          });
+          blamed.addEventListener('click', function () { setBlame(blame, ''); });
           var body = document.getElementById('eco-body');
           var heads = [].slice.call(document.querySelectorAll('.eco-sort'));
           heads.forEach(function (h) {

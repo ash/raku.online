@@ -27,7 +27,16 @@ sub read-tsv(Str $path --> Hash) {
         my @c = $line.split("\t");
         next unless @c.elems >= 4;
         # name version released verdict detail seconds exit first-error
-        %rows{@c[0]} = { version => @c[1], verdict => @c[3],
+        # `detail` is a DIST NAME for the two dependency verdicts — the dist
+        # whose suite or build stopped the run before the target was reached —
+        # and free text for every other verdict (a diagnosis line for `other`,
+        # a URL for `fetch-fail`). Only the two that name a dist carry it
+        # through, so the page never blames a distribution for a sentence.
+        my $verdict = @c[3];
+        my $culprit = $verdict eq 'dep-fail' | 'dep-build-fail'
+                      ?? (@c[4] // '').trim !! '';
+        %rows{@c[0]} = { version => @c[1], verdict => $verdict,
+                         culprit => $culprit,
                          error   => trim-err(@c[7] // '') };
     }
     %rows
@@ -94,7 +103,7 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
 
     my @names = %all.keys.sort(*.lc);
     my $fh = open($out, :w);
-    $fh.say("name\tversion\tverdict\tdeps\tauth\tauthors\terror");
+    $fh.say("name\tversion\tverdict\tculprit\tdeps\tauth\tauthors\terror");
     for @names -> $n {
         my %r = %all{$n};
         # The entry for the swept version names its author; a version the
@@ -103,7 +112,7 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
         my $hit = $exact{$n ~ "\0" ~ %r<version>} // $latest{$n};
         my $auth    = $hit ?? $hit[0] !! '';
         my $authors = $hit ?? $hit[1] !! '';
-        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}");
+        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<culprit>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}");
     }
     $fh.close;
     my %tally;
