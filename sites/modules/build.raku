@@ -830,7 +830,8 @@ my %V-LABEL =
     'dep-fail'       => 'a dependency fails first',
     'build-fail'     => 'its native build step fails',
     'dep-build-fail' => 'a dependency&rsquo;s build fails',
-    'other'          => 'timeout / abnormal exit',
+    'other'          => 'exited abnormally',
+    'timeout'        => 'ran past its time budget',
     'fetch-fail'     => 'could not be fetched',
     'unresolved'     => 'could not be resolved';
 
@@ -956,6 +957,25 @@ sub render-ecosystem(--> Str) {
              ~ '.</p>'
         !! '';
 
+    # When, and on what. Without this a reader cannot tell a sweep taken today
+    # from one taken three weeks and seventeen versions ago — and the verdicts
+    # on this page move release to release, so the engine is part of the
+    # measurement, not a footnote. Read from data rather than written into the
+    # prose, so it cannot outlive the numbers beside it; a sweep that forgets
+    # to record it simply says nothing.
+    my $provenance = do if 'src/data/ecosweep-meta.txt'.IO.e {
+        my %m = 'src/data/ecosweep-meta.txt'.IO.lines
+                    .map({ .split("\t") }).grep(*.elems >= 2)
+                    .map({ .[0] => .[1] }).Hash;
+        %m<date> && %m<engine>
+            ?? '<p class="fact-sub">Measured ' ~ esc(%m<date>) ~ ' on Raku++ '
+                 ~ '<code>' ~ esc(%m<engine>) ~ '</code>'
+                 ~ (%m<oracle> ?? ', against ' ~ esc(%m<oracle>) ~ ' as the oracle' !! '')
+                 ~ '.</p>'
+            !! ''
+    }
+    else { '' };
+
     my $body = q:to/CSS/
         <style>
         .eco-tools { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:1rem 0; }
@@ -972,6 +992,7 @@ sub render-ecosystem(--> Str) {
         .v-dep-fail, .v-dep-build-fail { background:#9a6a0018; color:#9a6a00; }
         .v-build-fail { background:#8250df18; color:#8250df; }
         .v-other, .v-fetch-fail, .v-unresolved { background:#65656518; color:#656565; }
+        .v-timeout { background:#0a6e7418; color:#0a6e74; }
         .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
             overflow-wrap:anywhere; }
         .eco-blame { font:inherit; font-size:1em; padding:0; border:0; background:none;
@@ -1000,6 +1021,7 @@ sub render-ecosystem(--> Str) {
       ~ '<h1>The Raku ecosystem under Raku++</h1>'
       ~ '<p class="tagline">Every distribution in the REA index — latest release of each — '
       ~ 'fetched, built, installed and its own test suite run under Raku++.</p>'
+      ~ $provenance
       ~ '<p>' ~ $green ~ ' of ' ~ comma($total) ~ ' distributions pass <em>their own</em> tests. '
       ~ 'A verdict names the first rung that failed, so a fix tends to move a dist one rung: '
       ~ $legend ~ '. The sweep, the fix campaign it drove, and the per-dist raw results live in '
