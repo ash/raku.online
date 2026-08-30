@@ -150,6 +150,51 @@ sub list-html(@lines, Int $start) {
     ($html, $i)
 }
 
+# ---- syntax highlighting --------------------------------------------------
+
+# `rakupp --highlight --html` emits Pygments class names inside a
+# <div class="highlight"><pre>…</pre></div> wrapper, and base.css already
+# colours those names for `pre.native-code` — the same markup the book, the
+# module handbook and the example gallery use. The FAQ joins them rather than
+# growing a second palette. The engine doing the highlighting is the one
+# running this build, so a page is coloured by the interpreter it documents.
+my $RAKUPP = $*EXECUTABLE.absolute;
+
+# Tags off, entities back: what the reader would have if the colour were
+# stripped away again.
+sub strip-html(Str $h --> Str) {
+    $h.subst(/ '<' <-[>]>* '>' /, '', :g)
+      .subst('&quot;', '"', :g).subst('&#39;', "'", :g)
+      .subst('&lt;', '<', :g).subst('&gt;', '>', :g)
+      .subst('&amp;', '&', :g)
+}
+
+# The guarantee is checked rather than argued: the highlighted block must strip
+# back to exactly the source it came from. These articles promise that every
+# snippet is what was run on both engines, so a highlighter that dropped or
+# duplicated a character would be breaking the page's own claim. A block that
+# fails the round trip — or a highlighter that is not there at all, when the
+# site is built by something other than rakupp — is emitted plain, and says so.
+sub highlight(Str $code --> Str) {
+    my $out = '';
+    {
+        my $p = run($RAKUPP, '--highlight', '--html', :in, :out, :err);
+        $p.in.print($code);
+        $p.in.close;
+        $out = $p.out.slurp(:close);
+        $p.err.slurp(:close);
+        CATCH { default { return esc($code) } }
+    }
+    my $m = $out ~~ / '<pre>' (.*) '</pre>' /;
+    return esc($code) unless $m;
+    my $html = (~$0).subst(/ ^ '<span></span>' /, '').subst(/ \n+ $ /, '');
+    unless strip-html($html) eq $code {
+        note "highlight: round-trip failed, block left plain: " ~ ($code.lines[0] // '');
+        return esc($code);
+    }
+    $html
+}
+
 # ---- block formatting -----------------------------------------------------
 
 sub render(Str $md --> Str) {
@@ -171,8 +216,12 @@ sub render(Str $md --> Str) {
             }
             $i++;   # the closing fence
             my $cls = $lang ?? ' class="lang-' ~ $lang ~ '"' !! '';
+            # Raku fences are coloured by the engine's own highlighter; a shell
+            # transcript and an output block are shown as they are.
+            my $src  = @code.join("\n");
+            my $body = $lang eq 'raku' ?? highlight($src) !! esc($src);
             @out.push('<pre class="native-code"><code' ~ $cls ~ '>'
-                      ~ esc(@code.join("\n")) ~ '</code></pre>');
+                      ~ $body ~ '</code></pre>');
             next;
         }
 

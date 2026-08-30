@@ -28,8 +28,8 @@
 <p><code>run</code> and <code>shell</code> wait for the command to finish (<a href="/faq/shell/">running external commands</a> covers those). <code>Proc::Async</code> is the other model: the process runs <em>alongside</em> your program, and you decide separately whether to ever wait for it.</p>
 <h2 id="start-a-process-and-leave-it-running">Start a process and leave it running</h2>
 <p>Call <code>.start</code> and don't await the result:</p>
-<pre class="native-code"><code class="lang-raku">Proc::Async.new('sh', '-c', 'sleep 2; date &gt;&gt; /tmp/late.log').start;
-say 'main program exits here';</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'sh'</span>, <span class="s">'-c'</span>, <span class="s">'sleep 2; date &gt;&gt; /tmp/late.log'</span>).<span class="nb">start</span>;
+<span class="nb">say</span> <span class="s">'main program exits here'</span>;</code></pre>
 <p>The <code>say</code> runs immediately, the program ends, and two seconds later the date still lands in the log — written by a process whose parent no longer exists. This is the standard way to launch a worker, a server, or anything else that should not hold your program open. (Raku++ releases up to v3.7.0 never spawned the process unless something awaited the promise — <a href="https://github.com/ash/rakupp/issues/29">issue #29</a>. Fixed; both engines now behave as shown.)</p>
 <h2 id="does-it-survive-my-program-exiting">Does it survive my program exiting?</h2>
 <p>Yes. The child is an ordinary operating-system process, and nothing ties its lifetime to yours: when your program exits without killing it, the OS reparents it and it keeps running.</p>
@@ -45,42 +45,42 @@ ash   60191   0.1  0.0  … sleep 1000</code></pre>
 <p>If you would like that sentence to exist: the source of the page is <a href="https://github.com/Raku/doc/blob/main/doc/Type/Proc/Async.rakudoc"><code>doc/Type/Proc/Async.rakudoc</code></a> in the <a href="https://github.com/Raku/doc">Raku/doc</a> repository — the <code>=head2 method start</code> section (currently line 282), whose opening paragraph is where a note on process lifetime belongs.</p>
 <h2 id="when-does-the-process-actually-start">When does the process actually start?</h2>
 <p>At <code>.start</code> — the promise is about the <em>exit</em>, not the launch:</p>
-<pre class="native-code"><code class="lang-raku">my $flag = $*TMPDIR.add('proc-async-was-here');
-my $started = Proc::Async.new('touch', $flag).start;
-sleep 1;
-say $flag.e;      # True — the process already ran; nothing has awaited it
-await $started;
-$flag.unlink;</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$flag</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">'proc-async-was-here'</span>);
+<span class="k">my</span> <span class="nv">$started</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'touch'</span>, <span class="nv">$flag</span>).<span class="nb">start</span>;
+<span class="nb">sleep</span> <span class="mi">1</span>;
+<span class="nb">say</span> <span class="nv">$flag</span>.<span class="n">e</span>;      <span class="c1"># True — the process already ran; nothing has awaited it</span>
+<span class="nb">await</span> <span class="nv">$started</span>;
+<span class="nv">$flag</span>.<span class="nb">unlink</span>;</code></pre>
 <h2 id="how-do-i-see-its-output">How do I see its output?</h2>
 <p>Tap <code>.stdout</code> (or <code>.stderr</code>) <strong>before</strong> calling <code>.start</code>; <code>.lines</code> gives it to you line by line:</p>
-<pre class="native-code"><code class="lang-raku">my $proc = Proc::Async.new('printf', 'one\ntwo\n');
-$proc.stdout.lines.tap({ say "line: $_" });
-await $proc.start;
-# line: one
-# line: two</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'printf'</span>, <span class="s">'one\ntwo\n'</span>);
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="nb">lines</span>.<span class="n">tap</span>({ <span class="nb">say</span> <span class="s">&quot;line: $_&quot;</span> });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="c1"># line: one</span>
+<span class="c1"># line: two</span></code></pre>
 <p>A stream you don't tap is not swallowed — it goes where your own stdout goes, so an untapped child prints straight to your terminal:</p>
-<pre class="native-code"><code class="lang-raku">my $proc = Proc::Async.new('echo', 'hello');
-$proc.stdout.tap({ .print });
-await $proc.start;    # hello — via the tap; without it, via your terminal</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'echo'</span>, <span class="s">'hello'</span>);
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>({ .<span class="nb">print</span> });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;    <span class="c1"># hello — via the tap; without it, via your terminal</span></code></pre>
 <h2 id="pipe-one-process-into-another">Pipe one process into another</h2>
 <p><code>bind-stdin</code> connects one process's output stream to another's stdin. Because both children run from their <code>.start</code> on, the data flows concurrently — a stream larger than the OS pipe buffer cannot deadlock:</p>
-<pre class="native-code"><code class="lang-raku">my $proc-echo = Proc::Async.new: 'echo', 'Hello, world';
-my $proc-cat = Proc::Async.new: 'cat', '-n';
-$proc-cat.bind-stdin: $proc-echo.stdout;
-await $proc-echo.start, $proc-cat.start;
-#      1	Hello, world</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$proc-echo</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>: <span class="s">'echo'</span>, <span class="s">'Hello, world'</span>;
+<span class="k">my</span> <span class="nv">$proc-cat</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>: <span class="s">'cat'</span>, <span class="s">'-n'</span>;
+<span class="nv">$proc-cat</span>.<span class="n">bind-stdin</span>: <span class="nv">$proc-echo</span>.<span class="n">stdout</span>;
+<span class="nb">await</span> <span class="nv">$proc-echo</span>.<span class="nb">start</span>, <span class="nv">$proc-cat</span>.<span class="nb">start</span>;
+<span class="c1">#      1	Hello, world</span></code></pre>
 <p>Bind before either <code>.start</code>; after a start it is too late.</p>
 <h2 id="how-do-i-stop-it-and-how-did-it-end">How do I stop it, and how did it end?</h2>
 <p><code>.kill</code> sends a signal (SIGHUP unless you name another). The <code>.start</code> promise is kept with the finished process, whose <code>.exitcode</code> and <code>.so</code> are the exit status:</p>
-<pre class="native-code"><code class="lang-raku">my $proc = Proc::Async.new('sleep', '600');
-my $promise = $proc.start;
-$proc.kill;
-my $result = await $promise;   # returns as soon as the process dies
-say $result.so;                # False — it did not exit cleanly</code></pre>
-<pre class="native-code"><code class="lang-raku">my $proc = Proc::Async.new('sh', '-c', 'exit 7');
-my $result = await $proc.start;
-say $result.exitcode;   # 7
-say $result.so;         # False</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'sleep'</span>, <span class="s">'600'</span>);
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nv">$proc</span>.<span class="n">kill</span>;
+<span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$promise</span>;   <span class="c1"># returns as soon as the process dies</span>
+<span class="nb">say</span> <span class="nv">$result</span>.<span class="nb">so</span>;                <span class="c1"># False — it did not exit cleanly</span></code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'sh'</span>, <span class="s">'-c'</span>, <span class="s">'exit 7'</span>);
+<span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$result</span>.<span class="n">exitcode</span>;   <span class="c1"># 7</span>
+<span class="nb">say</span> <span class="nv">$result</span>.<span class="nb">so</span>;         <span class="c1"># False</span></code></pre>
 <h2 id="where-raku-and-rakudo-differ">Where Raku++ and Rakudo differ</h2>
 <p><strong>A failed process throws in Rakudo when you discard it.</strong> The <code>Proc</code> a <code>.start</code> promise is kept with throws when <em>sunk</em> — so a bare <code>await $proc.start;</code> statement dies under Rakudo if the process exited non-zero ("The spawned command … exited unsuccessfully"), which is why the snippets above assign the result. Raku++ does not sink-throw here: the await returns and you check <code>.so</code> or <code>.exitcode</code> yourself. (Rakudo's own docs flag this trap; their suggested spelling is <code>try sink await $p.start;</code>.)</p>
 <p><strong>Signal reporting.</strong> A killed process under Rakudo reports <code>exitcode 0</code> with <code>.signal</code> set (<code>1</code> for SIGHUP); Raku++ has no <code>.signal</code> and reports <code>exitcode -1</code> for any signal death. <code>.so</code> is <code>False</code> on both, so test that.</p>

@@ -33,7 +33,7 @@
 <p><strong>It ships a static analyser.</strong> <code>rakupp --lint</code> reports unused variables, unreachable code and redeclarations without running the program, and exits non-zero — so it drops into CI. See <a href="https://github.com/ash/rakupp/blob/main/docs/guide/LINT.md">LINT.md</a>.</p>
 <p><strong>It is one binary with no third-party dependencies.</strong></p>
 <p><strong>It terminates on some inputs Rakudo does not.</strong> A string sequence whose endpoint <code>.succ</code> can never reach loops forever in Rakudo; Raku++ stops:</p>
-<pre class="native-code"><code class="lang-raku">say ('a!' ... 'zz!').elems;    # Raku++: 702.  Rakudo: does not terminate.</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> (<span class="s">'a!'</span> ... <span class="s">'zz!'</span>).<span class="nb">elems</span>;    <span class="c1"># Raku++: 702.  Rakudo: does not terminate.</span></code></pre>
 <p>That one is a deliberate divergence, not an accident — a compiler that hangs is worse than one that answers.</p>
 <p><strong>And a handful of documented behaviours it gets right where Rakudo has drifted.</strong> The conformance sweep classifies 19 examples as <em>doc and Raku++ agree, Rakudo does not</em>. Most are small — <code>1.asinh</code> gives the documented <code>0.881373587019543</code> here and <code>0.8813735870195429</code> in Rakudo, for instance. A few are randomness or stale docs rather than real wins; the classified list lives in <a href="https://github.com/ash/raku.online/tree/main/sites/spec">the spec site's source</a>.</p>
 <h2 id="where-rakudo-is-ahead">Where Rakudo is ahead</h2>
@@ -48,23 +48,23 @@
 <p><strong>Multi-character string ranges.</strong> Rakudo iterates <code>('ab'..'ba')</code> as a per-position cross product — <code>ab aa bb ba</code>; Raku++ climbs by <code>.succ</code>. Known, and on the list.</p>
 <p><strong>Hash iteration order.</strong> Raku++ iterates sorted; Rakudo's order is its own and varies. Neither is guaranteed by the language — sort if you depend on it.</p>
 <p><strong><code>$*RAKU.compiler.version</code> reports a Rakudo era, not the Raku++ release.</strong> It answers <code>v2026.08</code> — the Rakudo release Raku++ is verified byte-identical against — while the rest of the object says who is actually running:</p>
-<pre class="native-code"><code class="lang-raku">say $*RAKU.compiler.name;       # → Raku++      (Rakudo says: rakudo)
-say $*RAKU.compiler.version;    # → v2026.08    (the era tracked, not our release)
-say $*RAKU.compiler.release;    # → 3.6.0       (Rakudo leaves this empty)
-say $*RAKU.compiler.id;         # → 3.6.0       (Rakudo: a commit SHA)
-say $*RAKU.compiler.backend;    # → cpp         (Rakudo: moar)</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">name</span>;       <span class="c1"># → Raku++      (Rakudo says: rakudo)</span>
+<span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">version</span>;    <span class="c1"># → v2026.08    (the era tracked, not our release)</span>
+<span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">release</span>;    <span class="c1"># → 3.6.0       (Rakudo leaves this empty)</span>
+<span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">id</span>;         <span class="c1"># → 3.6.0       (Rakudo: a commit SHA)</span>
+<span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">backend</span>;    <span class="c1"># → cpp         (Rakudo: moar)</span></code></pre>
 <p>Because <code>.id</code> is our release rather than Rakudo's per-build hash, two different builds of the same release are indistinguishable there. Raku++ adds the missing identity as its own pair of keys, which Rakudo has neither of:</p>
-<pre class="native-code"><code class="lang-raku">say $*RAKU.compiler.build;       # → v3.14.0-74-g9ff47ae   (git describe)
-say $*RAKU.compiler.build-date;  # → 2026-08-16            (UTC, at build time)</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">build</span>;       <span class="c1"># → v3.14.0-74-g9ff47ae   (git describe)</span>
+<span class="nb">say</span> <span class="nv">$*RAKU</span>.<span class="n">compiler</span>.<span class="n">build-date</span>;  <span class="c1"># → 2026-08-16            (UTC, at build time)</span></code></pre>
 <p><code>.build</code> reads as <em>74 commits past the v3.14.0 tag, at commit 9ff47ae</em>, and gains a <code>-modified</code> suffix when the tree had uncommitted changes; on a tagged commit it is just the tag. The version in it is always the release the binary reports: when no tag for that release is reachable — a release tagged on a line that was later rebased, say — the count is dropped rather than borrowed from an older tag, and the string is <code>v3.20.1-ga5b4aa8</code>. Built from a source tarball, with no <code>.git</code> to ask, <code>.build</code> is <code>unknown</code> rather than a guess — <code>.build-date</code> is still stamped. Quote <code>.build</code> in bug reports: it is the only thing that pins the exact binary.</p>
 <p>This is deliberate, and it reverses an earlier decision to report our own version there. Modules gate features on <code>$*RAKU.compiler.version &lt; v2023.12</code>, using the compiler version as a proxy for <em>do I have modern semantics?</em> — answering <code>v1.7.0</code> compares as a pre-2000 Rakudo, and every such module refuses to load. JSON::Class was the witness.</p>
 <p>So: <strong>detect the engine with <code>.name</code>, not with <code>.version</code>.</strong> The number answers what the language does; the name answers who implements it. The era constant is <code>kOracleEra</code> in <code>src/Builtins.cpp</code>, and it moves when the conformance oracle moves — not when Raku++ is released.</p>
 <h2 id="the-6-e-revision">The 6.e revision</h2>
 <p>Both engines implement 6.e behind <code>use v6.e.PREVIEW</code>, and — for the ~50 changes tracked at <a href="https://raku.online/spec/6e/">raku.online/spec/6e</a> — they now agree on what it does. Where they do not agree is on <strong>who the revision belongs to</strong>.</p>
 <p>In Raku++ it belongs to the code: a module compiled under the pragma keeps 6.e semantics when a 6.d program calls it, and a 6.d program is not changed by loading such a module. Rakudo loads <code>CORE.e</code> into the process instead, so this prints <code>0+2i</code> twice — including on the line <em>above</em> the <code>use</code>:</p>
-<pre class="native-code"><code class="lang-raku">say (-4).sqrt;      # Rakudo: 0+2i    Raku++: NaN
-use SomeSixEModule; # a module written under `use v6.e.PREVIEW`
-say (-4).sqrt;      # Rakudo: 0+2i    Raku++: NaN</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> (-<span class="mi">4</span>).<span class="nb">sqrt</span>;      <span class="c1"># Rakudo: 0+2i    Raku++: NaN</span>
+<span class="k">use</span> <span class="n">SomeSixEModule</span>; <span class="c1"># a module written under `use v6.e.PREVIEW`</span>
+<span class="nb">say</span> (-<span class="mi">4</span>).<span class="nb">sqrt</span>;      <span class="c1"># Rakudo: 0+2i    Raku++: NaN</span></code></pre>
 <p>If you write 6.e modules for a 6.d program, do not rely on either shape: pass values, not semantics.</p>
 <p>Two smaller ones, both cases of us following the documented meaning where Rakudo does not:</p>
 <ul><li><code>.indices($needle, :smartcase)</code> honours the adverb here. <code>"hello Hello".indices("hello", :smartcase)</code> is <code>(0, 6)</code>; in Rakudo the <code>:smartcase</code> candidate is never dispatched to and the answer is <code>(0,)</code>, while <code>:i</code> on the same call gives both positions.</li><li>Three 6.e-adjacent things stay ours to fix, and are <em>not</em> revision-specific: a block accepts extra positionals in any revision (<code>my &amp;c = { 42 }; c(1,2,3)</code> runs here and dies there), <code>Instant.from-posix(0)</code> is ten seconds off, and <code>.subparse</code> on a failed match answers <code>Nil</code> where Rakudo answers with the grammar object.</li></ul>

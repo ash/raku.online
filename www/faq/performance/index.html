@@ -39,15 +39,15 @@
 <div class="tablewrap"><table><tr><th>kernel</th><th>interpreter</th><th><code>--exe</code></th><th><code>--exe -O</code></th></tr><tr><td>400k string appends</td><td>99ms</td><td>24ms</td><td>23ms</td></tr></table></div>
 <p>String building, IO, regex and hash work are already doing the same underlying operations in both modes. If that is your program, compiling changes little — and <code>--exe</code> without <code>-O</code> is not the fast mode; the <code>-O</code> is what matters.</p>
 <h2 id="check-what-you-are-actually-measuring">Check what you are actually measuring</h2>
-<pre class="native-code"><code class="lang-raku">my $t0 = now;
-# … the part you suspect …
-note "elapsed: ", (now - $t0).round(0.001), "s";</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="c1"># … the part you suspect …</span>
+<span class="nb">note</span> <span class="s">&quot;elapsed: &quot;</span>, (<span class="nb">now</span> - <span class="nv">$t0</span>).<span class="nb">round</span>(<span class="mf">0.001</span>), <span class="s">&quot;s&quot;</span>;</code></pre>
 <p>Startup is ~2ms, so for anything short you are timing the work, not the launch. If elapsed time is dominated by a <code>run</code>/<code>shell</code> call, a network round trip or reading a file, none of the above applies — you are waiting on something else.</p>
 <h2 id="things-that-are-slow-in-any-raku">Things that are slow in any Raku</h2>
 <p><strong>Rebuilding a big value inside a loop.</strong> Appending to a string with <code>~=</code> is in-place and cheap; <code>$s = $s ~ $x</code> is not, and neither is <code>@a = @a, $x</code>.</p>
 <p><strong>Sorting with a comparator when a key would do.</strong> <code>.sort({ $^a.foo cmp $^b.foo })</code> calls your block on every comparison — O(n log n) times. <code>.sort(*.foo)</code> extracts the key once per element:</p>
-<pre class="native-code"><code class="lang-raku">my @words = &lt;delta alpha charlie bravo&gt;;
-say @words.sort(*.chars);       # key extraction — one call per element</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@words</span> = <span class="s">&lt;delta alpha charlie bravo&gt;</span>;
+<span class="nb">say</span> <span class="nv">@words</span>.<span class="nb">sort</span>(*.<span class="nb">chars</span>);       <span class="c1"># key extraction — one call per element</span></code></pre>
 <p><strong>Regexes rebuilt per iteration.</strong> Hoist a regex out of the loop if the pattern is constant.</p>
 <h2 id="measuring-a-change">Measuring a change</h2>
 <p>The repo has the harnesses used for its own numbers:</p>
