@@ -9,7 +9,7 @@
     # The articles, in reading order. Anything in src/pages that is not listed
     # here is still built, but appears after these; a name listed with no file
     # is skipped, so removing an article upstream does not break the build.
-    order => <shell background-processes containers modules compiling performance debugging differences 6e>,
+    order => <shell background-processes containers modules compiling performance garbage-collection debugging differences 6e>,
 
     # A line of context under each entry on the index. The articles open with a
     # summary of their own, but on an index you want the difference between two
@@ -21,6 +21,7 @@
         modules     => 'Getting a module and being able to use it: rakupp install, zef, and where both engines look.',
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
+        'garbage-collection' => 'There isn\'t one: what reference counting buys, what a cycle costs, and when DESTROY actually runs.',
         debugging   => 'When something goes wrong: --lint, --ast, --cpp, and telling your bug from ours.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',
         '6e'        => 'What the 6.e language revision adds to 6.d, and what use v6.e.PREVIEW actually turns on.',
