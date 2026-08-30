@@ -28,19 +28,47 @@
 <p>That answers most of the questions on this page in one line, but the consequences are worth spelling out, because two of them will eventually bite you: <strong>reference cycles are never reclaimed</strong>, and <strong><code>DESTROY</code> still is not a destructor you can schedule</strong>.</p>
 <p>Figures below were measured on macOS arm64 (M-series), 2026-08-30, rakupp 3.23.0 against Rakudo v2026.08 / MoarVM 2026.08, with <code>/usr/bin/time -l</code>.</p>
 <h2 id="what-refcounting-buys">What refcounting buys</h2>
-<p><strong>A small floor.</strong> Nothing is reserved for a heap, so the baseline is the program, not the collector:</p>
-<div class="tablewrap"><table><tr><th><code>say 1</code></th><th>peak footprint</th><th>max RSS</th></tr><tr><td>rakupp</td><td>1.5 MB</td><td>4.2 MB</td></tr>
-<tr><td>Rakudo</td><td>91.1 MB</td><td>113.4 MB</td></tr></table></div>
-<p><strong>No stop-the-world phase.</strong> Freeing happens inline, at the drop, on the thread that dropped it. There is no moment when the program is paused so a collector can walk the heap. The same allocation-heavy loop (200,000 iterations, each building a hash and an array from it), counting iterations that took longer than a millisecond:</p>
-<div class="tablewrap"><table><tr><th>run</th><th>rakupp: &gt;1 ms / &gt;5 ms / worst</th><th>Rakudo: &gt;1 ms / &gt;5 ms / worst</th></tr><tr><td>1</td><td>0 / 0 / 0.9 ms</td><td>23 / 14 / 13.4 ms</td></tr>
-<tr><td>2</td><td>6 / 0 / 1.7 ms</td><td>28 / 17 / 45.1 ms</td></tr>
-<tr><td>3</td><td>0 / 0 / 0.4 ms</td><td>23 / 15 / 129.0 ms</td></tr></table></div>
+<p><strong>A small floor.</strong> Nothing is reserved for a heap, so the baseline is the program, not the collector. The program here is a file containing one statement, <code>say 1</code>, measured whole-process from launch to exit:</p>
+<pre class="native-code"><code class="lang-bash">/usr/bin/time -l rakupp floor.raku          # and the same line for `raku`</code></pre>
+<div class="tablewrap"><table><tr><th>running <code>say 1</code></th><th>peak footprint</th><th>max RSS</th></tr><tr><td>rakupp</td><td>1.4 MB</td><td>4.2 MB</td></tr>
+<tr><td>Rakudo</td><td>91.5 MB</td><td>125.2 MB</td></tr></table></div>
+<p>Both columns because the two metrics count differently: <em>peak memory footprint</em> is what macOS charges the process, <em>maximum resident set size</em> also counts the clean pages mapped in from the binary and the shared libraries. Each wobbles a few MB between runs — Rakudo's RSS came out anywhere from 113 to 125 MB — and the gap does not.</p>
+<p><strong>No stop-the-world phase.</strong> Freeing happens inline, at the drop, on the thread that dropped it. There is no moment when the program is paused so a collector can walk the heap. This program allocates steadily, times every iteration, and counts the slow ones:</p>
+<pre class="native-code"><code class="lang-raku">my ($over1, $over5, $worst) = 0, 0, 0;
+my $t = now;
+for ^200_000 -&gt; $i {
+    my %h = a =&gt; $i, b =&gt; $i * 2, c =&gt; "s$i";
+    my @a = %h.values;
+    my $dt = now - $t;
+    if $i &gt; 1_000 {                        # past warm-up
+        $over1++ if $dt &gt; 0.001;
+        $over5++ if $dt &gt; 0.005;
+        $worst  = $dt if $dt &gt; $worst;
+    }
+    $t = now;
+}
+printf "over 1 ms: %d, over 5 ms: %d, worst %.1f ms\n", $over1, $over5, $worst * 1000;</code></pre>
+<p>Six consecutive runs of it per engine, on an otherwise idle machine:</p>
+<div class="tablewrap"><table><tr><th>run</th><th>rakupp — &gt;1 ms / &gt;5 ms / worst</th><th>Rakudo — &gt;1 ms / &gt;5 ms / worst</th></tr><tr><td>1</td><td>0 / 0 / 0.4 ms</td><td>19 / 13 / 21.0 ms</td></tr>
+<tr><td>2</td><td>0 / 0 / 0.6 ms</td><td>20 / 15 / 35.2 ms</td></tr>
+<tr><td>3</td><td>0 / 0 / 0.5 ms</td><td>19 / 15 / 18.1 ms</td></tr>
+<tr><td>4</td><td>0 / 0 / 0.5 ms</td><td>23 / 18 / 10.9 ms</td></tr>
+<tr><td>5</td><td>3 / 0 / 1.8 ms</td><td>17 / 13 / 18.6 ms</td></tr>
+<tr><td>6</td><td>0 / 0 / 0.7 ms</td><td>19 / 12 / 13.8 ms</td></tr></table></div>
+<p>The middle column is the one to read, and machine load is the reason to be careful with the other two: run the same program while a compile is going and rakupp's row moves too — one such run gave 30 / 8 / 30.1 ms. What does not move is Rakudo's twelve-to-eighteen iterations over 5 ms in <em>every</em> run, idle or not. Those are the collector; rakupp's occasional millisecond is the operating system.</p>
 <p>If you are writing something latency-sensitive — a request handler, an audio callback, a game loop — that is the property you are buying.</p>
 <h2 id="what-it-costs">What it costs</h2>
-<p><strong>The free is on your clock.</strong> A collector defers the work; refcounting bills it at the drop, and a big drop is a big bill. Building a 2,000,000-element array of two-element arrays, then releasing it with <code>@big = ()</code>:</p>
-<div class="tablewrap"><table><tr><th></th><th>build</th><th>free</th></tr><tr><td>rakupp</td><td>4514 ms</td><td><strong>544 ms</strong></td></tr>
-<tr><td>Rakudo</td><td>16526 ms</td><td><strong>2 ms</strong></td></tr></table></div>
-<p>Rakudo's 2 ms is not free memory, it is postponed work — but if a half-second lands in the wrong place, move the drop somewhere it does not matter, or let the structure die with the process.</p>
+<p><strong>The free is on your clock.</strong> A collector defers the work; refcounting bills it at the drop, and a big drop is a big bill:</p>
+<pre class="native-code"><code class="lang-raku">my $t0 = now;
+my @big = (^2_000_000).map({ [$_, $_ * 2] }).Array;
+my $built = now - $t0;
+my $t1 = now;
+@big = ();                                  # the last reference goes here
+my $freed = now - $t1;
+printf "build %.0f ms, free %.0f ms\n", $built * 1000, $freed * 1000;</code></pre>
+<div class="tablewrap"><table><tr><th></th><th>build</th><th>free</th></tr><tr><td>rakupp</td><td>3357 ms</td><td><strong>485 ms</strong></td></tr>
+<tr><td>Rakudo</td><td>17205 ms</td><td><strong>2 ms</strong></td></tr></table></div>
+<p>The build column moves by a second between runs; the free column does not. Rakudo's 2 ms is not free memory, it is postponed work — but if a half-second lands in the wrong place, move the drop somewhere it does not matter, or let the structure die with the process.</p>
 <p>Deep structures are safe to drop: a 500,000-node linked list released by setting its head to <code>Nil</code> tears down without exhausting the stack.</p>
 <p><strong>Cycles are never reclaimed.</strong> This is the real limitation. Two objects pointing at each other keep each other's count above zero, and nothing ever goes looking for them:</p>
 <pre class="native-code"><code class="lang-raku">class Node { has $.name is rw; has $.peer is rw; }
@@ -50,11 +78,11 @@ sub cyc() {
     $a.peer = $b;
     $b.peer = $a;      # ← the cycle: neither is ever freed
 }</code></pre>
-<p>Calling that in a loop, against the same routine with the last line removed:</p>
-<div class="tablewrap"><table><tr><th>iterations</th><th>no cycle</th><th>cycle</th><th>Rakudo, cycle</th></tr><tr><td>100,000</td><td>2 MB</td><td>857 MB</td><td>164 MB</td></tr>
+<p>Peak footprint of <code>for ^N { cyc() }</code> — the block form of <code>for</code>, so the loop itself allocates nothing — against the same routine with the last line removed:</p>
+<div class="tablewrap"><table><tr><th>iterations</th><th>no cycle</th><th>cycle</th><th>Rakudo, cycle</th></tr><tr><td>100,000</td><td>2 MB</td><td>857 MB</td><td>163 MB</td></tr>
 <tr><td>400,000</td><td>2 MB</td><td>3423 MB</td><td>189 MB</td></tr></table></div>
 <p>About 8.6 KB per cycle, growing forever. Rakudo's collector finds them, which is exactly what a collector is for.</p>
-<p>The same applies to a container that contains itself:</p>
+<p>The same loop, with the body replaced by a container that contains itself:</p>
 <div class="tablewrap"><table><tr><th>shape</th><th>leaked per iteration</th></tr><tr><td><code>%h&lt;self&gt; = %h</code></td><td>~4 KB</td></tr>
 <tr><td><code>@a[0] = @a</code></td><td>~180 B</td></tr>
 <tr><td><code>$x = [$x]</code> (not a cycle — the old value is captured, not referenced back)</td><td>nothing</td></tr></table></div>
