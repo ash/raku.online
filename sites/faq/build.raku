@@ -86,11 +86,16 @@ sub link-target(Str $t --> Str) {
         }
         return %SITE<docs-base> ~ (|@dirs, $rest).join('/');
     }
+    # A #fragment rides along to the rewritten URL: a deep link into another
+    # article is `other.md#some-heading`, which does not END with .md and so
+    # used to be emitted verbatim — a 404 on the site, correct only in the repo.
+    my ($file, $frag) = $t.split('#', 2);
+    my $hash = $frag.defined ?? "#$frag" !! '';
     # README.md — the index of this FAQ
-    return "$BASE/" if $t eq 'README.md';
+    return "$BASE/$hash" if $file eq 'README.md';
     # another article
-    if $t.ends-with('.md') {
-        return "$BASE/" ~ $t.subst(/ '.md' $ /, '') ~ '/';
+    if $file.ends-with('.md') {
+        return "$BASE/" ~ $file.subst(/ '.md' $ /, '') ~ "/$hash";
     }
     $t
 }

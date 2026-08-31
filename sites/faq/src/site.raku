@@ -9,13 +9,14 @@
     # The articles, in reading order. Anything in src/pages that is not listed
     # here is still built, but appears after these; a name listed with no file
     # is skipped, so removing an article upstream does not break the build.
-    order => <shell background-processes containers modules compiling performance garbage-collection debugging differences 6e>,
+    order => <shell buffering background-processes containers modules compiling performance garbage-collection debugging differences 6e>,
 
     # A line of context under each entry on the index. The articles open with a
     # summary of their own, but on an index you want the difference between two
     # of them in one line rather than a paragraph each.
     blurbs => {
         shell       => 'Running external commands: run vs shell, capturing output, feeding input, exit codes.',
+        buffering   => 'Why output does not appear when you expect it: out-buffer and flush, the three places output can sit, and the child\'s own buffer you cannot set from outside.',
         'background-processes' => 'Proc::Async: fire-and-forget processes that outlive the program, bind-stdin pipelines, kill — and where Raku\'s own docs stand on the survival.',
         containers  => 'Why does my list have one element? Itemisation, $(…) vs […], and passing lists to routines.',
         modules     => 'Getting a module and being able to use it: rakupp install, zef, and where both engines look.',

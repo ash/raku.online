@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — buffering: why output does not appear when you expect it</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=3f3fd7a4"></script>
+<link rel="stylesheet" href="/theme/base.css?v=3f3fd7a4">
+<link rel="stylesheet" href="/theme/shell.css?v=3f3fd7a4">
+<link rel="stylesheet" href="/theme/faq.css?v=3f3fd7a4">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Buffering: why output does not appear when you expect it</h1>
+
+<p>Short answer: <code>$*OUT</code> and <code>$*ERR</code> are <strong>unbuffered</strong>, so a <code>say</code> reaches wherever it is going the moment you write it. A file handle you <code>open</code> <strong>holds back 8 KiB</strong>, so what you write is not on disk until you flush it or close it. Everything on this page is that one sentence and its consequences.</p>
+<p><code>.out-buffer</code> is the knob, on any handle, readable and assignable:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nv">$*OUT</span>.<span class="n">out-buffer</span> = <span class="mi">0</span>;                     <span class="c1"># write through, every time</span>
+<span class="k">my</span> <span class="nv">$log</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>, :!<span class="n">out-buffer</span>;   <span class="c1"># the same, from the moment it opens</span>
+<span class="nv">$log</span>.<span class="n">flush</span>;                               <span class="c1"># or: push out what is pending, once</span></code></pre>
+<p>Everything below is verified on both engines. Where they differ, the page says so — there is exactly one difference, and it is in the last section.</p>
+<h2 id="why-anyone-cares">Why anyone cares <a class="anchor" href="#why-anyone-cares" aria-label="link">#</a></h2>
+<p>Buffering is invisible until something else is reading your output <em>while you are still running</em>. Then it is the difference between a live log and a wall of text at the end:</p>
+<ul><li>a build or test runner whose progress you are watching</li><li>a program whose stdout is a pipe — <code>| tee</code>, <code>| grep</code>, a CI collector, <code>podman exec</code>, a supervisor capturing a service's log</li><li>a file being <code>tail -f</code>-ed</li><li>anything that might be killed before it finishes, taking the buffer with it</li></ul>
+<p>If your output goes to a terminal and you never look at it until the program ends, none of this matters.</p>
+<h2 id="the-knob">The knob <a class="anchor" href="#the-knob" aria-label="link">#</a></h2>
+<p><code>.out-buffer</code> is how many bytes a handle may hold back before they must be written out. It reads:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nv">$*OUT</span>.<span class="n">out-buffer</span>;      <span class="c1"># 0</span>
+<span class="nb">say</span> <span class="nv">$*ERR</span>.<span class="n">out-buffer</span>;      <span class="c1"># 0</span></code></pre>
+<p>and assigns, taking three shapes:</p>
+<div class="tablewrap"><table><tr><th>you write</th><th>it means</th><th>it reads back as</th></tr><tr><td><code>$fh.out-buffer = 0</code> or <code>= False</code></td><td>no buffer: every write goes out</td><td><code>0</code></td></tr>
+<tr><td><code>$fh.out-buffer = True</code></td><td>the default block</td><td><code>8192</code></td></tr>
+<tr><td><code>$fh.out-buffer = 4096</code></td><td>that many bytes</td><td><code>4096</code></td></tr></table></div>
+<p>The same three at <code>open</code>, as an adverb — <code>:!out-buffer</code> is the one you will actually write:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>, :!<span class="n">out-buffer</span>;    <span class="c1"># unbuffered from the start</span>
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>, :<span class="n">out-buffer</span>(<span class="mi">64_000</span>);</code></pre>
+<p>Changing the size <strong>flushes what is already pending</strong>, so the new size applies to what comes next and nothing is stranded under the old one.</p>
+<h2 id="where-output-can-sit">Where output can sit <a class="anchor" href="#where-output-can-sit" aria-label="link">#</a></h2>
+<p>There are three places, and they are independent. When output is late, work out which one is holding it.</p>
+<h3 id="1-your-own-out-err">1. Your own <code>$*OUT</code> / <code>$*ERR</code> <a class="anchor" href="#1-your-own-out-err" aria-label="link">#</a></h3>
+<p>Nowhere: both are unbuffered. A <code>say</code> is a write, and <code>note</code> — which goes to <code>$*ERR</code> — is too. There is nothing to fix here, which is the point.</p>
+<p>You can go the other way if you want the throughput back. A program that writes hundreds of thousands of lines into a pipe pays one <code>write(2)</code> per line, and buying a block back is a fair trade when nobody is watching:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nv">$*OUT</span>.<span class="n">out-buffer</span> = <span class="mi">65_536</span>;    <span class="c1"># now say() batches; flush or exit to release it</span></code></pre>
+<p>(Raku++ honours that; Rakudo ignores a size on its own standard handles and stays unbuffered. Neither will ever lose the output — what is pending is written at exit.)</p>
+<h3 id="2-a-file-handle-you-opened">2. A file handle you opened <a class="anchor" href="#2-a-file-handle-you-opened" aria-label="link">#</a></h3>
+<p>This one holds 8 KiB, and it is the usual answer to "the log file is empty and my program is still running":</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$path</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;demo&quot;</span>);
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>;
+<span class="nv">$fh</span>.<span class="nb">say</span>(<span class="s">&quot;line 1&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;after say:   {$path.s} bytes on disk&quot;</span>;
+<span class="nv">$fh</span>.<span class="n">flush</span>;
+<span class="nb">say</span> <span class="s">&quot;after flush: {$path.s} bytes on disk&quot;</span>;
+<span class="nv">$fh</span>.<span class="nb">say</span>(<span class="s">&quot;line 2&quot;</span>);
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="s">&quot;after close: {$path.s} bytes on disk&quot;</span>;</code></pre>
+<pre class="native-code"><code>after say:   0 bytes on disk
+after flush: 7 bytes on disk
+after close: 14 bytes on disk</code></pre>
+<p>That first line is the one place on this page where Rakudo answers differently — it prints <code>7</code>, because its handles write through. The last section says why.</p>
+<p>Three ways out, in rough order of how often you want them:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>, :!<span class="n">out-buffer</span>;   <span class="c1"># a log something else is tailing</span>
+<span class="nv">$fh</span>.<span class="n">flush</span>;                               <span class="c1"># a checkpoint you chose</span>
+<span class="nv">$fh</span>.<span class="nb">close</span>;                               <span class="c1"># you are done with it</span></code></pre>
+<p><code>spurt</code> and <code>slurp</code> never come into it — they open, do the whole job, and close.</p>
+<p><strong>A handle that goes out of scope is not closed.</strong> There is no destructor waiting to flush it for you; see <a href="/faq/garbage-collection/#does-dropping-a-filehandle-close-it">garbage-collection.md</a>. Raku++ does flush every still-open write handle at exit, so a program that simply ends does not lose its output — but a handle you dropped an hour ago is still holding its last 8 KiB until then. Close it, or open it unbuffered.</p>
+<h3 id="3-a-child-process-s-output">3. A child process's output <a class="anchor" href="#3-a-child-process-s-output" aria-label="link">#</a></h3>
+<p><code>run</code> and <code>shell</code> <strong>without</strong> <code>:out</code> hand the child your own stdout, so its output appears as it is produced. With <code>:out</code> you asked for the text, and text you have to wait for:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="k">sub</span> <span class="n">at</span> { <span class="s">&quot;{(now - $t0).round}s&quot;</span> }
+
+<span class="nb">run</span> <span class="s">'bash'</span>, <span class="s">'-c'</span>, <span class="s">'echo passed-through; sleep 1'</span>;
+<span class="nb">say</span> <span class="n">at</span>(), <span class="s">&quot;: run returned&quot;</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="nb">run</span>(<span class="s">'bash'</span>, <span class="s">'-c'</span>, <span class="s">'echo captured; sleep 1'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="n">at</span>(), <span class="s">&quot;: &quot;</span>, <span class="nv">$text</span>.<span class="n">chomp</span>;</code></pre>
+<pre class="native-code"><code>passed-through
+1s: run returned
+2s: captured</code></pre>
+<p><code>passed-through</code> is on screen immediately, before its <code>sleep</code>; <code>captured</code> cannot be, because it does not exist as a string until the child has closed its stdout. <code>qqx</code>/<code>qx</code> are the capturing kind too, by definition — <code>say qqx[echo ok; sleep 10]</code> waits ten seconds on both engines, and no setting changes that.</p>
+<p>If you want the text <em>and</em> want it live, tap it as it arrives:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$p</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">'bash'</span>, <span class="s">'-c'</span>, <span class="s">'echo one; sleep 1; echo two'</span>);
+<span class="k">my</span> <span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="k">react</span> {
+    <span class="k">whenever</span> <span class="nv">$p</span>.<span class="n">stdout</span>.<span class="nb">lines</span> { <span class="nb">say</span> <span class="s">&quot;{(now - $t0).round}s: $_&quot;</span> }
+    <span class="k">whenever</span> <span class="nv">$p</span>.<span class="nb">start</span> { <span class="n">done</span> }
+}</code></pre>
+<pre class="native-code"><code>0s: one
+1s: two</code></pre>
+<p>Each line is delivered as its newline arrives, so a partial line waits for the rest of itself rather than being cut in half at whatever byte the pipe happened to hand over.</p>
+<h2 id="the-child-has-its-own-buffer-and-it-is-not-yours-to-set">The child has its own buffer, and it is not yours to set <a class="anchor" href="#the-child-has-its-own-buffer-and-it-is-not-yours-to-set" aria-label="link">#</a></h2>
+<p>This is the one that wastes an afternoon. Your side can be perfect and the output still arrives in a lump, because the <em>child</em> is buffering — most runtimes' standard library switches to a block buffer the moment stdout is not a terminal, which is exactly what happens when your program is in a pipeline or under <code>podman exec</code>, <code>docker exec</code>, <code>ssh</code> or a CI runner.</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">run</span> <span class="s">'python3'</span>, <span class="s">'-c'</span>, <span class="s">'import time; print(&quot;a&quot;); time.sleep(1); print(&quot;b&quot;)'</span>;</code></pre>
+<p>Run that with your own stdout on a terminal and <code>a</code> appears at once. Run the same program with <code>| cat</code> after it and nothing appears for a second, then both lines together. Nothing on your side changed; the child looked at its stdout, saw a pipe rather than a terminal, and picked a block buffer.</p>
+<p>You cannot reach into it. You tell the child, in its own language — and note that <code>stdbuf</code> sets the <em>C library's</em> buffering, so it does nothing for a runtime that buffers on its own account (Python among them, which is why Python has <code>-u</code>):</p>
+<div class="tablewrap"><table><tr><th>child</th><th>say this</th></tr><tr><td>Python</td><td><code>python3 -u …</code>, or <code>PYTHONUNBUFFERED=1</code></td></tr>
+<tr><td>Raku (Rakudo or Raku++)</td><td>nothing — <code>$*OUT</code> is already unbuffered</td></tr>
+<tr><td>a C program, or anything you cannot change</td><td><code>stdbuf -oL -eL CMD</code>, where you have it</td></tr>
+<tr><td><code>grep</code></td><td><code>--line-buffered</code></td></tr>
+<tr><td><code>sed</code></td><td><code>-u</code> on GNU, <code>-l</code> on BSD (macOS)</td></tr>
+<tr><td><code>awk</code></td><td><code>fflush()</code> after each record</td></tr></table></div>
+<pre class="native-code"><code class="lang-raku"><span class="nb">run</span> <span class="s">'python3'</span>, <span class="s">'-u'</span>, <span class="s">'-c'</span>, <span class="s">'import time; print(&quot;a&quot;); time.sleep(1); print(&quot;b&quot;)'</span>;</code></pre>
+<p>Now <code>a</code> arrives immediately whatever your stdout is.</p>
+<p>The general remedy when the child has no such switch and you cannot change it: give it a pseudo-terminal, and it will line-buffer itself the way it does interactively. <code>unbuffer CMD</code> (from expect) is the portable spelling; your platform's <code>script</code> can do it too, with an invocation that differs between GNU and BSD.</p>
+<h2 id="something-is-still-late-which-of-the-three-is-it">Something is still late — which of the three is it? <a class="anchor" href="#something-is-still-late-which-of-the-three-is-it" aria-label="link">#</a></h2>
+<p>Work outwards.</p>
+<ol><li><strong>Does it appear when you run it on a terminal, but not through a pipe?</strong> Then it is a <em>buffer that switched modes</em>, and since <code>$*OUT</code> never does, it is the child (section 3) or a handle (section 2).</li><li><strong>Is it your own <code>say</code>?</strong> It is already out. If you cannot see it, something downstream is holding it — the next program in the pipe, or the terminal.</li><li><strong>Is it a file you wrote?</strong> <code>flush</code>, <code>close</code>, or <code>:!out-buffer</code> (section 2).</li><li><strong>Is it a child's output?</strong> Drop <code>:out</code> to pass it through, or tap it with <code>Proc::Async</code> (section 3). If it is still late, it is the child's own buffer.</li><li><strong>Is it a child that is a Raku program?</strong> Then it is not buffering, and the problem is somewhere in 1–4 instead.</li></ol>
+<h2 id="where-raku-and-rakudo-differ">Where Raku++ and Rakudo differ <a class="anchor" href="#where-raku-and-rakudo-differ" aria-label="link">#</a></h2>
+<p>One place: the default on a handle you <code>open</code>.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span> <span class="nv">$path</span>, :<span class="n">w</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">out-buffer</span>;</code></pre>
+<p>Raku++ says <code>8192</code>, Rakudo says <code>1</code> — that is Rakudo's way of spelling "write through", and it does. Every other value and behaviour on this page is the same on both, standard handles included.</p>
+<p>The reason is structural rather than a preference. A Raku++ handle has no persistent file descriptor behind it, so an unbuffered write costs an open/write/close for every <code>print</code>; a block amortises that. When you want the Rakudo behaviour, ask for it — <code>:!out-buffer</code> at <code>open</code>, which costs you one adverb and is portable across both engines.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=3f3fd7a4" defer></script>
+</body>
+</html>
