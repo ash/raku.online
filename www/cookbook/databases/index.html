@@ -125,8 +125,13 @@ id: 3, name: My name is nr. 3</code></pre>
 <p><strong>The interpreter and the client library must be the same architecture.</strong> On a Mac with an Intel Homebrew under <code>/usr/local</code>, <code>libmysqlclient</code> and <code>libpq</code> are x86_64, so an arm64 <code>rakupp</code> cannot open them:</p>
 <pre class="native-code"><code class="lang-output">DBIish: DBDish::Pg needs 'pq', not found.
 	Detail: … (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64'))</code></pre>
-<p>Use the interpreter build that matches the library.</p>
-<p><strong>A driver whose library is missing skips rather than fails loudly</strong> in DBIish's own test suite. When a connection reports the driver "not found", read past the first line: the detail after it is dlopen's, and names every path that was tried.</p>
+<p>Use the interpreter build that matches the library. When a connection reports a driver "not found", read past the first line — the detail after it is dlopen's, and names every path that was tried.</p>
+<p><strong><code>needs '', not found</code> means the driver looked and found nothing at all.</strong> The MySQL driver does not take a library path: it probes by soname, <code>mariadb</code> versions 0 to 4 and then <code>mysqlclient</code> versions 16 to 21. Homebrew's MySQL 9.7 installs <code>libmysqlclient.24.dylib</code>, outside that range, so no candidate matches and the message has an empty library name where the others have <code>'pq'</code> or <code>'sqlite3'</code>:</p>
+<pre class="native-code"><code class="lang-output">DBIish: DBDish::mysql needs '', not found.
+	Detail: Cannot locate symbol 'mysql_init' in native library ''</code></pre>
+<p>Name the file, and the probe stops guessing:</p>
+<pre class="native-code"><code class="lang-sh">DBIISH_MYSQL_LIB=/usr/local/opt/mysql/lib/libmysqlclient.24.dylib rakupp names-mysql.raku</code></pre>
+<p>An architecture mismatch produces this <em>same</em> message, because a candidate that will not load is simply a candidate that did not match — where the PostgreSQL driver quotes dlopen and names the architecture, this one reports only that the search came up empty. So if the environment variable alone does not fix it, the next thing to check is the architecture, above.</p>
 <h2 id="setting-up-a-server-to-run-these-against">Setting up a server to run these against</h2>
 <p>The MySQL and PostgreSQL programs expect a database <code>raku_recipes</code> reachable by user <code>raku_user</code> with password <code>raku_pass</code>. To create exactly that:</p>
 <pre class="native-code"><code class="lang-sql">-- PostgreSQL, as a superuser
