@@ -269,11 +269,18 @@
           });
         };
         var interp = vals('interp'), native = vals('native'), rakudo = vals('rakudo');
-        // hashfill carries a fourth reference: the same program in Perl 5,
+        // mutsu — the second from-scratch Raku (Rust, bytecode VM + Cranelift
+        // JIT). A reference lane like Rakudo's, not one of ours, and it starts
+        // at the 2026-08-31 sitting, so it is null across the whole history
+        // before that: present only where the tables carry it.
+        var mutsu = vals('mutsu');
+        var hasMutsu = mutsu.some(function (v) { return v != null; });
+        // hashfill carries one more reference: the same program in Perl 5,
         // timed as the `perl` binary. Present only where the tables carry it.
         var perl = vals('perl');
         var hasPerl = perl.some(function (v) { return v != null; });
-        var all = [].concat(interp, native, rakudo, hasPerl ? perl : [])
+        var all = [].concat(interp, native, rakudo,
+                            hasMutsu ? mutsu : [], hasPerl ? perl : [])
                     .filter(function (v) { return v != null; });
         var max = Math.max.apply(null, all);
         var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
@@ -287,6 +294,12 @@
         ];
         var names = ['interpreter', 'native --exe', 'Rakudo'];
         var cols = [interp, native, rakudo];
+        // Rakudo must stay at index 2 — tipRow reads cols[2] as the reference.
+        if (hasMutsu) {
+          series.push({ name: 'mutsu', cls: 'smutsu', dash: true, values: mutsu });
+          names.push('mutsu');
+          cols.push(mutsu);
+        }
         if (hasPerl) {
           series.push({ name: 'perl', cls: 'sperl', dash: true, values: perl });
           names.push('perl');

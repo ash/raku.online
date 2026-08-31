@@ -195,16 +195,37 @@ sub rev-commit(Str $rev --> Str) {
 }
 
 # Each kernel row appears twice: first in the interpreter table
-# (| fib | <rakupp ms> | <rakudo ms> | …), then in the native --exe table
-# (| fib | <native ms> | <rakudo ms> | …). Collect in encounter order.
+# (| fib | <rakupp ms> | … | <rakudo ms> | …), then in the native --exe table
+# (| fib | <native ms> | … | <rakudo ms> | …). Collect in encounter order.
+#
+# The REFERENCE columns are located by their own header, not by a fixed index.
+# They used to be hardcoded — rakudo at cell 3 — which was true for every
+# revision up to 2026-08-31 and stopped being true the moment a `mutsu` column
+# landed between the engine and the reference: the parser would have read
+# mutsu's milliseconds and filed them under `rakudo`, silently, on the newest
+# point of every kernel chart. Reading the header row means both layouts parse
+# correctly from the same code, so historical refs keep their numbers and no
+# migration is needed.
 sub bench-at(Str $repo, Str $ref --> Hash) {
     my $md = status-doc($repo, $ref, 'BENCHMARKS.md');
     return {} unless $md;
     my %seen;   # kernel => number of rows met so far
     my %out;
+    # Column index per reference engine, re-read at every header row. The match
+    # is EXACT so the ratio columns ("vs Rakudo", "vs mutsu") cannot be mistaken
+    # for the engine columns they are computed from.
+    my %col = :rakudo(3);   # the pre-mutsu layout, for a table with no header
     for $md.lines -> $line {
         next unless $line.trim.starts-with('|');
         my @cells = $line.split('|').map(-> $c { $c.trim });
+        if @cells[1] && @cells[1] eq 'Benchmark' {
+            %col = ();
+            for @cells.kv -> $i, $c {
+                %col<rakudo> = $i if $c eq 'Rakudo';
+                %col<mutsu>  = $i if $c eq 'mutsu';
+            }
+            next;
+        }
         next unless @cells.elems > 3;
         my $kernel = @cells[1];
         next unless $kernel eq any(@KERNELS);
@@ -214,11 +235,18 @@ sub bench-at(Str $repo, Str $ref --> Hash) {
         %seen{$kernel} = (%seen{$kernel} // 0) + 1;
         if %seen{$kernel} == 1 {
             %out{$kernel}<interp> = $ms.Num;
-            my $rk = @cells[3].words[0];
-            %out{$kernel}<rakudo> = $rk.Num if $rk ~~ / ^ \d+ ['.' \d+]? $ /;
         }
         elsif %seen{$kernel} == 2 {
             %out{$kernel}<native> = $ms.Num;
+        }
+        # Both tables carry the references, and they agree; first write wins so
+        # a kernel absent from the native table keeps the interpreter table's.
+        for <rakudo mutsu> -> $eng {
+            next unless %col{$eng}:exists;
+            next if %out{$kernel}{$eng}:exists;
+            my $cell = @cells[%col{$eng}] // '';
+            my $v = $cell.words[0] // '';
+            %out{$kernel}{$eng} = $v.Num if $v ~~ / ^ \d+ ['.' \d+]? $ /;
         }
     }
     # hashfill carries a fourth engine: the same program timed as the `perl`
@@ -256,6 +284,7 @@ sub startup-at(Str $repo, Str $ref --> Hash) {
         %out<native> = $ms.Num if $mode eq 'Raku++ native --exe' && !(%out<native>:exists);
         %out<interp> = $ms.Num if $mode eq 'Raku++ interp'       && !(%out<interp>:exists);
         %out<rakudo> = $ms.Num if $mode eq 'Rakudo'              && !(%out<rakudo>:exists);
+        %out<mutsu>  = $ms.Num if $mode eq 'mutsu'               && !(%out<mutsu>:exists);
     }
     %out<interp>:exists && %out<native>:exists ?? %out !! {}
 }
@@ -409,6 +438,7 @@ sub bench-json(%bench --> Str) {
         @f.push('"interp":' ~ %b<interp>) if %b<interp>:exists;
         @f.push('"native":' ~ %b<native>) if %b<native>:exists;
         @f.push('"rakudo":' ~ %b<rakudo>) if %b<rakudo>:exists;
+        @f.push('"mutsu":'  ~ %b<mutsu>)  if %b<mutsu>:exists;  # the second from-scratch engine
         @f.push('"perl":'   ~ %b<perl>)   if %b<perl>:exists;   # hashfill's second reference
         @parts.push(json-esc($k) ~ ':{' ~ @f.join(',') ~ '}');
     }
