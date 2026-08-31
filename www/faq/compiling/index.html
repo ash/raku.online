@@ -28,32 +28,32 @@
 <pre class="native-code"><code class="lang-bash">rakupp --exe    prog.raku -o prog     # native C++ — fastest, may fall back
 rakupp --aot    prog.raku -o prog     # parse ahead of time, embed the AST
 rakupp --bundle prog.raku -o prog     # embed source + interpreter — always works</code></pre>
-<h2 id="which-one-do-i-want">Which one do I want?</h2>
+<h2 id="which-one-do-i-want">Which one do I want? <a class="anchor" href="#which-one-do-i-want" aria-label="link">#</a></h2>
 <p><strong><code>--exe</code></strong> compiles your program to C++ and links it against the runtime. It is the fast one — with <code>-O</code>, 4× to 500× over the interpreter depending entirely on the kernel: string building sits at the low end, tight integer loops at the high (the prime sieve in <code>tools/optbench/</code> is 11.6 s interpreted and 23 ms with <code>-O</code>). Constructs the code generator does not handle yet make it fall back to bundling for that program, so it always produces a working binary; it just may not be the fast kind.</p>
 <p><strong><code>--aot</code></strong> skips parsing at startup by embedding the parsed AST. Same runtime speed as the interpreter, quicker to start, and it never falls back.</p>
 <p><strong><code>--bundle</code></strong> embeds your source and the whole interpreter. The most compatible: whatever runs under <code>rakupp</code> runs in the bundle, because it <em>is</em> the interpreter.</p>
 <p>Add <code>-O</code> to <code>--exe</code> for the optimising code generator:</p>
 <pre class="native-code"><code class="lang-bash">rakupp --exe -O prog.raku -o prog</code></pre>
 <p><code>-O</code> is what turns integer loops into native arithmetic. On a tight numeric loop it is worth an order of magnitude; on IO-bound or string-shuffling code it buys close to nothing.</p>
-<h2 id="exe-says-it-cannot-find-a-compiler"><code>--exe</code> says it cannot find a compiler</h2>
+<h2 id="exe-says-it-cannot-find-a-compiler"><code>--exe</code> says it cannot find a compiler <a class="anchor" href="#exe-says-it-cannot-find-a-compiler" aria-label="link">#</a></h2>
 <p><code>--exe</code> and <code>--bundle</code> generate C++ and <strong>invoke a C++ compiler at run time</strong> — the one on your machine, when you build, not when Raku++ was built. If there isn't one, they fail.</p>
 <ul><li><strong>macOS</strong> — install the Xcode command-line tools: <code>xcode-select --install</code></li><li><strong>Debian/Ubuntu</strong> — <code>apt install g++</code></li><li><strong>Windows</strong> — MSVC (a Visual Studio "Developer Prompt"), or MinGW <code>g++</code> on <code>PATH</code></li><li><strong>Set it explicitly</strong> — <code>CXX=/path/to/clang++ rakupp --exe prog.raku -o prog</code></li></ul>
 <p>This catches people who install a <em>packaged</em> rakupp (a release tarball, a distro package) onto a machine with no toolchain: the interpreter works fine and <code>--exe</code> does not. <code>-e '…'</code> and running a script never need a compiler.</p>
 <p>Which compiler, and why it matters for speed, is in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/COMPILERS.md">COMPILERS.md</a>.</p>
-<h2 id="the-binary-is-large">The binary is large</h2>
+<h2 id="the-binary-is-large">The binary is large <a class="anchor" href="#the-binary-is-large" aria-label="link">#</a></h2>
 <p>The linked runtime dominates. Stripping is the lever that works:</p>
 <pre class="native-code"><code class="lang-bash">strip prog        # ~15% smaller</code></pre>
 <p><code>-Os</code> does <em>not</em> help — the size is the runtime, not your code — and it costs speed. Use <code>-O</code> for speed and <code>strip</code> for size.</p>
-<h2 id="does-the-binary-need-raku-installed">Does the binary need Raku++ installed?</h2>
+<h2 id="does-the-binary-need-raku-installed">Does the binary need Raku++ installed? <a class="anchor" href="#does-the-binary-need-raku-installed" aria-label="link">#</a></h2>
 <p>No. <code>--exe</code>, <code>--aot</code> and <code>--bundle</code> all produce a self-contained executable. Copy it to a machine with no Raku++ and no Raku and it runs.</p>
 <p>It is not cross-platform, though: a macOS build runs on macOS. Build on the target, or in CI for each target.</p>
-<h2 id="will-my-program-behave-the-same-compiled">Will my program behave the same compiled?</h2>
+<h2 id="will-my-program-behave-the-same-compiled">Will my program behave the same compiled? <a class="anchor" href="#will-my-program-behave-the-same-compiled" aria-label="link">#</a></h2>
 <p>That is the intent, and it is tested — <code>tools/run-optbench.raku</code> checks that the interpreter, <code>--exe</code>, <code>--exe -O</code> and Rakudo all produce identical output, and fails if any row diverges.</p>
 <p>It is not a guarantee. The code generator is a second implementation of the language, and a divergence there is a bug we want reported: run your program both ways and compare.</p>
 <pre class="native-code"><code class="lang-bash">rakupp prog.raku &gt; a.txt
 rakupp --exe prog.raku -o prog &amp;&amp; ./prog &gt; b.txt
 diff a.txt b.txt</code></pre>
-<h2 id="startup-time">Startup time</h2>
+<h2 id="startup-time">Startup time <a class="anchor" href="#startup-time" aria-label="link">#</a></h2>
 <p>A compiled binary starts in about 2ms. The interpreter is about the same, since it does not have a runtime to boot. If you are comparing against another Raku implementation, startup is one of the larger differences.</p>
 <hr>
 <p>See also <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NATIVE.md">NATIVE.md</a> for what compiles natively and <a href="https://github.com/ash/rakupp/blob/main/docs/internals/OPTIMIZATION.md">OPTIMIZATION.md</a> for what <code>-O</code> actually does.</p>

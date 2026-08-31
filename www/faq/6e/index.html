@@ -28,12 +28,12 @@
 <p>This page is the missing changelog: everything <code>6.e</code> changes relative to <code>6.d</code>, with both outputs shown for each item, plus where Raku++ stands on each.</p>
 <blockquote class="note"><p>Verified on Rakudo <strong>v2026.07</strong> (MoarVM) and Raku++ <strong>v3.14.0+</strong>, against rakudo <code>main</code> @<code>050230cb2</code> and roast @<code>b2cbe8a42</code>. Every snippet below was run on both engines under both revisions; the outputs are pasted, not predicted. Re-verified on Rakudo <strong>v2026.08</strong>: every pasted 6.e output still reproduces; four items changed against what this page had recorded — <code>EVAL</code>'s inner pragma is inert, <code>next(42)</code> under 6.d is a compile error, a failed <code>Grammar.parse</code> answers <code>Nil</code>, and §10's <code>1 mod 0</code> claim was wrong — each corrected where it occurs. Where the two engines differ, §12 says so.</p></blockquote>
 <hr>
-<h2 id="1-the-short-version">1. The short version</h2>
+<h2 id="1-the-short-version">1. The short version <a class="anchor" href="#1-the-short-version" aria-label="link">#</a></h2>
 <p>6.e is not a redesign. It is roughly four kinds of change:</p>
 <ol><li><strong>New things</strong> — about a dozen subs/terms/operators and ~25 methods that simply do not exist in 6.d (<code>snip</code>, <code>snitch</code>, <code>nomark</code>, <code>stem</code>, prefix <code>//</code>, term <code>nano</code>, <code>rotor</code> as a sub, …).</li><li><strong>Fixes that could not be made without breaking code</strong> — <code>sqrt</code> of a negative number returns a <code>Complex</code> instead of <code>NaN</code>, <code>so (5..1)</code> is finally <code>False</code>, string ranges iterate by <code>.succ</code> instead of a per-position cross product, <code>sprintf</code> sign/flag handling follows C.</li><li><strong>Object-model changes</strong> — a role's submethods are no longer composed into the class; a package no longer silently replaces an enclosing package of the same name; shaped hashes default to <code>Mu</code> rather than <code>Any</code>.</li><li><strong>Tightenings</strong> — things that were silently ignored are now compile-time errors (unknown regex boundaries, <code>sub foo;</code> without <code>unit</code>, macros).</li></ol>
 <p>Nothing is <em>removed</em> except <code>.pm</code> as a module file extension, and the multi-path forms of <code>unlink</code>/<code>rmdir</code>/<code>chmod</code>/<code>chown</code> (deprecated, still working).</p>
 <hr>
-<h2 id="2-turning-it-on">2. Turning it on</h2>
+<h2 id="2-turning-it-on">2. Turning it on <a class="anchor" href="#2-turning-it-on" aria-label="link">#</a></h2>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">v6</span>.<span class="n">e</span>.<span class="n">PREVIEW</span>;</code></pre>
 <p>The rules, all verified:</p>
 <div class="tablewrap"><table><tr><th>Rule</th><th>Rakudo 2026.08</th><th>Raku++</th></tr><tr><td><code>use v6.e.PREVIEW;</code></td><td>works</td><td>works</td></tr>
@@ -44,22 +44,22 @@
 <tr><td>Revision is per compilation unit</td><td>a module keeps its own revision</td><td>same</td></tr></table></div>
 <p><code>$*RAKU.version</code> reports the revision in force (<code>v6.d</code> / <code>v6.e</code>), which is the easiest runtime check.</p>
 <hr>
-<h2 id="3-where-the-documentation-is-and-isn-t">3. Where the documentation is — and isn't</h2>
+<h2 id="3-where-the-documentation-is-and-isn-t">3. Where the documentation is — and isn't <a class="anchor" href="#3-where-the-documentation-is-and-isn-t" aria-label="link">#</a></h2>
 <p>There is no complete, official "6.e changelog". What exists:</p>
 <ul><li><strong><a href="https://github.com/Raku/roast/blob/master/docs/announce/6.e.md">roast/docs/announce/6.e.md</a></strong> — the official announcement <em>template</em>. It is explicitly marked "to be filled up upon actual release": only the pseudo-package section has content; <em>New Routines and Operators</em>, <em>New Types</em>, <em>Deprecations</em>, <em>Version-Controlled Changes</em> are all empty headings.</li><li><strong><a href="https://docs.raku.org">docs.raku.org</a></strong> — tags individual routines with <em>"Available as of 6.e language version (early implementation exists in Rakudo compiler 2022.07+)"</em> — <code>snip</code>, <code>snitch</code>, <code>nano</code>, <code>Format</code>, <code>Formatter</code>, <code>Complex.sqrt</code>, <code>RakuAST</code> and others carry it. Accurate where present, but scattered across hundreds of pages with no index, and incomplete: at the time of writing <code>/routine/nomark</code> and <code>/routine/stem</code> are both 404, and the behaviour changes (§7 below) are largely absent, since there is no routine page to hang them on.</li><li><strong><a href="https://github.com/rakudo/rakudo/blob/main/docs/language_versions.md">rakudo/docs/language_versions.md</a></strong> — the <em>policy</em> (how revisions work, why <code>PREVIEW</code> exists), not the contents.</li><li><strong>The source of truth</strong>, and what this page was built from:</li><ul><li><code>src/core.e/</code> in rakudo — <code>additions.rakumod</code> (new subs/terms/operators),</li></ul></ul>
 <p>    <code>Fixups.rakumod</code> (augmented methods), <code>Formatter.rakumod</code>, <code>PseudoStash.rakumod</code>,     <code>array_multislice.rakumod</code>, <code>hash_multislice.rakumod</code>, <code>hash_hyperslice.rakumod</code>,     <code>Grammar.rakumod</code>;</p>
 <ul><li>every <code>language_revision &gt;= 3</code> / <code>&lt; 3</code> test in the grammars, actions and metamodel (3 = 6.e);</li><ul><li>every <code>is revision-gated("6.e")</code> routine in <code>src/core.c/</code>;</li><li>roast's 32 <code>use v6.e.PREVIEW</code> test files (<code>*-6e.t</code>, <code>snip.t</code>, <code>format.t</code>,</li></ul></ul>
 <p>    <code>sprintf-*.t</code>, <code>multislice-*.t</code>, <code>hyperslice.t</code>, …).</p>
 <hr>
-<h2 id="4-new-syntax">4. New syntax</h2>
-<h3 id="prefix-is-defined">prefix <code>//</code> — "is defined"</h3>
+<h2 id="4-new-syntax">4. New syntax <a class="anchor" href="#4-new-syntax" aria-label="link">#</a></h2>
+<h3 id="prefix-is-defined">prefix <code>//</code> — "is defined" <a class="anchor" href="#prefix-is-defined" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> //<span class="mi">42</span>, <span class="s">&quot; &quot;</span>, <span class="sr">//</span><span class="nb">Any</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>Null regex not allowed. Please use .comb if you wanted…</code> — <code>//</code> is an empty regex</td></tr>
 <tr><td>6.e</td><td><code>True False</code></td></tr></table></div>
-<h3 id="term-nano">term <code>nano</code></h3>
+<h3 id="term-nano">term <code>nano</code> <a class="anchor" href="#term-nano" aria-label="link">#</a></h3>
 <p>Nanoseconds, as an <code>Int</code>, next to the existing <code>time</code> and <code>now</code>.</p>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="n">nano</span> ~~ <span class="nb">Int</span>;   <span class="c1"># 6.d: compile error   6.e: True</span></code></pre>
-<h3 id="q-o-q-format-a-format-literal"><code>q:o</code> / <code>q:format</code> — a <code>Format</code> literal</h3>
+<h3 id="q-o-q-format-a-format-literal"><code>q:o</code> / <code>q:format</code> — a <code>Format</code> literal <a class="anchor" href="#q-o-q-format-a-format-literal" aria-label="link">#</a></h3>
 <p>A compile-time-parsed <code>sprintf</code> template that is a callable object.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$f</span> := <span class="s">q:o/%5s/</span>;      <span class="c1"># or q:format/%5s/</span>
 <span class="nb">say</span> <span class="nv">$f</span>.^<span class="n">name</span>;           <span class="c1"># Format</span>
@@ -67,12 +67,12 @@
 <span class="nb">say</span> (<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>).<span class="n">fmt</span>(<span class="s">q:o/%3d/</span>);   <span class="c1"># &quot;  1   2   3&quot;</span></code></pre>
 <p>In <strong>Rakudo this needs the RakuAST frontend as well as 6.e</strong> — <code>q:o</code> is only in <code>src/Raku/Grammar.nqp</code>, so <code>RAKUDO_RAKUAST=1 raku …</code> is required; without it you get <code>Unrecognized adverb: :o</code> even under 6.e. The <code>Format</code> type itself is available under plain 6.e (<code>Format.new("%5s")("hi")</code> → <code>"   hi"</code>). Raku++ has both without an environment variable.</p>
 <p><code>.fmt(Format)</code> candidates were added to <code>Bag</code>, <code>BagHash</code>, <code>List</code>, <code>Map</code>, <code>Mix</code>, <code>MixHash</code>, <code>Pair</code>, <code>Seq</code>, <code>Set</code>, <code>SetHash</code>.</p>
-<h3 id="rakuast"><code>RakuAST</code></h3>
+<h3 id="rakuast"><code>RakuAST</code> <a class="anchor" href="#rakuast" aria-label="link">#</a></h3>
 <p>The <code>RakuAST::</code> package is available under 6.e without a pragma; under 6.d it requires <code>use experimental :rakuast</code>.</p>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="n">RakuAST::IntLiteral</span>.<span class="nb">new</span>(<span class="mi">42</span>).<span class="n">DEPARSE</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>Use of RakuAST is experimental; please 'use experimental :rakuast;'</code></td></tr>
 <tr><td>6.e</td><td><code>42</code></td></tr></table></div>
-<h3 id="multislices-and-hyperslices">Multislices and hyperslices</h3>
+<h3 id="multislices-and-hyperslices">Multislices and hyperslices <a class="anchor" href="#multislices-and-hyperslices" aria-label="link">#</a></h3>
 <p><code>@a[0;1;2]</code> exists in 6.d, but 6.e adds the <em>slipped</em> form — a list of indices spliced in with <code>||</code> — and the <code>{**}</code> hyperslice over nested associatives.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = [[<span class="mi">1</span>,<span class="mi">2</span>],[<span class="mi">3</span>,<span class="mi">4</span>]],; <span class="k">my</span> <span class="nv">@i</span> = <span class="mi">0</span>,<span class="mi">1</span>,<span class="mi">0</span>;
 <span class="nb">say</span> <span class="nv">@a</span>[||<span class="nv">@i</span>];</code></pre>
@@ -81,12 +81,12 @@
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%h</span> = <span class="n">A</span> =&gt; { <span class="n">B</span> =&gt; <span class="mi">1</span>, <span class="n">C</span> =&gt; <span class="mi">2</span> }, <span class="n">D</span> =&gt; <span class="mi">3</span>;
 <span class="nb">say</span> <span class="nv">%h</span>{**}:<span class="n">k</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">&quot;,&quot;</span>);      <span class="c1"># 6.d: (empty)   6.e: B,C,D</span>
 <span class="nb">say</span> <span class="nv">%h</span>{<span class="s">'A'</span>;<span class="s">'B'</span>};                  <span class="c1"># 6.d: (1)       6.e: 1   ← no longer a 1-element list</span></code></pre>
-<h3 id="unit-sub-foo"><code>unit sub foo;</code></h3>
+<h3 id="unit-sub-foo"><code>unit sub foo;</code> <a class="anchor" href="#unit-sub-foo" aria-label="link">#</a></h3>
 <p>The semicolon form of a routine declaration. 6.c/6.d allowed it only for <code>MAIN</code>; 6.e allows any sub but requires <code>unit</code> scope.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">foo</span>;          <span class="c1"># 6.d: X::UnitScope::Invalid   6.e: X::UnitScope::MustHaveUnit</span>
 <span class="k">unit</span> <span class="k">sub</span> <span class="n">foo</span>;     <span class="c1"># 6.d: error                   6.e: fine</span></code></pre>
 <hr>
-<h2 id="5-new-terms-subs-and-operators">5. New terms, subs and operators</h2>
+<h2 id="5-new-terms-subs-and-operators">5. New terms, subs and operators <a class="anchor" href="#5-new-terms-subs-and-operators" aria-label="link">#</a></h2>
 <p>From <code>src/core.e/additions.rakumod</code> — all of these are compile errors under 6.d:</p>
 <div class="tablewrap"><table><tr><th>Sub</th><th>Example</th><th>6.e output</th></tr><tr><td><code>rotor</code></td><td><code>rotor(2, 1..6)</code></td><td><code>((1 2) (3 4) (5 6))</code></td></tr>
 <tr><td></td><td><code>rotor(2, 1, 1..6)</code></td><td><code>((1 2) (3) (4 5) (6))</code> — cycle first, list last</td></tr>
@@ -99,7 +99,7 @@
 <tr><td>term <code>nano</code></td><td><code>nano</code></td><td><code>Int</code> nanoseconds</td></tr></table></div>
 <p><code>infix:&lt;~&gt;</code> on two <code>Blob</code>s, and <code>infix:&lt;div&gt;</code> / <code>infix:&lt;mod&gt;</code> with native <code>int</code>/<code>uint</code> candidates, are also (re)defined in <code>core.e</code>, but behave the same as 6.d on this Rakudo build.</p>
 <hr>
-<h2 id="6-new-methods">6. New methods</h2>
+<h2 id="6-new-methods">6. New methods <a class="anchor" href="#6-new-methods" aria-label="link">#</a></h2>
 <p>From <code>src/core.e/Fixups.rakumod</code>. All of these are <code>No such method</code> under 6.d.</p>
 <div class="tablewrap"><table><tr><th>Method</th><th>Example</th><th>6.e</th></tr><tr><td><code>Any.snip</code></td><td><code>(1,2,3,4,5).snip(* &lt; 3)</code></td><td><code>((1 2) (3 4 5))</code></td></tr>
 <tr><td><code>Any.snitch</code></td><td><code>my $x = (1,2).snitch</code></td><td>notes, returns unchanged</td></tr>
@@ -118,97 +118,97 @@
 <tr><td><code>Int.uniname</code></td><td>unassigned codepoint</td><td>returns a <code>Failure</code> instead of <code>&lt;unassigned&gt;</code> (source-only: no codepoint in the current UCD tables showed the difference)</td></tr></table></div>
 <p><code>:smartcase</code> means: match case-insensitively <em>unless</em> the needle contains an uppercase character.</p>
 <hr>
-<h2 id="7-changed-behaviour-the-ones-that-bite">7. Changed behaviour — the ones that bite</h2>
+<h2 id="7-changed-behaviour-the-ones-that-bite">7. Changed behaviour — the ones that bite <a class="anchor" href="#7-changed-behaviour-the-ones-that-bite" aria-label="link">#</a></h2>
 <p>These are the items to read before turning 6.e on for existing code.</p>
-<h3 id="sqrt-log-of-a-negative-number-complex"><code>sqrt</code>/<code>log</code> of a negative number → <code>Complex</code></h3>
+<h3 id="sqrt-log-of-a-negative-number-complex"><code>sqrt</code>/<code>log</code> of a negative number → <code>Complex</code> <a class="anchor" href="#sqrt-log-of-a-negative-number-complex" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> (-<span class="mi">4</span>).<span class="nb">sqrt</span>;              <span class="c1"># 6.d: NaN          6.e: 0+2i</span>
 <span class="nb">say</span> (-<span class="mf">4e0</span>).<span class="nb">sqrt</span>;            <span class="c1"># 6.d: NaN          6.e: 0+2i</span>
 <span class="nb">say</span> (-<span class="mf">1e0</span>).<span class="nb">log</span>;             <span class="c1"># 6.d: NaN          6.e: 0+3.141592653589793i</span></code></pre>
-<h3 id="range-bool-is-emptiness-not-has-endpoints"><code>Range.Bool</code> is emptiness, not "has endpoints"</h3>
+<h3 id="range-bool-is-emptiness-not-has-endpoints"><code>Range.Bool</code> is emptiness, not "has endpoints" <a class="anchor" href="#range-bool-is-emptiness-not-has-endpoints" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="k">so</span> (<span class="mi">5</span>.<span class="mf">.1</span>);              <span class="c1"># 6.d: True         6.e: False</span>
 <span class="nb">say</span> <span class="k">so</span> (<span class="s">&quot;b&quot;</span>..<span class="s">&quot;a&quot;</span>);          <span class="c1"># 6.d: True         6.e: False</span></code></pre>
-<h3 id="string-ranges-iterate-by-succ">String ranges iterate by <code>.succ</code></h3>
+<h3 id="string-ranges-iterate-by-succ">String ranges iterate by <code>.succ</code> <a class="anchor" href="#string-ranges-iterate-by-succ" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> (<span class="s">&quot;az&quot;</span>..<span class="s">&quot;bc&quot;</span>).<span class="nb">join</span>(<span class="s">&quot;,&quot;</span>);</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>az,ay,ax,…,ac,bz,by,…</code> — a per-position cross product, 48 elements</td></tr>
 <tr><td>6.e</td><td><code>az,ba,bb,bc</code></td></tr></table></div>
-<h3 id="sprintf-follows-c-on-signs-and-flags"><code>sprintf</code> follows C on signs and flags</h3>
+<h3 id="sprintf-follows-c-on-signs-and-flags"><code>sprintf</code> follows C on signs and flags <a class="anchor" href="#sprintf-follows-c-on-signs-and-flags" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">&quot;%#x&quot;</span>, -<span class="mi">256</span>);        <span class="c1"># 6.d: 0x-100     6.e: -0x100</span>
 <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">&quot;[%+b][% b]&quot;</span>, <span class="mi">5</span>, <span class="mi">5</span>); <span class="c1"># 6.d: [+101][ 101]  6.e: [101][101]</span>
 <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">&quot;[%#.0f]&quot;</span>, <span class="mi">1</span>);       <span class="c1"># 6.d: [1]        6.e: [1.]</span>
 <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">&quot;[%G]&quot;</span>, <span class="n">NaN</span>);        <span class="c1"># 6.d: [NaN]      6.e: [NAN]</span></code></pre>
 <p>(<code>%g</code> keeps <code>NaN</code>; only <code>%G</code> upper-cases. roast covers this in eleven <code>S32-str/sprintf-*.t</code> files, all <code>use v6.e.PREVIEW</code>.)</p>
-<h3 id="a-role-s-submethods-are-no-longer-composed-into-the-class">A role's submethods are no longer composed into the class</h3>
+<h3 id="a-role-s-submethods-are-no-longer-composed-into-the-class">A role's submethods are no longer composed into the class <a class="anchor" href="#a-role-s-submethods-are-no-longer-composed-into-the-class" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">R</span> { <span class="k">submethod</span> <span class="sr">s { 42 } }
 class C does R { }
 say C.new.s;</span></code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>42</code></td></tr>
 <tr><td>6.e</td><td><code>No such method 's' for invocant of type 'C'</code></td></tr></table></div>
 <p><code>BUILD</code>/<code>TWEAK</code>/<code>DESTROY</code> from roles still run — 6.e adds them to the class's BUILDPLAN and finalization list explicitly instead of relying on composition — so object construction is unaffected; only <em>calling</em> a role's submethod as a method on the class changes.</p>
-<h3 id="a-package-no-longer-silently-replaces-an-enclosing-package-of-the-same-name">A package no longer silently replaces an enclosing package of the same name</h3>
+<h3 id="a-package-no-longer-silently-replaces-an-enclosing-package-of-the-same-name">A package no longer silently replaces an enclosing package of the same name <a class="anchor" href="#a-package-no-longer-silently-replaces-an-enclosing-package-of-the-same-name" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">module</span> <span class="n">A::B</span> { <span class="k">class</span> <span class="n">A::B</span> { } }
 <span class="nb">say</span> <span class="n">A::B::A::B</span>.^<span class="n">name</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>Potential difficulties: Declaring class 'A::B' inside an enclosing module of the same name…</code>, then the inner class <em>replaces</em> the outer stash</td></tr>
 <tr><td>6.e</td><td><code>A::B::A::B</code> — it nests, no warning</td></tr></table></div>
-<h3 id="shaped-hashes-default-to-mu">Shaped hashes default to <code>Mu</code></h3>
+<h3 id="shaped-hashes-default-to-mu">Shaped hashes default to <code>Mu</code> <a class="anchor" href="#shaped-hashes-default-to-mu" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%h</span>{<span class="nb">Str</span>}; <span class="nb">say</span> <span class="nv">%h</span><span class="s">&lt;nope&gt;</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;   <span class="c1"># 6.d: Any   6.e: Mu</span></code></pre>
-<h3 id="placeholder-is-per-block">Placeholder <code>@_</code> is per-block</h3>
+<h3 id="placeholder-is-per-block">Placeholder <code>@_</code> is per-block <a class="anchor" href="#placeholder-is-per-block" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">f</span>(*<span class="nv">@_</span>) { <span class="k">my</span> <span class="nv">&amp;c</span> = { <span class="nv">@_</span>.<span class="nb">elems</span> }; <span class="nb">say</span> <span class="n">c</span>(<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>) }; <span class="n">f</span>(<span class="mi">7</span>,<span class="mi">7</span>,<span class="mi">7</span>,<span class="mi">7</span>);</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>Too many positionals passed; expected 0 or 1 arguments but got 3</code> — the inner block's <code>@_</code> is the enclosing routine's</td></tr>
 <tr><td>6.e</td><td><code>3</code> — each block gets its own implicit <code>*@_</code></td></tr></table></div>
-<h3 id="pseudo-packages-return-failure-and-lexical-is-stricter">Pseudo-packages return <code>Failure</code>, and <code>LEXICAL::</code> is stricter</h3>
+<h3 id="pseudo-packages-return-failure-and-lexical-is-stricter">Pseudo-packages return <code>Failure</code>, and <code>LEXICAL::</code> is stricter <a class="anchor" href="#pseudo-packages-return-failure-and-lexical-is-stricter" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$r</span> = <span class="n">MY::</span>&lt;<span class="nv">$nosuchvar</span>&gt;; <span class="nb">say</span> <span class="nv">$r</span>.^<span class="n">name</span>;   <span class="c1"># 6.d: Any   6.e: Failure</span></code></pre>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$*dyn</span> = <span class="mi">42</span>; <span class="k">sub</span> <span class="n">f</span> { <span class="nb">say</span> <span class="n">LEXICAL::</span>&lt;<span class="nv">$*dyn</span>&gt; }; <span class="n">f</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>42</code></td></tr>
 <tr><td>6.e</td><td><code>Cannot access '$*dyn' through LEXICAL, because it is not declared as lexical</code></td></tr></table></div>
 <p>Per the roast announcement, 6.e also specifies that <code>LEXICAL::</code> sees dynamics from the caller chain, <code>SETTING::</code> sees symbols from <em>all</em> available <code>CORE</code>s, and binding works on every pseudo-package.</p>
-<h3 id="grammar-parse-fails-instead-of-returning-nil"><code>Grammar.parse</code> fails instead of returning <code>Nil</code></h3>
+<h3 id="grammar-parse-fails-instead-of-returning-nil"><code>Grammar.parse</code> fails instead of returning <code>Nil</code> <a class="anchor" href="#grammar-parse-fails-instead-of-returning-nil" aria-label="link">#</a></h3>
 <p>6.e gives grammars a new base class (<code>src/core.e/Grammar.rakumod</code>), so a failed parse carries an <code>X::Syntax::Confused</code> with <code>pre</code>/<code>post</code> context:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">grammar</span> <span class="n">G</span> { <span class="k">token</span> <span class="n">TOP</span> { \<span class="n">d</span>+ } }; <span class="nb">say</span> <span class="n">G</span>.<span class="n">parse</span>(<span class="s">&quot;abc&quot;</span>).^<span class="n">name</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>Nil</code> (this page originally said <code>Any</code> — that is what you see after <code>my $r = G.parse("abc")</code>, where the container defaults the <code>Nil</code>)</td></tr>
 <tr><td>6.e</td><td><code>Failure</code></td></tr></table></div>
 <p>6.e also gives grammars a private default-parent HOW rather than binding the name <code>Grammar</code> itself, which is what roast <code>S05-grammar/namespace-6e.t</code> covers (<code>grammar Grammar { }</code>; this Rakudo accepts it under 6.d too).</p>
-<h3 id="splice-can-insert-an-itemized-array-as-one-element"><code>splice</code> can insert an itemized array as one element</h3>
+<h3 id="splice-can-insert-an-itemized-array-as-one-element"><code>splice</code> can insert an itemized array as one element <a class="anchor" href="#splice-can-insert-an-itemized-array-as-one-element" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>; <span class="nv">@a</span>.<span class="nb">splice</span>(<span class="mi">1</span>,<span class="mi">1</span>,$[<span class="mi">8</span>,<span class="mi">9</span>]); <span class="nb">say</span> <span class="nv">@a</span>.<span class="nb">raku</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>[1, 8, 9, 3]</code></td></tr>
 <tr><td>6.e</td><td><code>[1, [8, 9], 3]</code></td></tr></table></div>
-<h3 id="pm-is-no-longer-a-module-file-extension"><code>.pm</code> is no longer a module file extension</h3>
+<h3 id="pm-is-no-longer-a-module-file-extension"><code>.pm</code> is no longer a module file extension <a class="anchor" href="#pm-is-no-longer-a-module-file-extension" aria-label="link">#</a></h3>
 <p><code>CompUnit::Repository::FileSystem</code> looks for <code>.rakumod .pm6 .pm</code> in 6.c/6.d, and only <code>.rakumod .pm6</code> in 6.e.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">OldMod</span>;   <span class="c1"># lib/OldMod.pm</span></code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td>loads, with <code>Saw 1 occurrence of deprecated code</code></td></tr>
 <tr><td>6.e</td><td><code>Could not find OldMod in: …</code></td></tr></table></div>
-<h3 id="subset-records-the-language-version"><code>subset</code> records the language version</h3>
+<h3 id="subset-records-the-language-version"><code>subset</code> records the language version <a class="anchor" href="#subset-records-the-language-version" aria-label="link">#</a></h3>
 <pre class="native-code"><code class="lang-raku"><span class="k">subset</span> <span class="n">Even</span> <span class="n">of</span> <span class="nb">Int</span> <span class="k">where</span> * %% <span class="mi">2</span>; <span class="nb">say</span> <span class="n">Even</span>.^<span class="n">ver</span>;   <span class="c1"># 6.d: 6.d   6.e: 6.e</span></code></pre>
 <hr>
-<h2 id="8-new-errors">8. New errors</h2>
+<h2 id="8-new-errors">8. New errors <a class="anchor" href="#8-new-errors" aria-label="link">#</a></h2>
 <p>Things that were silently accepted and now fail at compile time:</p>
 <div class="tablewrap"><table><tr><th>Code</th><th>6.d</th><th>6.e</th></tr><tr><td><code>/&lt;|f&gt; abc/</code></td><td>matches (unknown boundary is a no-op)</td><td><code>Unrecognized regex boundary '&lt;|f&gt;'. The known boundaries are '&lt;|w&gt;' (word) and '&lt;|c&gt;' (codepoint).</code></td></tr>
 <tr><td><code>macro m() { … }</code></td><td>works under <code>use experimental :macros</code></td><td><code>Experimental macros are no longer supported in Raku 6.e.</code></td></tr>
 <tr><td><code>sub foo;</code></td><td><code>X::UnitScope::Invalid</code> (only <code>MAIN</code> allowed)</td><td><code>X::UnitScope::MustHaveUnit</code> — needs <code>unit sub foo;</code></td></tr></table></div>
 <hr>
-<h2 id="9-deprecations">9. Deprecations</h2>
+<h2 id="9-deprecations">9. Deprecations <a class="anchor" href="#9-deprecations" aria-label="link">#</a></h2>
 <p><code>is revision-gated("6.e")</code> candidates in <code>src/core.c/io_operators.rakumod</code> keep the old forms working but emit a deprecation notice at exit, and add single-path candidates:</p>
 <pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nb">unlink</span>(<span class="s">&quot;/tmp/no-such-file-abc123&quot;</span>).<span class="nb">raku</span>;</code></pre>
 <div class="tablewrap"><table><tr><td>6.d</td><td><code>["/tmp/no-such-file-abc123"]</code> — list of paths that worked</td></tr>
 <tr><td>6.e</td><td><code>Bool::True</code> — one path, one boolean</td></tr></table></div>
 <p>The same applies to <code>rmdir</code>, <code>chown</code>, and <code>chmod</code> (which additionally gains <code>chmod($path, :$mode)</code> and deprecates <code>chmod($mode, @paths)</code>). Multi-path use is deprecated in favour of <code>@paths.grep(*.IO.unlink)</code>.</p>
 <hr>
-<h2 id="10-declared-in-core-e-but-not-observably-different-yet">10. Declared in <code>core.e</code>, but not observably different (yet)</h2>
+<h2 id="10-declared-in-core-e-but-not-observably-different-yet">10. Declared in <code>core.e</code>, but not observably different (yet) <a class="anchor" href="#10-declared-in-core-e-but-not-observably-different-yet" aria-label="link">#</a></h2>
 <p>Worth knowing so you do not go looking for a change that is not there. On Rakudo 2026.08 these behave identically under 6.d and 6.e, either because the fix was made unconditionally or because the <code>core.e</code> version is a re-implementation:</p>
 <ul><li><code>fail</code> with no arguments picking up the exception from <code>$!</code> (roast tests it in <code>S04-exceptions/fail-6e.t</code>, but 6.d does it too).</li><li><code>1 div 0</code> returning a <code>Failure</code>. (<code>1 mod 0</code> does not belong on this list and never did: under 6.d it throws on the spot — roast pins that — while under 6.e it returns a <code>Failure</code> like <code>div</code>. An observable 6.d/6.e difference, measured on 2026.08.)</li><li><code>Blob ~ Blob</code> concatenation.</li><li><code>.are</code> — often listed as 6.e, but it lives in <code>core.c</code> and works in 6.d.</li><li>A role's <code>TWEAK</code> running on construction (same result, different mechanism).</li><li><code>Int.uniname</code> on the codepoints tested here (no unassigned codepoint in the current UCD tables produced a difference).</li></ul>
 <hr>
-<h2 id="11-how-rakudo-implements-this">11. How Rakudo implements this</h2>
+<h2 id="11-how-rakudo-implements-this">11. How Rakudo implements this <a class="anchor" href="#11-how-rakudo-implements-this" aria-label="link">#</a></h2>
 <p>Useful when you want to check something yourself rather than trust a list:</p>
 <ul><li>The revision is an integer: <strong>1 = 6.c, 2 = 6.d, 3 = 6.e</strong>, read as <code>nqp::getcomp('Raku').language_revision</code>.</li><li>Each revision has a <em>nested setting</em>: <code>CORE.c</code> → <code>CORE.d</code> → <code>CORE.e</code>, built from <code>src/core.c/</code>, <code>src/core.d/</code>, <code>src/core.e/</code>. <code>core.e</code> consists almost entirely of <code>augment</code>s, so 6.e is 6.d plus a delta rather than a fork.</li><li>Per-candidate gating uses the <code>is revision-gated("6.e")</code> trait, so a multi can have one body for 6.c and another for 6.e with the dispatcher choosing by the caller's revision.</li><li>Syntax gating is inline in the grammars (<code>&lt;?{ nqp::getcomp('Raku').language_revision &gt;= 3 }&gt;</code>).</li><li>Types remember the revision they were declared under (<code>Metamodel::LanguageRevision</code>, <code>.^ver</code>), which is how a 6.d class composing a 6.e role still gets the right submethod behaviour.</li></ul>
 <p>To find every gate in a rakudo checkout:</p>
 <pre class="native-code"><code class="lang-bash">grep -rn "language_revision" src/ | grep -w 3</code></pre>
 <hr>
-<h2 id="12-raku-status">12. Raku++ status</h2>
+<h2 id="12-raku-status">12. Raku++ status <a class="anchor" href="#12-raku-status" aria-label="link">#</a></h2>
 <p>Raku++ implements 6.d, and 6.e when a program asks for it with the pragma — <code>rakupp --version</code> says exactly that. The revision is a property of the <em>code</em>, not of the process: a module compiled under <code>use v6.e.PREVIEW</code> keeps 6.e semantics when a 6.d program calls it, and a 6.d mainline does not acquire 6.e semantics by loading a 6.e module. Rakudo differs on that second half — <code>use</code>-ing a 6.e module there loads <code>CORE.e</code> into the process, so the importing 6.d mainline starts returning <code>Complex</code> from <code>sqrt</code> as well, including on lines above the <code>use</code>. That divergence is deliberate.</p>
 <p>The scoreboard is the support matrix at <strong><a href="https://raku.online/spec/6e/">raku.online/spec/6e</a></strong>, which runs every change on this page four ways — Rakudo 6.d, Rakudo 6.e, Raku++ 6.d, Raku++ 6.e — and scores each from those outputs rather than from a claim. As of this writing (Rakudo 2026.08) it reads <strong>52 of 53 full, 0 divergent, 0 partial, 1 not implemented</strong>, with 47 of them gated on the pragma.</p>
 <p>Four things are deliberately not done, and are worth knowing rather than discovering:</p>
 <ul><li><strong><code>RakuAST</code></strong> is a separate campaign, postponed on purpose. It is the one row the matrix scores as not implemented.</li><li><strong><code>.succ</code> string ranges</strong> are 6.e's behaviour under <em>both</em> revisions here. Gating means falling back to 6.d's answer, and 6.d's answer is <code>SEQUENCE</code>'s per-position cross product — <code>("az".."bc")</code> is 48 elements there — which this engine does not implement. It only differs for multi-character endpoints; <code>'a'..'z'</code> goes through <code>CharFromTo</code> in both revisions and never differed.</li><li><strong>A same-named package inside a package</strong> nests here under both revisions. Rakudo's 6.d silently replaces the outer module in the stash, which its own warning calls "legacy behavior specific to Raku 6.d and earlier"; being bug-compatible with a pattern nobody should use is worth less than the risk.</li><li><strong>Blocks accept extra positionals</strong> in every revision here, so the one 6.e <code>@_</code> case that turns on arity — a block called with three arguments inside a routine — still answers instead of dying. That is not a 6.e matter at all: <code>my &amp;c = { 42 }; c(1,2,3)</code> runs here and dies in Rakudo under 6.d too.</li></ul>
 <p>Three general divergences turned up while this page was being verified, none of them about 6.e, all filed on their own: block arity is not checked at all, <code>Instant.from-posix(0)</code> is ten seconds off, and <code>.subparse</code> on a failed match answers <code>Nil</code> where Rakudo answers with the grammar object.</p>
-<h2 id="13-checking-any-of-this-yourself">13. Checking any of this yourself</h2>
+<h2 id="13-checking-any-of-this-yourself">13. Checking any of this yourself <a class="anchor" href="#13-checking-any-of-this-yourself" aria-label="link">#</a></h2>
 <p>Every line above came out of the same runs — each snippet on both engines under both revisions — which is two commands per engine:</p>
 <pre class="native-code"><code class="lang-bash">raku -e 'CODE'</code></pre>
 <pre class="native-code"><code class="lang-bash">raku -e 'use v6.e.PREVIEW; CODE'</code></pre>

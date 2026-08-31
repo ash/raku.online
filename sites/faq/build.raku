@@ -104,10 +104,15 @@ sub anchor(Str $text --> Str) {
 }
 
 
+# Every section carries a link to itself, shown when the heading is hovered:
+# base.css already styles `.anchor` that way, and the tour, the spec, the module
+# handbook and the cookbook all emit this exact markup. An answer is a thing
+# people quote a section of.
 sub heading(Int $level, Str $text --> Str) {
     my $id = anchor($text);
     @TOC.push([$level, $id, $text]) if $level <= 2;
-    "<h$level id=\"$id\">" ~ inline($text) ~ "</h$level>"
+    "<h$level id=\"$id\">" ~ inline($text)
+      ~ " <a class=\"anchor\" href=\"#$id\" aria-label=\"link\">#</a></h$level>"
 }
 
 
