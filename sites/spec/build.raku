@@ -613,6 +613,10 @@ sub render-conformance(%site, %by-cat --> Str) {
 # The dashboard — Raku++ by the numbers over releases, rendered client-side by
 # dashboard.js from the committed src/data/dashboard.json snapshot (mined from
 # the repos' own docs by tools/gen-dashboard.raku; re-run it at each release).
+# Its five section headings carry an id and the `#` link base.css shows on hover,
+# the same markup the tour, the FAQ, the cookbook and the spec's own pages emit —
+# a chart is a thing people link someone else to. `optbench` keeps the id it has
+# always had, so links already written to it still resolve.
 sub render-dashboard(%site, %by-cat --> Str) {
     my $body = q:to/BODY/;
     <div class="conf-head">
@@ -623,7 +627,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
       the repos' own docs; nothing is measured at build time.</p>
       <div class="conf-stats" id="dash-tiles"></div>
     </div>
-    <h2 class="conf-areas-title">Roast <span>— tests passing and fully-passing files, per release</span></h2>
+    <h2 class="conf-areas-title" id="roast">Roast <span>— tests passing and fully-passing files, per release</span> <a class="anchor" href="#roast" aria-label="link">#</a></h2>
     <p class="dash-note">A file counts as <em>fully passing</em> only when every
     single test in it passes — one failure anywhere and the whole file drops out
     of the count. That strict bar is why the right-hand number is small next to
@@ -633,7 +637,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
     defined (earlier percentages used a different counting method and would not
     be comparable).</p>
     <div class="dash-bench" id="dash-roast" aria-live="polite">Loading…</div>
-    <h2 class="conf-areas-title">Documentation conformance <span>— every documented example, run three ways</span></h2>
+    <h2 class="conf-areas-title" id="documentation-conformance">Documentation conformance <span>— every documented example, run three ways</span> <a class="anchor" href="#documentation-conformance" aria-label="link">#</a></h2>
     <p class="dash-note">The same coloured verdicts the
     <a href="{$BASE}/conformance/">conformance page</a> shows as dots, counted over
     time. <em>ok</em> is the one to watch: documentation, Rakudo and Raku++ all
@@ -644,14 +648,14 @@ sub render-dashboard(%site, %by-cat --> Str) {
     the comparison, not one release, so the line is only as dense as the
     snapshot has been taken.</p>
     <div class="dash-chart" id="dash-conformance"></div>
-    <h2 class="conf-areas-title">Ecosystem <span>— how many modules run under Raku++</span></h2>
+    <h2 class="conf-areas-title" id="ecosystem">Ecosystem <span>— how many modules run under Raku++</span> <a class="anchor" href="#ecosystem" aria-label="link">#</a></h2>
     <p class="dash-note">The whole Raku ecosystem — every distribution in the
     REA index, latest release of each — swept end to end: a dist counts when
     <em>its own</em> test suite passes under Raku++.
     <a href="https://raku.online/modules/ecosystem/">Every distribution and its
     result, listed →</a></p>
     <div class="dash-chart" id="dash-modules"></div>
-    <h2 class="conf-areas-title">Benchmarks <span>— kernel wall time in ms, lower is better</span></h2>
+    <h2 class="conf-areas-title" id="benchmarks">Benchmarks <span>— kernel wall time in ms, lower is better</span> <a class="anchor" href="#benchmarks" aria-label="link">#</a></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++
     interpreter, the same source compiled to a native binary with
     <code>--exe</code>, and Rakudo as the reference — plus, on
@@ -681,7 +685,7 @@ sub render-dashboard(%site, %by-cat --> Str) {
     ordinary sitting-to-sitting noise.)</p>
     <div class="dash-bench" id="dash-bench"></div>
 
-    <h2 id="optbench">The <code>-O</code> optimizer</h2>
+    <h2 id="optbench">The <code>-O</code> optimizer <a class="anchor" href="#optbench" aria-label="link">#</a></h2>
     <p class="dash-note">A different comparison from the kernels above: the
     same five programs of <a
     href="https://github.com/ash/rakupp/tree/main/tools/optbench">tools/optbench/</a>
