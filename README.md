@@ -35,7 +35,7 @@ program still runs in a fraction of a second:
 | `/spec/rules/` | Raku Rules — the exhaustive rulebook | generated from `sites/spec/` |
 | `/grid/` | Rakugrid, browsable — every recorded test on every engine, with the divergences, rulings and crashes | generated from `sites/grid/` |
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
-| `/cookbook/` | The Cookbook — whole tasks worked end to end, with the programs at `/cookbook/files/`. The site bar calls it **Cook** | generated from `sites/cookbook/` |
+| `/cookbook/` | The Cookbook — whole tasks worked end to end; the programs are linked to the rakupp repo, not copied here. The site bar calls it **Cook** | generated from `sites/cookbook/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
 | `/ecosystem/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/ecosystem/` |
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |

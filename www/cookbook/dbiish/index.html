@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookbook — DBIish: one program, three databases</title>
+<script>window.__SITE_BASE='/cookbook';</script>
+<script src="/theme/boot.js?v=3f3fd7a4"></script>
+<link rel="stylesheet" href="/theme/base.css?v=3f3fd7a4">
+<link rel="stylesheet" href="/theme/shell.css?v=3f3fd7a4">
+<link rel="stylesheet" href="/theme/cook.css?v=3f3fd7a4">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/cookbook/">← All recipes</a></p>
+<h1>DBIish: one program, three databases</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#getting-dbiish">Getting DBIish</a></li><li><a href="#sqlite">SQLite</a></li><li><a href="#mysql">MySQL</a></li><li><a href="#postgresql">PostgreSQL</a></li><li><a href="#what-actually-differs">What actually differs</a></li><li><a href="#getting-rows-out">Getting rows out</a></li><li><a href="#three-things-that-bite">Three things that bite</a></li><li><a href="#when-a-driver-cannot-find-its-library">When a driver cannot find its library</a></li><li><a href="#setting-up-a-server-to-run-these-against">Setting up a server to run these against</a></li><li><a href="#closing-things">Closing things</a></li></ul></nav>
+<p>Reading and writing a table with <a href="https://raku.land/zef:raku-community-modules/DBIish">DBIish</a>, the ecosystem's database interface, against SQLite, MySQL and PostgreSQL.</p>
+<p>Every program on this page was run under Raku++ against a real server of each kind. <strong>All three print the same four lines</strong>, and the differences between them come to two: the arguments to <code>connect</code>, and the two words that spell an auto-incrementing primary key.</p>
+<h2 id="getting-dbiish">Getting DBIish <a class="anchor" href="#getting-dbiish" aria-label="link">#</a></h2>
+<p>One distribution serves all three engines:</p>
+<pre class="native-code"><code class="lang-sh">rakupp install DBIish</code></pre>
+<p>The client library is a separate matter — DBIish calls it through NativeCall and does not ship it. <code>libsqlite3</code> is already on macOS and on most Linux systems; MySQL and PostgreSQL want <code>libmysqlclient</code> and <code>libpq</code>, which arrive with the server packages or with a client-only package.</p>
+<h2 id="sqlite">SQLite <a class="anchor" href="#sqlite" aria-label="link">#</a></h2>
+<p>SQLite needs no server and no credentials. The database is a file, and the driver creates it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">DBIish</span>;
+
+<span class="k">my</span> <span class="nv">$dbfile</span> = <span class="s">'test_names.sqlite3'</span>;
+
+<span class="k">my</span> <span class="nv">$dbh</span> = <span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'SQLite'</span>, :<span class="n">database</span>(<span class="nv">$dbfile</span>));
+
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'drop table if exists names'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">q:to/SQL/</span>);
+    <span class="n">create</span> <span class="n">table</span> <span class="n">names</span> (
+        <span class="n">id</span>   <span class="n">integer</span> <span class="n">primary</span> <span class="n">key</span> <span class="n">autoincrement</span>,
+        <span class="n">name</span> <span class="n">varchar</span>(<span class="mi">50</span>)
+    )
+    <span class="n">SQL</span>
+
+<span class="k">my</span> <span class="nv">$ins</span> = <span class="nv">$dbh</span>.<span class="n">prepare</span>(<span class="s">'insert into names (name) values (?)'</span>);
+<span class="nv">$ins</span>.<span class="n">execute</span>(<span class="s">&quot;My name is nr. $_&quot;</span>) <span class="k">for</span> <span class="mi">1</span> .. <span class="mi">3</span>;
+
+<span class="k">my</span> <span class="nv">$sth</span> = <span class="nv">$dbh</span>.<span class="n">prepare</span>(<span class="s">'select id, name from names order by id'</span>);
+<span class="nv">$sth</span>.<span class="n">execute</span>;
+
+<span class="k">my</span> <span class="nv">@rows</span> = <span class="nv">$sth</span>.<span class="n">allrows</span>;
+<span class="nb">say</span> <span class="s">&quot;{@rows.elems} rows found&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;id: {$_[0]}, name: {$_[1]}&quot;</span> <span class="k">for</span> <span class="nv">@rows</span>;
+
+<span class="nv">$sth</span>.<span class="n">dispose</span>;
+<span class="nv">$ins</span>.<span class="n">dispose</span>;
+<span class="nv">$dbh</span>.<span class="n">dispose</span>;
+<span class="nv">$dbfile</span>.<span class="nb">IO</span>.<span class="nb">unlink</span>;</code></pre>
+<pre class="native-code"><code class="lang-output">3 rows found
+id: 1, name: My name is nr. 1
+id: 2, name: My name is nr. 2
+id: 3, name: My name is nr. 3</code></pre>
+<p>The whole file is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/dbiish/names-sqlite.raku">names-sqlite.raku</a>.</p>
+<h2 id="mysql">MySQL <a class="anchor" href="#mysql" aria-label="link">#</a></h2>
+<p>Same program. The connection now needs a server, and <code>int auto_increment</code> replaces <code>integer … autoincrement</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$dbh</span> = <span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'mysql'</span>,
+    :<span class="n">host</span>&lt;<span class="mf">127.0</span>.<span class="mf">0.1</span>&gt;, :<span class="n">port</span>(<span class="mi">3306</span>),
+    :<span class="n">database</span><span class="s">&lt;raku_recipes&gt;</span>, :<span class="n">user</span><span class="s">&lt;raku_user&gt;</span>, :<span class="n">password</span><span class="s">&lt;raku_pass&gt;</span>);
+
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'drop table if exists names'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">q:to/SQL/</span>);
+    <span class="n">create</span> <span class="n">table</span> <span class="n">names</span> (
+        <span class="n">id</span>   <span class="nb">int</span> <span class="n">auto_increment</span> <span class="n">primary</span> <span class="n">key</span>,
+        <span class="n">name</span> <span class="n">varchar</span>(<span class="mi">50</span>)
+    )
+    <span class="n">SQL</span></code></pre>
+<p>Everything from <code>prepare</code> onwards is unchanged, and so is the output. The full program is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/dbiish/names-mysql.raku">names-mysql.raku</a>; the same driver serves MariaDB.</p>
+<h2 id="postgresql">PostgreSQL <a class="anchor" href="#postgresql" aria-label="link">#</a></h2>
+<p>The driver is <code>Pg</code>, and the auto-incrementing key is a <code>serial</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$dbh</span> = <span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'Pg'</span>,
+    :<span class="n">host</span><span class="s">&lt;localhost&gt;</span>, :<span class="n">port</span>(<span class="mi">5432</span>),
+    :<span class="n">database</span><span class="s">&lt;raku_recipes&gt;</span>, :<span class="n">user</span><span class="s">&lt;raku_user&gt;</span>, :<span class="n">password</span><span class="s">&lt;raku_pass&gt;</span>);
+
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'drop table if exists names'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">q:to/SQL/</span>);
+    <span class="n">create</span> <span class="n">table</span> <span class="n">names</span> (
+        <span class="n">id</span>   <span class="n">serial</span> <span class="n">primary</span> <span class="n">key</span>,
+        <span class="n">name</span> <span class="n">varchar</span>(<span class="mi">50</span>)
+    )
+    <span class="n">SQL</span></code></pre>
+<p>Again the rest is identical: <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/dbiish/names-pg.raku">names-pg.raku</a>.</p>
+<p>One thing to expect from PostgreSQL and not from the other two — dropping a table that is not there is a notice, and libpq writes notices to <strong>stderr</strong>:</p>
+<pre class="native-code"><code class="lang-output">NOTICE:  table "names" does not exist, skipping</code></pre>
+<p>The program's stdout is unaffected, which is why all three still produce identical output.</p>
+<h2 id="what-actually-differs">What actually differs <a class="anchor" href="#what-actually-differs" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th></th><th>SQLite</th><th>MySQL</th><th>PostgreSQL</th></tr><tr><td>driver name</td><td><code>SQLite</code></td><td><code>mysql</code></td><td><code>Pg</code></td></tr>
+<tr><td>server</td><td>none — a file</td><td>host, port, user, password</td><td>host, port, user, password</td></tr>
+<tr><td>auto-increment key</td><td><code>integer primary key autoincrement</code></td><td><code>int auto_increment primary key</code></td><td><code>serial primary key</code></td></tr>
+<tr><td>placeholder written</td><td><code>?</code></td><td><code>?</code></td><td><code>?</code></td></tr>
+<tr><td>placeholder sent</td><td><code>?</code></td><td><code>?</code></td><td><code>$1</code>, <code>$2</code> …</td></tr>
+<tr><td><code>$sth.rows</code> after SELECT</td><td><code>0</code>, and a warning</td><td><code>3</code></td><td><code>3</code></td></tr>
+<tr><td>notices</td><td>none</td><td>none</td><td>on stderr</td></tr></table></div>
+<p>The placeholder row is the useful one: PostgreSQL's wire protocol numbers its parameters, but the driver rewrites <code>?</code> on the way to <code>PQprepare</code>, so one statement string works on all three.</p>
+<h2 id="getting-rows-out">Getting rows out <a class="anchor" href="#getting-rows-out" aria-label="link">#</a></h2>
+<p>The four shapes DBIish offers are the same on every driver. Against the table above they give:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nv">$sth</span>.<span class="n">allrows</span>;                  <span class="c1"># [[1, &quot;nr. 1&quot;], [2, &quot;nr. 2&quot;], [3, &quot;nr. 3&quot;]]</span>
+<span class="nv">$sth</span>.<span class="n">allrows</span>(:<span class="n">array-of-hash</span>);  <span class="c1"># ({:id(1), :name(&quot;nr. 1&quot;)}, …)  — a Seq</span>
+<span class="nv">$sth</span>.<span class="n">row</span>;                      <span class="c1"># [1, &quot;nr. 1&quot;]                   — one row</span>
+<span class="nv">$sth</span>.<span class="n">row</span>(:<span class="n">hash</span>);               <span class="c1"># {:id(1), :name(&quot;nr. 1&quot;)}</span></code></pre>
+<p><code>allrows</code> returns an Array and reads the whole result set; <code>row</code> returns one row at a time and an empty list when there are none left, so it is the one to use on a result set you would rather not hold in memory. Re-run <code>$sth.execute</code> before fetching again.</p>
+<h2 id="three-things-that-bite">Three things that bite <a class="anchor" href="#three-things-that-bite" aria-label="link">#</a></h2>
+<p><strong><code>:database&lt;$file&gt;</code> does not interpolate.</strong> Angle brackets are quote-words, so</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$dbfile</span> = <span class="s">'test_names.sqlite3'</span>;
+<span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'SQLite'</span>, :<span class="n">database</span>&lt;<span class="nv">$dbfile</span>&gt;);   <span class="c1"># wrong</span></code></pre>
+<p>opens a database literally called <code>$dbfile</code> — and, since that name has no extension, the SQLite driver appends one, leaving a <code>$dbfile.sqlite3</code> in the directory. Write <code>:database($dbfile)</code>. Nothing complains, which is what makes this one worth knowing.</p>
+<p><strong><code>$sth.rows</code> is not the row count of a SELECT.</strong> SQLite cannot supply one, and says so on stderr:</p>
+<pre class="native-code"><code class="lang-output">SQLite rows() result may not be accurate. See SQLite rows section of README for details.</code></pre>
+<p>It then answers <code>0</code> while the rows themselves come back perfectly well. MySQL and PostgreSQL do answer <code>3</code>, so a program that reads <code>.rows</code> works on two engines out of three — the failure is silent apart from that warning. Use <code>@rows.elems</code> after <code>allrows</code>.</p>
+<p>It is only the SELECT that SQLite cannot count. After an INSERT, UPDATE or DELETE, <code>.rows</code> is the number of rows affected on all three: an <code>update</code> touching three of four rows answers <code>3</code> under every driver.</p>
+<p><strong>Do not interpolate values into SQL.</strong> <code>"… values ('$name')"</code> builds a different statement for every value, breaks on an apostrophe, and is the injection hole. A <code>?</code> and a value passed to <code>execute</code> avoid all three, and let the server reuse the prepared plan.</p>
+<h2 id="when-a-driver-cannot-find-its-library">When a driver cannot find its library <a class="anchor" href="#when-a-driver-cannot-find-its-library" aria-label="link">#</a></h2>
+<p>DBIish loads the client library through NativeCall at connect time, so this is where most first runs stop. The message has three shapes and they mean different things.</p>
+<p><strong>A name and a list of paths tried</strong> — the library exists but is not where the loader looks. Homebrew's <code>postgresql@17</code> is keg-only, so libpq stays inside the keg and never reaches <code>/usr/local/lib</code>:</p>
+<pre class="native-code"><code class="lang-output">DBIish: DBDish::Pg needs 'pq', not found.
+	Detail: Cannot locate native library 'pq': dlopen(pq, 0x0009): tried: 'pq' (no such file), '/System/Volumes/Preboot/Cryptexes/OSpq' (no such file), '/usr/lib/pq' (no such file, not in dyld cache), 'pq' (no such file)</code></pre>
+<p>There is no <code>DBIISH_PG_LIB</code> to point at it — <code>NativeLibs::Searcher.at-runtime</code> takes a name, not a path — so the library has to become findable instead. For one run, name the directory:</p>
+<pre class="native-code"><code class="lang-sh">DYLD_LIBRARY_PATH=/usr/local/lib/postgresql@17 rakupp names-pg.raku   # LD_LIBRARY_PATH on Linux</code></pre>
+<p>Permanently, put it where the loader already looks: link the keg, or symlink <code>libpq.5.dylib</code> into a directory on the default search path.</p>
+<p><strong>An empty name</strong> — the driver probed and nothing matched. This is MySQL's, and only MySQL's: its driver takes no library path at all but goes by soname, <code>mariadb</code> versions 0 to 4 and then <code>mysqlclient</code> 16 to 21. Homebrew's MySQL 9.7 installs <code>libmysqlclient.24.dylib</code>, outside the range, so there is no candidate and nothing to name:</p>
+<pre class="native-code"><code class="lang-output">DBIish: DBDish::mysql needs '', not found.
+	Detail: Cannot locate symbol 'mysql_init' in native library ''</code></pre>
+<p>Here there <em>is</em> an environment variable, and naming the file stops the guessing:</p>
+<pre class="native-code"><code class="lang-sh">DBIISH_MYSQL_LIB=/usr/local/opt/mysql/lib/libmysqlclient.24.dylib rakupp names-mysql.raku</code></pre>
+<p><strong><code>incompatible architecture</code></strong> — found, and refused. The interpreter and the client library have to match. On a Mac with an Intel Homebrew under <code>/usr/local</code>, <code>libmysqlclient</code> and <code>libpq</code> are x86_64, so an arm64 <code>rakupp</code> cannot open either:</p>
+<pre class="native-code"><code class="lang-output">DBIish: DBDish::Pg needs 'pq', not found.
+	Detail: … (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64'))</code></pre>
+<p>Use the interpreter build that matches the library.</p>
+<p>The catch is that the MySQL driver cannot tell you which of these it hit. A candidate that will not load is simply a candidate that did not match, so an architecture mismatch there prints the same empty-name line as a soname out of range. The PostgreSQL driver quotes dlopen and names the architecture; the MySQL one reports only that the search came up empty, so rule the two out in order — set the variable first, then check the architecture.</p>
+<h2 id="setting-up-a-server-to-run-these-against">Setting up a server to run these against <a class="anchor" href="#setting-up-a-server-to-run-these-against" aria-label="link">#</a></h2>
+<p>The MySQL and PostgreSQL programs expect a database <code>raku_recipes</code> reachable by user <code>raku_user</code> with password <code>raku_pass</code>. To create exactly that:</p>
+<pre class="native-code"><code class="lang-sql">-- PostgreSQL, as a superuser
+CREATE ROLE raku_user LOGIN PASSWORD 'raku_pass';
+CREATE DATABASE raku_recipes OWNER raku_user ENCODING 'UTF8' TEMPLATE template0;</code></pre>
+<pre class="native-code"><code class="lang-sql">-- MySQL, as root
+CREATE DATABASE raku_recipes CHARACTER SET utf8mb4;
+CREATE USER 'raku_user'@'%' IDENTIFIED BY 'raku_pass';
+GRANT ALL PRIVILEGES ON raku_recipes.* TO 'raku_user'@'%';</code></pre>
+<p><code>TEMPLATE template0</code> on the PostgreSQL side is not decoration: a cluster initialised with a C locale will otherwise hand the new database that locale, and text outside ASCII stops round-tripping.</p>
+<p>SQLite needs none of this — the file is the database.</p>
+<h2 id="closing-things">Closing things <a class="anchor" href="#closing-things" aria-label="link">#</a></h2>
+<p><code>dispose</code> releases a statement handle or a connection at a point you choose, rather than whenever the last reference goes away:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nv">$sth</span>.<span class="n">dispose</span>;
+<span class="nv">$dbh</span>.<span class="n">dispose</span>;</code></pre>
+<p>DBIish connects with <code>:RaiseError</code> on by default, so a failed statement throws rather than returning a false value that the next line ignores.</p>
+<footer>
+<span>Every program on this page was run for it, against a real service where the recipe needs one; the output shown is what it printed.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=3f3fd7a4" defer></script>
+</body>
+</html>

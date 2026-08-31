@@ -10,10 +10,12 @@
 # code standing between a typo and a visible page. The renderer is the FAQ
 # generator's, which had already been taught exactly this subset.
 #
-# What is different from the FAQ: a recipe ships PROGRAMS as well as prose, so
-# sync.sh brings the .raku files over too and this copies them to out/files/,
-# where a link in the page can reach them. A reader gets the file rather than a
-# block of text to select.
+# What is different from the FAQ: a recipe ships PROGRAMS as well as prose, and
+# those are not copied here. A link to one resolves to the file in the rakupp
+# repo, where the recipe is written — the reader gets the program under version
+# control, with its history, rather than a copy this site would have to keep in
+# step. sync.sh leaves their names behind in src/programs.txt so a link that no
+# longer names a real file is caught by the build instead of by a reader.
 #
 # Code blocks are static rather than runnable editors. A recipe about DBIish is
 # talking to a database server over a socket, which a browser sandbox cannot do,
@@ -21,9 +23,9 @@
 
 my %SITE;
 my $BASE = '';
-my %TITLES;   # slug => recipe title, so a link to databases.md can name the recipe
+my %TITLES;   # slug => recipe title, so a link to dbiish.md can name the recipe
 my @TOC;      # [level, anchor, text] per heading of the page being rendered
-my %FILES;    # basename => relative target, for links that point at a program
+my %PROGRAMS; # the programs the cookbook ships, path relative to docs/cookbook
 
 # ---- inline formatting ----------------------------------------------------
 
@@ -64,7 +66,7 @@ sub inline(Str $text --> Str) {
     $s
 }
 
-# A link written as [databases.md](databases.md) names a file, which is right in
+# A link written as [dbiish.md](dbiish.md) names a file, which is right in
 # a repo and wrong on a website — use the recipe's own title instead. Text the
 # author actually wrote is left alone. A program's own name IS what the reader
 # wants to see, so a .raku target keeps its filename, minus the directory that
@@ -81,6 +83,12 @@ sub link-text(Str $text, Str $target --> Str) {
 # Where these recipes conceptually live inside the rakupp repo's docs/, which
 # is what a ../ in a link is relative to.
 my constant @HOME-DIR = <cookbook>;
+
+# Where a path written relative to a recipe lands in the rakupp repo, which is
+# the recipe's real home: docs/cookbook/ plus the path as written.
+sub repo-path(Str $t --> Str) {
+    %SITE<docs-base> ~ (|@HOME-DIR, $t).join('/')
+}
 
 sub link-target(Str $t --> Str) {
     return $t if $t.starts-with('http') || $t.starts-with('#');
@@ -100,22 +108,18 @@ sub link-target(Str $t --> Str) {
     }
     # README.md — the index of this cookbook
     return "$BASE/" if $t eq 'README.md';
-    # a program the recipe ships. In the repo it sits in a directory beside the
-    # page (databases/names-pg.raku); here every recipe's files land in one
-    # out/files/, so only the basename survives. A link to a file that was not
-    # synced is left alone rather than pointed at a 404 — sync.sh has the
-    # authoritative list, and the build says which name it could not place.
+    # a program the recipe ships — dbiish/names-pg.raku, a path relative to the
+    # page, which is exactly the path it has in the repo. That is where the link
+    # goes. A name that is not in the manifest is still linked (the reader has
+    # somewhere to go) but the build says so, because it will be a GitHub 404.
     if $t.ends-with('.raku') {
-        my $name = $t.split('/').tail;
-        if %FILES{$name} {
-            return "$BASE/files/$name";
-        }
-        note "link to a program that was not synced: $t";
-        return $t;
+        note "link to a program the cookbook does not ship: $t" unless %PROGRAMS{$t};
+        return repo-path($t);
     }
-    # a directory of programs — the listing under out/files/
+    # a directory of programs. GitHub serves a directory under /tree/, not the
+    # /blob/ that docs-base is written for.
     if $t.ends-with('/') && !$t.starts-with('/') {
-        return "$BASE/files/";
+        return repo-path($t).subst('/blob/', '/tree/');
     }
     # another recipe
     if $t.ends-with('.md') {
@@ -133,10 +137,15 @@ sub anchor(Str $text --> Str) {
 }
 
 
+# Every section carries a link to itself, shown when the heading is hovered:
+# base.css already styles `.anchor` that way, and the tour, the spec and the
+# module handbook all emit this exact markup. A recipe is long enough that
+# people quote a section of it rather than the page.
 sub heading(Int $level, Str $text --> Str) {
     my $id = anchor($text);
     @TOC.push([$level, $id, $text]) if $level <= 2;
-    "<h$level id=\"$id\">" ~ inline($text) ~ "</h$level>"
+    "<h$level id=\"$id\">" ~ inline($text)
+      ~ " <a class=\"anchor\" href=\"#$id\" aria-label=\"link\">#</a></h$level>"
 }
 
 
@@ -385,6 +394,26 @@ sub page(Str $title, Str $body, :$index = False --> Str) {
     HTML
 }
 
+# A moved page, in the shape the rest of the site uses for one: no theme, no
+# shell, nothing to load — a browser follows the refresh, and a crawler is told
+# where the page went by the canonical link. build.sh's sitemap skips these.
+# Braces around every $url on purpose: this is HTML, so a variable is usually
+# followed by a '<', and "$url</title>" interpolates as a subscript.
+sub redirect-page(Str $to --> Str) {
+    my $url = "$BASE/$to/";
+    qq:to/HTML/;
+    <!DOCTYPE html>
+    <html lang="en">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="0; url={$url}">
+    <link rel="canonical" href="https://raku.online{$url}">
+    <title>Moved to raku.online{$url}</title>
+    <p>This recipe lives at <a href="{$url}">raku.online{$url}</a> now.</p>
+    </html>
+    HTML
+}
+
 # ---- build ----------------------------------------------------------------
 
 sub title-of(Str $md --> Str) {
@@ -394,8 +423,8 @@ sub title-of(Str $md --> Str) {
     'Cookbook'
 }
 
-# "Cookbook — one program, three databases" reads well at the top of its own
-# page, but on the index the prefix is noise on every line.
+# "Cookbook — DBIish: one program, three databases" reads well at the top of
+# its own page, but on the index the prefix is noise on every line.
 sub short-title(Str $t --> Str) {
     $t.subst(/ ^ 'Cookbook' \s* [ '—' | '-' ] \s* /, '')
 }
@@ -415,19 +444,13 @@ sub MAIN(Bool :$clean = False) {
     my @files = dir('src/pages').grep({ .IO.f && .Str.ends-with('.md') }).map(*.IO.basename).sort;
     my @slugs = @files.map({ .subst(/ '.md' $ /, '') });
 
-    # The programs, before any page is rendered: a link to one is resolved
-    # against %FILES, so they all have to be placed first.
-    my @programs = 'src/files'.IO.d
-        ?? dir('src/files').grep({ .IO.f && !.IO.basename.starts-with('.') })
-                           .map(*.IO.basename).sort
+    # The programs the cookbook ships, by the path a recipe links them under.
+    # Nothing is copied — this is only so a link that names a file the repo does
+    # not have is reported while the page is being built.
+    my @programs = 'src/programs.txt'.IO.f
+        ?? slurp('src/programs.txt').lines.grep(*.trim.chars)
         !! ();
-    if @programs {
-        mkdir('out/files');
-        for @programs -> $name {
-            copy("src/files/$name", "out/files/$name");
-            %FILES{$name} = "$BASE/files/$name";
-        }
-    }
+    %PROGRAMS{$_} = True for @programs;
 
     # configured order first, then anything new that has not been placed yet
     my @ordered = @(%SITE<order>).grep(-> $s { so @slugs.first(* eq $s) });
@@ -467,35 +490,25 @@ sub MAIN(Bool :$clean = False) {
           ~ ($blurb ?? '<br><span class="cook-blurb">' ~ esc($blurb) ~ '</span>' !! '') ~ '</p>'
     }).join("\n");
 
-    # The programs are the point of the section, so the index says where they
-    # all are rather than leaving /cookbook/files/ reachable only by guessing.
-    my $files-link = @programs
-        ?? '<p class="cook-all"><a href="' ~ $BASE ~ '/files/">All '
-             ~ @programs.elems ~ ' programs, as files →</a></p>'
-        !! '';
-
     spurt('out/index.html',
           page(%SITE<title>, :index,
                '<h1>' ~ esc(%SITE<title>) ~ '</h1>'
                ~ '<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>'
-               ~ '<div class="cook-index">' ~ $list ~ '</div>'
-               ~ $files-link));
+               ~ '<div class="cook-index">' ~ $list ~ '</div>'));
 
-    # out/files/ is a directory of programs; a static host serves no listing for
-    # it, so a reader who follows a link to the directory gets a 404 unless one
-    # is written. The recipes link there by name.
-    if @programs {
-        my $items = @programs.map(-> $name {
-            '<li><a href="' ~ $BASE ~ '/files/' ~ $name ~ '">' ~ esc($name) ~ '</a></li>'
-        }).join;
-        spurt('out/files/index.html',
-              page('Cookbook programs',
-                   '<h1>Programs</h1>'
-                   ~ '<p class="tagline">Every program the recipes show, as a file. '
-                   ~ 'They also live in the rakupp repository, under <code>docs/cookbook/</code>.</p>'
-                   ~ '<ul class="cook-files">' ~ $items ~ '</ul>'));
+    # A recipe that was renamed leaves its old address behind, and a static host
+    # answers a directory that is no longer there with a 404. These stubs are
+    # the only pages here that are not built from a recipe.
+    my %redirects = %(%SITE<redirects> // {});
+    for %redirects.keys.sort -> $from {
+        my $to = %redirects{$from};
+        note "redirect from $from points at no recipe: $to"
+            unless @ordered.first(* eq $to);
+        mkdir("out/$from");
+        spurt("out/$from/index.html", redirect-page($to));
     }
 
     say "built {@entries.elems} recipe page(s) + index"
-        ~ (@programs ?? " + {@programs.elems} program(s)" !! '') ~ " -> out/";
+        ~ (%redirects ?? " + {%redirects.elems} redirect(s)" !! '')
+        ~ " -> out/ ({@programs.elems} program(s) linked to the repo)";
 }
