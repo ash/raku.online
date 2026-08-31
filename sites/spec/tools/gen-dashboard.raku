@@ -492,10 +492,12 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     @refs.push('HEAD');
 
     # Retrospective bench points: tagged artifacts re-run on ONE machine in
-    # one sitting (src/data/bench-backfill.tsv says when and how). Gap-fill
-    # only — a kernel a tag's own committed tables carry keeps its mined
-    # numbers; the backfill exists precisely because those tables were
-    # measured on whatever machine each release had.
+    # one sitting (src/data/bench-backfill.tsv says when and how). As of the
+    # 2026-08-31 sitting this OVERRIDES the mined numbers per engine rather
+    # than gap-filling them: a tag's own committed tables were measured on
+    # whatever machine that release had, and their rakudo column ran under
+    # Rosetta 2 throughout, so mined and measured are two different scales.
+    # Engines the sweep did not cover (mutsu, perl) keep their mined values.
     my %backfill;
     my $bf = 'src/data/bench-backfill.tsv'.IO;
     if $bf.e {
@@ -536,9 +538,19 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         my $label = $ref eq 'HEAD' ?? 'main' !! $ref;
         if %backfill{$label}:exists {
             for %backfill{$label}.kv -> $kernel, %engines {
-                next if %bench{$kernel}:exists;   # the tag's own tables win
-                %bench{$kernel} = %engines;
+                for %engines.kv -> $engine, $ms {
+                    %bench{$kernel}{$engine} = $ms;   # measured wins over mined
+                }
             }
+        }
+        else {
+            # A tag the sweep could not cover — v0.1.0, v0.5.0 and v1.1.5 ship
+            # no release binary — keeps NO mined bench numbers. They sit on the
+            # pre-2026-08-31 scale with a rakudo column measured under Rosetta 2,
+            # and drawing them beside measured neighbours invents a step that
+            # never happened (mined v0.5.0 fib rakudo reads ~480 against
+            # measured v0.5.1 at ~311, one day apart). The charts skip nulls.
+            %bench = {};
         }
         my $date = ref-date($rakupp-repo, $ref);
         # The rev the numbers were measured at, and its short commit. Only an
