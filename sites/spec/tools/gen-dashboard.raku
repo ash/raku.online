@@ -455,6 +455,31 @@ sub bench-json(%bench --> Str) {
 # each sitting older than the current main is charted as its own point. The log
 # is append-only and the entries are literal chart entries — a sitting is never
 # recomputed, because the commit it measured is gone from `main` by then.
+#| Rakudo measured once per RELEASE, keyed by the date that release shipped.
+#| Rakudo changes monthly, so between two of its releases this column is a
+#| constant; measuring it per Raku++ tag drew run-to-run noise as signal (up to
+#| 19% on sortby). See src/data/rakudo-eras.tsv for the method.
+constant RAKUDO_ERAS = 'src/data/rakudo-eras.tsv';
+
+sub load-rakudo-eras(--> Hash) {
+    my %out;                       # release-date => { kernel => ms }
+    return %out unless RAKUDO_ERAS.IO.e;
+    for RAKUDO_ERAS.IO.lines -> $line {
+        next if $line.starts-with('#') || !$line.trim;
+        my @c = $line.split("\t");
+        next unless @c.elems >= 4;
+        %out{@c[1]}{@c[2]} = +@c[3];
+    }
+    %out
+}
+
+#| The Rakudo current on $date — the latest era released on or before it.
+#| ISO dates compare correctly as strings.
+sub rakudo-at-date(%eras, Str $date --> Hash) {
+    my @seen = %eras.keys.grep(* le $date).sort;
+    @seen ?? %eras{@seen[*-1]} !! {}
+}
+
 constant SITTINGS = 'src/data/bench-sittings.jsonl';
 
 sub sitting-date(Str $line --> Str) {
@@ -509,6 +534,9 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         }
     }
 
+    my %rakudo-eras = load-rakudo-eras();
+    say "  rakudo eras: {%rakudo-eras.keys.elems} release(s) from {RAKUDO_ERAS}";
+
     my @entries;
     # The `-O` table is re-measured RARELY — written once and carried forward
     # verbatim across a dozen tags. Mining it per ref therefore yields the same
@@ -553,6 +581,13 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
             %bench = {};
         }
         my $date = ref-date($rakupp-repo, $ref);
+        # Rakudo by DATE, overriding whatever this point carried. Rakudo cannot
+        # change between two Raku++ tags released the same day, so any variation
+        # in this column was noise drawn as signal.
+        my %rk-era = rakudo-at-date(%rakudo-eras, $date);
+        for %bench.keys -> $kern {
+            %bench{$kern}<rakudo> = %rk-era{$kern} if %rk-era{$kern}:exists;
+        }
         # The rev the numbers were measured at, and its short commit. Only an
         # UNTAGGED point needs the hash: a release point is named by its tag,
         # while `main` and every past sitting are just "a day", and a day can
