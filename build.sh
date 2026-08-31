@@ -39,6 +39,16 @@ build_faq() {
     cp -R "$ROOT/sites/faq/out" "$WWW/faq"
 }
 
+# The cookbook's programs talk to database servers and other things a browser
+# cannot reach, so its pages are static — no editors, and nothing is run at
+# build time. What the pages claim was run was run before they were written.
+build_cookbook() {
+    echo "cookbook -> www/cookbook"
+    ( cd "$ROOT/sites/cookbook" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/cookbook"
+    cp -R "$ROOT/sites/cookbook/out" "$WWW/cookbook"
+}
+
 build_book() {
     echo "book -> www/book"
     ( cd "$ROOT/sites/book" && "$RAKUPP" build.raku --clean )
@@ -124,7 +134,7 @@ check_shell() {
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
-                "$WWW/faq/index.html" "$WWW/book/index.html" \
+                "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
                 "$WWW/modules/index.html" "$WWW/grid/index.html" \
                 "$WWW/in-use/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
@@ -145,9 +155,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|faq|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|faq|cookbook|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -169,12 +179,13 @@ case "${1:-all}" in
     spec)      build_spec ;;
     grid)      build_grid ;;
     faq)       build_faq ;;
+    cookbook)  build_cookbook ;;
     book)      build_book ;;
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_book; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|book|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_cookbook; build_book; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|cookbook|book|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
