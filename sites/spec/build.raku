@@ -617,6 +617,19 @@ sub render-conformance(%site, %by-cat --> Str) {
 # the same markup the tour, the FAQ, the cookbook and the spec's own pages emit —
 # a chart is a thing people link someone else to. `optbench` keeps the id it has
 # always had, so links already written to it still resolve.
+#| An 8-hex content tag over src/data/dashboard.json — FNV-1a, so it needs no
+#| module and no subprocess, and it changes exactly when the numbers do. Returns
+#| '0' when the file is absent, which only happens on a tree with no dashboard.
+sub dashboard-data-tag(--> Str) {
+    my $f = 'src/data/dashboard.json'.IO;
+    return '0' unless $f.e;
+    my int $h = 2166136261;
+    for $f.slurp(:bin).list -> int $b {
+        $h = (($h +^ $b) * 16777619) +& 0xffffffff;
+    }
+    $h.base(16).lc.fmt('%08s').subst(' ', '0', :g)
+}
+
 sub render-dashboard(%site, %by-cat --> Str) {
     my $body = q:to/BODY/;
     <div class="conf-head">
@@ -701,7 +714,15 @@ sub render-dashboard(%site, %by-cat --> Str) {
     Gaps here mean "not measured", not "unchanged".</p>
     <div class="dash-bench" id="dash-optbench"></div>
     BODY
+    # The DATA's own cache tag, not the theme's. dashboard.js used to reuse the
+    # `?v=` on its own <script src>, which is $VERSION — the theme hash — so a
+    # release that changed only the NUMBERS left /dashboard.json's URL
+    # byte-identical and every returning visitor kept the copy they had already
+    # cached. v3.24.0 published a correct dashboard.json and the site went on
+    # drawing v3.23.0's ecosystem and benchmark series from cache; nothing in the
+    # build could see it, because what is on disk was right.
     my $extra = "<script src=\"/theme/chart.js?v={$VERSION}\" defer></script>" ~
+                "<script>window.__DASH_VER=\"{dashboard-data-tag()}\";</script>" ~
                 "<script src=\"/theme/dashboard.js?v={$VERSION}\" defer></script>";
     page-shell(%site, 'Dashboard — Raku++ Specification', $body,
                nav-html(%site, %by-cat, Nil), :extra-scripts($extra))

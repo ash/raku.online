@@ -8,7 +8,13 @@
   if (!tiles) return;
 
   var me = document.currentScript || [].slice.call(document.scripts).pop();
-  var ver = (me && me.src.match(/\?v=([0-9a-f]+)/) || [])[1];
+  // The DATA's tag when the page carries one, else this script's own. Falling
+  // back to our own ?v= means the THEME hash, which does not move when only the
+  // numbers change — so a data-only release left the URL identical and every
+  // returning visitor kept a cached dashboard. The page stamps __DASH_VER from
+  // the content of dashboard.json (see sites/spec/build.raku).
+  var ver = window.__DASH_VER ||
+            (me && me.src.match(/\?v=([0-9a-f]+)/) || [])[1];
 
   // The chart renderer lives in chart.js so the Rules sub-site draws the SAME
   // chart from the same code. This page only supplies data. chart.js is a hard
