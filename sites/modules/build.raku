@@ -835,16 +835,30 @@ my %V-LABEL =
     'fetch-fail'     => 'could not be fetched',
     'unresolved'     => 'could not be resolved';
 
+# The other axis: what the RakuAST frontend decides about a dist, whatever its
+# verdict says. Column 9 of ecosweep.tsv, written by tools/rakuast-fallout.raku.
+my %RA-LABEL =
+    'legacy'    => 'rides the frontend Rakudo is deleting at 6.e — an old slang '
+                 ~ 'hook, QAST or P5tie. It stops working on stock Rakudo too, '
+                 ~ 'so it is never charged to Raku++.',
+    'needs-AST' => 'uses the RakuAST API, which Raku++ does not implement yet. '
+                 ~ 'Blocked on us, not on its author.';
+
 sub render-ecosystem(--> Str) {
     my @rows;
     my %tally;
+    # The RakuAST axis is NOT a verdict: it is orthogonal to the ladder, so it
+    # gets its own tally, its own chips and its own badge. `P5tie` is green and
+    # flagged `legacy`; a `needs-AST` dist is blocked on us, not on its author.
+    my %ratally;
     my %blame;    # dist name -> how many dists its failure stops
     my %err-of;   # dist name -> its own first error, to show beside the blame
     for 'src/data/ecosweep.tsv'.IO.lines.skip(1) -> $line {
-        my ($name, $version, $verdict, $blockers, $deps, $auth, $authors, $err)
-            = $line.split("\t");
+        my ($name, $version, $verdict, $blockers, $deps, $auth, $authors, $err,
+            $rakuast) = $line.split("\t");
         next unless $name && $verdict;
         %tally{$verdict}++;
+        %ratally{$rakuast}++ if $rakuast;
         my @blockers = ($blockers // '').split(';').grep(*.chars);
         # Ranked by how many blocked dists each one appears in, not by how
         # often it happened to be met first: a dist is stuck until EVERY
@@ -856,6 +870,7 @@ sub render-ecosystem(--> Str) {
                      verdict => $verdict, blockers => @blockers,
                      deps => ($deps // 0).Int,
                      auth => $auth // '', authors => $authors // '',
+                     rakuast => $rakuast // '',
                      error => $err // '' });
     }
     # The default order is the ecosystem's own: most-depended-on first
@@ -869,6 +884,13 @@ sub render-ecosystem(--> Str) {
     my $chips = @order.map(-> $v {
         '<button class="eco-flt" data-v="' ~ esc-attr($v) ~ '">'
           ~ esc($v) ~ ' <span>' ~ comma(%tally{$v}) ~ '</span></button>'
+    }).join(' ');
+    # Second row of chips, on the other axis. Order is fixed rather than
+    # tallied-descending: `legacy` is the one a reader is looking for.
+    $chips ~= ' ' ~ <legacy needs-AST>.grep({ %ratally{$_} }).map(-> $f {
+        '<button class="eco-flt eco-ra-flt" data-r="' ~ esc-attr($f) ~ '"'
+          ~ ' title="' ~ esc-attr(%RA-LABEL{$f}) ~ '">'
+          ~ esc($f) ~ ' <span>' ~ comma(%ratally{$f}) ~ '</span></button>'
     }).join(' ');
 
     my $trs = @rows.map(-> %r {
@@ -916,13 +938,19 @@ sub render-ecosystem(--> Str) {
                      ~ esc(%r<auth>) ~ '</a>')
                ~ ($names ?? '<div class="eco-who">' ~ esc($names) ~ '</div>' !! '')
             !! '&mdash;';
-        my $hay = (%r<name>, %r<auth>, %r<authors>, |%r<blockers>)
+        my $hay = (%r<name>, %r<auth>, %r<authors>, %r<rakuast>, |%r<blockers>)
                       .grep(*.chars).join(' ').lc;
         '<tr data-v="' ~ esc-attr(%r<verdict>) ~ '" data-n="' ~ esc-attr(%r<name>.lc) ~ '"'
           ~ ' data-a="' ~ esc-attr(%r<auth>.lc) ~ '" data-s="' ~ esc-attr($hay) ~ '"'
           ~ ' data-c="' ~ esc-attr(@b.map(*.lc).join(' ')) ~ '"'
-          ~ ' data-d="' ~ %r<deps> ~ '">'
-          ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>' ~ $err ~ '</td>'
+          ~ ' data-d="' ~ %r<deps> ~ '" data-r="' ~ esc-attr(%r<rakuast>) ~ '">'
+          ~ '<td><a href="https://raku.land/?q=' ~ esc-attr(%r<name>) ~ '">' ~ esc(%r<name>) ~ '</a>'
+          ~ (%r<rakuast>
+              ?? ' <span class="eco-ra r-' ~ esc-attr(%r<rakuast>) ~ '" title="'
+                   ~ esc-attr(%RA-LABEL{%r<rakuast>} // '') ~ '">'
+                   ~ esc(%r<rakuast>) ~ '</span>'
+              !! '')
+          ~ $err ~ '</td>'
           ~ '<td class="eco-auth">' ~ $who ~ '</td>'
           ~ '<td class="num">' ~ (%r<deps> ?? comma(%r<deps>) !! '&mdash;') ~ '</td>'
           ~ '<td><code>' ~ esc(%r<version>) ~ '</code></td>'
@@ -934,6 +962,25 @@ sub render-ecosystem(--> Str) {
         '<span class="eco-v v-' ~ esc-attr($v) ~ '">' ~ esc($v) ~ '</span> '
           ~ (%V-LABEL{$v} // '')
     }).join(' &middot; ');
+
+    # Rakudo 2026.09 makes RakuAST the default frontend, which decides two sets
+    # of dists over the engine's head — in opposite directions. Said once here
+    # rather than repeated in every tooltip.
+    my $ra-note = do if %ratally {
+        'Two badges sit outside the ladder, because the frontend decides them, not us: '
+          ~ '<span class="eco-ra r-legacy">legacy</span> is a dist riding the '
+          ~ 'pre-RakuAST frontend &mdash; an old slang hook, QAST, P5tie &mdash; which '
+          ~ 'stops working on stock Rakudo at 6.e whatever we do, so it is never '
+          ~ 'charged to the engine ('
+          ~ comma(%ratally<legacy> // 0) ~ '); '
+          ~ '<span class="eco-ra r-needs-AST">needs-AST</span> is a dist using the '
+          ~ 'RakuAST API, blocked on Raku++ rather than on its author ('
+          ~ comma(%ratally<needs-AST> // 0) ~ '). '
+          ~ 'A badge is independent of the verdict &mdash; P5tie is green and '
+          ~ '<span class="eco-ra r-legacy">legacy</span> &mdash; so the two chip rows '
+          ~ 'filter independently. '
+    }
+    else { '' };
 
     # Naming the worst blockers turns a wall of amber rows into a work list.
     # The number beside each is how many blocked dists have it somewhere in
@@ -993,6 +1040,14 @@ sub render-ecosystem(--> Str) {
         .v-build-fail { background:#8250df18; color:#8250df; }
         .v-other, .v-fetch-fail, .v-unresolved { background:#65656518; color:#656565; }
         .v-timeout { background:#0a6e7418; color:#0a6e74; }
+        /* The RakuAST axis. Outlined, not filled, so it never reads as a
+           verdict badge sitting in the wrong column. */
+        .eco-ra { font-size:.7rem; padding:.05rem .4rem; border-radius:1rem;
+            white-space:nowrap; margin-left:.4rem; border:1px solid currentColor;
+            opacity:.85; vertical-align:.05em; }
+        .r-legacy { color:#8250df; }
+        .r-needs-AST { color:#0a6e74; }
+        .eco-ra-flt { border-style:dashed; }
         .eco-err { font-size:.78rem; opacity:.72; margin-top:.15rem; max-width:44rem;
             overflow-wrap:anywhere; }
         .eco-blame { font:inherit; font-size:1em; padding:0; border:0; background:none;
@@ -1027,6 +1082,7 @@ sub render-ecosystem(--> Str) {
       ~ $legend ~ '. The sweep, the fix campaign it drove, and the per-dist raw results live in '
       ~ '<a href="https://github.com/ash/rakupp/blob/main/docs/dev/findings/ECOSWEEP-2026-08.md">the write-up</a>; '
       ~ 'the trend is on <a href="/spec/dashboard/">the dashboard</a>. '
+      ~ ($ra-note ?? $ra-note !! '')
       ~ 'The table opens most-depended-on first; click a header to re-sort, '
       ~ 'and the filter matches distribution names, authors, and the dependencies '
       ~ 'a dist is blocked by alike.</p>'
@@ -1050,12 +1106,14 @@ sub render-ecosystem(--> Str) {
           var count = document.getElementById('eco-count');
           var flts = [].slice.call(document.querySelectorAll('.eco-flt'));
           var verdict = '';
+          var flag = '';          // the RakuAST axis, independent of verdict
           var blame = '';
           var blamed = document.getElementById('eco-blamed');
           function apply() {
             var needle = q.value.trim().toLowerCase(), shown = 0;
             rows.forEach(function (r) {
               var ok = (!verdict || r.getAttribute('data-v') === verdict)
+                    && (!flag || r.getAttribute('data-r') === flag)
                     && (!blame || (' ' + r.getAttribute('data-c') + ' ')
                                     .indexOf(' ' + blame + ' ') !== -1)
                     && (!needle || r.getAttribute('data-s').indexOf(needle) !== -1);
@@ -1107,11 +1165,22 @@ sub render-ecosystem(--> Str) {
               rows.forEach(function (r) { body.appendChild(r); });
             });
           });
+          // Two independent chip rows: a verdict chip and a RakuAST chip can
+          // be on at once (`legacy` AND `pass` is a real and interesting set),
+          // so each row only clears its own.
           flts.forEach(function (b) {
             b.addEventListener('click', function () {
-              var v = b.getAttribute('data-v');
-              verdict = (verdict === v) ? '' : v;
-              flts.forEach(function (x) { x.classList.toggle('on', x === b && verdict); });
+              var r = b.getAttribute('data-r');
+              if (r) { flag = (flag === r) ? '' : r; }
+              else {
+                var v = b.getAttribute('data-v');
+                verdict = (verdict === v) ? '' : v;
+              }
+              flts.forEach(function (x) {
+                var xr = x.getAttribute('data-r');
+                if (!!xr !== !!r) return;
+                x.classList.toggle('on', x === b && (r ? !!flag : !!verdict));
+              });
               apply();
             });
           });

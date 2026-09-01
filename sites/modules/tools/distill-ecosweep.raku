@@ -6,7 +6,8 @@
 #       --results=/Users/ash/raku++/docs/dev/findings/ecosweep/results-2524.tsv \
 #       --rerun=/Users/ash/raku++/docs/dev/findings/ecosweep/rerun-1900.tsv \
 #       --rank=<rank-ecosystem.raku output> \
-#       --index=$HOME/.raku/rakupp-install/rea-meta.json
+#       --index=$HOME/.raku/rakupp-install/rea-meta.json \
+#       --fallout=src/data/rakuast-fallout.tsv
 #
 # The first pass covers every dist; the re-run covers the then-non-pass dists
 # on the fixed engine, and its verdict REPLACES the first pass's for those
@@ -111,7 +112,7 @@ sub plan-of(Str $name, @dirs) {
 }
 
 sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
-         Str :$logs = '', Str :$rerun-logs = '',
+         Str :$logs = '', Str :$rerun-logs = '', Str :$fallout = '',
          Str :$out = 'src/data/ecosweep.tsv') {
     my %all = read-tsv($results);
     if $rerun && $rerun.IO.e {
@@ -164,9 +165,21 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
         say "index: {$latest.elems} dists with an author";
     }
 
+    # The RakuAST flag (tools/rakuast-fallout.raku) — orthogonal to the
+    # verdict, so it rides beside it rather than inside it: a `legacy` dist
+    # can be green, and a `needs-AST` one is blocked on us, not on its author.
+    my %fallout;
+    if $fallout && $fallout.IO.e {
+        for $fallout.IO.lines.skip(1) -> $line {
+            my @c = $line.split("\t");
+            %fallout{@c[0]} = @c[1] if @c.elems >= 2 && @c[0];
+        }
+        say "fallout: {%fallout.elems} dists flagged legacy/needs-AST";
+    }
+
     my @names = %all.keys.sort(*.lc);
     my $fh = open($out, :w);
-    $fh.say("name\tversion\tverdict\tblockers\tdeps\tauth\tauthors\terror");
+    $fh.say("name\tversion\tverdict\tblockers\tdeps\tauth\tauthors\terror\trakuast");
     for @names -> $n {
         my %r = %all{$n};
         # The entry for the swept version names its author; a version the
@@ -175,7 +188,7 @@ sub MAIN(Str :$results!, Str :$rerun = '', Str :$rank = '', Str :$index = '',
         my $hit = $exact{$n ~ "\0" ~ %r<version>} // $latest{$n};
         my $auth    = $hit ?? $hit[0] !! '';
         my $authors = $hit ?? $hit[1] !! '';
-        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<blockers> || %r<culprit>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}");
+        $fh.say("$n\t{%r<version>}\t{%r<verdict>}\t{%r<blockers> || %r<culprit>}\t{%deps{$n} // 0}\t$auth\t$authors\t{%r<error>}\t{%fallout{$n} // ''}");
     }
     $fh.close;
     my %tally;
