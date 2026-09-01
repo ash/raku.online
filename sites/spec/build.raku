@@ -684,10 +684,10 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <em>frontend</em>, not of the runtime: timed with <code>raku -c</code>,
     which compiles without running, the two lanes compile these kernels in the
     same time to within a few percent (RakuAST is a shade
-    <em>faster</em> on several). The whole of each gap is in the run — 96–106%
+    <em>faster</em> on several). The whole of each gap is in the run — 94–106%
     of it on every kernel — which is to say it is the code the new frontend
     emits, executed on the same unchanged MoarVM. On <code>objects</code>, the
-    widest, the compile is 1.09× and the run 2.81×.
+    widest, the compile is 1.09× and the run 2.79×.
     All ten kernels of the BENCHMARKS.md tables, ordered as
     that file orders them — string building first, where the gap is widest,
     down to the closest-run kernels — plus <code>startup</code>, the eleventh
