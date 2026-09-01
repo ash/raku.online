@@ -281,11 +281,19 @@
         // before that: present only where the tables carry it.
         var mutsu = vals('mutsu');
         var hasMutsu = mutsu.some(function (v) { return v != null; });
+        // The SAME Rakudo release compiled through RakuAST, its new frontend
+        // (RAKUDO_RAKUAST=1, and the default from 2026.09 on). Not another
+        // engine — the same binary in the same sitting with one environment
+        // variable set, which is why it can share the Rakudo line's scale.
+        // Null before the era that carries it.
+        var rakuast = vals('rakuast');
+        var hasRakuast = rakuast.some(function (v) { return v != null; });
         // hashfill carries one more reference: the same program in Perl 5,
         // timed as the `perl` binary. Present only where the tables carry it.
         var perl = vals('perl');
         var hasPerl = perl.some(function (v) { return v != null; });
         var all = [].concat(interp, native, rakudo,
+                            hasRakuast ? rakuast : [],
                             hasMutsu ? mutsu : [], hasPerl ? perl : [])
                     .filter(function (v) { return v != null; });
         var max = Math.max.apply(null, all);
@@ -301,6 +309,13 @@
         var names = ['interpreter', 'native --exe', 'Rakudo'];
         var cols = [interp, native, rakudo];
         // Rakudo must stay at index 2 — tipRow reads cols[2] as the reference.
+        var astIdx = -1;
+        if (hasRakuast) {
+          astIdx = series.length;
+          series.push({ name: 'Rakudo (RakuAST)', cls: 'sast', dash: true, values: rakuast });
+          names.push('Rakudo (RakuAST)');
+          cols.push(rakuast);
+        }
         if (hasMutsu) {
           series.push({ name: 'mutsu', cls: 'smutsu', dash: true, values: mutsu });
           names.push('mutsu');
@@ -328,7 +343,19 @@
             // The ratio is the thing these charts are actually about, and on a
             // linear axis it is unreadable off the marks — so state it.
             var ref = cols[2][i];                       // Rakudo, the reference
-            if (si !== 2 && ref) row += ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo';
+            // The RakuAST lane is compared against the OTHER backend of that
+            // same binary, and is named that way: "1.1x Rakudo" would read as a
+            // rival engine rather than as the frontend swap it is. It also says
+            // slower/faster in words instead of the bare ref/v the other lanes
+            // carry — that quotient is a SPEED multiple, and "0.47x legacy" for
+            // a lane taking twice as long reads as the opposite of the truth on
+            // the one lane whose whole subject is the comparison.
+            if (si === astIdx && ref) {
+              row += v > ref ? ' · ' + (v / ref).toFixed(2) + '× slower than legacy'
+                   : v < ref ? ' · ' + (ref / v).toFixed(2) + '× faster than legacy'
+                   : ' · same as legacy';
+            }
+            else if (si !== 2 && ref) row += ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo';
             if (si === 1 && cols[0][i]) row += ', ' + (cols[0][i] / v).toFixed(1) + '\u00d7 interp';
             return row;
           }

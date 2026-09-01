@@ -673,7 +673,14 @@ sub render-dashboard(%site, %by-cat --> Str) {
     interpreter, the same source compiled to a native binary with
     <code>--exe</code>, and Rakudo as the reference — plus, on
     <code>hashfill</code> alone, the same program in Perl 5 as a second
-    dashed reference. All ten kernels of the BENCHMARKS.md tables, ordered as
+    dashed reference. From the 2026.08 release a <em>second Rakudo lane</em>
+    joins them: the same Rakudo compiled through <strong>RakuAST</strong>, the
+    new frontend that Rakudo 2026.09 makes the default and that earlier
+    releases reach with <code>RAKUDO_RAKUAST=1</code>. It is not another engine
+    — it is the same binary in the same sitting with one environment variable
+    set, and every kernel is checked to print the same in both lanes before
+    either is timed — so the distance between the two dashed Rakudo lines is
+    the frontend swap and nothing else. All ten kernels of the BENCHMARKS.md tables, ordered as
     that file orders them — string building first, where the gap is widest,
     down to the closest-run kernels — plus <code>startup</code>, the eleventh
     program in <code>tools/bench/</code>, last. (<code>startup</code> was a row

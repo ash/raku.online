@@ -438,6 +438,10 @@ sub bench-json(%bench --> Str) {
         @f.push('"interp":' ~ %b<interp>) if %b<interp>:exists;
         @f.push('"native":' ~ %b<native>) if %b<native>:exists;
         @f.push('"rakudo":' ~ %b<rakudo>) if %b<rakudo>:exists;
+        # The same Rakudo release compiled through RakuAST — a second lane of
+        # the reference, not a second engine. Present only from the era whose
+        # rows carry it.
+        @f.push('"rakuast":' ~ %b<rakuast>) if %b<rakuast>:exists;
         @f.push('"mutsu":'  ~ %b<mutsu>)  if %b<mutsu>:exists;  # the second from-scratch engine
         @f.push('"perl":'   ~ %b<perl>)   if %b<perl>:exists;   # hashfill's second reference
         @parts.push(json-esc($k) ~ ':{' ~ @f.join(',') ~ '}');
@@ -461,23 +465,32 @@ sub bench-json(%bench --> Str) {
 #| 19% on sortby). See src/data/rakudo-eras.tsv for the method.
 constant RAKUDO_ERAS = 'src/data/rakudo-eras.tsv';
 
+#| release-date => mode => { kernel => ms }. The fifth column is the COMPILER
+#| BACKEND the row was timed under and defaults to `legacy` when absent, which
+#| is every row written before RakuAST got a lane of its own. One file rather
+#| than one per backend: the two lanes are the same binary in the same sitting,
+#| and the methodology header they share is the reason their numbers can be put
+#| on one chart at all.
 sub load-rakudo-eras(--> Hash) {
-    my %out;                       # release-date => { kernel => ms }
+    my %out;
     return %out unless RAKUDO_ERAS.IO.e;
     for RAKUDO_ERAS.IO.lines -> $line {
         next if $line.starts-with('#') || !$line.trim;
         my @c = $line.split("\t");
         next unless @c.elems >= 4;
-        %out{@c[1]}{@c[2]} = +@c[3];
+        my $mode = @c.elems >= 5 && @c[4].trim ?? @c[4].trim !! 'legacy';
+        %out{@c[1]}{$mode}{@c[2]} = +@c[3];
     }
     %out
 }
 
-#| The Rakudo current on $date — the latest era released on or before it.
-#| ISO dates compare correctly as strings.
-sub rakudo-at-date(%eras, Str $date --> Hash) {
+#| The Rakudo current on $date, in one backend — the latest era released on or
+#| before it. ISO dates compare correctly as strings. A backend the era carries
+#| no rows for answers empty, so a mode that only exists from some release on
+#| is null before it and the chart skips it.
+sub rakudo-at-date(%eras, Str $date, Str $mode = 'legacy' --> Hash) {
     my @seen = %eras.keys.grep(* le $date).sort;
-    @seen ?? %eras{@seen[*-1]} !! {}
+    @seen ?? (%eras{@seen[*-1]}{$mode} // {}) !! {}
 }
 
 constant SITTINGS = 'src/data/bench-sittings.jsonl';
@@ -585,8 +598,10 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         # change between two Raku++ tags released the same day, so any variation
         # in this column was noise drawn as signal.
         my %rk-era = rakudo-at-date(%rakudo-eras, $date);
+        my %ast-era = rakudo-at-date(%rakudo-eras, $date, 'rakuast');
         for %bench.keys -> $kern {
-            %bench{$kern}<rakudo> = %rk-era{$kern} if %rk-era{$kern}:exists;
+            %bench{$kern}<rakudo>  = %rk-era{$kern}  if %rk-era{$kern}:exists;
+            %bench{$kern}<rakuast> = %ast-era{$kern} if %ast-era{$kern}:exists;
         }
         # The rev the numbers were measured at, and its short commit. Only an
         # UNTAGGED point needs the hash: a release point is named by its tag,
