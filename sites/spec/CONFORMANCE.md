@@ -6,30 +6,30 @@ answers compared.
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| `ok` | 950 | documentation, Rakudo and Raku++ all agree |
-| `all-differ` | 129 | three different answers — needs a human |
-| `rakupp-differs` | 128 | documentation and Rakudo agree; **Raku++ is wrong** |
-| `doc-drift` | 127 | both engines agree; **the documentation is stale** |
+| `ok` | 953 | documentation, Rakudo and Raku++ all agree |
+| `doc-drift` | 133 | both engines agree; **the documentation is stale** |
+| `rakupp-differs` | 125 | documentation and Rakudo agree; **Raku++ is wrong** |
+| `all-differ` | 124 | three different answers — needs a human |
 | `not-runnable` | 94 | neither engine runs it standalone (needs surrounding context) |
-| `rakudo-differs` | 23 | doc and Raku++ agree; **Rakudo does not** — usually a stale doc that Raku++ was built from |
+| `rakudo-differs` | 22 | doc and Raku++ agree; **Rakudo does not** — usually a stale doc that Raku++ was built from |
 
 ## Where Raku++ fails, by type
 
 | Type | Failing examples |
 |---|---:|
 | `IO::CatHandle` | 15 |
-| `Any` | 6 |
 | `Baggy` | 4 |
 | `Instant` | 4 |
 | `Parameter` | 4 |
 | `Str` | 4 |
+| `Any` | 3 |
 | `Iterator` | 3 |
+| `Mu` | 3 |
 | `Nil` | 3 |
 | `Pair` | 3 |
 | `Range` | 3 |
 | `Supply` | 3 |
 | `Array` | 2 |
-| `Capture` | 2 |
 | `DateTime` | 2 |
 | `IO::Handle` | 2 |
 | `IO::Spec::Win32` | 2 |
@@ -41,7 +41,6 @@ answers compared.
 | `Metamodel::ParametricRoleGroupHOW` | 2 |
 | `Metamodel::ParametricRoleHOW` | 2 |
 | `Metamodel::Stashing` | 2 |
-| `Mu` | 2 |
 | `QuantHash` | 2 |
 | `Scalar` | 2 |
 | `Sub` | 2 |
@@ -50,11 +49,12 @@ answers compared.
 | `Attribute` | 1 |
 | `Backtrace::Frame` | 1 |
 | `Backtrace` | 1 |
+| `BagHash` | 1 |
 | `Bool` | 1 |
 | `CallFrame` | 1 |
+| `Capture` | 1 |
 | `Code` | 1 |
 | `Collation` | 1 |
-| `Hash` | 1 |
 | `HyperWhatever` | 1 |
 | `IO::Path::Parts` | 1 |
 
@@ -95,7 +95,7 @@ routine to implement.
 | last without loop construct | 1 | `X::ControlFlow` |
 | Undefined routine 'an-ast' | 1 | `X::TypeCheck::Splice` |
 
-## Wrong results (94)
+## Wrong results (91)
 
 Raku++ ran the example cleanly and produced something other than what Rakudo
 produces. These are the substantive defects.
@@ -103,26 +103,22 @@ produces. These are the substantive defects.
 | Type | Rakudo | Raku++ |
 |---|---|---|
 | `Allomorph` | `False⏎False⏎False⏎False⏎` | `True⏎False⏎False⏎False⏎` |
-| `Any` | `1⏎7⏎1⏎7⏎a => 3⏎` | `1⏎7⏎⏎⏎a => 3⏎` |
-| `Any` | `7⏎1⏎1⏎7⏎b => C⏎` | `7⏎1⏎⏎⏎b => C⏎` |
-| `Any` | `1..7⏎7..1⏎1..7⏎7..1⏎` | `1..7⏎7..1⏎⏎⏎` |
 | `Any` | `((Any))⏎()⏎` | `()⏎()⏎` |
 | `Any` | `(2 5)⏎(13 9 6)⏎(5)⏎(13)⏎(29)⏎(2 5 5)⏎(a b)⏎(2 5)⏎(13 9 6)⏎(5…` | `0⏎` |
 | `Array` | `(1 Nil Nil 3)⏎` | `(1 (Any) (Any) 3)⏎` |
 | `Associative` | `(Cool)⏎` | `(Mu)⏎` |
 | `Attribute` | `C.new(a => 666)⏎C.new(a => 42)⏎Foo.new(bar => [42])⏎` | `C.new(a => 666)⏎C.new(a => Nil)⏎Foo.new(bar => [Any])⏎` |
 | `Backtrace::Frame` | `True⏎` | `False⏎` |
-| `Baggy` | `Ford⏎(Rover Rover)⏎(Rover Ford)⏎` | `Ford⏎(Rover Rover)⏎(Ford Rover)⏎` |
+| `BagHash` | `("b"=>1,"a"=>1,"c"=>2).BagHash⏎("b", "a", "c").Seq⏎(1, 1, 2)…` | `("a"=>1,"b"=>1,"c"=>2).BagHash⏎("a", "b", "c").Seq⏎(1, 1, 2)…` |
+| `Baggy` | `bacon⏎(bacon eggs bacon)⏎` | `bacon⏎(bacon bacon eggs)⏎` |
 | `Baggy` | `(spam 3 eggs 1)⏎` | `(eggs 1 spam 3)⏎` |
 | `Baggy` | `1⏎` | `0⏎` |
 | `Baggy` | `True⏎True⏎` | `True⏎False⏎` |
 | `Bool` | `(False True)⏎` | `(True False)⏎` |
 | `CallFrame` | `Map⏎True⏎` | `Hash⏎False⏎` |
-| `Capture` | `7⏎1⏎` | `⏎⏎` |
-| `Capture` | `1⏎-5⏎` | `⏎⏎` |
-| `DateTime` | `Instant:1450952616⏎` | `1450952580⏎` |
+| `Capture` | `1⏎-5⏎` | `1⏎1⏎` |
+| `DateTime` | `Instant:1450952616⏎` | `1450952590⏎` |
 | `DateTime` | `Duration.new(31536001.0)⏎2015-01-01T00:00:00+01:00⏎` | `31536001e0⏎2015-01-01T00:00:00+01:00⏎` |
-| `Hash` | `{322 => pair, 323 => [pipe hash]}⏎` | `{322 => pair, 323 => [hash pipe]}⏎` |
 | `IO::CatHandle` | `("fo", "ob", "ar").Seq⏎` | `("fi", "le", "s\t", "fo", "o ", "ba", "r").Seq⏎` |
 | `IO::CatHandle` | `("foo", "bar", "meow").Seq⏎` | `("files\tfoo bar",).Seq⏎` |
 | `IO::CatHandle` | `("", "B", "C", "", "E").Seq⏎["A\nB\nC", "D\nE"]⏎` | `("files\tfoo bar",).Seq⏎[]⏎` |
@@ -133,10 +129,10 @@ produces. These are the substantive defects.
 | `IO::Path` | `"/etc".IO⏎"/etc".IO⏎"/etc".IO⏎"..".IO⏎".".IO⏎"/".IO⏎"C:/".IO…` | `"/etc".IO⏎"/etc".IO⏎"/etc".IO⏎".".IO⏎".".IO⏎"/".IO⏎".".IO⏎` |
 | `IO::Spec::Win32` | `C:\⏎` | `C:⏎` |
 | `IO::Spec::Win32` | `IO::Path::Parts.new("C:","/foo","bar.txt")⏎IO::Path::Parts.n…` | `IO::Path::Parts.new("C:","/foo","bar.txt")⏎IO::Path::Parts.n…` |
-| `Instant` | `2016-12-31T23:59:60Z⏎2017-01-01T00:00:00Z⏎` | `2017-01-01T00:00:10Z⏎2017-01-01T00:00:10Z⏎` |
-| `Instant` | `(1483228800 False)⏎(1483228800 True)⏎` | `(1483228790 False)⏎(1483228790 False)⏎` |
-| `Instant` | `[2016-12-31T23:59:59Z 1483228799]⏎[2016-12-31T23:59:60Z 1483…` | `[2017-01-01T00:00:09Z 1483228809]⏎[2017-01-01T00:00:10Z 1483…` |
-| `Instant` | `37⏎` | `0⏎` |
+| `Instant` | `2016-12-31T23:59:60Z⏎2017-01-01T00:00:00Z⏎` | `2017-01-01T00:00:00Z⏎2017-01-01T00:00:00Z⏎` |
+| `Instant` | `(1483228800 False)⏎(1483228800 True)⏎` | `(1483228800 False)⏎(1483228800 False)⏎` |
+| `Instant` | `[2016-12-31T23:59:59Z 1483228799]⏎[2016-12-31T23:59:60Z 1483…` | `[2016-12-31T23:59:59Z 1483228799]⏎[2017-01-01T00:00:00Z 1483…` |
+| `Instant` | `37⏎` | `10⏎` |
 | `Iterator` | `False⏎` | `True⏎` |
 | `Iterator` | `True⏎False⏎False⏎` | `True⏎True⏎False⏎` |
 | `Iterator` | `True⏎False⏎False⏎` | `True⏎True⏎False⏎` |
@@ -149,23 +145,27 @@ produces. These are the substantive defects.
 | `Map` | `(b => 17 a => (2 3))⏎` | `(a => (2 3) b => 17)⏎` |
 | `Match` | `42⏎Int⏎` | `42⏎Str⏎` |
 | `Metamodel::Mixins` | `True⏎True⏎True⏎` | `False⏎False⏎False⏎` |
-| `Metamodel::Mixins` | `True⏎True⏎True⏎` | `False⏎` |
-| `Metamodel::PackageHOW` | `Perl6::Metamodel::PackageHOW.new⏎` | `(Metamodel::ClassHOW)⏎` |
+| `Metamodel::Mixins` | `True⏎True⏎True⏎` | `False⏎False⏎False⏎` |
+| `Metamodel::PackageHOW` | `Perl6::Metamodel::PackageHOW.new⏎` | `(ClassHOW)⏎` |
 | `Metamodel::ParametricRoleGroupHOW` | `Perl6::Metamodel::ParametricRoleHOW.new⏎` | `Metamodel::ClassHOW.new⏎` |
 | `Metamodel::ParametricRoleHOW` | `Perl6::Metamodel::ParametricRoleHOW.new⏎` | `Metamodel::ClassHOW.new⏎` |
 | `Metamodel::Stashing` | `(Namespace)⏎(Namespace)⏎` | `(Any)⏎(Any)⏎` |
 | `Mix` | `True⏎Set(all-things-nice)⏎Bag(spice(2) sugar)⏎True⏎Set(all-t…` | `True⏎Set(all-things-nice)⏎Bag(all-things-nice(0.75) spice(2.…` |
-| `MixHash` | `((Str) (Pair) (Pair))⏎(a => 2 (c => 3.14) => 1 (b => 0) => 1…` | `((Str) (Pair) (Pair))⏎(a => 2 (b => 0) => 1 (c => 3.14) => 1…` |
 | `Mu` | `Initiate a specified spell normally⏎(do not use for class 7 …` | `Initiate a specified spell normally⏎` |
+| `Mu` | `[2 3 4]⏎` | `[1 1 1]⏎` |
 | `Nil` | `Nil⏎Nil⏎Nil⏎Nil⏎Nil⏎` | `(Any)⏎(Any)⏎(Any)⏎(Any)⏎(Any)⏎` |
 | `Nil` | `42⏎` | `(Any)⏎` |
 | `Pair` | `a => value A⏎a => value B⏎` | `a => value A⏎a => value A⏎` |
 | `Pair` | `True⏎True⏎False⏎` | `True⏎False => truthy⏎False⏎` |
 | `Parameter` | `False⏎False⏎True⏎True⏎` | `True⏎True⏎True⏎True⏎` |
+| `Parameter` | `True⏎False⏎` | `True⏎True⏎` |
+| `Parameter` | `Type check failed in assignment to $zz; expected Int but got…` | `Nil⏎Nil⏎` |
+| `Proc::Async` | `42⏎100⏎` | `42⏎` |
+| `PseudoStash` | `42⏎` | `(Any)⏎` |
 
-…and 34 more.
+…and 31 more.
 
-## Documentation drift (127)
+## Documentation drift (133)
 
 Both engines agree with each other and disagree with the documentation, so the
 documentation is the thing that is wrong. Worth reporting upstream — and worth
@@ -177,21 +177,23 @@ documentation is the thing that is wrong. Worth reporting upstream — and worth
 | `Any` | `(4 4 8)⏎` |
 | `Any` | `((a b c) (a c b) (b a c) (b c a) (c a b) (c b a))⏎((1 => True 2 => True) (2 => T…` |
 | `Any` | `{False => [1 2 4 5 7 8 10 11 13], True => [3 6 9 12]}⏎{False => [1 2 4 5 7 8 10 …` |
-| `Any` | `(3 => a 2 => b 4 => c)⏎` |
 | `Any` | `(Any)⏎` |
 | `Any` | `3⏎` |
 | `Any` | `(3 4 5)⏎` |
 | `Associative` | `` |
 | `Bag` | `3⏎(bacon eggs spam)⏎6⏎(bacon eggs spam spam spam spam)⏎` |
-| `Bag` | `(:a(0), :b(1), :c(2)).Seq⏎((Pair) (Pair) (Pair))⏎(1, 1, 2).Seq⏎` |
 | `Bag` | `1⏎0⏎` |
 | `Bag` | `1⏎0⏎` |
 | `Bag` | `False⏎False⏎Bag(2 3(2))⏎Bag(2(3) 3(2) 4(2))⏎False⏎False⏎Bag(2 3(2))⏎Bag(2(3) 3(2…` |
 | `BagHash` | `3⏎(bacon eggs spam)⏎6⏎(bacon eggs spam spam spam spam)⏎` |
 | `BagHash` | `1⏎4⏎0⏎(eggs sausage sausage spam spam spam spam)⏎` |
+| `BagHash` | `("a"=>1,"b"=>1,"c"=>2).BagHash⏎("b"=>1,"c"=>4).BagHash⏎` |
 | `BagHash` | `False⏎False⏎BagHash(2 3(2))⏎BagHash(2(3) 3(2) 4(2))⏎False⏎False⏎BagHash(2 3(2))⏎…` |
 | `Baggy` | `eggs => 2⏎BagHash(bacon(3))⏎(bacon => 3)⏎()⏎` |
+| `Baggy` | `eggs⏎(bacon bacon)⏎` |
 | `Blob` | `Blob:0x<03 04 05 06>⏎Blob:0x<09 0A>⏎Blob:0x<06 07>⏎` |
+| `Bool` | `False⏎` |
+| `Bool` | `(True)⏎` |
 | `Buf` | `Buf[uint8]:0x<03 06 FE>⏎` |
 | `Buf` | `Buf.new(123,123)⏎` |
 | `Capture` | `Map.new((apples => red => 2))⏎` |
@@ -211,12 +213,10 @@ documentation is the thing that is wrong. Worth reporting upstream — and worth
 | `Cool` | `0.02222405161826715⏎0.02222405161826715⏎` |
 | `Cool` | `0.6173696237835551⏎0.6173696237835551⏎` |
 | `Cool` | `0.02221856532671906⏎0.02221856532671906⏎` |
-| `Cool` | `1.1752011936438014⏎1.1752011936438014⏎` |
-| `Cool` | `1.1276259652063807⏎` |
 
-…and 87 more.
+…and 93 more.
 
-## Raku++ agrees with the docs, Rakudo does not (23)
+## Raku++ agrees with the docs, Rakudo does not (22)
 
 The one class where neither engine can be assumed correct. It may be a stale
 doc that Raku++ was built from — or a Rakudo bug that the documentation
@@ -232,26 +232,25 @@ Rakudo is one ulp low — following Rakudo would have made Raku++ worse.
 
 | Type | Doc and Raku++ | Rakudo |
 |---|---|---|
-| `Any` | `(Þor Oðin Freija)⏎` | `(Freija Þor Oðin)⏎` |
 | `Any` | `3⏎33⏎15⏎15⏎10⏎` | `` |
 | `Bag` | `("b", "c").Seq⏎((Str) (Str))⏎(1, 4).Seq⏎` | `("c", "b").Seq⏎((Str) (Str))⏎(4, 1).Seq⏎` |
-| `Baggy` | `(a 6 b 2)⏎` | `(b 2 a 6)⏎` |
-| `Bool` | `True⏎` | `False⏎` |
+| `BagHash` | `("b"=>1,"c"=>4).BagHash⏎("b", "c").Seq⏎(1, 4).Seq⏎` | `("c"=>4,"b"=>1).BagHash⏎("c", "b").Seq⏎(4, 1).Seq⏎` |
+| `Baggy` | `eggs => 1⏎(bacon => 3)⏎(eggs => 1 bacon => 3)⏎` | `bacon => 3⏎(eggs => 1)⏎(eggs => 1 bacon => 3)⏎` |
 | `Cool` | `0.881373587019543⏎0.881373587019543⏎` | `0.8813735870195429⏎0.8813735870195429⏎` |
 | `Cool` | `9930972392403501⏎9.9309723924035e+15⏎9930972392403500⏎` | `9930972392403501⏎9930972392403500e0⏎9930972392403500⏎` |
 | `DateTime` | `X::OutOfRange: Day out of range. Is: 29, should be in 1..28⏎` | `X::Temporal::OutOfRange: Day out of range. Is: 29, should be…` |
+| `Hash` | `(a)⏎(1)⏎(a b)⏎(1 2)⏎` | `(a)⏎(1)⏎(b a)⏎(2 1)⏎` |
 | `Iterator` | `[(A A G) (C C T)]⏎` | `[(A A G) (C C T) (A A G) (C C T)]⏎` |
 | `Junction` | `one(True, False)⏎True⏎one(True, True)⏎False⏎` | `True⏎True⏎False⏎False⏎` |
 | `List` | `499999500000⏎` | `` |
-| `Map` | `(a b)⏎` | `(b a)⏎` |
-| `Map` | `(a => (2 3) b => 17)⏎` | `(b => 17 a => (2 3))⏎` |
+| `Map` | `((2 3) 17)⏎` | `(17 (2 3))⏎` |
 | `Map` | `((2 3) => a 17 => b)⏎` | `(17 => b (2 3) => a)⏎` |
+| `Map` | `(2 => a 3 => a 17 => b)⏎` | `(17 => b 2 => a 3 => a)⏎` |
 | `MixHash` | `((Str) (Str))⏎(a => 2 c => 3.14)⏎` | `((Str) (Str))⏎(c => 3.14 a => 2)⏎` |
-| `Mu` | `Set.new(1,2,3)⏎` | `Set.new(2,3,1)⏎` |
 | `Pair` | `((:a(42)) => "foo", (:b(72)) => "foo").Seq⏎` | `((:b(72)) => "foo", (:a(42)) => "foo").Seq⏎` |
 | `Promise` | `caught⏎hello⏎` | `` |
 | `Range` | `1..2⏎` | `1.0..2.0⏎` |
-| `Set` | `("one", "two").Seq⏎((Str) (Str))⏎` | `("two", "one").Seq⏎((Str) (Str))⏎` |
+| `SetHash` | `SetHash(key1 key2)⏎("key1", "key2").Seq⏎` | `SetHash(key1 key2)⏎("key2", "key1").Seq⏎` |
 | `X::Numeric::DivideByZero` | `X::Numeric::DivideByZero: Attempt to divide by zero when coe…` | `X::Numeric::DivideByZero: Attempt to divide 1 by zero when c…` |
 | `X::Phaser::PrePost` | `` | `X::Phaser::PrePost: Precondition '{ $x ~~ Int }' failed⏎` |
 | `routines` | `20⏎` | `` |
