@@ -174,8 +174,9 @@ and AOT buy distribution and build-time error reporting, not throughput.
 struct CodegenError { std::string msg; };
 ```
 
-mainly grammars, and a handful of NativeCall shapes that need copy-back the
-generated call site cannot express. The driver catches it and **transparently
+mainly grammars, symbolic references (`::($name)`, which name a variable that a
+native local does not have at run time), and a handful of NativeCall shapes that
+need copy-back the generated call site cannot express. The driver catches it and **transparently
 bundles the whole program instead**.
 
 So `--exe` never refuses a program. It native-compiles what it can and bundles
