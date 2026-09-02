@@ -23,7 +23,7 @@
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 14</p><h1>Calls and Parameter Binding</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#building-the-argument-list">Building the argument list</a></li><li><a href="#activating-the-callee">Activating the callee</a></li><li><a href="#binding-parameters">Binding parameters</a></li><li><a href="#the-callable-and-what-it-caches">The <code>Callable</code>, and what it caches</a></li><li><a href="#is-rw-write-back"><code>is rw</code> write-back</a></li><li><a href="#lvalue-mode-method-calls">Lvalue-mode method calls</a></li><li><a href="#what-a-call-costs">What a call costs</a></li></ul></nav>
-<p>Calling something is the most frequent non-trivial act in a Raku program, and in a tree-walker it is also one of the most expensive: the floor for a trivial call is around forty-six nanoseconds, and only about a quarter of that is dispatch. Where the other three quarters go is what shaped the optimizer of <a href="/book/optimizer/">Chapter 27</a>, and it is easier to see once the mechanism is laid out.</p>
+<p>Calling something is the most frequent non-trivial act in a Raku program, and in a tree-walker it is also one of the most expensive: the floor for a trivial call was around forty-six nanoseconds when this chapter was first measured, and only about a quarter of that was dispatch. Where the other three quarters went is what shaped the optimizer of <a href="/book/optimizer/">Chapter 27</a> — and, later, what got most of the same win back inside the interpreter. Both are easier to see once the mechanism is laid out.</p>
 <p>A call happens in three phases: build the argument list, activate the callee, bind the parameters. Each has a fast path, and each fast path exists because something measurable was in the way.</p>
 <h2 id="building-the-argument-list">Building the argument list</h2>
 <p><code>evalArgs</code> evaluates the argument expressions into one flat <code>ValueList</code>:</p>
@@ -45,7 +45,8 @@
     args.push_back(std::move(v));
 }</code></pre>
 <p>Two things to notice.</p>
-<p><strong>An argument list is just a <code>ValueList</code>.</strong> Named arguments are ordinary <code>Pair</code> values carrying a <code>namedArg</code> flag; the positional/named split happens later, at bind time. That is why spreading (<code>|@a</code>), slurping (<code>*@rest</code>) and flattening are all vector operations rather than a separate protocol.</p>
+<p><strong>An argument list is just a <code>ValueList</code>.</strong> Named arguments are ordinary <code>Pair</code> values carrying a <code>namedArg</code> flag; the positional/named split happens later, at bind time. That is why spreading (<code>|@a</code>), slurping (<code>*@rest</code>) and flattening are all list operations rather than a separate protocol.</p>
+<p><strong>And that list is the most frequent one in the tree</strong>, which is why it stopped being a <code>std::vector</code>. One is built, filled, passed and destroyed on every interpreted call, and for the one- or two-element shape almost the whole of its cost was the heap block: 32 nanoseconds against a call that takes about 265. <code>ValueList</code> now takes small blocks off a thread-local free list — allocation is a pop, release is a push — and that shape costs 9.5 ns. See <em>The list container</em> in <a href="/book/containers/">Chapter 12</a> for the container itself, including the reason the free list is kept per exact capacity rather than rounding every small request up to one size class: an argument list and a million-element array want opposite things from that policy, and they are the same type.</p>
 <p>*<em>Only a </em>syntactic<em> pair is a named argument.</em><em> <code>f(k =&gt; 1)</code> and <code>f(:k(1))</code> pass a named argument; <code>f($pair)</code> and <code>f(3 =&gt; 4)</code> pass a positional one, even though all four produce a <code>Pair</code>. The test is on the </em>expression* kind, and it also excludes a quoted key — <code>f('a' =&gt; 1)</code> is positional, per Raku's rule. Getting this wrong makes every module that passes pairs around behave subtly differently, so the check is deliberately narrow.</p>
 <h2 id="activating-the-callee">Activating the callee</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
@@ -114,8 +115,8 @@ std::shared_ptr&lt;Env&gt; closure;
 std::shared_ptr&lt;Env&gt; stateEnv;         <span class="c1">// persistent `state` storage</span>
 std::once_flag stateInit;
 BuiltinFn builtin;                     <span class="c1">// set ⇒ this is a builtin</span>
-std::vector&lt;Value&gt; candidates;         <span class="c1">// multi-dispatch candidates</span>
-std::vector&lt;Value&gt; wrappers;           <span class="c1">// .wrap stack, outermost last</span>
+ValueList candidates;                  <span class="c1">// multi-dispatch candidates</span>
+ValueList wrappers;                    <span class="c1">// .wrap stack, outermost last</span>
 DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; hoistNeed{-<span class="mi">1</span>};
 DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; arityShape{-<span class="mi">1</span>};
 <span class="kt">int</span> arityMaxPos = <span class="mi">0</span>, arityReqPos = <span class="mi">0</span>; <span class="kt">bool</span> arityUnbounded = <span class="kc">false</span>;
@@ -143,8 +144,10 @@ Value* lvalueOut = <span class="kc">nullptr</span>;</code></pre>
 <div class="tablewrap"><table><tr><th>Shape</th><th>ns/call</th></tr><tr><td>direct C++ call, user-sub shape</td><td>46.3</td></tr>
 <tr><td>cached <code>BuiltinFn*</code> call</td><td>47.4</td></tr>
 <tr><td>by-name lookup: hash, <code>unordered_map::find</code>, <code>std::function</code></td><td>55.0</td></tr></table></div>
-<p>The lookup tax is real but modest at 8 to 9 nanoseconds. The important number is the <strong>floor</strong>: about 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — a heap-allocating <code>std::vector</code> built per call.</p>
-<p>Dispatch was a quarter of the overhead. The argument vector was the rest. That finding is what shaped the optimiser in <a href="/book/optimizer/">Chapter 27</a>: its first pass gives fixed-arity subs direct <code>Value</code> parameters and removes the vector entirely, which buys more than any lookup cache can.</p><nav class="ch-nav"><a class="prev" href="/book/tree-walk/"><span>Previous</span>The Tree Walk</a><a class="next" href="/book/control-flow/"><span>Next</span>Cooperative Control Flow</a></nav>
+<p>The lookup tax is real but modest at 8 to 9 nanoseconds. The important number is the <strong>floor</strong>: about 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — at the time, a heap-allocating <code>std::vector</code> built per call.</p>
+<p>Dispatch was a quarter of the overhead. The argument list was the rest. That finding shaped two different pieces of work, years apart in the book's ordering and months apart in fact.</p>
+<p>The first is the optimiser of <a href="/book/optimizer/">Chapter 27</a>: its opening pass gives fixed-arity subs direct <code>Value</code> parameters and removes the list entirely, which buys more than any lookup cache can. That only ever helped compiled code.</p>
+<p>The second is the free list above, which attacked the same allocation from inside the interpreter and took most of it: the one-argument shape from 32.35 to 9.48 ns, <code>fib</code> 8.8% fewer instructions, a two-argument call loop 13%. The lesson is not that the optimiser was unnecessary — it removes the list rather than making it cheap, and it is still the larger win where it applies. It is that a cost identified once can be worth attacking twice, from different sides, and that "the allocation is the cost" survived being true for long enough to be acted on in two entirely different places.</p><nav class="ch-nav"><a class="prev" href="/book/tree-walk/"><span>Previous</span>The Tree Walk</a><a class="next" href="/book/control-flow/"><span>Next</span>Cooperative Control Flow</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

@@ -38,7 +38,8 @@
 <tr><td>by-name: hash, <code>find</code>, <code>std::function</code></td><td>55.0</td><td>+8.7 vs direct</td></tr>
 <tr><td><code>RT.callBuiltin("chr", …)</code> end to end</td><td>66.0</td><td>the pre-change path</td></tr></table></div>
 <p>Two readings. The by-name lookup tax is real but modest, and caching the pointer recovers essentially all of it.</p>
-<p><strong>The more important reading is that the floor itself is high.</strong> About 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — a heap-allocating <code>std::vector</code> built per call. Dispatch was a quarter of the overhead; the argument vector was the rest.</p>
+<p><strong>The more important reading is that the floor itself is high.</strong> About 46 nanoseconds for a <em>trivial</em> call, nearly all of it the <code>ValueList</code> — at the time, a heap-allocating <code>std::vector</code> built per call. Dispatch was a quarter of the overhead; the argument list was the rest.</p>
+<p>That floor has since moved twice: <code>ValueList</code> stopped being a <code>std::vector</code>, and its small blocks stopped reaching the allocator (<a href="/book/containers/">Chapter 12</a>), which took the one-argument shape from 32 nanoseconds to 9.5. The passes below still pay — they remove the list rather than making it cheap, and removing is worth more than cheapening — but the gap they close is narrower than this table implies.</p>
 <p>Operators are a different story, because <code>applyArith</code> has integer and number fast paths at the top of its chain:</p>
 <div class="tablewrap"><table><tr><th>Op shape</th><th>ns/call</th></tr><tr><td><code>applyArith("+", int, int)</code> — early fast path</td><td>7.8</td></tr>
 <tr><td><code>rtAdd(int, int)</code> — the <code>-O</code> lane</td><td>5.6</td></tr>

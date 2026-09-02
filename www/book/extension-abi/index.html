@@ -98,6 +98,7 @@ RkValue     rk_val_at (RkCtx c, RkValue hash, <span class="kt">size_t</span> i);
     RK_ARRAY, RK_HASH, RK_OTHER
 } RkType;</code></pre>
 <p>It describes <strong>what an extension can do with a value</strong>, not where the value sits in Raku's type hierarchy. Anything the ABI has no vocabulary for arrives as <code>RK_OTHER</code>, and the advice is to stringify it. A coarse enum is a deliberate choice: a fine one would have to track the language's type system, which is exactly the coupling this design exists to avoid.</p>
+<p>Coarse cuts one way only. A <code>Date</code> is a hash of year, month and day inside the engine, an enum value is an <code>Int</code>, a <code>Buf</code> is a <code>Str</code> — and none of them arrive as that carrier. They are <code>RK_OTHER</code>, and <code>rk_str_get</code> gives their <code>Str</code> (<code>"2026-08-10"</code>, <code>Green</code>), because an extension that was told <code>RK_HASH</code> would serialise the date's fields, and one told <code>RK_INT</code> would write the enum's ordinal. JSON::Native's C writer did exactly the first of those until the mapping was fixed. The one tagged value that is what it looks like is a <code>Map</code>, which walks as <code>RK_HASH</code>.</p>
 <pre class="native-code"><code class="lang-c"><span class="cm">/* arguments */</span>
 <span class="kt">size_t</span>  rk_argc (RkCtx c);                    <span class="cm">/* positionals only */</span>
 RkValue rk_arg  (RkCtx c, <span class="kt">size_t</span> i);          <span class="cm">/* NULL if absent */</span>

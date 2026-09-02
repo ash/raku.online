@@ -23,13 +23,15 @@
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 27</p><h1>The <code>-O</code> Optimizer</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#what-the-generated-code-looks-like-without-it">What the generated code looks like without it</a></li><li><a href="#pass-1-direct-arity-calls">Pass 1 — direct-arity calls</a></li><li><a href="#pass-2-inline-arithmetic">Pass 2 — inline arithmetic</a></li><li><a href="#pass-3-guarded-native-int-lanes">Pass 3 — guarded native-int lanes</a></li><li><a href="#three-defaults-that-are-not-o">Three defaults that are not <code>-O</code></a></li><li><a href="#forwarding-the-c-optimization-level">Forwarding the C++ optimization level</a></li><li><a href="#measured">Measured</a></li><li><a href="#the-box-stays-only-its-per-operation-cost-goes">The box stays; only its per-operation cost goes</a></li><li><a href="#correctness">Correctness</a></li><li><a href="#what-is-next">What is next</a></li></ul></nav>
-<p>An optimizer for a language this dynamic has a narrower job than the name suggests. It is not looking for cleverness; it is looking for generality the program never asked for and is being charged for anyway. <a href="/book/calls/">Chapter 14</a> measured a call and found the cost sitting in the boxed argument vector rather than in dispatch, and the three passes here follow from that one finding.</p>
+<p>An optimizer for a language this dynamic has a narrower job than the name suggests. It is not looking for cleverness; it is looking for generality the program never asked for and is being charged for anyway. <a href="/book/calls/">Chapter 14</a> measured a call and found the cost sitting in the boxed argument list rather than in dispatch, and the three passes here follow from that one finding.</p>
+<p>The finding has since been acted on twice. This chapter is the first way: compile the list out of existence where the signature allows it. The second came later and from inside the interpreter — make the allocation itself nearly free, with a free list of small blocks (<a href="/book/containers/">Chapter 12</a>) — which narrowed the gap these passes close without changing what they do. Removing a cost is still worth more than cheapening it, and the passes below still measure what they always did against the <code>-O</code>-off baseline; the honest note is that the baseline moved.</p>
 <p><code>--exe</code> and its inspection twin <code>--cpp</code> accept <code>-O</code>. Everything under it is <strong>semantics-preserving</strong>: it changes how the compiled program computes, never what it computes. It is opt-in and off by default.</p>
 <pre class="native-code"><code class="lang-sh">rakupp --exe    prog.raku -o prog     # no optimizer
 rakupp --exe -O prog.raku -o prog     # optimizer on
 rakupp --cpp -O prog.raku             # print the optimized C++</code></pre>
 <h2 id="what-the-generated-code-looks-like-without-it">What the generated code looks like without it</h2>
 <p>By default the transpiler is faithful but generic: every value is a boxed <code>Value</code>, operators in value position go through <code>applyArith</code>, and every user-sub call packs its arguments into a <code>ValueList</code> — a heap allocation per call.</p>
+<p>That last clause was true without qualification when these passes were written, and it is the sentence they were written against. It is now half true: the short lists a call actually builds come off a free list rather than the allocator (<a href="/book/containers/">Chapter 12</a>), so what remains is a list built and torn down per call without touching <code>malloc</code>. The passes below still remove it outright, which is still worth more.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// sub fib($n) { $n &lt; 2 ?? $n !! fib($n-1) + fib($n-2) }</span>
 <span class="k">static</span> Value u_fib(ValueList __a) {
     Value v_sn = rtPos(__a, <span class="mi">0</span>);
@@ -103,7 +105,7 @@ rakupp --cpp -O prog.raku             # print the optimized C++</code></pre>
 <p>The interpreter pairs it with sink context, so a loop body's assignment does not copy its growing result either.</p>
 <p><strong><code>.sort($key)</code> extracts the key once per element.</strong> <code>.sort</code> takes either a 2-ary comparator or a 1-ary key extractor, and the difference is asymptotic: a comparator is <em>supposed</em> to run per comparison, but a key extractor runs <strong>once per element</strong>. Raku++ used to call the 1-ary block inside the comparator:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// after — a Schwartzian transform: n calls, then compare the keys</span>
-std::vector&lt;Value&gt; keys(items.size());
+ValueList keys(items.size());
 <span class="k">for</span> (<span class="kt">size_t</span> i = <span class="mi">0</span>; i &lt; items.size(); i++)
     keys[i] = callCallable(blk, {items[i]});
 std::stable_sort(order.begin(), order.end(), [&amp;](<span class="kt">size_t</span> x, <span class="kt">size_t</span> y) {

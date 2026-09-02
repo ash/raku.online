@@ -121,7 +121,7 @@ say <span class="nv">$buf</span>.decode(<span class="s1">'latin-1'</span>).subst
 <tr><td>a <code>repr('CStruct')</code> / <code>CUnion</code> class</td><td>a pointer to it</td><td>pointer</td></tr>
 <tr><td><code>&amp;callback (…)</code></td><td>a C function pointer</td><td>pointer</td></tr></table></div>
 <p>The table lives in <code>Interpreter.cpp</code> and <code>ffi::scalar(width, sign, isFloat)</code> maps into it, deliberately keeping the Raku type names in one place.</p>
-<p>Structs are laid out with natural alignment; <code>.new</code> allocates zeroed native memory, and field reads and writes go to that memory, so a C function can fill one in. <code>nativesizeof</code> answers from the same layout code.</p>
+<p>Structs are laid out with natural alignment; <code>.new</code> allocates zeroed native memory, and field reads and writes go to that memory, so a C function can fill one in. <code>nativesizeof</code> answers from the same layout code. A member declared with <code>HAS</code> is inlined rather than pointed at — it contributes the inner struct's own width and alignment, and its accessor hands back a view onto the outer struct's bytes rather than dereferencing a pointer.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — the pointer helpers</span>
 Value ncMakePointer(<span class="k">const</span> std::string&amp; type, <span class="kt">void</span>* p);
 Value ncMakeLiveCArray(<span class="k">const</span> std::string&amp; type, <span class="kt">void</span>* p);
@@ -130,7 +130,8 @@ Value ncMakeLiveCArray(<span class="k">const</span> std::string&amp; type, <span
                         <span class="kt">long</span> <span class="kt">long</span> i, <span class="k">const</span> Value&amp; val);
 <span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncFieldOffset(ClassInfo* ci, <span class="k">const</span> std::string&amp; field,
                                std::string&amp; type);
-<span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructSize(ClassInfo* ci);</code></pre>
+<span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructSize(ClassInfo* ci);
+<span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructAlign(ClassInfo* ci);</code></pre>
 <h2 id="callbacks">Callbacks</h2>
 <p>A <code>Callable</code> handed to C becomes a real C function pointer built with an <code>ffi_closure</code>. Parameters are typed from the block's own signature:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
@@ -158,7 +159,7 @@ say abs(-<span class="mf">99.5e0</span>);   <span class="c1"># -99.5</span></cod
 <p><code>--exe</code> emits the same <code>callNative</code>, so <code>is native</code> behaves identically interpreted and compiled — and a compiled binary looks for libffi at <em>its</em> run time, not at build time.</p>
 <p>A few shapes make <code>--exe</code> fall back to bundling: <code>is native(&amp;lib-sub)</code>, a library name computed by an expression, <code>is rw</code> out-parameters, and buffer or <code>CArray</code> parameters needing copy-back. The compiler says so and produces a bundled binary instead.</p>
 <h2 id="not-supported">Not supported</h2>
-<ul><li><strong>C structs passed or returned by value.</strong> Rakudo cannot express this either — its NativeCall maps a struct to one type code with no by-value variant — so adding it here would mean inventing syntax rather than matching an existing spelling. A return of up to 8 bytes can be declared <code>int64</code> and unpacked by hand.</li><li><strong>Callbacks fired from a thread the C library owns</strong>, as above.</li><li><strong>Embedded structs.</strong> A struct-typed field is a pointer, not an inlined struct.</li><li><code>explicitly-manage</code>.</li></ul><nav class="ch-nav"><a class="prev" href="/book/nqp/"><span>Previous</span><code>use nqp</code>: a Compatibility Subset</a><a class="next" href="/book/extension-abi/"><span>Next</span>The Extension ABI</a></nav>
+<ul><li><strong>C structs passed or returned by value.</strong> Rakudo cannot express this either — its NativeCall maps a struct to one type code with no by-value variant — so adding it here would mean inventing syntax rather than matching an existing spelling. A return of up to 8 bytes can be declared <code>int64</code> and unpacked by hand.</li><li><strong>Callbacks fired from a thread the C library owns</strong>, as above.</li></ul><nav class="ch-nav"><a class="prev" href="/book/nqp/"><span>Previous</span><code>use nqp</code>: a Compatibility Subset</a><a class="next" href="/book/extension-abi/"><span>Next</span>The Extension ABI</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

@@ -31,6 +31,7 @@
 <tr><td>string performance</td><td><code>Value.h</code> <code>CowStr</code>, <code>BuiltinsShared.h</code></td><td><a href="/book/strings/">Chapters 9</a> and <a href="/book/unicode/">24</a></td></tr>
 <tr><td>the number tower</td><td><code>BigInt.cpp</code>, <code>IntOps.h</code>, <code>Value::rat</code></td><td><a href="/book/numbers/">Chapter 11</a></td></tr>
 <tr><td>scoping, assignment, binding</td><td><code>Interpreter.cpp</code> <code>lvalue</code>, <code>evalAssign</code></td><td><a href="/book/containers/">Chapter 12</a></td></tr>
+<tr><td>how lists and argument lists are stored</td><td><code>ValueVec.h</code> <code>RVec</code>, <code>Value.h</code>'s <code>ValueList</code></td><td><a href="/book/containers/">Chapter 12</a></td></tr>
 <tr><td>calls and signatures</td><td><code>Interpreter.cpp</code> <code>callCallableRaw</code>, <code>bindParams</code></td><td><a href="/book/calls/">Chapter 14</a></td></tr>
 <tr><td><code>return</code>, <code>next</code>, <code>last</code>, <code>when</code></td><td>the cooperative registers in <code>ExecContext</code></td><td><a href="/book/control-flow/">Chapter 15</a></td></tr>
 <tr><td>a built-in routine</td><td><code>Builtins.cpp</code> <code>registerBuiltins</code></td><td><a href="/book/dispatch/">Chapter 16</a></td></tr>
@@ -66,6 +67,7 @@
 <p><strong>A pointer is only a valid map key when its target's lifetime is at least the map's.</strong> AST nodes are never freed, so a flip-flop state map keyed on one is fine. Regex nodes are freed and their addresses recycled, which is why a cache keyed on one produced automata built for other patterns.</p>
 <p><strong>Intern a closed vocabulary, never an open one.</strong> The intern table is append-only, so a field that can hold arbitrary runtime data would leak an entry per distinct value.</p>
 <p><strong>Do not add a non-<code>const</code> <code>operator[]</code>, <code>begin()</code> or <code>data()</code> to <code>CowStr</code>.</strong> That is exactly the interface that made copy-on-write non-conforming for <code>std::string</code>.</p>
+<p><strong>Nothing in a <code>Value</code> may point at itself.</strong> <code>ValueList</code> relocates its buffer with a <code>memcpy</code>, which is sound only while every member survives having its bytes moved without the source being destroyed. A field with an interior pointer, a self-registering handle or an intrusive list node breaks it — and breaks it silently, by producing wrong data rather than by failing to compile. The near-miss is already in the struct: libstdc++'s short <code>std::string</code> points at its own inline buffer, which is why the path is chosen by a run-time probe. Run <code>tools/reloc-probe.cpp</code> after touching the struct.</p>
 <p><strong>Add an early exit, never restructure the general path underneath it.</strong> The first node specialisation cost the control 5.7% by doing the latter.</p>
 <p><strong>A memo is only sound if the thing memoised is a function of the key.</strong> A grammar rule that reads a dynamic variable is not a function of (rule, position), which is what the <code>dynDep</code> flag records.</p>
 <p><strong><code>gilPark</code>'s window must touch no interpreter state.</strong> Only thread-local buffers and syscalls.</p>
@@ -88,6 +90,8 @@
 <p><strong>GIL</strong> — the global interpreter lock. Only its holder may touch interpreter state; it is engaged lazily on first concurrent use.</p>
 <p><strong>Grapheme</strong> — what a reader calls a character. Raku's string indices are grapheme indices; storage is UTF-8 bytes.</p>
 <p><strong>Handle</strong> — an opaque <code>RkValue</code> in the extension ABI. The mechanism by which an extension never sees <code>Value</code>.</p>
+<p><strong>Trivially relocatable</strong> — a type whose bytes may be moved to a new address without the source being destroyed, with the result equivalent to move-constructing and then destroying. <code>Value</code> is; libstdc++'s short <code>std::string</code> is not. It is what lets <code>RVec</code> grow by <code>memcpy</code>.</p>
+<p><strong>Free list</strong> — a chain of released blocks of one size, kept for reuse instead of being returned to the allocator. <code>RVec</code> keeps one per capacity for the small argument-list sizes; the frame pool is the same idea for <code>Env</code>.</p>
 <p><strong>Model gap</strong> — a construct the longest-token automaton builder could not model, as opposed to one that genuinely ends the declarative prefix. A gap forces a fallback to the probe ranker.</p>
 <p><strong>NFG</strong> — Raku's normalization-form-grapheme storage model. Strings are normalised to NFC on the way in.</p>
 <p><strong>Packrat memo</strong> — the cache of a ratcheting grammar rule's match at a position, sound because such a rule does not backtrack.</p>

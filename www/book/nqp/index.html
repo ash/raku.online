@@ -83,7 +83,8 @@ Value Interpreter::evalNqpOp(NqpOp* n) {
     }
 }</code></pre>
 <h2 id="the-argument-buffers">The argument buffers</h2>
-<p>An nqp-heavy program is nqp-heavy in the extreme: a tokenizer written in Raku runs about 1.5 million operations on a 278 KB document. Building a fresh <code>ValueList</code> per operation is a malloc and a free per op, for a vector of one to four values.</p>
+<p>An nqp-heavy program is nqp-heavy in the extreme: a tokenizer written in Raku runs about 1.5 million operations on a 278 KB document. Building a fresh <code>ValueList</code> per operation was a malloc and a free per op, for a list of one to four values.</p>
+<p>(Those are now exactly the sizes <code>ValueList</code> keeps on a free list — see <a href="/book/containers/">Chapter 12</a> — so the same op costs a pop and a push instead. The buffers below still pay, because they also save the clear and refill, and because the re-entrancy argument that picks the container has nothing to do with allocation. But this section was written when the allocator was the whole cost, and it no longer is.)</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
 std::deque&lt;ValueList&gt; nqpArgs;   <span class="c1">// one reusable buffer per nesting depth</span>
 <span class="kt">size_t</span> nqpDepth = <span class="mi">0</span>;</code></pre>

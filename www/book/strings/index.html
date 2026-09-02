@@ -36,7 +36,7 @@
 <span class="k">class</span> CowStr {
     std::string s_;                        <span class="c1">// short: inline</span>
     std::shared_ptr&lt;<span class="k">const</span> StrBody&gt; p_;     <span class="c1">// long: shared, immutable</span>
-    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">size_t</span> kPromote = <span class="mi">64</span>;
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">size_t</span> kPromote = <span class="mi">23</span>;
 
     <span class="kt">void</span> take(std::string x) {
         <span class="k">if</span> (x.size() &gt;= kPromote) {
@@ -52,11 +52,18 @@
 <h3>Promotion is eager</h3>
 <p>At construction, not lazily on first copy. Raku++ runs work in parallel, and a lazy promotion would have to mutate the source from a <code>const</code> copy constructor — two threads copying the same <code>Value</code> would race on it.</p>
 <p>Eager promotion means <strong>a <code>const CowStr</code> is never written to at all</strong>, which is what makes the type safe to share without a lock. That single property is what lets everything else here be lock-free.</p>
-<h3>The threshold is 64</h3>
-<p>Above every mainstream small-buffer capacity, measured:</p>
+<h3>The threshold is 23, and it used to be 64</h3>
+<p>The relevant numbers are the small-buffer capacities, measured:</p>
 <div class="tablewrap"><table><tr><th>standard library</th><th><code>sizeof(std::string)</code></th><th>SSO capacity</th></tr><tr><td>libc++ (clang)</td><td>24</td><td>22</td></tr>
 <tr><td>libstdc++ (g++ 14, 16)</td><td>32</td><td>15</td></tr></table></div>
-<p>So 64 leaves a band in which a copy is a couple of words and no allocation happens either way, and only promotes when copying is the thing being paid for. It is not a tuned number; it is a deliberately safe one.</p>
+<p>The original threshold was 64, chosen to sit above every mainstream capacity. That left a band in which a copy was a couple of words and no allocation happened either way, and it promoted only where copying was clearly the thing being paid for. It was not a tuned number; it was a deliberately safe one.</p>
+<p>It was also, by construction, wrong at one end. Between libc++'s 22 and the threshold's 64 sat a band where the inline arm had already stopped being free: a 30-byte string is a heap <code>std::string</code> that mallocs <strong>on every copy</strong>, while a 70-byte one is a shared body that copies by refcount. A 33-byte string cost more to pass around than a 68-byte one, for no reason but the constant.</p>
+<p>So the threshold moved to 23 — libc++'s boundary, the point where the inline representation stops being free — and the policy inverted with it: promote wherever <code>std::string</code> would allocate anyway, rather than wherever sharing is obviously worth it. On libstdc++, whose capacity is 15, the new value leaves a 16..22 band that is now promoted where it need not be; that is the cost of having one constant rather than a per-library one, and it is small.</p>
+<p>The honest ledger for the change, measured as instruction counts at best of five runs: mid-band strings copied twice <strong>+19.8%</strong>, built and read once <strong>+4.9%</strong>, <code>textsplit</code> <strong>+3.0%</strong>, and one measured counter-case at <strong>−5.6%</strong>. Grammar parsing, string comparison and string appending are all flat, because their strings are not in the band. The change is kept because the shapes it helps are commoner than the shape it hurts, not because the measurement is emphatic — and the counter-case is the next section.</p>
+<h3>The counter-case: a mid-band string used as a hash key</h3>
+<p>A promoted string costs <strong>two</strong> allocations, not one: <code>make_shared</code> fuses the control block with <code>StrBody</code>, but <code>StrBody::text</code> heap-allocates its own buffer. An unpromoted mid-band string costs the single <code>std::string</code> malloc. Copies are free afterwards, so promotion pays from roughly the second copy onward.</p>
+<p>A hash key never gets there. It is built, hashed, and copied <em>out</em> into the hash's own key storage, and the <code>Value</code> is then dropped — one construction, one read, no copy that a shared body could make cheap. Two hundred thousand mid-band keys measure 5.6% more instructions after the threshold change, and that is the whole shape of the trade written in one program.</p>
+<p>The fix is not the threshold. It is <code>StrBody</code> storing its text inline rather than as a <code>std::string</code> member, which would collapse promotion to a single allocation and remove the loss entirely — the same change the 32-byte <code>Value</code> design needs, for the same reason.</p>
 <h3>The body caches string properties</h3>
 <p>This is the part no general-purpose string type can do, and the real reason <code>CowStr</code> exists rather than a third-party copy-on-write string.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
@@ -82,7 +89,7 @@
 <tr><td><code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code></td><td>only needed if the pointer were rebound concurrently, which eager promotion guarantees it never is</td></tr></table></div>
 <p>Outside the standard the pattern is thoroughly proven and lives attached to frameworks: <code>folly::fbstring</code> is the closest relative — a drop-in <code>basic_string</code> with three tiers, the top one copy-on-write with an atomic refcount; Qt has done "implicit sharing" across its whole container library for about twenty-five years; <code>absl::Cord</code> is a tree of refcounted immutable chunks, which wins when <em>concatenating</em> large strings rather than copying them; Rust's <code>Cow&lt;'_, str&gt;</code> makes the same idea explicit in the type system. LLVM went the other way entirely, with <code>StringRef</code> and <code>Twine</code> and no copy-on-write anywhere.</p>
 <p><strong>Why not adopt one?</strong> Folly and Qt are large dependencies for a subset of what is needed, and this project vendors nothing it can write in a page. But the deciding reason is the property cache: <code>fbstring</code>, <code>QString</code> and <code>Cord</code> would all give the copy elision and none of the <code>allAscii</code>/<code>crFree</code>/<code>nGraphemes</code> caching, which is the half of the fix that removed the <em>scanning</em> quadratic. Bolting that onto a third-party string means a side table keyed on the buffer address, with its own lifetime and thread-safety problem — strictly worse than owning forty lines.</p>
-<p>The threshold difference makes the same argument from the other end. <code>fbstring</code> promotes at 255 because copy avoidance is all it buys. <code>CowStr</code> promotes at 64 because promotion also buys the cache.</p>
+<p>The threshold difference makes the same argument from the other end. <code>fbstring</code> promotes at 255 because copy avoidance is all it buys. <code>CowStr</code> promotes at 23 because promotion also buys the cache — an order of magnitude earlier, for a type that gets something out of the body besides sharing.</p>
 <h2 id="what-it-costs">What it costs</h2>
 <div class="tablewrap"><table><tr><th></th><th>bytes</th></tr><tr><td><code>std::string</code> (libc++)</td><td>24</td></tr>
 <tr><td><code>std::shared_ptr</code></td><td>16</td></tr>
@@ -99,7 +106,7 @@
 <h2 id="checking-that-it-is-working">Checking that it is working</h2>
 <p>The failure mode is silent: a change that puts a hot string back on the copying path costs time and nothing else. Two cheap checks.</p>
 <p><strong>Measure scaling, not speed.</strong> Time the operation over inputs of <em>n</em>, 2<em>n</em>, 4<em>n</em>, 8<em>n</em>. Doubling per doubling is fine; quadrupling is the bug this class exists to prevent. That is the test which found <code>findnotcclass</code> after four other sites had already been fixed.</p>
-<p><strong>Confirm promotion is actually happening.</strong> A string that never crosses 64 bytes is never promoted and caches nothing — which is correct, but means a benchmark built from short strings proves nothing about either mechanism.</p><nav class="ch-nav"><a class="prev" href="/book/value/"><span>Previous</span><code>Value</code>: the Fat Tagged Struct</a><a class="next" href="/book/interning/"><span>Next</span>Interning and Comparison: <code>IStr</code> and <code>MName</code></a></nav>
+<p><strong>Confirm promotion is actually happening.</strong> A string that never crosses 23 bytes is never promoted and caches nothing — which is correct, but means a benchmark built from short strings proves nothing about either mechanism. The bar is low enough now that most real text clears it; it was 64, and a good deal of plausible-looking test data used to sit under it.</p><nav class="ch-nav"><a class="prev" href="/book/value/"><span>Previous</span><code>Value</code>: the Fat Tagged Struct</a><a class="next" href="/book/interning/"><span>Next</span>Interning and Comparison: <code>IStr</code> and <code>MName</code></a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>
