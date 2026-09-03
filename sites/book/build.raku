@@ -337,8 +337,20 @@ sub render(Str $md --> Str) {
     while $i < @lines.elems {
         my $line = @lines[$i];
 
-        # raw LaTeX the PDF needs and the web does not
-        if $line.starts-with('\\part{') || $line.trim eq '\\appendix' {
+        # Raw LaTeX the PDF needs. `\glossletter{X}` is the one that carries
+        # meaning on the web too — it is a letter divider in the glossary — so
+        # it becomes a heading and joins the on-this-page list; the rest is
+        # dropped. EVERY line starting with `\` has to be consumed here: the
+        # paragraph loop below refuses to start on one, so a `\` line that fell
+        # through would leave $i where it was and spin forever.
+        if $line.starts-with('\\') {
+            if $line.trim ~~ / ^ '\\glossletter{' (<-[}]>+) '}' $ / {
+                my $t  = ~$0;
+                my $id = slugify($t);
+                @HEADINGS.push({ id => $id, text => $t, letter => True });
+                @out.push('<h2 class="gloss-letter" id="' ~ attr($id) ~ '">'
+                          ~ esc($t) ~ '</h2>');
+            }
             $i++; next;
         }
 
@@ -593,7 +605,10 @@ sub MAIN(Bool :$clean = False) {
         my $toc = @HEADINGS.elems >= 3
             ?? '<nav class="ch-toc"><p>On this page</p><ul>'
                ~ @HEADINGS.map({
-                     '<li><a href="#' ~ attr(.<id>) ~ '">' ~ inline(.<text>) ~ '</a></li>'
+                     # A glossary's letter dividers are one character each; the
+                     # class lets them sit in a row instead of a tall column.
+                     '<li' ~ (.<letter> ?? ' class="letter"' !! '') ~ '>'
+                     ~ '<a href="#' ~ attr(.<id>) ~ '">' ~ inline(.<text>) ~ '</a></li>'
                  }).join
                ~ '</ul></nav>'
             !! '';

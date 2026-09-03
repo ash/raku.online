@@ -4,7 +4,7 @@
     tagline  => 'How a hand-written C++ implementation of Raku works — from source text to native code.',
     repo     => 'https://github.com/ash/rakupp',
     pdf      => 'Raku++-Internals.pdf',
-    pdf-note => '320 pages',
+    pdf-note => '383 pages',
 
     # A one-line description per chapter slug, shown on the contents page.
     # A slug with no entry simply shows its title.
@@ -50,6 +50,7 @@
         'measuring'           => 'the benchmark policy, the gates, and what did not pay',
         'appendix-a'          => 'the VT, NK and regex-node tag sets',
         'appendix-b'          => 'every flag and environment variable',
-        'appendix-c'          => 'a source map, the rules that are easy to break, a glossary',
+        'appendix-c'          => 'a source map, and the rules that are easy to break',
+        'appendix-d'          => 'the compiler vocabulary, general and local, A to Z',
     },
 }

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Source Map and Glossary — Raku++ Internals</title>
+<title>Source Map — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=853d0cd4"></script>
-<link rel="stylesheet" href="/theme/base.css?v=853d0cd4">
-<link rel="stylesheet" href="/theme/shell.css?v=853d0cd4">
-<link rel="stylesheet" href="/theme/book.css?v=853d0cd4">
+<script src="/theme/boot.js?v=21211bcd"></script>
+<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
+<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
+<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -22,7 +22,8 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Appendix C</p><h1>Source Map and Glossary</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#where-to-look-for-what">Where to look for what</a></li><li><a href="#rules-that-are-easy-to-break-by-accident">Rules that are easy to break by accident</a></li><li><a href="#glossary">Glossary</a></li></ul></nav>
+<p class="ch-label">Appendix C</p><h1>Source Map</h1>
+<p>The vocabulary the book uses — the general compiler terms and this project's own — is in Appendix D.</p>
 <h2 id="where-to-look-for-what">Where to look for what</h2>
 <div class="tablewrap"><table><tr><th>If you are changing</th><th>Start in</th><th>Also read</th></tr><tr><td>tokenization, quoting, heredocs</td><td><code>Lexer.cpp</code>, <code>Token.h</code></td><td><a href="/book/lexer/">Chapter 4</a></td></tr>
 <tr><td>statement or expression syntax</td><td><code>Parser.cpp</code>, <code>Ast.h</code></td><td><a href="/book/parser/">Chapters 5</a> and <a href="/book/ast/">7</a></td></tr>
@@ -72,45 +73,13 @@
 <p><strong>A memo is only sound if the thing memoised is a function of the key.</strong> A grammar rule that reads a dynamic variable is not a function of (rule, position), which is what the <code>dynDep</code> flag records.</p>
 <p><strong><code>gilPark</code>'s window must touch no interpreter state.</strong> Only thread-local buffers and syscalls.</p>
 <p><strong>Never join a thread while holding the lock the joinee might want.</strong></p>
-<p><strong>A derived-data mechanism must degrade to recomputation, never to a guess.</strong> Every failure mode in the caching and emitting paths ends in "parse it again".</p>
-<h2 id="glossary">Glossary</h2>
-<p><strong>AOT</strong> — the <code>--aot</code> mode: parse at build time, emit C++ that rebuilds the AST, then interpret it at run time.</p>
-<p><strong>Allomorph</strong> — a value that is simultaneously a number and its own string, such as <code>IntStr</code>. Represented as a numeric tag with the text in <code>s</code>.</p>
-<p><strong>Autothreading</strong> — distributing an operation over a junction's eigenstates and recombining the results.</p>
-<p><strong>Bundle</strong> — the <code>--bundle</code> mode: embed the source bytes in a standalone binary that parses and interprets them at run time.</p>
-<p><strong>Byteset</strong> — a 256-bit bitmap cached on a regex character-class node, answering "does this byte match?" without re-deriving the class.</p>
-<p><strong>Cooperative control flow</strong> — implementing <code>return</code>, <code>next</code>, <code>last</code> and <code>when</code> with a flag and a frame counter instead of a C++ exception, when no callable boundary was crossed.</p>
-<p><strong>Declarative prefix</strong> — the leading part of a regex alternative made of literals, character classes and quantifiers, up to the first procedural construct. What longest-token matching ranks by.</p>
-<p><strong>Decided-once field</strong> — a mutable field on an AST node holding a fact about the syntax, computed on first evaluation and never recomputed.</p>
-<p><strong>Eigenstate</strong> — one of the values inside a junction.</p>
-<p><strong>Fat struct</strong> — the <code>Value</code> design: one struct with a type tag and a field for every kind of payload, several of which may be live at once.</p>
-<p><strong>Seam</strong> — an accessor that is the only way to reach a piece of data, so the object defining it can be swapped for a stub at link time. What makes a Unicode table cuttable.</p>
-<p><strong>Trigger</strong> (in <code>--slim</code>) — a construct meaning the program can run code the scan never saw, so every feature is kept. An unmodelled AST node is one.</p>
-<p><strong>Emscripten</strong> — the toolchain that compiles the runtime to WebAssembly. Its <code>-fexceptions</code> mode routes C++ throws through JavaScript, which is what bounds recursion depth in the browser.</p>
-<p><strong>GIL</strong> — the global interpreter lock. Only its holder may touch interpreter state; it is engaged lazily on first concurrent use.</p>
-<p><strong>Grapheme</strong> — what a reader calls a character. Raku's string indices are grapheme indices; storage is UTF-8 bytes.</p>
-<p><strong>Handle</strong> — an opaque <code>RkValue</code> in the extension ABI. The mechanism by which an extension never sees <code>Value</code>.</p>
-<p><strong>Trivially relocatable</strong> — a type whose bytes may be moved to a new address without the source being destroyed, with the result equivalent to move-constructing and then destroying. <code>Value</code> is; libstdc++'s short <code>std::string</code> is not. It is what lets <code>RVec</code> grow by <code>memcpy</code>.</p>
-<p><strong>Free list</strong> — a chain of released blocks of one size, kept for reuse instead of being returned to the allocator. <code>RVec</code> keeps one per capacity for the small argument-list sizes; the frame pool is the same idea for <code>Env</code>.</p>
-<p><strong>Model gap</strong> — a construct the longest-token automaton builder could not model, as opposed to one that genuinely ends the declarative prefix. A gap forces a fallback to the probe ranker.</p>
-<p><strong>NFG</strong> — Raku's normalization-form-grapheme storage model. Strings are normalised to NFC on the way in.</p>
-<p><strong>Packrat memo</strong> — the cache of a ratcheting grammar rule's match at a position, sound because such a rule does not backtrack.</p>
-<p><strong>Publish</strong> — the step at the end of module loading that copies the module's environment into the global one.</p>
-<p><strong>Ratchet</strong> — the property of <code>token</code> and <code>rule</code> that their quantifiers are possessive and their matches commit.</p>
-<p><strong>Sigspace</strong> — the <code>:s</code> adverb and the <code>rule</code> declarator, under which whitespace in a pattern means "match optional whitespace here". Implemented by wrapping atoms with a <code>&lt;ws&gt;</code> subrule at compile time.</p>
-<p><strong>Sink context</strong> — a statement whose value is discarded, signalled down so an assignment need not materialise its result.</p>
-<p><strong>Slip</strong> — <code>|@a</code>, a list that splices into the surrounding list or argument list.</p>
-<p><strong>Specificity</strong> — the score <code>scoreCandidate</code> assigns a multi-dispatch candidate.</p>
-<p><strong>Superinstruction</strong> — a fused node kind representing a common pattern. The approach node specialisation deliberately did <em>not</em> take.</p>
-<p><strong>Transparent</strong> (of a regex construct, in ranking) — treated as an epsilon transition by the longest-token automaton, because the commit engine will enforce it for real.</p>
-<p><strong>Twigil</strong> — the second sigil character: <code>*</code> dynamic, <code>!</code>/<code>.</code> attribute, <code>^</code> placeholder, <code>?</code> compile-time.</p>
-<p><strong>Wrapper stack</strong> — the <code>&amp;routine.wrap({…})</code> layers on a <code>Callable</code>, run outermost first, each able to <code>callsame</code> into the next.</p><nav class="ch-nav"><a class="prev" href="/book/appendix-b/"><span>Previous</span>Flags and Environment Variables</a></nav>
+<p><strong>A derived-data mechanism must degrade to recomputation, never to a guess.</strong> Every failure mode in the caching and emitting paths ends in "parse it again".</p><nav class="ch-nav"><a class="prev" href="/book/appendix-b/"><span>Previous</span>Flags and Environment Variables</a><a class="next" href="/book/appendix-d/"><span>Next</span>Glossary</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=853d0cd4" defer></script>
+<script src="/theme/shell.js?v=21211bcd" defer></script>
 </body>
 </html>
