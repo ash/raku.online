@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Code Generator — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=21211bcd"></script>
-<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/book.css?v=a4ed9a0c">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -126,7 +126,7 @@ Value callEnvFirst(<span class="k">const</span> std::string&amp; name, ValueList
 <p>That fix is a good example of the general hazard in compiling a dynamic language: <strong>any decision made at compile time is a promise about the run-time environment,</strong> and every such promise needs a reason to be true.</p>
 <h3>The other promise: every variable has a declaration</h3>
 <p>A variable compiles to a C++ local, which is only possible because Raku declares its variables — and <code>no strict</code> is precisely the pragma that says it need not. The generator emitted a reference to a local for the name anyway, so <em>any</em> program using the pragma failed in the C++ compiler:</p>
-<pre class="native-code"><code>nostrict.rakupp.gen.cpp:35:9: error: use of undeclared identifier 'v_szz'</code></pre>
+<pre class="native-code grid"><code>nostrict.rakupp.gen.cpp:35:9: error: use of undeclared identifier 'v_szz'</code></pre>
 <p>Not a <code>CodegenError</code>, so not a fallback either — <code>--exe</code> simply could not build these programs. The reason to believe the promise now comes from the pass that already answers this exact question, <code>DeclCheck</code> (<a href="/book/tooling/">Chapter 38</a>): <code>findLaxVars</code> returns the names a lexically lax region auto-vivifies, and those compile to <code>RT.laxVarRef("$x")</code> — a slot in the live environment — instead of a local.</p>
 <p>What makes the set safe to act on is the pass's <em>source-text backstop</em>: a name survives into it only if the unit spells a declaration for it nowhere, and a name the generator never declares cannot collide with one it does. When the check could not finish (<code>EVAL</code> and friends stand it down) the set may be short, so the generator throws <code>CodegenError</code> and the program is bundled — the same answer as any other construct it cannot promise anything about.</p>
 <h2 id="inspecting-the-output">Inspecting the output</h2>
@@ -140,6 +140,6 @@ rakupp --exe -o prog prog.raku  # compile it</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=21211bcd" defer></script>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
 </body>
 </html>

@@ -365,7 +365,12 @@ sub render(Str $md --> Str) {
             }
             $i++;
             my $cls = $lang ?? ' class="lang-' ~ $lang ~ '"' !! '';
-            @out.push('<pre class="native-code"><code' ~ $cls ~ '>'
+            # A fence with no language is a diagram or a terminal transcript.
+            # Both are drawn on the character grid and need the font's own line
+            # height, or a column of `│` comes out dashed; `grid` is how the
+            # stylesheet knows which blocks those are.
+            my $pcls = $lang ?? 'native-code' !! 'native-code grid';
+            @out.push('<pre class="' ~ $pcls ~ '"><code' ~ $cls ~ '>'
                       ~ highlight(@code.join("\n"), $lang) ~ '</code></pre>');
             next;
         }

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Installer and the Store — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=21211bcd"></script>
-<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/book.css?v=a4ed9a0c">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -27,7 +27,7 @@
 <p>The order of construction matters here. Raku++ could <strong>read</strong> the store long before it could write it: <a href="/book/modules/">Chapter 32</a> ends with <code>use</code> resolving zef-installed modules straight out of Rakudo's install tree. Then the zef-compatibility work gave the engine a <strong>writer</strong> — enough of <code>CompUnit::Repository::Installation</code> that zef itself, running under rakupp, could install things. <code>rakupp install</code> came last, as a thin, careful client of a writer that already existed. Install is a new front door on machinery the engine already had.</p>
 <h2 id="the-layout">The layout</h2>
 <p>A store is one directory — a <em>prefix</em> — with this inside:</p>
-<pre class="native-code"><code>~/.raku/
+<pre class="native-code grid"><code>~/.raku/
 ├── version              the layout version (2)
 ├── repo.lock            what writers flock before mutating anything
 ├── sources/&lt;id&gt;         one file per installed module source
@@ -38,7 +38,7 @@
 └── precomp/             Rakudo's bytecode cache (rakupp ignores it)</code></pre>
 <p>Every engine's default chain includes at least two prefixes. Rakudo's is <code>home</code> (<code>~/.raku</code>) then <code>site</code>/<code>vendor</code>/<code>core</code> under its own installation; rakupp searches <code>~/.raku</code> first and then every Homebrew Rakudo's <code>site</code> and <code>vendor</code> — so a module zef installed for Rakudo is found by rakupp with no configuration at all. The two installers default to <em>different ends</em> of the shared chain: zef writes Rakudo's site store, <code>rakupp install</code> writes <code>~/.raku</code> (<code>--to</code> to aim elsewhere). Both engines read both.</p>
 <p>The clever part of the layout is <code>short/</code>. A <code>use JSON::Fast</code> must find one file among thousands without scanning anything, so the index is <strong>addressed by hash</strong>: the directory name is the SHA-1 of the module name, and each file inside it describes one installed distribution providing that name. The file's <em>name</em> is the distribution's id; its <em>content</em> is five short lines:</p>
-<pre class="native-code"><code>$ cat site/short/E0FD4AFC…0FB899A/8270A3B9…41A908A
+<pre class="native-code grid"><code>$ cat site/short/E0FD4AFC…0FB899A/8270A3B9…41A908A
       # …/short/&lt;sha1("File::Temp")&gt;/&lt;dist-id&gt;
 0.0.12                                ← version
 zef:raku-community-modules            ← auth
@@ -78,7 +78,7 @@ DBE25863E06AEC6820058FA548E27780308E6C43   ← the sources/ file to load
 <p>The program is ~600 lines and its shape is a pipeline:</p>
 <p><strong>Index.</strong> <code>https://360.zef.pm/index.json</code> — the fez ecosystem's index, one JSON array of every distribution's META plus an archive path. Cached in <code>~/.raku/rakupp-install/</code> for 24 hours; <code>--refresh</code> refetches; <code>RAKUPP_INSTALL_INDEX</code> substitutes a file or URL, which is how the test suite runs without a network and how a mirror slots in.</p>
 <p><strong>Resolve.</strong> Breadth-first over <code>depends</code>, newest satisfying version first, <code>:from&lt;native&gt;</code> and <code>:from&lt;bin&gt;</code> dependencies reported but not fetched, plan reversed at the end so dependencies install before their dependents:</p>
-<pre class="native-code"><code>$ rakupp install --dry-run JSON::Class
+<pre class="native-code grid"><code>$ rakupp install --dry-run JSON::Class
 plan (6 distributions, dependencies first):
   JSON::Fast:ver&lt;0.20.1&gt;:auth&lt;zef:timo&gt;   https://360.zef.pm/J/SO/JSON_FAST/d5c8426f…be8b.tar.gz
   JSON::Name:ver&lt;0.0.7&gt;:auth&lt;zef:jonathanstowe&gt;   …
@@ -102,7 +102,7 @@ dry run: nothing written</code></pre>
 <p>Note what provenance does <em>not</em> do: nothing stops zef from removing a distribution rakupp installed. The store has no owner field, and adding one would break the symmetry that makes the whole arrangement work. <code>owned</code> binds only rakupp's own destructive path; politeness is enforced at home.</p>
 <h2 id="the-checker">The checker</h2>
 <p><code>rakupp install --check</code> walks one store and reports; it fixes nothing:</p>
-<pre class="native-code"><code>$ rakupp install --check
+<pre class="native-code grid"><code>$ rakupp install --check
 store: /Users/ash/.raku
 store check: 3 distributions, 0 broken, 0 unreferenced blobs</code></pre>
 <p>It distinguishes two severities. <strong>Broken</strong> — an unreadable <code>dist/</code> record, a short entry pointing at a missing dist record, a missing blob behind a live entry, a provided module with no index entry — each is a <code>use</code> that will fail or a record that cannot be trusted, and any of them makes the exit code 1. <strong>Unreferenced blobs</strong> are wasted disk, reported and exempt: in a shared store, a blob this engine cannot account for might be another writer's, and a checker that "cleans" what it does not understand is how shared state gets destroyed. There is deliberately no <code>--fix</code>.</p>
@@ -126,6 +126,6 @@ store check: 3 distributions, 0 broken, 0 unreferenced blobs</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=21211bcd" defer></script>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
 </body>
 </html>

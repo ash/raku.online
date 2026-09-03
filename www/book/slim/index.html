@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What a Compiled Binary Keeps — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=21211bcd"></script>
-<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/book.css?v=a4ed9a0c">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -93,7 +93,7 @@ SlimScanResult slimScan(<span class="k">const</span> Program&amp; prog,
 <p>The <code>eval</code> feature has the widest surface, and most of it is not spelled <code>EVAL</code>: <code>require</code>, <code>use-ok</code>, <code>eval-dies-ok</code>, a regex code block, <code>:my</code> in a regex, an <code>s///</code> replacement that interpolates, <code>throws-like</code> with code in a string. Each of those reaches <code>evalString</code> at run time, so each keeps the parser.</p>
 <h2 id="the-triggers">The triggers</h2>
 <p>Some constructs mean the program can run code the scan never saw. Under <code>auto</code> any of them keeps <strong>everything</strong>:</p>
-<pre class="native-code"><code>EVAL / EVALFILE / require
+<pre class="native-code grid"><code>EVAL / EVALFILE / require
 a symbolic reference (::($name))
 an indirect method call (."$name"())
 a metamodel lookup (.^lookup)
@@ -103,7 +103,7 @@ an AST node the scan does not model</code></pre>
 <p>That last one is the important one, and it is what makes the analysis maintainable: <strong>a node kind the walker does not recognise is itself a trigger.</strong> Adding a construct to the language cannot silently create a hole in the scan; the worst it can do is make <code>auto</code> conservative until someone teaches the walker about it.</p>
 <p>Literal regex code blocks are <strong>not</strong> triggers. Their source is visible, so the scan parses and walks them like any other code.</p>
 <p>And the triggers are reported by name and line, rather than merely suppressing the cut:</p>
-<pre class="native-code"><code>$ rakupp --exe trig.raku --slim=list
+<pre class="native-code grid"><code>$ rakupp --exe trig.raku --slim=list
 --slim=auto for trig.raku (--exe):
   unicode-names      keep    3.1 MB   kept: a dynamic construct keeps everything
   …
@@ -111,7 +111,7 @@ dynamic constructs keeping everything (--slim=max cuts anyway):
   an indirect method call (."$name"()) (in the program, line 2)
 would cut 0 KB of 5.0 MB cuttable (archive sizes)</code></pre>
 <h2 id="what-it-is-worth">What it is worth</h2>
-<pre class="native-code"><code>$ rakupp --exe hello.raku --slim=list
+<pre class="native-code grid"><code>$ rakupp --exe hello.raku --slim=list
 --slim=auto for hello.raku (--exe):
   unicode-names      cut     3.1 MB   proven unused
   unicode-collation  cut     743 KB   proven unused
@@ -119,7 +119,7 @@ would cut 0 KB of 5.0 MB cuttable (archive sizes)</code></pre>
   eval               cut     971 KB   proven unused
 would cut 5.0 MB of 5.0 MB cuttable (archive sizes)</code></pre>
 <p><code>say "Hello"</code>: 9.9 MB unstripped, 8.1 MB at <code>safe</code>, <strong>4.6 MB</strong> under bare <code>--slim</code>. A program that uses one feature keeps one:</p>
-<pre class="native-code"><code>$ rakupp --exe uses-names.raku --slim=list
+<pre class="native-code grid"><code>$ rakupp --exe uses-names.raku --slim=list
   unicode-names      keep    3.1 MB   used: uniname (line 1)
   unicode-collation  cut     743 KB   proven unused
   unicode-props      keep    141 KB   used: &lt;:Script&lt;…&gt;&gt; in a regex (line 2)
@@ -153,6 +153,6 @@ would cut 5.0 MB of 5.0 MB cuttable (archive sizes)</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=21211bcd" defer></script>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
 </body>
 </html>

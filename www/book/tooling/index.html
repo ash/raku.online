@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tooling Built on the AST — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=21211bcd"></script>
-<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/book.css?v=a4ed9a0c">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -56,17 +56,17 @@ say <span class="nv">$x</span>;
 say <span class="nv">$y</span>;
 say <span class="s2">"done"</span>;</code></pre>
 <p>printed <code>42</code> and then died, where a compiler refuses the file. <code>-c</code> was worse: it parsed the same program and answered <code>Syntax OK</code>. And <code>--exe</code>, which never asks the question at all, emitted C++ naming a variable it had never declared and let the C++ compiler report it:</p>
-<pre class="native-code"><code>1.rakupp.gen.cpp:38:46: error: use of undeclared identifier 'v_sy';
+<pre class="native-code grid"><code>1.rakupp.gen.cpp:38:46: error: use of undeclared identifier 'v_sy';
                         did you mean 'v_sx'?</code></pre>
 <p>which is a diagnostic about generated code the author never wrote.</p>
 <p>So the tree is now asked about the whole unit before any of it runs, and the answer is a compile-time report:</p>
-<pre class="native-code"><code>===SORRY!=== Error while compiling 1.raku
+<pre class="native-code grid"><code>===SORRY!=== Error while compiling 1.raku
 Variable '$y' is not declared
 at 1.raku:3
 ------&gt; say ⏏$y;</code></pre>
 <h3>Where it hangs</h3>
 <p>Not on the interpreter, and deliberately not on every entry point.</p>
-<pre class="native-code"><code>rakuppRun ─────► rakuppRunOn(…, declCheck = true)  ─► [gate] ─► run
+<pre class="native-code grid"><code>rakuppRun ─────► rakuppRunOn(…, declCheck = true)  ─► [gate] ─► run
 rk_run ────────► rakuppRunOn(…, declCheck = false) ─────────► run
 -c --cpp --bundle --aot --exe ─► [gate] ─► the mode's own pipeline
 REPL ──────────────────────────► one line at a time, no gate</code></pre>
@@ -74,7 +74,7 @@ REPL ─────────────────────────
 <p>The two interpreter call sites bracket both branches of the run path — the fresh parse and the precompiled-AST cache hit (<a href="/book/astserial/">Chapter 30</a>) — because a cached tree is the same tree and must be asked the same question.</p>
 <h3>Two layers, and why the second one exists</h3>
 <p>The first layer is an AST walk with real lexical scoping. It is position-<strong>insensitive</strong> within a scope: a declaration anywhere in the enclosing block counts, even below the use, because the engine is that lenient in places and a static check must never be stricter than the engine it guards. It knows the things a text scan could not:</p>
-<pre class="native-code"><code>$^bb                     IS the declaration of $bb in its block
+<pre class="native-code grid"><code>$^bb                     IS the declaration of $bb in its block
 our $x                   installs into the package — a sibling scope sees it
 loop (my $i = 0; …)      builds no implicit block; $i outlives the loop
 has $x                   with no twigil, is read as a bare $x in the class
@@ -221,6 +221,6 @@ RAKUPP_DUMPTOKENS=1 rakupp prog.raku</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=21211bcd" defer></script>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
 </body>
 </html>

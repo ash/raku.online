@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Four Ways to Run a Program — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=21211bcd"></script>
-<link rel="stylesheet" href="/theme/base.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/shell.css?v=21211bcd">
-<link rel="stylesheet" href="/theme/book.css?v=21211bcd">
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/book.css?v=a4ed9a0c">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -32,12 +32,12 @@
 say <span class="nv">$total</span>;</code></pre>
 <p>The CLI in <code>main.cpp</code> picks a mode from the flags and calls one of four drivers.</p>
 <h2 id="mode-1-interpret">Mode 1 — interpret</h2>
-<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program (AST)
+<pre class="native-code grid"><code>demo.raku ─► Lexer ─► Parser ─► Program (AST)
           ─► Interpreter.run(Program)  ─► walk the tree, node by node</code></pre>
 <p><code>main</code> reads the source and calls <code>rakuppRunBigStack</code>, which lexes, parses, and hands the <code>Program</code> to <code>Interpreter::run</code>. Evaluation is the recursive <code>eval</code>/<code>exec</code> of <a href="/book/tree-walk/">Chapter 13</a>: the <code>for</code> loop iterates and re-executes its body block, <code>square($_)</code> looks the sub up in the environment chain and calls it, <code>$total += …</code> re-dispatches through <code>applyArith</code>.</p>
 <p>Nothing is cached or compiled — the same AST nodes are re-interpreted on every iteration. Startup is about two milliseconds. This is the only mode that runs every construct in the language, so it is the one the language is developed against.</p>
 <h2 id="mode-2-bundle">Mode 2 — <code>--bundle</code></h2>
-<pre class="native-code"><code>demo.raku ─► (embedded verbatim as bytes) ─► generated stub.cpp
+<pre class="native-code grid"><code>demo.raku ─► (embedded verbatim as bytes) ─► generated stub.cpp
           ─► cc stub.cpp librakupp_rt.a ─► ./demo</code></pre>
 <p>The driver does <strong>not</strong> parse the program at build time. It emits a small stub that embeds the source as a byte array and calls the runtime:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="k">static</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> SRC[] = { <span class="mi">115</span>,<span class="mi">117</span>,<span class="mi">98</span>,<span class="mi">32</span>,… };
@@ -48,7 +48,7 @@ say <span class="nv">$total</span>;</code></pre>
 }</code></pre>
 <p>then compiles it and links against the runtime. The result is standalone — no <code>rakupp</code> needed on the target machine — but at run time it still lexes, parses and tree-walks. It <em>is</em> the interpreter in a box. The win is distribution and a roughly ten-millisecond start; run time equals interpreting.</p>
 <h2 id="mode-3-aot">Mode 3 — <code>--aot</code></h2>
-<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program        ← parsed at BUILD time
+<pre class="native-code grid"><code>demo.raku ─► Lexer ─► Parser ─► Program        ← parsed at BUILD time
           ─► AstEmit.emitAstProgram(Program) ─► C++ that rebuilds the AST
           ─► cc gen.cpp librakupp_rt.a ─► ./demo</code></pre>
 <p>This is genuine ahead-of-time work: the program is <strong>parsed at build time</strong>, so parse errors are reported then rather than at run time, and <code>AstEmit</code> emits one small builder function per AST node:</p>
@@ -65,7 +65,7 @@ say <span class="nv">$total</span>;</code></pre>
 <p>Because the interpreter runs the embedded tree, <code>--aot</code> handles the <strong>whole language, grammars included</strong>. If <code>AstEmit</code> ever meets a node it cannot rebuild, it throws <code>AstEmitError</code> and the driver falls back to mode 2.</p>
 <p>The trade-off is the generated code size: one builder function per node means a few hundred lines of Raku become tens of thousands of lines of C++, and it builds about ten times slower than bundling. Since both tree-walk at the same speed, <code>--bundle</code> is the practical bundler; <code>--aot</code>'s only real edge is catching parse errors at build time.</p>
 <h2 id="mode-4-exe">Mode 4 — <code>--exe</code></h2>
-<pre class="native-code"><code>demo.raku ─► Lexer ─► Parser ─► Program
+<pre class="native-code grid"><code>demo.raku ─► Lexer ─► Parser ─► Program
           ─► Codegen.transpileToCpp(Program) ─► C++ source
           ─► cc gen.cpp librakupp_rt.a ─► ./demo   (no interpreter inside)</code></pre>
 <p><code>Codegen</code> walks the tree and emits C++ that <strong>implements the program directly</strong> — native control flow, native calls — calling the runtime only for <code>Value</code> operations. For <code>demo.raku</code>, abridged:</p>
@@ -143,6 +143,6 @@ std::vector&lt;BundledModule&gt; collectModuleGraph(
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=21211bcd" defer></script>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
 </body>
 </html>
