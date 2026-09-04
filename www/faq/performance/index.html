@@ -51,9 +51,11 @@
 <p><strong>Regexes rebuilt per iteration.</strong> Hoist a regex out of the loop if the pattern is constant.</p>
 <h2 id="measuring-a-change">Measuring a change <a class="anchor" href="#measuring-a-change" aria-label="link">#</a></h2>
 <p>The repo has the harnesses used for its own numbers:</p>
-<pre class="native-code"><code class="lang-bash">rakupp tools/perf-guard.raku       # interpreter hot path, ~10s
-rakupp tools/run-bench.raku        # interpreter / --exe / Rakudo, 3-way
-rakupp tools/run-optbench.raku     # --exe vs --exe -O, and verifies they agree</code></pre>
+<pre class="native-code"><code class="lang-bash">rakupp tools/perf-guard.raku          # interpreter hot path, ~10s
+rakupp tools/run-bench.raku           # interpreter / --exe / mutsu / Rakudo
+rakupp tools/run-bench.raku --rusage  # the same, plus CPU time and peak RSS
+rakupp tools/run-optbench.raku        # --exe vs --exe -O, and verifies they agree</code></pre>
+<p><code>--rusage</code> adds a second table: CPU time (user+sys) and peak resident set size per lane, measured in its own pass so the wall-clock numbers are exactly what they are without it. Reading the two together is what tells you <em>which</em> resource a change moved — a lane whose CPU exceeds its wall time is using more than one core, and peak RSS is the figure that separates the interpreter from <code>--exe</code>, which carries no interpreter at all.</p>
 <p><code>run-optbench</code> checks that all four modes produce <em>identical output</em> before it reports a timing, so it catches an optimisation that changed an answer.</p>
 <p>If you have a program where Raku++ is much slower than you expect — especially slower than Rakudo — that is worth reporting. Include the program.</p>
 <hr>

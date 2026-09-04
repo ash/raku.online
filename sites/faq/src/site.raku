@@ -23,11 +23,12 @@
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
         'garbage-collection' => 'There isn\'t one: what reference counting buys, what a cycle costs, and when DESTROY actually runs.',
-        debugging   => 'When something goes wrong: --lint, --ast, --cpp, and telling your bug from ours.',
+        debugging   => 'When something goes wrong: what a die tells you, --lint, --ast, --cpp, and telling your bug from ours.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',
         '6e'        => 'What the 6.e language revision adds to 6.d, and what use v6.e.PREVIEW actually turns on.',
         'hand-written' => 'Is "hand-written" honest for an AI-built project? The term of art it invokes, and the authorship answer behind it.',
         optimizer   => 'Why the optimising code generator is opt-in: what a default owes every program, and where -O loses.',
+        implementations => 'Three Rakus in active development — Rakudo, Raku++ and mutsu — and the engineering decisions that separate them.',
     },
 
     # ../SOMETHING.md in an article points at a doc that lives in the rakupp

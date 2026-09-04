@@ -33,9 +33,12 @@ rakupp -e 'use JSON::Fast; say to-json({ a =&gt; 1 })'</code></pre>
 <p><code>rakupp install</code> resolves against the same ecosystem index zef uses, runs each distribution's own test suite before marking it installed, and writes the same <code>~/.raku</code>, so it is a drop-in for a machine with no Rakudo on it:</p>
 <pre class="native-code"><code class="lang-sh">rakupp install Foo:ver&lt;1.2.3&gt;   # a specific version (installs are additive)
 rakupp install --dry-run Foo    # print the plan, write nothing
-rakupp install --list           # what is installed in the target store
+rakupp install --list           # what is installed: identity, installer,
+                                # module files, bin wrappers (-q: identities)
 rakupp uninstall Foo            # remove what THIS installer put there</code></pre>
 <p>Each command prints its own full usage when you give it no arguments. If you want zef itself on such a machine, zef runs under Raku++ too — <code>rakupp /path/to/zef install Foo</code> — with the caveats in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md#current-status-and-limits">MODULES.md</a>.</p>
+<h2 id="rakupp-install-says-it-cannot-find-install-raku"><code>rakupp install</code> says it cannot find install.raku <a class="anchor" href="#rakupp-install-says-it-cannot-find-install-raku" aria-label="link">#</a></h2>
+<p>The installer is a Raku program shipped beside the binary, not inside it — <code>libexec/rakupp/install.raku</code> in an installed layout, <code>tools/install.raku</code> in a checkout — and the binary looks only there. A <code>rakupp</code> copied on its own into a container, or installed by a route that dropped <code>libexec/</code> (Homebrew's prebuilt macOS binary does, today), has no installer. Put the file from the same release back beside it, as <a href="https://github.com/ash/rakupp/blob/main/docs/guide/INSTALL.md#prebuilt-binaries-macos-linux-windows">INSTALL.md</a> shows, and <code>rakupp install</code> is back; nothing else needs to be there. Everything on this page about <em>finding</em> modules is unaffected — that is the engine, not the installer.</p>
 <h2 id="where-does-it-look">Where does it look? <a class="anchor" href="#where-does-it-look" aria-label="link">#</a></h2>
 <p>At the standard zef locations, and you never have to configure them:</p>
 <ul><li><code>~/.raku</code> — the per-user store, where <code>rakupp install</code> and a plain <code>zef install</code> both put things</li><li>every <code>~/.rakubrew/versions/*/install/share/perl6/{site,vendor}</code></li><li>every Homebrew <code>Cellar/rakudo/*/share/perl6/{site,vendor}</code></li><li><code>lib</code>, <code>.</code> and <code>rakulib</code>, for the program's own files</li></ul>

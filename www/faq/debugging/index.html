@@ -36,19 +36,18 @@ prog.raku:1: note: parameter '$b' is never used [unused-parameter]
 prog.raku:2: warning: '$never' is declared but never used [unused-variable]
 rakupp --lint: 1 warning, 1 note in prog.raku</code></pre>
 <p>It exits non-zero if anything was found — <strong>1</strong> for warnings, <strong>2</strong> if the file will not compile at all (a parse error, or a variable nothing declares, which <code>--lint</code> prints as <code>error:</code>) — so it drops into a pre-commit hook or CI unchanged, and the hook can tell the two apart. Full rule list: <a href="https://github.com/ash/rakupp/blob/main/docs/guide/LINT.md">LINT.md</a>.</p>
-<h2 id="die-does-not-print-a-backtrace"><code>die</code> does not print a backtrace <a class="anchor" href="#die-does-not-print-a-backtrace" aria-label="link">#</a></h2>
-<p>Today a <code>die</code> prints its message and nothing else:</p>
+<h2 id="what-does-a-die-tell-me">What does a <code>die</code> tell me? <a class="anchor" href="#what-does-a-die-tell-me" aria-label="link">#</a></h2>
+<p>The message, then where it happened and how the program got there:</p>
 <pre class="native-code"><code>$ rakupp -e 'sub f($x) { die "boom: $x" }; f(3)'
-boom: 3</code></pre>
-<p>Rakudo also names the frames (<code>in sub f at … line 1</code>). Raku++ does not yet. Until it does, the practical substitutes are:</p>
-<p><strong>Catch it and print what you know.</strong></p>
+boom: 3
+  in sub f at -e line 1
+  in block &lt;unit&gt; at -e line 1</code></pre>
+<p>Frames run innermost first, and each one names a place you can go and look: the routine, the file it was declared in, and the line executing there. The frame the error came from also shows its source line, when the source can be read. <code>--ll-exception</code> shows every frame with nothing folded; <code>RAKUPP_BACKTRACE=0</code> prints the message alone, which is what a test with a golden recorded before any of this existed will want.</p>
+<p>A caught exception carries the same chain, and reports where it was <em>thrown</em> rather than where you asked:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">risky</span>(<span class="nv">$x</span>) { <span class="nb">die</span> <span class="s">&quot;boom: $x&quot;</span> }
 <span class="k">try</span> { <span class="n">risky</span>(<span class="mi">3</span>) }
-<span class="k">with</span> <span class="nv">$!</span> { <span class="nb">say</span> <span class="s">&quot;failed: &quot;</span>, .<span class="n">message</span>, <span class="s">&quot; (&quot;</span>, .^<span class="n">name</span>, <span class="s">&quot;)&quot;</span> }</code></pre>
-<p><strong>Add your own frame markers</strong> where a stack would have helped:</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">outer</span>() { <span class="nb">note</span> <span class="s">&quot;→ outer&quot;</span>; <span class="n">inner</span>() }
-<span class="k">sub</span> <span class="n">inner</span>() { <span class="nb">note</span> <span class="s">&quot;→ inner&quot;</span>; <span class="nb">die</span> <span class="s">&quot;here&quot;</span> }</code></pre>
-<p><code>note</code> writes to stderr, so it stays out of your program's output and survives being piped.</p>
+<span class="k">with</span> <span class="nv">$!</span> { <span class="nb">say</span> .<span class="n">message</span>, <span class="s">&quot; thrown in &quot;</span>, .<span class="n">backtrace</span>.<span class="nb">list</span>[<span class="mi">0</span>].<span class="n">subname</span> }</code></pre>
+<p>The whole story — errors with two positions, and the <code>$!.backtrace</code> API — is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/TRACER.md">TRACER.md</a>.</p>
 <h2 id="telling-your-bug-from-ours">Telling your bug from ours <a class="anchor" href="#telling-your-bug-from-ours" aria-label="link">#</a></h2>
 <p>Raku++ aims to match Rakudo exactly. When output differs and you have both installed, that comparison <em>is</em> the test:</p>
 <pre class="native-code"><code class="lang-bash">rakupp prog.raku &gt; a.txt

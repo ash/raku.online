@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — three ways to build a Raku</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=a4ed9a0c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/shell.css?v=a4ed9a0c">
+<link rel="stylesheet" href="/theme/faq.css?v=a4ed9a0c">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Three ways to build a Raku</h1>
+
+<p>Raku is a <em>specification</em> with more than one implementation, and three of them are in active development: <strong>Rakudo</strong>, the reference; <strong>Raku++</strong>, this one; and <strong><a href="https://github.com/tokuhirom/mutsu">mutsu</a></strong>, written in Rust. They target the same language and are all measured against the same test suite, but they are built on three genuinely different sets of engineering decisions.</p>
+<p>This page is about <strong>how they are built</strong> and what follows from it — not a scoreboard. Where a difference shows up as a number, the number is here with the machine and date it came from; for the kernel-by-kernel timings see <a href="https://github.com/ash/rakupp/blob/main/docs/status/BENCHMARKS.md">BENCHMARKS.md</a>, and for test coverage <a href="https://github.com/ash/rakupp/blob/main/docs/status/ROAST.md">ROAST.md</a>.</p>
+<h2 id="one-paragraph-each">One paragraph each <a class="anchor" href="#one-paragraph-each" aria-label="link">#</a></h2>
+<p><strong>Rakudo</strong> is the reference implementation and the only complete one. Its compiler is written in Raku itself plus NQP ("Not Quite Perl", its bootstrap subset); source is compiled through an intermediate tree (QAST) into bytecode for <strong>MoarVM</strong>, a register-based virtual machine built specifically for it. MoarVM carries a dynamic optimiser (<code>spesh</code>) that specialises hot code on observed types and inlines through it, a JIT behind that, and a generational, precise, moving garbage collector. Rakudo also has a JVM backend. Practically everything written about "what Raku does" is a description of Rakudo's behaviour, and both other implementations treat it as the oracle.</p>
+<p><strong>Raku++</strong> is a hand-written C++17 implementation with no third-party dependencies. A hand-rolled lexer feeds a recursive-descent statement parser with a Pratt expression core; the result is one uniform AST that both the interpreter and the code generator walk. There is no bytecode and no VM: the interpreter walks the tree directly. What it has instead is <strong>four output modes</strong> — interpret, <code>--bundle</code> (embed the source), <code>--aot</code> (embed the rebuilt tree), and <code>--exe</code>, which transpiles the program to C++ and links a native binary with no interpreter inside it. Memory is <code>shared_ptr</code> reference counting with no collector. See <a href="https://github.com/ash/rakupp/blob/main/docs/internals/ARCHITECTURE.md">ARCHITECTURE.md</a>.</p>
+<p><strong>mutsu</strong> is a Raku implementation in Rust, started in February 2026 and developed at a high tempo. It parses to an AST, compiles that to bytecode (~340 opcodes), and runs it on its own VM — the tree-walking engine it started with was deliberately removed, so there is exactly one execution path. Underneath sit a <strong>Cranelift JIT</strong> (on by default; <code>MUTSU_JIT=off</code> opts out), a <strong>Bacon–Rajan cycle collector</strong> layered on Rust's reference counts, and an 8-byte NaN-boxed value representation. Its stated goal is a <em>batteries-included</em> Raku: the release bundles the real Zef package manager as <code>mzef</code> plus a set of vendored community modules, with the policy of adopting each module unchanged and growing the interpreter until it runs.</p>
+<h2 id="the-structural-differences">The structural differences <a class="anchor" href="#the-structural-differences" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th></th><th><strong>Raku++</strong></th><th><strong>mutsu</strong></th><th><strong>Rakudo</strong></th></tr><tr><td>Written in</td><td>C++17</td><td>Rust</td><td>Raku + NQP</td></tr>
+<tr><td>Front end</td><td>hand-written lexer + recursive descent / Pratt</td><td>hand-written parser</td><td>NQP grammar → QAST</td></tr>
+<tr><td>Execution</td><td>tree-walking interpreter</td><td>bytecode VM (~340 opcodes)</td><td>bytecode VM (MoarVM)</td></tr>
+<tr><td>Runtime optimiser</td><td>none</td><td>Cranelift JIT, default on</td><td><code>spesh</code> type specialisation + inlining, then JIT</td></tr>
+<tr><td>Memory</td><td><code>shared_ptr</code> refcounting, no collector</td><td>refcounting + Bacon–Rajan cycle collector</td><td>generational, precise, moving GC</td></tr>
+<tr><td>Value repr</td><td>one struct, cold fields behind a copy-on-write block</td><td>NaN-boxed (8-byte target)</td><td>MoarVM object model</td></tr>
+<tr><td>Third-party deps</td><td>none</td><td>~25 crates (num-bigint, ICU, Cranelift, libffi, pcre2)</td><td>its own toolchain (NQP, MoarVM)</td></tr>
+<tr><td>Regex engine</td><td>own</td><td>own</td><td>own (NQP-compiled)</td></tr>
+<tr><td>Unicode</td><td>own generated UCD tables</td><td>ICU + <code>unicode-*</code> crates</td><td>own tables</td></tr>
+<tr><td>Ships a binary?</td><td><code>--exe</code>: yes, standalone native</td><td>no</td><td>no</td></tr>
+<tr><td>In a browser</td><td>Raku.js (WebAssembly)</td><td>WebAssembly build</td><td>—</td></tr></table></div>
+<p>Two things on that table are worth pointing out because they cut against the obvious story. <strong>All three wrote their own regex engine</strong> — Raku's regex and grammar semantics are far enough from PCRE that nobody could take one off the shelf. And <strong>Raku++ and mutsu implement Roast's <code>fudge</code> directives inside the engine</strong> rather than by running Roast's Perl preprocessor, independently, for the same reason: it preserves line numbers. Convergent evolution is a good sign that a decision was forced rather than chosen.</p>
+<h2 id="what-each-choice-buys-and-costs">What each choice buys, and costs <a class="anchor" href="#what-each-choice-buys-and-costs" aria-label="link">#</a></h2>
+<h3 id="tree-walk-versus-bytecode">Tree-walk versus bytecode <a class="anchor" href="#tree-walk-versus-bytecode" aria-label="link">#</a></h3>
+<p>Walking the AST means every node re-dispatches on every execution — a switch on the node kind, a virtual call, and the operands fetched through pointers, each time round the loop. A bytecode VM pays that dispatch cost once, at compile time, and then runs a flat instruction stream. On paper the VM wins, and that is why mutsu deleted its own tree-walker.</p>
+<p>What a tree-walker keeps is <strong>nothing between you and the program</strong>: no compile step, no bytecode cache, no VM image to load. That is most of why Raku++ starts in single-digit milliseconds. It is also why <code>--exe</code> exists — if you want the dispatch overhead gone, the answer here is not to build a VM but to stop interpreting altogether and emit C++.</p>
+<h3 id="making-it-faster">Making it faster <a class="anchor" href="#making-it-faster" aria-label="link">#</a></h3>
+<p>Three different answers to the same question:</p>
+<ul><li><strong>Rakudo</strong> optimises at run time. <code>spesh</code> watches which types actually flow through a routine, generates a specialised version, inlines into it, and hands the result to the JIT. This is the most powerful approach and the reason Rakudo wins the kernels dominated by object and method dispatch.</li><li><strong>mutsu</strong> JITs hot methods with Cranelift — a pure-Rust backend chosen over LLVM specifically to protect startup time, since a heavyweight code generator would have cost the fast start the project treats as a feature.</li><li><strong>Raku++</strong> compiles ahead of time or not at all. <code>--exe</code> turns the whole program into C++ and hands it to the system compiler, which has as long as it likes to optimise. The cost is that this only helps code the generator can express; time spent inside the runtime's own methods is unchanged, and the interpreter itself gets no help at all.</li></ul>
+<h3 id="reclaiming-memory">Reclaiming memory <a class="anchor" href="#reclaiming-memory" aria-label="link">#</a></h3>
+<p>Raku++ frees a value the moment its last reference goes, which buys a ~1.5 MB floor and no stop-the-world pause, and costs you <strong>reference cycles, which are never reclaimed</strong> — see <a href="/faq/garbage-collection/">the garbage collector</a>. mutsu starts from the same refcounting base and adds a Bacon–Rajan collector that finds exactly those cycles, so it pays a little memory and some bookkeeping to close the leak. Rakudo's moving generational collector is the most capable of the three and the reason its baseline process is ~90 MB rather than ~1.5 MB.</p>
+<h3 id="dependencies">Dependencies <a class="anchor" href="#dependencies" aria-label="link">#</a></h3>
+<p>Raku++ links nothing: the BigInt, the Unicode tables, the regex engine, the FFI and the collation are all in-tree. mutsu takes <code>num-bigint</code>, ICU, <code>libffi</code> and Cranelift off the shelf. Neither is the right answer in general. Ours means one binary, no supply chain and no version skew, paid for by having to write and maintain every one of those ourselves. Theirs means large, mature components for free, paid for in build time and in a dependency graph to keep current.</p>
+<p>This page used to predict that <code>bigint</code> would be the kernel where a well-tuned external library simply beats what we hand-rolled, and for a while it was: measured at <strong>3.5× interpreted and 3.3× compiled</strong>, the one kernel of the sixteen where mutsu beat both Raku++ modes. Two passes on our own multiply have since reversed it — 7.4 ms interpreted and 6.2 compiled against mutsu's 11.2, on the box where all three were measured together. The honest version of the prediction is narrower than the one that was written here: what an off-the-shelf library buys you is <em>everything at once</em>, not any particular kernel. <code>num-bigint</code>'s base-2^64 limbs are still about 10× ahead of our base-1e9 ones on a general n×n product — we simply have not needed that shape enough to pay for it, and base 1e9 is what makes printing a large integer O(n) instead of O(n²). Every one of those trades is ours to make and to get wrong; that is the actual cost of taking no dependencies.</p>
+<h3 id="what-you-can-ship">What you can ship <a class="anchor" href="#what-you-can-ship" aria-label="link">#</a></h3>
+<p>This is the sharpest divergence. <code>--exe</code> produces a standalone native binary that needs no Raku on the target machine — no other implementation does this. mutsu ships something different and equally deliberate: one binary that already contains a package manager and a working module set, so a fresh install can write a real program without a network round trip. Rakudo ships the complete language and the whole ecosystem behind <code>zef</code>.</p>
+<h2 id="what-you-actually-notice">What you actually notice <a class="anchor" href="#what-you-actually-notice" aria-label="link">#</a></h2>
+<p>Measured on this machine (macOS Darwin 25.5, Apple M1), 2026-08-31 — rakupp 3.23.0, mutsu 0.23.0, Rakudo v2026.08 on MoarVM 2026.08. These are start-up and footprint figures, which are stable across machines in <em>shape</em> if not in exact value; the throughput tables — which as of the 2026-08-31 sitting carry a mutsu column on all sixteen kernels — live in <a href="https://github.com/ash/rakupp/blob/main/docs/status/BENCHMARKS.md">BENCHMARKS.md</a> and are measured on a different, dedicated box.</p>
+<div class="tablewrap"><table><tr><th>running <code>say 1</code></th><th>Raku++</th><th>mutsu</th><th>Rakudo</th></tr><tr><td>wall clock</td><td>4.1 ms</td><td>6.0 ms</td><td>102.8 ms</td></tr>
+<tr><td>peak memory footprint</td><td>1.5 MB</td><td>4.3 MB</td><td>91.1 MB</td></tr>
+<tr><td>max RSS</td><td>4.2 MB</td><td>10.4 MB</td><td>129.8 MB</td></tr>
+<tr><td>installed size</td><td>11.9 MB (one binary)</td><td>32.6 MB (one binary)</td><td>74 MB + MoarVM</td></tr></table></div>
+<p>The two-orders-of-magnitude startup gap is not an efficiency difference so much as an architectural one: Rakudo loads a large precompiled <code>CORE.setting</code> on every run, and neither of the other two has an equivalent to load. It is what makes Raku usable in a shell pipeline or an editor hook, and it is the one thing both newer implementations optimised for from the start.</p>
+<h2 id="coverage">Coverage <a class="anchor" href="#coverage" aria-label="link">#</a></h2>
+<p>Speed comparisons only mean anything on the subset of the language all three run identically, and that subset is set by the least complete implementation. On Roast — the official suite, 1,464 files — <strong>Rakudo runs essentially all of it</strong>, and it is the oracle both other engines check themselves against.</p>
+<p>Between the two newer implementations, <strong>mutsu is well ahead of Raku++ on coverage</strong>. Both rows below were produced by the same harness on the same day, same Roast revision, same timeout, same counting rules:</p>
+<div class="tablewrap"><table><tr><th></th><th>files fully passing</th><th>assertions, all declared</th></tr><tr><td><strong>mutsu</strong> 0.23.0</td><td><strong>1,419 / 1,464 (96.9%)</strong></td><td><strong>216,807 / 218,173 (99.4%)</strong></td></tr>
+<tr><td><strong>Raku++</strong> 3.23.0</td><td>643 / 1,464 (43.9%)</td><td>198,939 / 218,773 (90.0%)</td></tr></table></div>
+<p>The shape of that gap is worth reading. Raku++ passes ~90% of assertions almost everywhere but leaves a residue in most files, so the all-or-nothing file bar stays low; mutsu has cleaned up that tail across nearly every synopsis. Six months of very high-tempo development got them there, and it shows.</p>
+<p>The rules for comparing any two of these numbers — which is easy to get wrong — are in <a href="https://github.com/ash/rakupp/blob/main/docs/status/COUNTING.md">COUNTING.md</a>. The short version: a Roast figure means nothing without the bar it was measured on, because whether an engine honours the suite's <code>#?rakudo skip</code> directives moves the file count by hundreds. Our own per-synopsis breakdown is in <a href="https://github.com/ash/rakupp/blob/main/docs/status/ROAST.md">ROAST.md</a>.</p>
+<h2 id="further-reading">Further reading <a class="anchor" href="#further-reading" aria-label="link">#</a></h2>
+<ul><li><a href="https://github.com/ash/rakupp/blob/main/docs/internals/ARCHITECTURE.md">ARCHITECTURE.md</a> — how Raku++ itself is put together, mode by mode.</li><li><a href="/faq/garbage-collection/">the garbage collector</a> — refcounting, what it buys, and the cycles it leaks.</li><li><a href="/faq/compiling/">turning a program into a binary</a> — <code>--exe</code> vs <code>--aot</code> vs <code>--bundle</code>.</li><li><a href="/faq/differences/">where Raku++ and Rakudo differ</a> — where Raku++ and Rakudo differ in <em>behaviour</em> rather than construction.</li><li><a href="https://github.com/ash/rakupp/blob/main/docs/status/COUNTING.md">COUNTING.md</a> — how Roast results are counted here, and how to compare them with someone else's.</li></ul>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=a4ed9a0c" defer></script>
+</body>
+</html>
