@@ -27,7 +27,7 @@ order is the whole rule, and it has three consequences worth spelling out.
 for free.
 
 **A module's exported sub also shadows a builtin**, because the loader copies it
-into the global environment, which is the last link of the chain (Chapter 32).
+into the global environment, which is the last link of the chain (Chapter 33).
 
 **A compiled program must reproduce this order**, which it cannot do by resolving
 names against the builtin table at compile time. That is a real bug that
@@ -280,7 +280,7 @@ call copies a `Value` and allocates a `ValueList`.
 
 Two of the three costs in that sentence have since shrunk without the by-value
 signatures changing at all. A `Value` carried eleven `shared_ptr` members then
-and carries two now (Chapter 40), so the copy is a fraction of what it was; and
+and carries two now (Chapter 41), so the copy is a fraction of what it was; and
 the `ValueList` for a short argument list no longer reaches the allocator,
 because small blocks come off a free list (Chapter 12). What is left is the
 copy itself, which is smaller, on a path that is otherwise unchanged.
@@ -299,7 +299,9 @@ recover has been reduced twice by changes that needed no audit at all.
   can resolve differently from Rakudo.
 - **No `X::Multi::Ambiguous`.** Equal-specificity candidates resolve silently to
   the first declared.
-- **Role composition is last-writer-wins.** Composing two roles that define the
-  same method copies both into the table with no conflict diagnostic.
+- **Role conflicts are diagnosed**, so this is no longer a limitation: composing
+  two roles that define the same method raises
+  `X::Role::Unresolved::Method` unless the class resolves it, as in Rakudo. Only
+  the order the roles are listed in inside the message differs.
 - **The ladder's order is load-bearing and undocumented in the code beyond a
   warning.** An arm moved for readability is a behaviour change.

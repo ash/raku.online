@@ -61,10 +61,13 @@ Value callCallableRaw(<span class="k">const</span> Value&amp; codeVal, ValueList
 <span class="k">if</span> (codeVal.code &amp;&amp; !codeVal.code-&gt;wrappers.empty()) { <span class="cm">/* run the stack */</span> }
 <span class="k">return</span> callCallableRaw(codeVal, std::move(args), rwArgs);</code></pre>
 <p><code>callCallableRaw</code> handles the special callables first — a native FFI sub, a <code>Format</code>, junction autothreading, a multi-dispatcher, a builtin — and then activates a user routine:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="k">auto</span> env = std::make_shared&lt;Env&gt;();                    <span class="c1">// fresh per-call frame</span>
-c.stateEnv-&gt;parent = c.closure ? c.closure : global_;  <span class="c1">// once</span>
-env-&gt;parent = c.stateEnv;         <span class="c1">// frame → stateEnv → closure → … → global</span>
+<pre class="native-code"><code class="lang-cpp">PooledFrame frame;                                     <span class="c1">// a per-call frame, reused</span>
+<span class="k">auto</span>&amp; env = frame.env;
+c.state.env-&gt;parent = c.closure ? c.closure : global_; <span class="c1">// once</span>
+env-&gt;parent = c.state.env;        <span class="c1">// frame → state env → closure → … → global</span>
 tctx_.dynStack.push_back(caller_scope);                <span class="c1">// the OTHER chain</span></code></pre>
+<p>The frame is <em>pooled</em>, not freshly allocated, and the reason is one of the sharper measurements in this book. A call frame is a <code>shared_ptr&lt;Env&gt;</code>: a control block, an <code>Env</code>, and the hash buckets inside it, allocated and destroyed per call. A thread-local pool of up to thirty-two hands one back instead, clearing the map but keeping its bucket array — the same trick the pad vector plays with its capacity. A frame that anything captured (a closure, an <code>rwLink</code>, a state chain) fails a <code>use_count</code> test on release and is simply dropped rather than reused, which is what makes the reuse safe.</p>
+<p>For a while only <code>callCallableRaw</code> had it, and <code>invokeMethod</code> did not. That asymmetry alone was the difference between a sub call at about twice Rakudo's cost and a method call at 5.8 times it.</p>
 <p>Two facts are established here and everything else depends on them.</p>
 <p><strong>The callee's parent is its lexical closure, not its caller.</strong> Free variables resolve through the scope the routine was <em>written</em> in. The caller's scope goes on <code>dynStack</code>, used only for <code>$*foo</code>.</p>
 <p><strong>Each activation bumps <code>frameTop</code></strong>, and a routine — as opposed to a bare block — records its own frame number as <code>curRoutineFrame</code>. Those two counters drive the cooperative control flow in the next chapter.</p>
@@ -112,18 +115,18 @@ std::string pkg, name;
 <span class="k">const</span> std::vector&lt;Param&gt;* params;      <span class="c1">// borrowed from the AST</span>
 <span class="k">const</span> std::vector&lt;StmtPtr&gt;* body;      <span class="c1">// borrowed from the AST</span>
 std::shared_ptr&lt;Env&gt; closure;
-std::shared_ptr&lt;Env&gt; stateEnv;         <span class="c1">// persistent `state` storage</span>
-std::once_flag stateInit;
+StateSlot state;                       <span class="c1">// { shared_ptr&lt;Env&gt; env; once_flag init; }</span>
 BuiltinFn builtin;                     <span class="c1">// set ⇒ this is a builtin</span>
 ValueList candidates;                  <span class="c1">// multi-dispatch candidates</span>
 ValueList wrappers;                    <span class="c1">// .wrap stack, outermost last</span>
-DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; hoistNeed{-<span class="mi">1</span>};
-DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; arityShape{-<span class="mi">1</span>};
+PublishedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; hoistNeed{-<span class="mi">1</span>};
+PublishedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; arityShape{-<span class="mi">1</span>};
 <span class="kt">int</span> arityMaxPos = <span class="mi">0</span>, arityReqPos = <span class="mi">0</span>; <span class="kt">bool</span> arityUnbounded = <span class="kc">false</span>;
-DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; catchScan{-<span class="mi">1</span>};
+PublishedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; catchScan{-<span class="mi">1</span>};
 Stmt* catchBlkCache = <span class="kc">nullptr</span>;</code></pre>
-<p>The four decided-once fields are all static properties of the routine's AST that <code>callCallableRaw</code> used to recompute <strong>on every call</strong>: whether anything needs hoisting, whether an arity pre-check applies and what its bounds are, and whether the body contains an inline <code>CATCH</code> block. Each is cheap once and worthless repeated — a parse that calls a routine 73,603 times paid for them 73,603 times.</p>
-<p><code>stateEnv</code> is created exactly once, under a <code>std::once_flag</code>, and chained between the per-call frame and the closure. That is the whole implementation of <code>state</code>: the variable lives in a scope that is created once per routine rather than once per call.</p>
+<p>The <code>state</code> env and its <code>once_flag</code> are wrapped in a <code>StateSlot</code> for a reason worth knowing: <code>std::once_flag</code> is not copyable, so a bare pair of members would make <code>Callable</code> uncopyable. The holder's copy constructor is empty, which also gets the semantics right — a cloned routine starts with fresh <code>state</code> slots rather than sharing the origin's, as it does in Rakudo.</p>
+<p>The four published-once fields are all static properties of the routine's AST that <code>callCallableRaw</code> used to recompute <strong>on every call</strong>: whether anything needs hoisting, whether an arity pre-check applies and what its bounds are, and whether the body contains an inline <code>CATCH</code> block. Each is cheap once and worthless repeated — a parse that calls a routine 73,603 times paid for them 73,603 times.</p>
+<p><code>state.env</code> is created exactly once, under that <code>once_flag</code>, and chained between the per-call frame and the closure. That is the whole implementation of <code>state</code>: the variable lives in a scope that is created once per routine rather than once per call.</p>
 <h2 id="is-rw-write-back"><code>is rw</code> write-back</h2>
 <p>Because arguments are <code>Value</code> copies, a mutated <code>is rw</code> parameter must be written back. The call site passes the argument <em>expressions</em> alongside the values, and on a normal return each such parameter's final value is written back by re-resolving its expression:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — copyOutRw</span>

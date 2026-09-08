@@ -49,10 +49,11 @@
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — the tokenize loop</span>
 <span class="kt">size_t</span> before = pos_;
 skipWhitespaceAndComments();
-<span class="kt">bool</span> spaced = (pos_ &gt; before &amp;&amp; pos_ != atomDropEnd_) || before == <span class="mi">0</span>;
+<span class="c1">// an unspace isn't whitespace: `"xxxxxx"\.chars` keeps `.chars` tight-postfix</span>
+<span class="kt">bool</span> spaced = (pos_ &gt; before &amp;&amp; pos_ != unspaceEnd_) || before == <span class="mi">0</span>;
 <span class="c1">// … lex the token …</span>
 t.spaceBefore = spaced;</code></pre>
-<p>The flag is true exactly when skipping advanced the cursor. The parser then leans on it constantly: to tell a postcircumfix from a list, a call from an application, a postfix operator from a fresh term.</p>
+<p>The flag is true when skipping advanced the cursor — unless the cursor landed exactly after an <em>unspace</em>, a backslash followed by whitespace, which is written to be invisible and so does not count as space — and always for the very first token. The parser then leans on it constantly: to tell a postcircumfix from a list, a call from an application, a postfix operator from a fresh term.</p>
 <h2 id="regex-or-division">Regex or division?</h2>
 <p>A bare <code>/</code> starts a regex in term position and divides in operator position. The lexer decides by looking at the <em>previous</em> token:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — regexContext(), the Tok::Op case</span>
@@ -96,8 +97,12 @@ out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</s
 }
 <span class="c1">// unmatched: a single-character Op</span></code></pre>
 <p>This is not a longest-match scanner. It is a manually ordered table where longer entries are placed before their prefixes, and the first full match wins. Adding a built-in operator means inserting it at the right position — a real maintenance hazard, and named as one.</p>
-<p>The fall-through matters more than the table: anything unmatched becomes a <strong>single-character <code>Tok::Op</code></strong>. That is why a novel user-defined operator still arrives as a token the parser can pick up, even though the lexer has never heard of it.</p>
-<p>The vocabulary also covers Unicode aliases (<code>≤</code> for <code>&lt;=</code>), hyper metaoperators (<code>»op«</code>), and the set operators (<code>(elem)</code>, <code>∈</code>) — but it is <em>static</em>. It tracks no user declarations whatsoever.</p>
+<p>The fall-through matters: anything unmatched becomes a <strong>single-character <code>Tok::Op</code></strong>, so a novel user-defined operator arrives as <em>something</em> the parser can pick up.</p>
+<p>For a while that was the whole answer, and it was not enough. A spelling like <code>sub infix:&lt;%%%&gt;</code> gets lexed a character at a time, and the built-in table swallows a prefix of it first — <code>%%%</code> came out as <code>%%</code> then <code>%</code>, so <code>5 %%% 2</code> divided by an empty hash. So the lexer's constructor now pre-scans the file for its own symbolic operator declarations and tries them, longest first, ahead of the table:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — the constructor</span>
+<span class="k">for</span> (<span class="k">const</span> <span class="kt">char</span>* cat : {<span class="s2">"infix:&lt;"</span>, <span class="s2">"prefix:&lt;"</span>, <span class="s2">"postfix:&lt;"</span>}) { … }</code></pre>
+<p>Only <em>this</em> file's declarations are visible that way; an imported symbolic operator still needs its module's own parse, which is a real limitation and one worth knowing before writing a module that exports one.</p>
+<p>The vocabulary also covers Unicode aliases (<code>≤</code> for <code>&lt;=</code>), hyper metaoperators (<code>»op«</code>), and the set operators (<code>(elem)</code>, <code>∈</code>). That part is static — but "the lexer tracks no user declarations" is no longer true of it as a whole.</p>
 <h2 id="rule-bodies-are-not-tokenized">Rule bodies are not tokenized</h2>
 <p>One construct is deliberately opaque. A <code>token</code>/<code>rule</code>/<code>regex NAME { … }</code> declaration is not lexed as Raku:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.h</span>
@@ -118,7 +123,7 @@ out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</s
 [[noreturn]] <span class="kt">void</span> runawayTerm(<span class="k">const</span> std::string&amp; close,
                               <span class="k">const</span> std::string&amp; open, <span class="kt">int</span> startLine) <span class="k">const</span>;</code></pre>
 <p>Two spellings, because Rakudo has two: the bare quote forms name the <em>construct</em>, the bracketed <code>q</code>/<code>rx</code>/comment forms name the <em>terminator</em>. Both quote the line the construct <em>started</em> on, which is the only coordinate still meaningful once the scan has eaten the rest of the file.</p>
-<p>An <code>atEof</code> flag rides along on the resulting error. Only the REPL reads it, to tell "give me a continuation line" from "this is a syntax error" — which is how a half-typed string literal at an interactive prompt asks for more input instead of failing (<a href="/book/tooling/">Chapter 38</a>).</p><nav class="ch-nav"><a class="prev" href="/book/classification/"><span>Previous</span>Where It Sits in the Taxonomy</a><a class="next" href="/book/parser/"><span>Next</span>The Parser</a></nav>
+<p>An <code>atEof</code> flag rides along on the resulting error. Only the REPL reads it, to tell "give me a continuation line" from "this is a syntax error" — which is how a half-typed string literal at an interactive prompt asks for more input instead of failing (<a href="/book/tooling/">Chapter 39</a>).</p><nav class="ch-nav"><a class="prev" href="/book/classification/"><span>Previous</span>Where It Sits in the Taxonomy</a><a class="next" href="/book/parser/"><span>Next</span>The Parser</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

@@ -559,10 +559,10 @@ sub part-of(Str $md --> Str) {
 }
 
 # 00 is front matter, 01..89 are numbered chapters, 90+ are appendices.
-sub label-of(Int $prefix --> Str) {
-    return ''                                             if $prefix == 0;
-    return 'Appendix ' ~ chr(65 + $prefix - 90)           if $prefix >= 90;
-    'Chapter ' ~ $prefix
+sub label-of(Int $prefix, Int $number --> Str) {
+    return ''                                   if $prefix == 0;
+    return 'Appendix ' ~ chr(65 + $prefix - 90) if $prefix >= 90;
+    'Chapter ' ~ $number
 }
 
 # ---- build ----------------------------------------------------------------
@@ -581,10 +581,20 @@ sub MAIN(Bool :$clean = False) {
     # Pass one: read everything, so a cross-reference can point at any chapter
     # before the first page is rendered.
     my $part = '';
+
+    # A chapter's number is its position among the numbered chapters, not
+    # its file-name prefix. They agree only while the prefixes run without
+    # a gap: a chapter inserted as `30b-` takes the next number and pushes
+    # every later chapter down by one, which is what the typesetter does
+    # in the PDF. Reading the prefix instead gave two Chapter 30s and left
+    # the rest of the book a number behind its own contents page.
+    my $number = 0;
+
     for @files -> $f {
         my $md     = slurp("src/pages/$f");
         my $prefix = $f.substr(0, 2).Int;
-        my $slug   = $f.subst(/ ^ \d+ '-' /, '').subst(/ '.md' $ /, '');
+        my $slug   = $f.subst(/ ^ \d+ <[a..z]>? '-' /, '').subst(/ '.md' $ /, '');
+        my $num    = ($prefix > 0 && $prefix < 90) ?? ++$number !! 0;
         my $p      = part-of($md);
         $part = $p if $p;
         my %c =
@@ -592,8 +602,8 @@ sub MAIN(Bool :$clean = False) {
             file   => $f,
             md     => $md,
             title  => title-of($md),
-            label  => label-of($prefix),
-            number => ($prefix > 0 && $prefix < 90) ?? $prefix !! 0,
+            label  => label-of($prefix, $num),
+            number => $num,
             part   => $part;
         @CHAPTERS.push(%c);
         %BY-NUMBER{%c<number>} = %c if %c<number>;

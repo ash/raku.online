@@ -71,7 +71,8 @@ false warning is an annoyance, a false *refusal* means a working program will
 not start.
 
 The problem it solves is one of timing. An undeclared variable was always an
-error — the interpreter throws `X::Undeclared` from `lvalueOf`/`evalVarExpr` —
+error — the interpreter throws `X::Undeclared` from `Interpreter::lvalue` and
+from `eval`'s `VarExpr` arm —
 but only when execution *reached* the reference. So
 
 ```raku
@@ -229,6 +230,24 @@ compiler refuses outright, which is not merely unhelpful: it is the tool
 disagreeing with the compiler about whether a program is valid, in the direction
 that tells you to go ahead. Whatever else a linter does, it must never say less
 than running the program would.
+
+The rule reaches further than `--lint`, and for a while it did not. `rakupp
+--lsp` speaks the Language Server Protocol and publishes these findings to an
+editor — but `src/Lsp.cpp` included `Lint.h` and not `DeclCheck.h`, so for its
+first release it never reported an undeclared variable: on the file above,
+`--lint` printed an error and exited 2 while the language server published only
+the unused-variable warning. An editor showing a clean file that will not run is
+this same failure one layer further out, and it is worse, because nobody
+consults a linter they believe has already run.
+
+Both now build the same list — `lintProgram` plus `findUndeclaredVars`, sorted
+by line and rule — and the server maps `'E'` to LSP severity Error. Two details
+belong to the server rather than the check. A long-running process may not die
+of an internal error, so a throw out of the declaration check publishes an
+informational diagnostic saying the check did not run, rather than either
+crashing or silently dropping it — a missing error being exactly what this
+paragraph is about. And `RAKUPP_NO_DECLCHECK=1` switches it off in both tools,
+so they cannot disagree about being switched off.
 
 ### What it costs
 
@@ -400,7 +419,7 @@ Two tools, and the interesting thing is that neither is new engine work:
 
 ### It is a host, not a private door
 
-The whole server reaches the engine through the public C ABI of Chapter 36 —
+The whole server reaches the engine through the public C ABI of Chapter 37 —
 `rk_new`, `rk_eval`, `rk_set_output`, and for grammars the same
 `rk_grammar_shim()` source every language binding loads. Nothing in
 `McpServer.cpp` includes `Interpreter.h`.
@@ -465,7 +484,7 @@ the tree and the diagnosis, and the watchdog's answer-then-exit contract.
 The `raku` tool runs arbitrary Raku with the privileges of the process. There is
 no sandbox, and registering the server grants an agent the trust that handing it
 a shell does. Saying so is the whole of the mitigation here; a sandboxed variant
-is separate work, and the WebAssembly build of Chapter 31 is the natural cage
+is separate work, and the WebAssembly build of Chapter 32 is the natural cage
 for it.
 
 ## `--jupyter`: the same session, in a notebook
@@ -509,8 +528,9 @@ peer on the older subscription form and off ZMTP heartbeats — less protocol on
 a link that carries one client — while the code still honours the 3.1
 `SUBSCRIBE` command and answers `PING` with `PONG`, so a libzmq that changes
 its mind does not break it. And every message is signed with HMAC-SHA256 over
-its four JSON parts, written out in the same file (about 120 lines of FIPS
-180-4) for the same reason as the JSON: one that does not verify is *dropped*,
+its four JSON parts, using the SHA-256 in `src/Digest.h` (about 120 lines of
+FIPS 180-4, shared with the digest builtins; the kernel keeps a five-line
+wrapper) for the same reason as the JSON: one that does not verify is *dropped*,
 not answered.
 
 ### The bug the capture mechanism sets

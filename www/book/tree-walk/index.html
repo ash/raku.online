@@ -48,8 +48,8 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
 
     <span class="kt">bool</span> returning = <span class="kc">false</span>;  Value returnV;      <span class="c1">// cooperative return</span>
     <span class="kt">uint64_t</span> frameTop = <span class="mi">0</span>, curRoutineFrame = <span class="mi">0</span>;
-    <span class="kt">int</span> loopCtl = <span class="mi">0</span>;         <span class="kt">uint64_t</span> curLoopFrame = <span class="mi">0</span>;
-    <span class="kt">int</span> givenCtl = <span class="mi">0</span>;        Value givenV;  <span class="kt">uint64_t</span> curGivenFrame = <span class="mi">0</span>;
+    <span class="kt">int</span> loopCtl = <span class="mi">0</span>;         <span class="kt">uint64_t</span> curLoopFrame = kNoFrame;
+    <span class="kt">int</span> givenCtl = <span class="mi">0</span>;        Value givenV;  <span class="kt">uint64_t</span> curGivenFrame = kNoFrame;
 
     <span class="k">struct</span> CallSite { <span class="kt">int</span> line; <span class="k">const</span> Value* code; };
     std::vector&lt;CallSite&gt; callFrames;            <span class="c1">// for callframe(N), backtraces</span>
@@ -57,7 +57,7 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
 };
 
 <span class="k">static</span> <span class="k">thread_local</span> ExecContext tctx_;</code></pre>
-<p>It is <code>static thread_local</code>, so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 37</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
+<p>It is <code>static thread_local</code>, so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 38</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
 <p>Two chains, not one. <strong><code>cur</code></strong> is the lexical chain: a callee's parent is the scope it was <em>written</em> in, reached through its <code>Callable::closure</code>. <strong><code>dynStack</code></strong> is the dynamic chain: the caller's scope, pushed on entry, walked only when resolving a <code>$*foo</code>. Keeping them separate is what makes lexical and dynamic scoping both correct and both cheap.</p>
 <h2 id="evaluating-an-expression">Evaluating an expression</h2>
 <p><code>eval</code> is a switch. The interesting arms are the ones that are <em>not</em> a straightforward recursion.</p>
@@ -71,7 +71,7 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
 <p><strong><code>Index</code></strong> reads a container element, and has a matching <code>fastShape</code>.</p>
 <p><strong><code>Call</code></strong> and <strong><code>MethodCall</code></strong> are <a href="/book/calls/">Chapters 14</a> and <a href="/book/dispatch/">16</a>.</p>
 <p><strong><code>InterpStr</code></strong> evaluates each part and concatenates. The parts were already parsed into sub-expressions by the front end, so there is no string scanning here at all.</p>
-<p><strong><code>NqpOp</code></strong> exists only under <code>use nqp</code> (<a href="/book/nqp/">Chapter 34</a>).</p>
+<p><strong><code>NqpOp</code></strong> exists only under <code>use nqp</code> (<a href="/book/nqp/">Chapter 35</a>).</p>
 <h2 id="evaluating-a-statement">Evaluating a statement</h2>
 <p><code>exec</code> is the same shape, with the control-flow statements doing the real work. Two mechanisms recur through all of them.</p>
 <h3>Hoisting</h3>
@@ -130,10 +130,10 @@ Expr* peelGrepFilter(Expr* listExpr, Expr*&amp; pred);</code></pre>
                       <span class="k">const</span> std::string&amp; fileName, <span class="k">const</span> std::string&amp; exePath,
                       <span class="k">const</span> std::vector&lt;std::string&gt;&amp; libPaths = {});
 <span class="kt">int</span> rakuppMainOnBigStack(<span class="kt">int</span> (*body)(<span class="kt">void</span>*), <span class="kt">void</span>* ctx);</code></pre>
-<p>and worker threads get the same treatment through <code>BigStackThread</code>, which reserves 256 MiB of <em>virtual</em> address space — committed only as used (<a href="/book/concurrency/">Chapter 37</a>). A compiled <code>--exe</code> binary calls <code>rakuppMainOnBigStack</code> for its own main body, so the recursion budget is the same in every mode.</p>
+<p>and worker threads get the same treatment through <code>BigStackThread</code>, which reserves 256 MiB of <em>virtual</em> address space — committed only as used (<a href="/book/concurrency/">Chapter 38</a>). A compiled <code>--exe</code> binary calls <code>rakuppMainOnBigStack</code> for its own main body, so the recursion budget is the same in every mode.</p>
 <p>The interpreter also keeps a <code>callDepth</code> register and raises a clean Raku error when it gets too deep, so a runaway recursion produces a diagnostic rather than a segmentation fault.</p>
 <h2 id="what-this-costs-honestly">What this costs, honestly</h2>
-<p>Re-dispatching every AST node on every execution is inherently slower than bytecode or a JIT — but by how much is a question with an answer, and the answer is smaller than the sentence suggests. Counted directly: the dispatch <code>switch</code> costs <strong>0.32 ns</strong>, and a node visit costs <strong>46 to 85 ns</strong>. The re-dispatch is under one per cent of what visiting a node costs. <a href="/book/reading-other-engines/">Chapter 41</a> has the measurement and what follows from it.</p>
+<p>Re-dispatching every AST node on every execution is inherently slower than bytecode or a JIT — but by how much is a question with an answer, and the answer is smaller than the sentence suggests. Counted directly: the dispatch <code>switch</code> costs <strong>0.32 ns</strong>, and a node visit costs <strong>46 to 85 ns</strong>. The re-dispatch is under one per cent of what visiting a node costs. <a href="/book/reading-other-engines/">Chapter 42</a> has the measurement and what follows from it.</p>
 <p>Where the rest goes is the profile of a method-heavy loop, after the fixes in <a href="/book/interning/">Chapters 10</a> and <a href="/book/numbers/">11</a>:</p>
 <div class="tablewrap"><table><tr><th></th><th>share</th></tr><tr><td>heap allocate and free</td><td>31%</td></tr>
 <tr><td><code>Value</code> copy and destroy</td><td>11%</td></tr>

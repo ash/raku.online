@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Appendix B</p><h1>Flags and Environment Variables</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#command-line-flags-that-select-a-mode">Command-line flags that select a mode</a></li><li><a href="#inspection-and-tooling-flags">Inspection and tooling flags</a></li><li><a href="#environment-variables">Environment variables</a></li><li><a href="#build-time-switches">Build-time switches</a></li><li><a href="#a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</a></li></ul></nav>
+<p class="ch-label">Appendix B</p><h1>Flags and Environment Variables</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#command-line-flags-that-select-a-mode">Command-line flags that select a mode</a></li><li><a href="#inspection-and-tooling-flags">Inspection and tooling flags</a></li><li><a href="#flags-that-shape-a-build">Flags that shape a build</a></li><li><a href="#flags-that-change-how-a-run-behaves">Flags that change how a run behaves</a></li><li><a href="#environment-variables">Environment variables</a></li><li><a href="#build-time-switches">Build-time switches</a></li><li><a href="#a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</a></li></ul></nav>
 <p>Everything that changes what the compiler does from the outside. This is a reference for the internals; the user-facing command line is documented in <code>docs/guide/CLI.md</code>.</p>
 <h2 id="command-line-flags-that-select-a-mode">Command-line flags that select a mode</h2>
 <div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><em>(none)</em></td><td>lex, parse, interpret</td></tr>
@@ -31,7 +31,7 @@
 <tr><td><code>--aot</code></td><td>parse at build time, emit C++ that rebuilds the AST</td></tr>
 <tr><td><code>--exe</code></td><td>transpile to C++ and compile natively</td></tr>
 <tr><td><code>--cpp</code>, <code>--emit-cpp</code></td><td>print the generated C++ instead of compiling it</td></tr>
-<tr><td><code>-O</code>, <code>-O2</code>, <code>-O3</code>, <code>-Os</code>, <code>-O0</code></td><td>run the codegen optimizer; the level is forwarded to the C++ compiler</td></tr></table></div>
+<tr><td><code>-O</code></td><td>run the codegen optimizer. Any suffix (<code>-O2</code>, <code>-Ofast</code>, <code>-Os</code>, …) turns it on too and is forwarded to the C++ compiler; there is one flag here, not five</td></tr></table></div>
 <h2 id="inspection-and-tooling-flags">Inspection and tooling flags</h2>
 <div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>--ast</code>, <code>--dump-ast</code></td><td>print the parsed tree as an indented outline</td></tr>
 <tr><td><code>--ast-roundtrip</code></td><td>serialise and deserialise the tree, then run it — the cache format's own test</td></tr>
@@ -49,8 +49,37 @@
 <tr><td><code>--precomp-info</code></td><td>what the parse cache holds</td></tr>
 <tr><td><code>--precomp-clean</code></td><td>empty it</td></tr>
 <tr><td><code>--precomp-modules=on|off</code>, <code>--precomp-files=on|off</code></td><td>the two cache switches</td></tr>
-<tr><td><code>--version</code>, <code>--help</code>, <code>--quiet</code></td><td>as expected</td></tr></table></div>
+<tr><td><code>--version</code>, <code>-V</code>, <code>-v</code>, <code>--help</code>, <code>-h</code>, <code>--quiet</code>, <code>-q</code></td><td>as expected</td></tr>
+<tr><td><code>-x</code></td><td>skip everything before the <code>#!</code> line</td></tr>
+<tr><td><code>--json</code></td><td>machine-readable <code>-c</code> and <code>--lint</code> findings</td></tr>
+<tr><td><code>--ll-exception</code></td><td>every frame of an uncaught error</td></tr>
+<tr><td><code>--exe-info FILE</code></td><td>the build manifest embedded in a compiled binary</td></tr>
+<tr><td><code>--stagestats</code></td><td>phase timings and module loads on stderr</td></tr>
+<tr><td><code>--trace</code></td><td>print each statement as it runs</td></tr>
+<tr><td><code>--repl-after</code></td><td>run the program, then open a session on its state</td></tr>
+<tr><td><code>--completions=bash|zsh|fish</code></td><td>print a shell completion script</td></tr>
+<tr><td><code>--lsp</code></td><td>run the Language Server</td></tr></table></div>
+<h2 id="flags-that-shape-a-build">Flags that shape a build</h2>
+<div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>-o FILE</code></td><td>output file (compile modes, <code>--target=js</code>)</td></tr>
+<tr><td><code>-I DIR</code></td><td>add a module search directory</td></tr>
+<tr><td><code>--slim[=safe|auto|max|none|help|list|verify]</code></td><td>cut unused runtime subsystems from the binary</td></tr>
+<tr><td><code>--standalone</code></td><td>a module that cannot be embedded is a build error</td></tr>
+<tr><td><code>--target=js</code></td><td>transpile to JavaScript (<a href="/book/astserial/">Chapter 30</a>b)</td></tr>
+<tr><td><code>--verify</code></td><td>emit JavaScript only if it agrees with the interpreter</td></tr>
+<tr><td><code>--module</code></td><td>JavaScript: export the subs, classes and <code>MAIN</code> instead of running</td></tr>
+<tr><td><code>--runtime</code></td><td>write just the JavaScript runtime</td></tr>
+<tr><td><code>--fallback=wasm</code></td><td>accept a program outside the JavaScript core, on the WebAssembly engine</td></tr></table></div>
+<h2 id="flags-that-change-how-a-run-behaves">Flags that change how a run behaves</h2>
+<div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>--seed</code></td><td>pin the random generator</td></tr>
+<tr><td><code>--stack-size</code></td><td>the stack of the program thread, and so the recursion ceiling</td></tr>
+<tr><td><code>--env-file FILE</code></td><td>load <code>KEY=VALUE</code> lines into the environment</td></tr>
+<tr><td><code>--color=auto|always|never</code></td><td>ANSI colour on stderr and in the REPL</td></tr>
+<tr><td><code>--watch</code></td><td>re-run the program whenever it or a library file changes</td></tr>
+<tr><td><code>-l</code></td><td>accepted; lines already arrive chomped</td></tr>
+<tr><td><code>-0</code></td><td>NUL-separated records</td></tr>
+<tr><td><code>--name</code>, <code>--prefix DIR</code></td><td>kernel name and location for <code>--jupyter-install</code></td></tr></table></div>
 <p>Flags are position-independent, and the perl-compatible one-liner family (<code>-n</code>, <code>-p</code>, <code>-a</code>, <code>-F</code>, <code>-i</code>, <code>-0777</code>, <code>-M</code>) is documented in the CLI guide.</p>
+<p>This list is checked against the binary rather than maintained by hand: <code>tools/check-book-appendix.raku</code> reads <code>kFlagDocs</code> out of <code>src/main.cpp</code> — the same table <code>--help</code> prints from — and fails if a flag is in one and not the other. It was written because this appendix was missing twenty-seven of the sixty-six flags the binary accepts, including a whole run mode.</p>
 <h2 id="environment-variables">Environment variables</h2>
 <h3>Search and loading</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKULIB</code></td><td>extra module search paths; <strong>both</strong> <code>,</code> and <code>:</code> separate</td></tr>
@@ -64,7 +93,7 @@
 <tr><td><code>RAKUPP_NO_PRECOMP=1</code></td><td>force both off</td></tr>
 <tr><td><code>RAKUPP_PRECOMP_DIR</code></td><td>where cache entries live</td></tr></table></div>
 <h3>The foreign-function interface</h3>
-<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_FFI=0</code></td><td>force the no-libffi fallback path — the second CI leg</td></tr>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_FFI=0</code></td><td>force the no-libffi fallback path</td></tr>
 <tr><td><code>RAKUPP_FFI=/path</code></td><td>use <em>only</em> that library; if it fails to load, report and fall back rather than silently substituting the system copy</td></tr>
 <tr><td><code>RAKUPP_FFI_TRACE=1</code></td><td>log every crossing, with marshalled arguments and raw returns</td></tr></table></div>
 <h3>Concurrency</h3>
@@ -78,7 +107,7 @@
 <h3>Diagnostics</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_TRACE=1</code></td><td>the module search path and every resolution</td></tr>
 <tr><td><code>RAKUPP_DUMPTOKENS=1</code></td><td>the token stream</td></tr>
-<tr><td><code>RAKUPP_NO_DECLCHECK=1</code></td><td>skip the undeclared-variable gate (<a href="/book/tooling/">Chapter 38</a>)</td></tr>
+<tr><td><code>RAKUPP_NO_DECLCHECK=1</code></td><td>skip the undeclared-variable gate (<a href="/book/tooling/">Chapter 39</a>)</td></tr>
 <tr><td><code>RAKUPP_ACTTRACE=1</code></td><td>grammar action firing</td></tr>
 <tr><td><code>RAKUPP_TAP_TRACE=1</code></td><td>the test harness's own emission</td></tr>
 <tr><td><code>RAKUPP_KEEPGEN=1</code></td><td>keep the generated C++ from a compiling mode</td></tr>

@@ -110,8 +110,9 @@ Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <p><strong>Array binding is much cheaper</strong>, because sharing a buffer is exactly what a <code>shared_ptr</code> copy already does:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — @a := @b</span>
 <span class="k">if</span> (a-&gt;op == <span class="s2">":="</span> &amp;&amp; rhs.t == VT::Array) {
-    Value b = rhs; b.isList = <span class="kc">false</span>; *lv = b;
+    Value b = rhs; b.itemized = <span class="kc">false</span>; *lv = b;
 }</code></pre>
+<p>The cleared flag is <code>itemized</code>, not <code>isList</code>, and the difference is two bugs rather than a detail. Clearing <code>isList</code> would make a bound <code>List</code> become an <code>Array</code>, which is wrong — <code>my @a := @b</code> where <code>@b</code> is a <code>List</code> must stay a <code>List</code>, and <code>URI::Path</code> is where that surfaced. What has to be cleared is the <em>itemization</em>: <code>$(1,2,3)</code> is one scalar item that does not flatten, and binding it to an <code>@</code> variable that then flattens it is how <code>DBDish::Pg</code> overflowed its stack.</p>
 <p><code>Value b = rhs</code> copies the struct and shares <code>rhs.arr</code>. This is the deliberate opposite of <code>@a = @b</code> above. <code>constant</code> reuses the binding path — a constant is <code>:=</code> in disguise.</p>
 <p>The user-visible <code>Proxy</code> type — <code>Proxy.new(:FETCH{…}, :STORE{…})</code> — is the same mechanism exposed, so a program can build one explicitly.</p>
 <h2 id="the-scalar-container-metaphor">The scalar-container metaphor</h2>
@@ -143,7 +144,7 @@ Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <h3>Small blocks come off a free list</h3>
 <p>A <code>ValueList</code> is not only a list. It is the argument list of every interpreted call, and for a one- or two-element list the heap block <em>is</em> the cost: 32 ns against a call that takes about 265. <code>RVec</code> keeps a thread-local free list of blocks for capacities 1 through 4, so allocation is a pop and release is a push. The one-argument shape drops to 9.5 ns; <code>fib</code> retires 8.8% fewer instructions, a two-argument call loop 13%.</p>
 <p>The lists are kept <strong>per exact capacity</strong>, not per rounded-up size class, and that is the whole design decision. One four-element block for every small request is simpler and marginally faster on call-shaped work — but a <code>ValueList</code> is also every Array's payload, and a program holding a million one-element arrays then holds a million four-element blocks: 560–663 MB against 292–296, paying 22% of its cycles in the extra memory traffic. The two users of the type want opposite things from a block-sizing policy, and per-capacity lists are what give both of them what they want.</p>
-<p>This is Perl 5's arena-and-free-list discipline (<code>sv.c</code>) applied to the one allocation two separate investigations had already named as the thing to remove — see <a href="/book/the-speed-campaign/">Chapter 40</a>.</p>
+<p>This is Perl 5's arena-and-free-list discipline (<code>sv.c</code>) applied to the one allocation two separate investigations had already named as the thing to remove — see <a href="/book/the-speed-campaign/">Chapter 41</a>.</p>
 <h2 id="shaped-arrays-and-typed-containers">Shaped arrays and typed containers</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
 std::shared_ptr&lt;std::vector&lt;<span class="kt">long</span> <span class="kt">long</span>&gt;&gt; shape;  <span class="c1">// my @a[2;3]</span>

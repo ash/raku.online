@@ -22,8 +22,8 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 17</p><h1>The Object System</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#registration-and-lookup">Registration and lookup</a></li><li><a href="#construction">Construction</a></li><li><a href="#attributes-and-accessors">Attributes and accessors</a></li><li><a href="#roles">Roles</a></li><li><a href="#mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></a></li><li><a href="#augment-and-supersede"><code>augment</code> and <code>supersede</code></a></li><li><a href="#package-stashes-and-who">Package stashes and <code>.WHO</code></a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
-<p>Raku's object surface is one of the largest in the language: classes with inheritance, roles, runtime mixins, a meta-object protocol, <code>augment</code> and <code>supersede</code>, package stashes. A reader arriving from C++ or the JVM would expect a subsystem to match. There is not one — the whole of it is two structs and the operations that read them, and most of this chapter follows from how little those structs hold.</p>
+<p class="ch-label">Chapter 17</p><h1>The Object System</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#registration-and-lookup">Registration and lookup</a></li><li><a href="#construction">Construction</a></li><li><a href="#attributes-and-accessors">Attributes and accessors</a></li><li><a href="#roles">Roles</a></li><li><a href="#mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></a></li><li><a href="#augment-and-the-supersede-that-is-not-there"><code>augment</code>, and the <code>supersede</code> that is not there</a></li><li><a href="#package-stashes-and-who">Package stashes and <code>.WHO</code></a></li><li><a href="#honest-limitations">Honest limitations</a></li></ul></nav>
+<p>Raku's object surface is one of the largest in the language: classes with inheritance, roles, runtime mixins, a meta-object protocol, <code>augment</code> and package stashes. A reader arriving from C++ or the JVM would expect a subsystem to match. There is not one — the whole of it is two structs and the operations that read them, and most of this chapter follows from how little those structs hold.</p>
 <p>A user class is a <code>ClassInfo</code>. An instance is an <code>ObjectData</code> that points at one. There is no per-object method table, no vtable, and no per-class code generation.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — abridged</span>
 <span class="k">struct</span> ClassInfo {
@@ -56,7 +56,7 @@
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string, std::shared_ptr&lt;ClassInfo&gt;&gt; classes_;
 std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
-<p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 32</a>.</p>
+<p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 33</a>.</p>
 <p>The alias map softens the consequences of flatness. Registering <code>URI::Path</code> also aliases its tail, <code>Path</code>, unless a real class already claims that name. And a qualified name that is a <em>partial</em> path resolves by unique suffix match:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — resolveClassAlias</span>
 <span class="k">if</span> (n.find(<span class="s2">"::"</span>) != std::string::npos) {
@@ -109,11 +109,17 @@ std::string lastLvalueAttrType;</code></pre>
 <p>recorded by the method-call lvalue arm so a role-typed <code>has C $.x is rw</code> rejects <code>42</code>.</p>
 <h2 id="roles">Roles</h2>
 <p>A role is a <code>ClassInfo</code> with <code>isRole</code> set, a set of <code>requiredMethods</code>, and a set of <code>doneRoles</code>. Composition copies the role's methods and attributes into the class and records membership.</p>
-<p>Required methods are checked <strong>at class declaration</strong>, using the same <code>findMethod</code> that dispatch uses:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="k">for</span> (ClassInfo* role : composed)
-    <span class="k">for</span> (<span class="k">const</span> std::string&amp; req : role-&gt;requiredMethods)
-        <span class="k">if</span> (!ci-&gt;findMethod(req))
-            <span class="k">throw</span> RakuError{Value::typeObj(<span class="s2">"X::Role::Unimplemented"</span>), …};</code></pre>
+<p>Required methods are checked <strong>at class declaration</strong>, and the check is more generous than a lookup, because there are four honest ways to satisfy a requirement:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — for each name a role requires</span>
+ok = hasImpl(ci, rq, <span class="kc">nullptr</span>)      <span class="c1">// a non-stub implementation anywhere in the type</span>
+  || classOwn.count(rq);           <span class="c1">// …or the class's own stub: a deliberate promise</span>
+<span class="k">if</span> (!ok &amp;&amp; attrCovers(ci, rq)) ok = <span class="kc">true</span>;   <span class="c1">// …or a public attribute's accessor,</span>
+                                            <span class="c1">//    or an attribute `handles` delegation</span>
+<span class="k">if</span> (!ok)
+    <span class="k">throw</span> RakuError{Value::typeObj(<span class="s2">"X::Comp::AdHoc"</span>),
+        <span class="s2">"Method '"</span> + rq + <span class="s2">"' must be implemented by "</span> + clsName +
+        <span class="s2">" because it is required by roles: "</span> + rl + <span class="s2">"."</span>};</code></pre>
+<p>A <em>stubbed multi</em> is checked per candidate signature rather than by name, so a class that implements one of two required signatures is still incomplete.</p>
 <p><code>.does</code> and <code>~~</code> consult <code>doesRole</code>, which is true for the role itself, for directly or transitively composed roles, and for roles done by parents:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
 <span class="kt">bool</span> doesRole(<span class="k">const</span> std::string&amp; rn) <span class="k">const</span> {
@@ -128,7 +134,7 @@ std::string lastLvalueAttrType;</code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ClassInfo</span>
 std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; roleParamBindings;</code></pre>
 <p>The bindings are injected into the scope of the composing class's methods, so the role's body sees <code>%phase-defaults</code> in <code>does Cro::Policy::Timeout[%h]</code>. <code>makeRolePun</code> handles the anonymous case, <code>R[Int].new</code>, by building a punned class on the spot.</p>
-<p>Role composition is <strong>last-writer-wins</strong>: two roles defining the same method both copy into the table, with no conflict diagnostic. That is a known divergence.</p>
+<p>Two roles defining the same method is a <strong>conflict</strong>, not a race: composition raises <code>X::Role::Unresolved::Method</code> — "Method 'r' must be resolved by class E because it exists in multiple roles (R1, R2)" — unless the class declares the name itself. Rakudo says the same sentence with the roles in the other order.</p>
 <h2 id="mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></h2>
 <p><code>5 but Role</code> and <code>%h does R</code> add a role to a value at run time.</p>
 <p>For a value that is already an object, the role is composed into a fresh anonymous subclass. For a <strong>non-object base</strong> there is no <code>ObjectData</code> to extend, so the value is <em>boxed</em>:</p>
@@ -148,12 +154,14 @@ obj-&gt;hasBoxed = <span class="kc">true</span>;
 }</code></pre>
 <p>So <code>(5 but Role).succ</code> runs <code>Int.succ</code> on the <code>5</code>, while the role's methods and <code>.does</code>/<code>.WHAT</code> see the mixed object. The <code>keepOnObj</code> set is the list of questions that must be answered <em>about the mixin</em> rather than about the box.</p>
 <p><code>$x but Pair</code> mixes an attribute rather than a role, using the same machinery with a synthesised anonymous role — which is what <code>anonMixinSeq_</code> names.</p>
-<h2 id="augment-and-supersede"><code>augment</code> and <code>supersede</code></h2>
+<h2 id="augment-and-the-supersede-that-is-not-there"><code>augment</code>, and the <code>supersede</code> that is not there</h2>
 <p><code>augment class Foo { … }</code> on a user class merges methods into the existing <code>ClassInfo</code>. On a <strong>built-in type</strong> there is no <code>ClassInfo</code>, so the methods go into a side table consulted before the native dispatch ladder:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 std::unordered_map&lt;std::string,
                    std::unordered_map&lt;std::string, Value&gt;&gt; builtinExt_;</code></pre>
-<p>keyed by type name then method name, and searched along the native ancestry so augmenting <code>Cool</code> reaches <code>Int</code> and <code>Str</code>. <a href="/book/dispatch/">Chapter 16</a> covers the dispatch side; <a href="/book/dispatch-compiled/">Chapter 28</a> covers why two compiled fast paths have to check whether this map is empty.</p>
+<p>keyed by type name then method name, and searched along the native ancestry so augmenting <code>Cool</code> reaches <code>Int</code> and <code>Str</code>. Both forms need <code>use MONKEY-TYPING</code>, as they do in Rakudo — without it the parser refuses <code>augment</code> outright.</p>
+<p><code>supersede</code> is a different matter: it is <strong>not implemented in any form</strong>. The word is in the syntax highlighter's keyword list, which is the only place it appears, so <code>supersede class S { … }</code> reaches the ordinary declaration path and dies with <code>X::Redeclaration</code>. Replacing a method on a live class is <code>.^add_method</code>.</p>
+<p><a href="/book/dispatch/">Chapter 16</a> covers the dispatch side; <a href="/book/dispatch-compiled/">Chapter 28</a> covers why two compiled fast paths have to check whether this map is empty.</p>
 <p><code>.^add_method($name, $code)</code> writes into <code>ClassInfo::methods</code> directly, which is the whole of runtime method injection.</p>
 <h2 id="package-stashes-and-who">Package stashes and <code>.WHO</code></h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>

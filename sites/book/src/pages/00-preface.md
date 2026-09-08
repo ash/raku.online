@@ -4,16 +4,18 @@ This is a book about the inside of a compiler.
 
 Raku++ is a hand-written implementation of the Raku programming language,
 written in C++17, with no third-party dependencies. It lexes, parses,
-interprets, and — in one of its four run modes — transpiles Raku to C++ and
+interprets, and — in two of its five run modes — transpiles Raku to C++ and to
+JavaScript, and
 compiles it to a native binary. It carries its own regular-expression and
 grammar engine, its own Unicode subsystem built from the pinned UCD tables, its
 own arbitrary-precision arithmetic, a foreign-function interface that loads
 libffi at run time rather than linking it, a C ABI for native extension
-modules, and a concurrency runtime with a global interpreter lock that can be
-switched off.
+modules, and a concurrency runtime that runs interpreter compute on all cores by
+default, with a global interpreter lock kept as the opt-in escape hatch.
 
 None of that is unusual for a language implementation. What is unusual is that
-all of it fits in about fifty thousand lines of source that one person can read,
+all of it fits in about a hundred thousand hand-written lines that one person
+can read,
 and that almost every non-obvious decision in it was made against a
 measurement. This book is an attempt to write down both: the mechanisms, and
 the reasons.
@@ -71,9 +73,9 @@ If you are here for one thing in particular:
 | how a Raku call actually happens | Chapters 14 to 16 |
 | regexes and grammars | Part V |
 | the native compiler | Part VII |
-| Raku in a browser | Chapter 31 |
-| installing modules, and the store zef shares | Chapter 33 |
-| calling C, or being called from it | Chapters 35 and 36 |
+| Raku in a browser | Chapter 32 |
+| installing modules, and the store zef shares | Chapter 34 |
+| calling C, or being called from it | Chapters 36 and 37 |
 | a term you have not met before | Appendix D, the glossary |
 
 ## Conventions {-}

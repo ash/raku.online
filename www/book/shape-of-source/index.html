@@ -25,20 +25,21 @@
 <p class="ch-label">Chapter 2</p><h1>The Shape of the Source</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-numbers">The numbers</a></li><li><a href="#the-library-boundary">The library boundary</a></li><li><a href="#what-each-file-is-for">What each file is for</a></li><li><a href="#reading-conventions-in-the-source">Reading conventions in the source</a></li><li><a href="#building-it">Building it</a></li><li><a href="#the-test-surface">The test surface</a></li></ul></nav>
 <p>Before the mechanisms, the map. This chapter is the one to come back to when a later chapter names a file and you want to know what else lives near it.</p>
 <h2 id="the-numbers">The numbers</h2>
-<p><code>src/</code> holds about <strong>147,000 lines</strong> of C++. That figure is misleading on its own, because <strong>79,400 of them are generated Unicode tables</strong> — character names, properties, collation weights, normalization data — emitted from the pinned UCD and UCA 17.0 files in <code>tools/ucd/</code>. Nobody reads those, and nobody edits them.</p>
-<p>The hand-written implementation is about <strong>67,700 lines</strong>, and it is very unevenly distributed:</p>
-<div class="tablewrap"><table><tr><th>File</th><th>Lines</th><th>What it is</th></tr><tr><td><code>Interpreter.cpp</code></td><td>20,787</td><td>the tree walk, calls, dispatch, modules, concurrency</td></tr>
-<tr><td><code>Builtins.cpp</code></td><td>9,887</td><td>named built-ins, <code>Test</code>, the head of the method chain</td></tr>
-<tr><td><code>Parser.cpp</code></td><td>7,210</td><td>statements, expressions, declarations, interpolation</td></tr>
-<tr><td><code>MethodCallPart2.cpp</code></td><td>3,549</td><td>the method chain, continued</td></tr>
-<tr><td><code>Regex.cpp</code></td><td>2,785</td><td>the regex and grammar engine</td></tr>
-<tr><td><code>MethodCallPart3.cpp</code></td><td>2,652</td><td>the method chain, continued</td></tr>
-<tr><td><code>Codegen.cpp</code></td><td>2,586</td><td>the <code>--exe</code> transpiler</td></tr>
-<tr><td><code>Lexer.cpp</code></td><td>2,351</td><td>tokenizer</td></tr>
-<tr><td><code>MethodCallTail.cpp</code></td><td>2,277</td><td>the method chain, the end of it</td></tr>
-<tr><td><code>Interpreter.h</code></td><td>1,363</td><td>the interpreter's own interface, plus the <code>rt*</code> helpers</td></tr>
-<tr><td><code>main.cpp</code></td><td>1,281</td><td>the CLI and the four compile drivers</td></tr>
-<tr><td><code>Value.cpp</code></td><td>1,093</td><td>coercions, comparison, <code>gist</code>, <code>flatten</code></td></tr></table></div>
+<p><code>src/</code> holds about <strong>194,000 lines</strong> of C++. That figure is misleading on its own, because <strong>88,000 of them are generated</strong>: the Unicode tables — character names, properties, collation weights, normalization data, emitted from the pinned UCD and UCA 17.0 files in <code>tools/ucd/</code> — and the JavaScript runtime, which is written as JavaScript in <code>src/js-rt/</code> and baked into one C++ file so a binary carries the runtime it was built with. Nobody reads those, and nobody edits them where they land.</p>
+<p>The hand-written implementation is about <strong>106,000 lines</strong>, and it is very unevenly distributed:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Lines</th><th>What it is</th></tr><tr><td><code>Interpreter.cpp</code></td><td>32,036</td><td>the tree walk, calls, dispatch, modules, concurrency</td></tr>
+<tr><td><code>Builtins.cpp</code></td><td>13,655</td><td>named built-ins, <code>Test</code>, the head of the method chain</td></tr>
+<tr><td><code>Parser.cpp</code></td><td>8,950</td><td>statements, expressions, declarations, interpolation</td></tr>
+<tr><td><code>MethodCallPart2.cpp</code></td><td>4,857</td><td>the method chain, continued</td></tr>
+<tr><td><code>Regex.cpp</code></td><td>4,230</td><td>the regex and grammar engine</td></tr>
+<tr><td><code>MethodCallPart3.cpp</code></td><td>3,740</td><td>the method chain, continued</td></tr>
+<tr><td><code>Codegen.cpp</code></td><td>3,229</td><td>the <code>--exe</code> transpiler</td></tr>
+<tr><td><code>main.cpp</code></td><td>3,095</td><td>the CLI, the compile drivers and the tooling subcommands</td></tr>
+<tr><td><code>MethodCallTail.cpp</code></td><td>3,034</td><td>the method chain, the end of it</td></tr>
+<tr><td><code>Lexer.cpp</code></td><td>2,927</td><td>tokenizer</td></tr>
+<tr><td><code>codegen/Js.cpp</code></td><td>2,759</td><td>the <code>--target=js</code> transpiler</td></tr>
+<tr><td><code>Interpreter.h</code></td><td>2,531</td><td>the interpreter's own interface, plus the <code>rt*</code> helpers</td></tr>
+<tr><td><code>Value.cpp</code></td><td>1,270</td><td>coercions, comparison, <code>gist</code>, <code>flatten</code></td></tr></table></div>
 <p>Two shapes stand out and both are deliberate.</p>
 <p><strong><code>Interpreter.cpp</code> is enormous.</strong> It is the tree walk, and the tree walk touches everything: scopes, calls, operators, assignment, control flow, module loading, the FFI marshaller, the concurrency runtime. Splitting it by topic would mostly move <code>#include</code>s around, because the pieces share the interpreter's private state rather than a clean interface.</p>
 <p><strong>The method dispatcher is split across four files for one reason.</strong> It used to be a single 9,138-line function, <code>methodCallInner</code>, and that stopped being compilable in a reasonable time. It is now four ordered <em>segments</em> — <code>Builtins.cpp</code> holds the head, then <code>MethodCallPart2</code>, <code>MethodCallPart3</code>, <code>MethodCallTail</code> — each returning <code>std::optional&lt;Value&gt;</code>, where <code>nullopt</code> means "not handled here, try the next segment".</p>
@@ -125,7 +126,7 @@ cmake --build build -j</code></pre>
 <tr><td><code>t/stress/</code></td><td>concurrency and memory stress, also run under TSan and ASan</td></tr>
 <tr><td><code>tools/perf-guard.raku</code></td><td>the performance gate, compared against a recorded baseline</td></tr>
 <tr><td>the showcase interpreters</td><td>JavaScript, Perl, Python and Lisp, written in Raku</td></tr></table></div>
-<p>The release checklist in <code>docs/dev/RELEASING.md</code> gates on all of them. <a href="/book/tooling/">Chapter 38</a> is about why the performance gate is there and what happens when it is skipped.</p><nav class="ch-nav"><a class="prev" href="/book/what-it-is/"><span>Previous</span>What Raku++ Is</a><a class="next" href="/book/classification/"><span>Next</span>Where It Sits in the Taxonomy</a></nav>
+<p>The release checklist in <code>docs/dev/RELEASING.md</code> gates on all of them. <a href="/book/measuring/">Chapter 40</a> is about why the performance gate is there and what happens when it is skipped.</p><nav class="ch-nav"><a class="prev" href="/book/what-it-is/"><span>Previous</span>What Raku++ Is</a><a class="next" href="/book/classification/"><span>Next</span>Where It Sits in the Taxonomy</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

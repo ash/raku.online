@@ -49,14 +49,15 @@
 <h2 id="the-same-trick-three-more-times">The same trick, three more times</h2>
 <p><code>next</code>, <code>last</code> and <code>redo</code> use an identical mechanism with their own register and frame counter:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
-<span class="kt">int</span> loopCtl = <span class="mi">0</span>;              <span class="c1">// 0 none, 1 next, 2 last, 3 redo</span>
-<span class="kt">uint64_t</span> curLoopFrame = <span class="mi">0</span>;    <span class="c1">// frameTop of the innermost native loop</span></code></pre>
+<span class="k">static</span> <span class="k">constexpr</span> <span class="kt">uint64_t</span> kNoFrame = ~<span class="kt">uint64_t</span>(<span class="mi">0</span>);  <span class="c1">// "no frame is armed"</span>
+<span class="kt">int</span> loopCtl = <span class="mi">0</span>;                     <span class="c1">// 0 none, 1 next, 2 last, 3 redo</span>
+<span class="kt">uint64_t</span> curLoopFrame = kNoFrame;    <span class="c1">// frameTop of the innermost native loop</span></code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — LastStmt</span>
-<span class="k">if</span> (t.empty() &amp;&amp; tctx_.curLoopFrame != <span class="mi">0</span> &amp;&amp;
-    tctx_.frameTop == tctx_.curLoopFrame) {
+<span class="k">if</span> (t.empty() &amp;&amp; tctx_.frameTop == tctx_.curLoopFrame) {
     tctx_.loopCtl = <span class="mi">2</span>; <span class="k">return</span> Value::any();
 }
 <span class="k">throw</span> LastEx{t};              <span class="c1">// labelled, or across a frame: unwind</span></code></pre>
+<p>That sentinel is worth a paragraph, because the obvious spelling was wrong in a way that hid for a long time. <code>curLoopFrame</code> was initialised to <code>0</code> and the guard read <code>curLoopFrame != 0 &amp;&amp; frameTop == curLoopFrame</code> — but <code>0</code> is also the <strong>mainline's own frame number</strong>. So every loop and every <code>given</code> written at the top level of a program failed that guard, fell out of the cooperative path, and threw: about eighty microseconds per iteration on macOS, in exactly the programs a beginner writes. One sentinel that cannot collide with a real frame number fixed it, and the guard collapsed to a single comparison.</p>
 <p><code>when</code>, <code>default</code> and <code>succeed</code> got the same treatment, and for a specific measured reason. <code>given $v { when Int {…} when Str {…} … }</code> executed per row of a data set means a throw per row:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
 <span class="kt">int</span> givenCtl = <span class="mi">0</span>;             <span class="c1">// 1 = a when matched; break the given</span>
@@ -79,7 +80,7 @@ Value givenV;
 <span class="k">struct</span> ProceedEx {};                 <span class="c1">// leave a when, keep matching later ones</span>
 <span class="k">struct</span> RakuError { Value payload; std::string message; };
 <span class="k">struct</span> WorkerAbortEx {};             <span class="c1">// unwind a background worker at shutdown</span></code></pre>
-<p><code>RakuError</code> is the user-visible one: every Raku exception is a <code>RakuError</code> carrying a payload <code>Value</code> — normally an exception object — and a message. <code>WorkerAbortEx</code> is deliberately <em>not</em> a <code>RakuError</code>, so a user's <code>CATCH</code> cannot accidentally swallow a shutdown (<a href="/book/concurrency/">Chapter 37</a>).</p>
+<p><code>RakuError</code> is the user-visible one: every Raku exception is a <code>RakuError</code> carrying a payload <code>Value</code> — normally an exception object — and a message. <code>WorkerAbortEx</code> is deliberately <em>not</em> a <code>RakuError</code>, so a user's <code>CATCH</code> cannot accidentally swallow a shutdown (<a href="/book/concurrency/">Chapter 38</a>).</p>
 <h2 id="catch-and-where-it-lives"><code>CATCH</code>, and where it lives</h2>
 <p>A <code>CATCH</code> block is a <code>Block</code> statement with <code>isCatch</code> set, sitting inside the block it guards. Finding it means scanning the body — so the answer is cached on the <code>Callable</code>:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — Callable</span>

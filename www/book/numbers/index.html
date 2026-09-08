@@ -47,7 +47,8 @@
 };</code></pre>
 <p>Base 10^9 rather than a power of two. That choice trades some arithmetic density for the thing a language runtime does constantly: <strong>decimal conversion is free</strong>. <code>toString</code> walks the limbs and prints nine digits each; <code>fromString</code> parses in nine-digit chunks from the right. A binary base would make printing a repeated division by 10, which for a language where every integer is eventually stringified is the wrong trade.</p>
 <p>Multiplication is schoolbook, O(n·m). There is no Karatsuba and no FFT: the sizes that appear in practice are small, and the workloads where they are not are dominated by other costs.</p>
-<p>Division is base-10^9 long division, and it has one wart worth naming: the per-limb quotient digit is found by <strong>binary search</strong> over <code>[0, BASE)</code>, costing about thirty <code>BigInt</code> multiplications per limb. That is expensive, which is why the fast path below matters so much.</p>
+<p>Division is base-10^9 long division — Knuth's algorithm D. The per-limb quotient digit is <strong>estimated</strong> from the leading limbs and then corrected, which is what normalising the divisor so its top limb is at least <code>BASE/2</code> buys: it bounds the estimate's error to 2, where without it a small leading limb can make the estimate wrong by a factor of <code>BASE</code>.</p>
+<p>It did not always work that way, and the reason it changed is a good example of a wart that was only theoretical until it was not. The quotient digit used to be found by <strong>binary search</strong> over <code>[0, BASE)</code>, at about thirty <code>BigInt</code> multiplications per limb. That made <code>gcd</code> — Euclid over <code>divmod</code>, which every <code>Rat</code> construction calls — take 865 ms on a 1,437-digit over 812-digit pair where Rakudo takes 3. And it was not a corner case: <code>Math::NumberTheory</code>'s <code>FatRat</code> digit expansions reduce <code>Rat</code>s with ~600-digit parts on every step, so that file simply never finished.</p>
 <h3>The 64-bit fast path</h3>
 <p>Almost every bignum operation in real Raku code is on values that are not, in fact, big. They arrive as <code>BigInt</code> because a <code>Rat</code> stores its numerator and denominator as <code>BigInt</code>s unconditionally — and <em>every</em> <code>Rat</code> construction calls <code>gcd</code> and then two <code>divmod</code>s.</p>
 <p>Measured on values that fit in 64 bits, <code>divmod</code> cost 2.1 microseconds and <code>gcd</code> — which is Euclid over <code>divmod</code> — cost 15.8 microseconds. So every decimal literal and every <code>p/q</code> in a program cost roughly 10 microseconds to build.</p>
@@ -125,8 +126,10 @@ Value v = Value::rat(std::move(n), std::move(d)); v.fatRat = fat;
 <span class="k">static</span> <span class="kt">double</span> strToNumOr0(<span class="k">const</span> std::string&amp; s) {
     <span class="k">if</span> (s.empty()) <span class="k">return</span> <span class="mf">0.0</span>;
     <span class="k">const</span> <span class="kt">char</span>* p = s.c_str(); <span class="kt">char</span>* end = <span class="kc">nullptr</span>;
-    <span class="kt">double</span> d = std::strtod(p, &amp;end);
-    <span class="k">return</span> end == p ? <span class="mf">0.0</span> : d;      <span class="c1">// stod would have thrown here</span>
+    errno = <span class="mi">0</span>;
+    <span class="kt">double</span> d = cnum::strtod(p, &amp;end);
+    <span class="k">if</span> (end == p) <span class="k">return</span> <span class="mf">0.0</span>;   <span class="c1">// nothing numeric at the front — stod would throw</span>
+    <span class="k">return</span> d;
 }</code></pre>
 <p>Measured over 300,000 iterations:</p>
 <div class="tablewrap"><table><tr><th></th><th>before</th><th>after</th><th>Rakudo</th></tr><tr><td><code>'ab'.chars</code></td><td>2.23 s</td><td><strong>0.73 s</strong></td><td>0.34 s</td></tr>

@@ -114,9 +114,11 @@ than computing a wrong answer:
 | more than 8 integer or 8 float arguments | the prototype is that wide and no wider |
 | more than 64 distinct callbacks | the trampoline pool holds 64 |
 
-`RAKUPP_FFI=0` forces this path, which is how the test suite exercises it: the
-whole suite runs twice, once each way. WebAssembly takes it by construction —
-there is no shared library to open.
+`RAKUPP_FFI=0` forces this path, which is how the fallback is tested:
+`t/regression/nativecall-libffi.raku` re-runs the cases only libffi can do in a
+child process with the backend switched off, and checks each one throws rather
+than answering. WebAssembly takes the fallback by construction — there is no
+shared library to open.
 
 ## How a call is made
 
@@ -140,14 +142,19 @@ std::string nativeLib, nativeSym, nativeLibSub;
 const Expr* nativeLibExpr = nullptr;
 void* nativeSymCache = nullptr;   // dlopen/dlsym once, not per call:
                                   // 5 dlopen candidates cost a flat ~67 µs
-void* nativeCifCache = nullptr;   // ffi_prep_cif is ~80 ns — 20% of a whole
-                                  // crossing — so it must not run per call
+CifSlot nativeCifCache;           // ffi_prep_cif is ~80 ns — 20% of a whole
+                                  // crossing — so it must not run per call.
+                                  // A struct, not a bare pointer: its copy
+                                  // constructor is deliberately empty, so a
+                                  // copied Value starts with no cif rather
+                                  // than a second owner of the same one.
 ```
 
-The cost of going through libffi rather than calling blind is about **23
-nanoseconds per crossing** — 157 milliseconds against 150 for 300,000 calls of
-`abs`. On a crossing that costs about 490 nanoseconds end to end, that is under
-5%, which is why there is one code path rather than a fast one and a general one.
+The cost of going through libffi rather than calling blind is about **20
+nanoseconds per crossing** — 106 milliseconds against 100 for 300,000 calls of
+`abs`, where the bare loop is 24. On a crossing that costs about 275 nanoseconds
+end to end, that is under a tenth, which is why there is one code path rather
+than a fast one and a general one.
 
 `nativeLibExpr` handles a genuinely awkward case: `is native(EXPR)` where the
 expression could not be evaluated at declaration time. It is retried once at the
