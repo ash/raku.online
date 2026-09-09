@@ -116,6 +116,20 @@ build_grid() {
     cp -R "$ROOT/sites/grid/out" "$WWW/grid"
 }
 
+# RakuMap is another build-time data source. Only its committed fixture corpus
+# is published; large ignored campaign output never reaches the site.
+build_map() {
+    MAP_SRC="${RAKUMAP:-/Users/ash/rakumap}"
+    if [ ! -d "$MAP_SRC" ]; then
+        echo "map: no RakuMap checkout at $MAP_SRC — keeping the committed www/map"
+        return 0
+    fi
+    echo "map -> www/map"
+    ( cd "$ROOT/sites/map" && "$RAKUPP" build.raku --clean --map="$MAP_SRC" )
+    rm -rf "$WWW/map"
+    cp -R "$ROOT/sites/map/out" "$WWW/map"
+}
+
 # Every /theme/ asset any page asks for must actually exist. The generators
 # reference assets by name, so adding a <script> without adding the file ships
 # a 404 that no page-existence check would catch.
@@ -135,7 +149,7 @@ check_shell() {
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
-                "$WWW/modules/index.html" "$WWW/grid/index.html" \
+                "$WWW/modules/index.html" "$WWW/grid/index.html" "$WWW/map/index.html" \
                 "$WWW/in-use/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
@@ -155,9 +169,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|faq|cookbook|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|map|faq|cookbook|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -178,14 +192,15 @@ case "${1:-all}" in
     tour)      build_tour ;;
     spec)      build_spec ;;
     grid)      build_grid ;;
+    map)       build_theme; build_map ;;
     faq)       build_faq ;;
     cookbook)  build_cookbook ;;
     book)      build_book ;;
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_faq; build_cookbook; build_book; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|faq|cookbook|book|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_cookbook; build_book; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|map|faq|cookbook|book|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers

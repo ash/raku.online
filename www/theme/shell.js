@@ -24,6 +24,7 @@
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
     { href: '/grid/',   label: 'Grid',   hue: 'grid'   },
+    { href: '/map/',    label: 'Map',    hue: 'map'    },
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
     // "Cook" rather than "Cookbook": the bar is ten tabs wide on a laptop and
     // the long form is the one that pushes it to wrap.
