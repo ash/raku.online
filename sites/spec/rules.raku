@@ -168,7 +168,15 @@ sub parse-info(Str $info) {
 }
 
 sub asset-version(--> Str) {
-    my @files = dir('src/theme').grep({ .IO.f }).map(*.Str);
+    # `src/theme` does not exist in this site and never has — the theme lives at
+    # the repo root. `dir()` on a missing path used to answer an empty list, so
+    # this silently contributed nothing and nobody noticed; since rakupp 3.26.0
+    # an unlistable path is an honest X::IO::Dir (rakupp #62) and it stopped the
+    # build outright. Guarded rather than repointed ON PURPOSE: feeding the real
+    # theme in would change every asset-version hash and bust every cached
+    # asset, which is a decision, not a build fix. If the intent was to include
+    # the theme, point this at ../../theme deliberately and accept the churn.
+    my @files = 'src/theme'.IO.d ?? dir('src/theme').grep({ .IO.f }).map(*.Str).Array !! [];
     for dir('src/rules/pages').grep({ .IO.d }).sort -> $t {
         @files.append: dir($t).grep({ .IO.f && .Str.ends-with('.md') }).map(*.Str);
     }

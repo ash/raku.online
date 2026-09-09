@@ -31,7 +31,7 @@
     [ '+ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '+ ((1, 2))', 'Int | 2', 'Int | 2', 'agree' ],
     [ '+ (True)', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '+ (Nil)', 'Num | 0', 'Int | 0', 'differ' ],
+    [ '+ (Nil)', 'Int | 0', 'Int | 0', 'agree' ],
     [ '+ (1/2)', 'Rat | 0.5', 'Rat | 0.5', 'agree' ],
   ],
   'prefix|-' => [
@@ -39,7 +39,7 @@
     [ '- ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '- ((1, 2))', 'Int | -2', 'Int | -2', 'agree' ],
     [ '- (True)', 'Int | -1', 'Int | -1', 'agree' ],
-    [ '- (Nil)', 'Num | -0', 'Int | 0', 'differ' ],
+    [ '- (Nil)', 'Int | 0', 'Int | 0', 'agree' ],
     [ '- (1/2)', 'Rat | -0.5', 'Rat | -0.5', 'agree' ],
   ],
   'prefix|~' => [

@@ -6,7 +6,7 @@ both engines reject the expression count as agreement, however differently they
 word the diagnostic — only value-vs-value differences and accept-vs-reject are
 listed. Every entry is a Raku++ fix candidate.
 
-**23** disagreements across **133** operators.
+**21** disagreements across **133** operators.
 
 ## Type mismatches by root cause
 
@@ -14,7 +14,6 @@ These collapse hard: fixing one defect clears every row it produced.
 
 | Raku++ returns | Rakudo returns | Rows | Example expression |
 |---|---|---:|---|
-| `Num` | `Int` | 2 | `+ (Nil)` |
 | `Any` | `Int` | 1 | `Nil min 1` |
 | `Any` | `Slip` | 1 | `Nil andthen 1` |
 
@@ -45,16 +44,6 @@ These collapse hard: fixing one defect clears every row it produced.
 | `infix:<...>` | `Nil ... 1` | `Seq — (Nil 1)` | _error:_ Use of uninitialized value of type Any in string context. |
 
 
-## Result type differs (4)
-
-| Operator | Expression | Raku++ | Rakudo |
-|---|---|---|---|
-| `prefix:<+>` | `+ (Nil)` | `Num — 0` | `Int — 0` |
-| `prefix:<->` | `- (Nil)` | `Num — -0` | `Int — 0` |
-| `infix:<min>` | `Nil min 1` | `Any — (Any)` | `Int — 1` |
-| `infix:<andthen>` | `Nil andthen 1` | `Any — (Any)` | `Slip — ()` |
-
-
 ## Raku++ rejects what Rakudo accepts (4)
 
 | Operator | Expression | Raku++ | Rakudo |
@@ -63,5 +52,13 @@ These collapse hard: fixing one defect clears every row it produced.
 | `prefix:<let>` | `let (Nil)` | _error:_ Target is not assignable | `Any — (Any)` |
 | `infix:<!=>` | `"a" != "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
 | `infix:<≠>` | `"a" ≠ "b"` | _error:_ Cannot convert string to number: base-10 number must begin with valid di | `Bool — True` |
+
+
+## Result type differs (2)
+
+| Operator | Expression | Raku++ | Rakudo |
+|---|---|---|---|
+| `infix:<min>` | `Nil min 1` | `Any — (Any)` | `Int — 1` |
+| `infix:<andthen>` | `Nil andthen 1` | `Any — (Any)` | `Slip — ()` |
 
 
