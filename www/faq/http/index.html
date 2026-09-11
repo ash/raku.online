@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — is HTTP built into the engine?</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=6d544db7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/shell.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/faq.css?v=6d544db7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Is HTTP built into the engine?</h1>
+
+<p>No. <strong>TCP sockets are built in; HTTP is not.</strong> Nothing in the engine parses a request line, a header block or a chunked body, and there is no HTTP client in it either.</p>
+<p>What prompts the question is that a socket program needs no <code>use</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">react</span> {
+    <span class="k">whenever</span> <span class="n">IO::Socket::Async</span>.<span class="n">listen</span>(<span class="s">'127.0.0.1'</span>, <span class="mi">15480</span>) -&gt; <span class="nv">$conn</span> {
+        <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span>(:<span class="n">bin</span>) -&gt; <span class="nv">$data</span> {
+            <span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;echo: &quot;</span>.<span class="n">encode</span> ~ <span class="nv">$data</span>);
+            <span class="nv">$conn</span>.<span class="nb">close</span>;
+        }
+    }
+}</code></pre>
+<p>That runs as written — and it runs identically on Rakudo, because <code>IO::Socket::Async</code> and <code>IO::Socket::INET</code> are core-setting classes <em>there</em> too. No module is missing; none was ever needed. Connecting and sending <code>hello\n</code>:</p>
+<pre class="native-code"><code>echo: hello</code></pre>
+<p>on both engines. What the program speaks is raw TCP: <code>"echo: "</code> is a byte prefix, not a protocol.</p>
+<h2 id="what-the-engine-actually-provides">What the engine actually provides <a class="anchor" href="#what-the-engine-actually-provides" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th>Built in, no <code>use</code></th><th></th></tr><tr><td><code>IO::Socket::Async</code></td><td><code>.listen</code>, <code>.connect</code>, <code>.Supply(:bin)</code>, <code>.write</code> / <code>.print</code> / <code>.put</code> / <code>.say</code>, <code>.close</code></td></tr>
+<tr><td><code>IO::Socket::INET</code></td><td>synchronous client and server</td></tr>
+<tr><td><code>react</code> / <code>whenever</code> / <code>await</code>, <code>signal()</code></td><td>the concurrency around them</td></tr></table></div>
+<p>The other half of the answer is a grep over the engine, from a checkout:</p>
+<pre class="native-code"><code class="lang-bash">grep -rnoE '"[A-Za-z:]*HTTP[A-Za-z:]*"' src/</code></pre>
+<p>No output. Not one type, class or method name in the engine contains <code>HTTP</code>.</p>
+<h2 id="http-is-a-text-protocol-so-you-can-write-it-yourself">HTTP is a text protocol, so you can write it yourself <a class="anchor" href="#http-is-a-text-protocol-so-you-can-write-it-yourself" aria-label="link">#</a></h2>
+<p>For a one-off request that is often all you want. A client:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$conn</span> = <span class="nb">await</span> <span class="n">IO::Socket::Async</span>.<span class="n">connect</span>(<span class="s">'example.com'</span>, <span class="mi">80</span>);
+<span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;GET / HTTP/1.0\r\nHost: example.com\r\nConnection: close\r\n\r\n&quot;</span>.<span class="n">encode</span>);
+
+<span class="k">my</span> <span class="nv">$response</span> = <span class="nb">Buf</span>.<span class="nb">new</span>;
+<span class="k">react</span> { <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span>(:<span class="n">bin</span>) -&gt; <span class="nv">$chunk</span> { <span class="nv">$response</span>.<span class="nb">append</span>(<span class="nv">$chunk</span>) } }
+
+<span class="nb">say</span> <span class="nv">$response</span>.<span class="n">decode</span>(<span class="s">'latin-1'</span>).<span class="nb">lines</span>[<span class="mi">0</span>];
+<span class="nb">say</span> <span class="s">&quot;received {$response.bytes} bytes&quot;</span>;</code></pre>
+<pre class="native-code"><code>HTTP/1.1 200 OK
+received 828 bytes</code></pre>
+<p>And a server, which is the echo server above with a status line in front of the body:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">react</span> {
+    <span class="k">whenever</span> <span class="n">IO::Socket::Async</span>.<span class="n">listen</span>(<span class="s">'127.0.0.1'</span>, <span class="mi">15481</span>) -&gt; <span class="nv">$conn</span> {
+        <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span> -&gt; <span class="nv">$request</span> {
+            <span class="k">my</span> <span class="nv">$path</span> = <span class="nv">$request</span>.<span class="nb">lines</span>[<span class="mi">0</span>].<span class="nb">words</span>[<span class="mi">1</span>];
+            <span class="k">my</span> <span class="nv">$body</span> = <span class="s">&quot;You asked for $path\n&quot;</span>;
+            <span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>: <span class="nb">join</span>(<span class="s">''</span>,
+                <span class="s">&quot;HTTP/1.1 200 OK\r\n&quot;</span>,
+                <span class="s">&quot;Content-Type: text/plain\r\n&quot;</span>,
+                <span class="s">&quot;Content-Length: {$body.encode.bytes}\r\n&quot;</span>,
+                <span class="s">&quot;Connection: close\r\n\r\n&quot;</span>,
+                <span class="nv">$body</span>).<span class="n">encode</span>;
+            <span class="nv">$conn</span>.<span class="nb">close</span>;
+        }
+    }
+}</code></pre>
+<pre class="native-code"><code>$ curl -i http://127.0.0.1:15481/hello
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 21
+Connection: close
+
+You asked for /hello</code></pre>
+<p>Both snippets produce that output on Raku++ and on Rakudo alike. What you do not get for free is everything after the first request: keep-alive, chunked encoding, redirects, compression, timeouts, TLS. That is what the modules are for.</p>
+<h2 id="http-from-a-module">HTTP from a module <a class="anchor" href="#http-from-a-module" aria-label="link">#</a></h2>
+<p>Install one and <code>use</code> it — <code>rakupp install HTTP::Tiny</code>, or zef. Where the two engines currently stand:</p>
+<div class="tablewrap"><table><tr><th></th><th>Raku++</th><th>Rakudo</th></tr><tr><td><code>HTTP::Tiny</code> over <code>http://</code></td><td><code>200</code>, 559 bytes</td><td><code>200</code>, 559 bytes</td></tr>
+<tr><td><code>HTTP::Tiny</code> over <code>https://</code></td><td><strong><code>599 Internal Exception</code></strong> — see below</td><td><code>200</code></td></tr>
+<tr><td><code>Cro::HTTP::Client</code> over <code>http://</code></td><td><code>200</code></td><td><code>200</code></td></tr>
+<tr><td><code>Cro::HTTP::Client</code> over <code>https://</code></td><td><strong>hangs</strong></td><td><code>200</code></td></tr>
+<tr><td><code>Cro::HTTP::Server</code> + <code>Cro::HTTP::Router</code></td><td>serves, routes, answers</td><td>same</td></tr></table></div>
+<p>The Cro server is a live regression here — <code>t/regression/cro-live-server.raku</code> starts a real <code>Cro::HTTP::Server</code> with a router and fetches from it over real sockets in the same process.</p>
+<p>The two failures are both Raku++ gaps, and neither is in the TLS transport:</p>
+<ul><li><strong><code>HTTP::Tiny</code> over https</strong> reports <code>HTTPS requests not supported: IO::Socket::SSL:ver&lt;0.0.2+&gt; must be installed</code> even when that module is installed and <code>use IO::Socket::SSL</code> loads it. Its <code>can-ssl</code> probe asks <code>$*REPO.repo-chain.map(*.?candidates: 'IO::Socket::SSL', :ver&lt;0.0.2+&gt;)</code>, and Raku++ has no <code>.candidates</code> method on a <code>CompUnit::Repository</code> — the <code>.?</code> call answers <code>Nil</code>, so the probe reads as "not installed".</li><li><strong><code>Cro::HTTP::Client</code> over https</strong> hangs. The layers under it do not: <code>IO::Socket::Async::SSL.connect</code> returns a verified connection, and <code>Cro::TLS::Connector.connect</code> returns its transform.</li></ul>
+<h2 id="tls">TLS <a class="anchor" href="#tls" aria-label="link">#</a></h2>
+<p>Encryption is a module too — <code>IO::Socket::Async::SSL</code>, driving the system OpenSSL through Raku++'s own NativeCall. Certificates are verified by default:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">IO::Socket::Async::SSL</span>;
+<span class="k">my</span> <span class="nv">$conn</span> = <span class="nb">await</span> <span class="n">IO::Socket::Async::SSL</span>.<span class="n">connect</span>(<span class="s">'example.com'</span>, <span class="mi">443</span>);
+<span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;GET / HTTP/1.0\r\nHost: example.com\r\n\r\n&quot;</span>.<span class="n">encode</span>);</code></pre>
+<p>A self-signed, expired, untrusted-root or wrong-host certificate is refused with <code>X::IO::Socket::Async::SSL::Verification</code>; <code>:insecure</code> skips the checks, leaving the transport encrypted but unauthenticated. <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NETWORKING.md">NETWORKING.md</a> has the full example.</p>
+<h2 id="why-there-is-no-http-client-in-the-engine-even-for-its-own-installer">Why there is no HTTP client in the engine, even for its own installer <a class="anchor" href="#why-there-is-no-http-client-in-the-engine-even-for-its-own-installer" aria-label="link">#</a></h2>
+<p><code>rakupp install</code> and <code>rakupp upgrade</code> both fetch over the network, and both do it by running <code>curl</code> in a subprocess. That is deliberate, and <code>tools/install.raku</code> says so where the choice is made: fetching is curl and unpacking is tar, so there is no HTTP client, no TLS stack, no tar reader and no index parser anywhere in the engine, in any language.</p>
+<p>The engine therefore carries no certificate store, no redirect policy and no protocol version to keep current. Programs that want HTTP reach for a module, exactly as they do on Rakudo.</p>
+<h2 id="limits-worth-knowing">Limits worth knowing <a class="anchor" href="#limits-worth-knowing" aria-label="link">#</a></h2>
+<ul><li><strong>IPv4 only.</strong> Every socket path in the engine is <code>AF_INET</code>; there is no IPv6.</li><li><strong><code>IO::Socket::INET.new</code> throws</strong> <code>X::AdHoc</code> on a refused connect or a failed bind, as Rakudo's does. The message text differs: Raku++ names the endpoint (<code>Cannot connect to 127.0.0.1:1: Connection refused</code>), Rakudo does not (<code>Could not connect to socket: Connection refused</code>).</li></ul>
+<hr>
+<p>See also <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NETWORKING.md">NETWORKING.md</a> for the socket API in full, and <a href="/faq/modules/">installing and finding modules</a> for installing one.</p>
+<p>Back to the <a href="/faq/">FAQ index</a>.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=6d544db7" defer></script>
+</body>
+</html>

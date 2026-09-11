@@ -41,12 +41,16 @@ rakupp --lint: 1 warning, 1 note in prog.raku</code></pre>
 <pre class="native-code"><code>$ rakupp -e 'sub f($x) { die "boom: $x" }; f(3)'
 boom: 3
   in sub f at -e line 1
+      1 | sub f($x) { die "boom: $x" }; f(3)
   in block &lt;unit&gt; at -e line 1</code></pre>
 <p>Frames run innermost first, and each one names a place you can go and look: the routine, the file it was declared in, and the line executing there. The frame the error came from also shows its source line, when the source can be read. <code>--ll-exception</code> shows every frame with nothing folded; <code>RAKUPP_BACKTRACE=0</code> prints the message alone, which is what a test with a golden recorded before any of this existed will want.</p>
 <p>A caught exception carries the same chain, and reports where it was <em>thrown</em> rather than where you asked:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">risky</span>(<span class="nv">$x</span>) { <span class="nb">die</span> <span class="s">&quot;boom: $x&quot;</span> }
 <span class="k">try</span> { <span class="n">risky</span>(<span class="mi">3</span>) }
-<span class="k">with</span> <span class="nv">$!</span> { <span class="nb">say</span> .<span class="n">message</span>, <span class="s">&quot; thrown in &quot;</span>, .<span class="n">backtrace</span>.<span class="nb">list</span>[<span class="mi">0</span>].<span class="n">subname</span> }</code></pre>
+<span class="k">with</span> <span class="nv">$!</span> { <span class="nb">say</span> .<span class="n">message</span>, <span class="s">&quot; thrown in &quot;</span>, .<span class="n">backtrace</span>.<span class="nb">list</span>[<span class="mi">0</span>].<span class="n">subname</span> }
+<span class="c1"># Raku++: boom: 3 thrown in risky      Rakudo: boom: 3 thrown in throw</span>
+<span class="c1"># Rakudo's innermost frame is its own `throw` routine, so frame 0 is not your</span>
+<span class="c1"># code there. Match on .subname, or take the first frame whose .file is yours.</span></code></pre>
 <p>The whole story — errors with two positions, and the <code>$!.backtrace</code> API — is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/TRACER.md">TRACER.md</a>.</p>
 <h2 id="telling-your-bug-from-ours">Telling your bug from ours <a class="anchor" href="#telling-your-bug-from-ours" aria-label="link">#</a></h2>
 <p>Raku++ aims to match Rakudo exactly. When output differs and you have both installed, that comparison <em>is</em> the test:</p>
@@ -60,7 +64,7 @@ rakupp --exe prog.raku -o prog &amp;&amp; ./prog &gt; b.txt
 diff a.txt b.txt</code></pre>
 <h2 id="things-that-surprise-people">Things that surprise people <a class="anchor" href="#things-that-surprise-people" aria-label="link">#</a></h2>
 <p><strong>A missing semicolon may not be reported.</strong> Raku++'s parser is more permissive than Rakudo's about statements running together across lines, so a program Rakudo rejects may run here. If a program behaves oddly and you suspect a typo, running it under Rakudo is a quick way to have the syntax checked strictly.</p>
-<p><strong>Output appears all at once from a child process.</strong> <code>shell('long-command')</code> without <code>:out</code> buffers and echoes at exit rather than streaming — see <a href="/faq/shell/">running external commands</a>.</p>
+<p><strong>Output from a child process is not where you expect it.</strong> <code>shell('…')</code> without <code>:out</code> streams straight to your terminal as the child writes, which means it is <em>not</em> captured — reach for <code>:out</code> when you want the text, and see <a href="/faq/shell/">running external commands</a> for which form gives you what.</p>
 <p><strong>A one-element list where you expected three.</strong> Almost always itemisation, not a bug — see <a href="/faq/containers/">containers, itemisation, and why my list has one element</a>.</p>
 <h2 id="reporting-a-bug">Reporting a bug <a class="anchor" href="#reporting-a-bug" aria-label="link">#</a></h2>
 <p>Issues: <a href="https://github.com/ash/rakupp/issues">https://github.com/ash/rakupp/issues</a>. What makes one immediately actionable:</p>

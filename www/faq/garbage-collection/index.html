@@ -30,9 +30,9 @@
 <h2 id="what-refcounting-buys">What refcounting buys <a class="anchor" href="#what-refcounting-buys" aria-label="link">#</a></h2>
 <p><strong>A small floor.</strong> Nothing is reserved for a heap, so the baseline is the program, not the collector. The program here is a file containing one statement, <code>say 1</code>, measured whole-process from launch to exit:</p>
 <pre class="native-code"><code class="lang-bash">/usr/bin/time -l rakupp floor.raku          # and the same line for `raku`</code></pre>
-<div class="tablewrap"><table><tr><th>running <code>say 1</code></th><th>peak footprint</th><th>max RSS</th></tr><tr><td>rakupp</td><td>1.4 MB</td><td>4.2 MB</td></tr>
-<tr><td>Rakudo</td><td>91.5 MB</td><td>125.2 MB</td></tr></table></div>
-<p>Both columns because the two metrics count differently: <em>peak memory footprint</em> is what macOS charges the process, <em>maximum resident set size</em> also counts the clean pages mapped in from the binary and the shared libraries. Each wobbles a few MB between runs — Rakudo's RSS came out anywhere from 113 to 125 MB — and the gap does not.</p>
+<div class="tablewrap"><table><tr><th>running <code>say 1</code></th><th>peak footprint</th><th>max RSS</th></tr><tr><td>rakupp</td><td>1.2 MB</td><td>4.2 MB</td></tr>
+<tr><td>Rakudo</td><td>92.1 MB</td><td>130.7 MB</td></tr></table></div>
+<p>Both columns because the two metrics count differently: <em>peak memory footprint</em> is what macOS charges the process, <em>maximum resident set size</em> also counts the clean pages mapped in from the binary and the shared libraries. Each wobbles a few MB between runs — Rakudo's RSS came out anywhere from 113 to 131 MB — and the gap does not.</p>
 <p><strong>No stop-the-world phase.</strong> Freeing happens inline, at the drop, on the thread that dropped it. There is no moment when the program is paused so a collector can walk the heap. This program allocates steadily, times every iteration, and counts the slow ones:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> (<span class="nv">$over1</span>, <span class="nv">$over5</span>, <span class="nv">$worst</span>) = <span class="mi">0</span>, <span class="mi">0</span>, <span class="mi">0</span>;
 <span class="k">my</span> <span class="nv">$t</span> = <span class="nb">now</span>;
@@ -49,13 +49,13 @@
 }
 <span class="nb">printf</span> <span class="s">&quot;over 1 ms: %d, over 5 ms: %d, worst %.1f ms\n&quot;</span>, <span class="nv">$over1</span>, <span class="nv">$over5</span>, <span class="nv">$worst</span> * <span class="mi">1000</span>;</code></pre>
 <p>Six consecutive runs of it per engine, on an otherwise idle machine:</p>
-<div class="tablewrap"><table><tr><th>run</th><th>rakupp — &gt;1 ms / &gt;5 ms / worst</th><th>Rakudo — &gt;1 ms / &gt;5 ms / worst</th></tr><tr><td>1</td><td>0 / 0 / 0.4 ms</td><td>19 / 13 / 21.0 ms</td></tr>
-<tr><td>2</td><td>0 / 0 / 0.6 ms</td><td>20 / 15 / 35.2 ms</td></tr>
-<tr><td>3</td><td>0 / 0 / 0.5 ms</td><td>19 / 15 / 18.1 ms</td></tr>
-<tr><td>4</td><td>0 / 0 / 0.5 ms</td><td>23 / 18 / 10.9 ms</td></tr>
-<tr><td>5</td><td>3 / 0 / 1.8 ms</td><td>17 / 13 / 18.6 ms</td></tr>
-<tr><td>6</td><td>0 / 0 / 0.7 ms</td><td>19 / 12 / 13.8 ms</td></tr></table></div>
-<p>The middle column is the one to read, and machine load is the reason to be careful with the other two: run the same program while a compile is going and rakupp's row moves too — one such run gave 30 / 8 / 30.1 ms. What does not move is Rakudo's twelve-to-eighteen iterations over 5 ms in <em>every</em> run, idle or not. Those are the collector; rakupp's occasional millisecond is the operating system.</p>
+<div class="tablewrap"><table><tr><th>run</th><th>rakupp — &gt;1 ms / &gt;5 ms / worst</th><th>Rakudo — &gt;1 ms / &gt;5 ms / worst</th></tr><tr><td>1</td><td>0 / 0 / 0.1 ms</td><td>22 / 3 / 7.4 ms</td></tr>
+<tr><td>2</td><td>0 / 0 / 0.1 ms</td><td>20 / 0 / 4.9 ms</td></tr>
+<tr><td>3</td><td>0 / 0 / 0.0 ms</td><td>24 / 0 / 4.9 ms</td></tr>
+<tr><td>4</td><td>0 / 0 / 0.1 ms</td><td>24 / 1 / 5.9 ms</td></tr>
+<tr><td>5</td><td>0 / 0 / 0.1 ms</td><td>21 / 3 / 7.7 ms</td></tr>
+<tr><td>6</td><td>0 / 0 / 0.1 ms</td><td>18 / 2 / 7.9 ms</td></tr></table></div>
+<p>The middle column is the one to read, and machine load is the reason to be careful with the other two: run the same program while a compile is going and rakupp's row moves too — one such run gave 30 / 8 / 30.1 ms. What does not move is Rakudo's twenty-odd iterations over 1 ms in <em>every</em> run, idle or not, against rakupp's zero. Those are the collector; rakupp's occasional millisecond, when it appears at all, is the operating system. (An earlier sitting of this table put Rakudo's over-5-ms column at twelve to eighteen; on this Rakudo it is nought to three, so the over-1-ms column is the one to read.)</p>
 <p>If you are writing something latency-sensitive — a request handler, an audio callback, a game loop — that is the property you are buying.</p>
 <h2 id="what-it-costs">What it costs <a class="anchor" href="#what-it-costs" aria-label="link">#</a></h2>
 <p><strong>The free is on your clock.</strong> A collector defers the work; refcounting bills it at the drop, and a big drop is a big bill:</p>
@@ -66,9 +66,9 @@
 <span class="nv">@big</span> = ();                                  <span class="c1"># the last reference goes here</span>
 <span class="k">my</span> <span class="nv">$freed</span> = <span class="nb">now</span> - <span class="nv">$t1</span>;
 <span class="nb">printf</span> <span class="s">&quot;build %.0f ms, free %.0f ms\n&quot;</span>, <span class="nv">$built</span> * <span class="mi">1000</span>, <span class="nv">$freed</span> * <span class="mi">1000</span>;</code></pre>
-<div class="tablewrap"><table><tr><th></th><th>build</th><th>free</th></tr><tr><td>rakupp</td><td>3357 ms</td><td><strong>485 ms</strong></td></tr>
-<tr><td>Rakudo</td><td>17205 ms</td><td><strong>2 ms</strong></td></tr></table></div>
-<p>The build column moves by a second between runs; the free column does not. Rakudo's 2 ms is not free memory, it is postponed work — but if a half-second lands in the wrong place, move the drop somewhere it does not matter, or let the structure die with the process.</p>
+<div class="tablewrap"><table><tr><th></th><th>build</th><th>free</th></tr><tr><td>rakupp</td><td>1005 ms</td><td><strong>218 ms</strong></td></tr>
+<tr><td>Rakudo</td><td>2685 ms</td><td><strong>0 ms</strong></td></tr></table></div>
+<p>(Three runs per engine, 2026-09-07; both columns repeated to within 25 ms.) Rakudo's free column is zero because the work has not happened yet, not because it was cheap. Rakudo's 2 ms is not free memory, it is postponed work — but if a half-second lands in the wrong place, move the drop somewhere it does not matter, or let the structure die with the process.</p>
 <p>Deep structures are safe to drop: a 500,000-node linked list released by setting its head to <code>Nil</code> tears down without exhausting the stack.</p>
 <p><strong>Cycles are never reclaimed.</strong> This is the real limitation. Two objects pointing at each other keep each other's count above zero, and nothing ever goes looking for them:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Node</span> { <span class="k">has</span> <span class="nv">$.name</span> <span class="k">is</span> <span class="n">rw</span>; <span class="k">has</span> <span class="nv">$.peer</span> <span class="k">is</span> <span class="n">rw</span>; }

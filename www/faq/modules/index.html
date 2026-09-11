@@ -36,18 +36,30 @@ rakupp install --dry-run Foo    # print the plan, write nothing
 rakupp install --list           # what is installed: identity, installer,
                                 # module files, bin wrappers (-q: identities)
 rakupp uninstall Foo            # remove what THIS installer put there</code></pre>
+<h2 id="can-i-install-something-that-is-not-in-the-ecosystem">Can I install something that is not in the ecosystem? <a class="anchor" href="#can-i-install-something-that-is-not-in-the-ecosystem" aria-label="link">#</a></h2>
+<p>Yes — give a path or a URL where a name would go.</p>
+<pre class="native-code"><code class="lang-sh">rakupp install my-dist          # a checkout: the directory with META6.json
+rakupp install ~/src/my-dist    # ./x, /x, ~/x, dists/x, C:\x all work too
+rakupp install https://github.com/ash/raku-modules/tree/main/Prompt-Hidden
+rakupp install https://host/Foo-1.0.tar.gz</code></pre>
+<p>A bare word is a path when it names a directory with a <code>META6.json</code> in it, and a module name otherwise, so <code>rakupp install Foo</code> does the obvious thing from either side of a checkout.</p>
+<p>The github form takes the URL from your address bar, including the <code>/tree/BRANCH/SUBDIR</code> shape a monorepo of modules produces; without a <code>/tree/</code> it tries <code>main</code> and then <code>master</code>. Either way the archive is fetched, unpacked and installed exactly as a directory would be — dependencies from the index, the distribution's own test suite, the same <code>~/.raku</code>.</p>
+<p>One thing is genuinely weaker than an index install, and it is worth knowing rather than discovering: <strong>a URL has no checksum.</strong> A fez archive's URL carries the SHA-1 of its contents, and <code>rakupp install Foo</code> refuses an archive that does not hash to it. Nothing in an arbitrary URL names the bytes it should deliver, so there is nothing to check and TLS is the only integrity — which the installer prints, every time, rather than leaving you to assume otherwise.</p>
+<p><code>uninstall</code> does not take a URL: the store knows distributions by name, and finding the name behind a URL would mean downloading it first. Use the name, or <code>rakupp install --list</code> to see what is there.</p>
 <p>Each command prints its own full usage when you give it no arguments. If you want zef itself on such a machine, zef runs under Raku++ too — <code>rakupp /path/to/zef install Foo</code> — with the caveats in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md#current-status-and-limits">MODULES.md</a>.</p>
 <h2 id="rakupp-install-says-it-cannot-find-install-raku"><code>rakupp install</code> says it cannot find install.raku <a class="anchor" href="#rakupp-install-says-it-cannot-find-install-raku" aria-label="link">#</a></h2>
-<p>The installer is a Raku program shipped beside the binary, not inside it — <code>libexec/rakupp/install.raku</code> in an installed layout, <code>tools/install.raku</code> in a checkout — and the binary looks only there. A <code>rakupp</code> copied on its own into a container, or installed by a route that dropped <code>libexec/</code> (Homebrew's prebuilt macOS binary does, today), has no installer. Put the file from the same release back beside it, as <a href="https://github.com/ash/rakupp/blob/main/docs/guide/INSTALL.md#prebuilt-binaries-macos-linux-windows">INSTALL.md</a> shows, and <code>rakupp install</code> is back; nothing else needs to be there. Everything on this page about <em>finding</em> modules is unaffected — that is the engine, not the installer.</p>
+<p>That message comes from v3.26.0 or earlier. The installer used to be a Raku program shipped beside the binary — <code>libexec/rakupp/install.raku</code> in an installed layout, <code>tools/install.raku</code> in a checkout — and the binary looked only there, so a <code>rakupp</code> copied on its own into a container, or installed by a route that dropped <code>libexec/</code> (Homebrew's prebuilt macOS binary did), had no installer at all. Either upgrade, or put the file from the <strong>same release</strong> back beside the binary.</p>
+<p>Since then the installer is carried inside the binary and the message cannot appear: <code>rakupp install</code> works from a lone executable, wherever it sits. So does <code>rakupp doc</code>, which carries its two guides the same way.</p>
 <h2 id="where-does-it-look">Where does it look? <a class="anchor" href="#where-does-it-look" aria-label="link">#</a></h2>
 <p>At the standard zef locations, and you never have to configure them:</p>
-<ul><li><code>~/.raku</code> — the per-user store, where <code>rakupp install</code> and a plain <code>zef install</code> both put things</li><li>every <code>~/.rakubrew/versions/*/install/share/perl6/{site,vendor}</code></li><li>every Homebrew <code>Cellar/rakudo/*/share/perl6/{site,vendor}</code></li><li><code>lib</code>, <code>.</code> and <code>rakulib</code>, for the program's own files</li></ul>
+<ul><li><code>~/.raku</code> — the per-user store, where <code>rakupp install</code> and a plain <code>zef install</code> both put things</li><li>every <code>~/.rakubrew/versions/*/install/share/perl6/{site,vendor}</code></li><li>every Homebrew <code>Cellar/rakudo/*/share/perl6/{site,vendor}</code></li><li><code>lib</code>, <code>.</code> and <code>rakulib</code>, for the program's own files</li><li>the <code>rakulib</code> beside the <code>rakupp</code> binary itself, which is how a checkout's bundled shims are found without an <code>-I</code></li></ul>
 <p><strong>The failure message is the list.</strong> When a <code>use</code> fails, Raku++ prints every place it looked, in order:</p>
 <pre class="native-code"><code>$ rakupp -e 'use Nope'
 Could not find Nope in:
     lib
     .
     rakulib
+    /path/to/rakupp/../rakulib
     /Users/ada/.raku
     /usr/local/Cellar/rakudo/2026.08/share/perl6/site
     /usr/local/Cellar/rakudo/2026.08/share/perl6/vendor</code></pre>
@@ -72,7 +84,7 @@ rakupp -e 'use Digest::SHA1'    # fine — the dist "Digest" provides this</code
 <pre class="native-code"><code class="lang-sh">cd MyModule &amp;&amp; rakupp -e 'use MyModule; …'      # lib/MyModule.rakumod
 rakupp -I../Other/lib -e 'use Other'            # somewhere else</code></pre>
 <h2 id="it-is-found-but-then-it-breaks">It is found, but then it breaks <a class="anchor" href="#it-is-found-but-then-it-breaks" aria-label="link">#</a></h2>
-<p>That is worth reporting — a parse error or a missing method <em>after</em> the module is located is an engine gap, not a path problem. Of the 35 distributions in one real store, 33 load unchanged; what usually fails is compile-time metaprogramming, slangs, or NativeCall bindings Raku++ does not model, and <code>use Foo:ver&lt;…&gt;</code> adverbs are accepted but not honoured. The list of known edges is in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md#current-status-and-limits">MODULES.md</a>; new ones belong at <a href="https://github.com/ash/rakupp/issues">https://github.com/ash/rakupp/issues</a> with the module name.</p>
+<p>That is worth reporting — a parse error or a missing method <em>after</em> the module is located is an engine gap, not a path problem. Of the 35 distributions in one real store, 33 load unchanged; what usually fails is compile-time metaprogramming, slangs, or NativeCall bindings Raku++ does not model, and <code>use Foo:ver&lt;…&gt;</code> is honoured — the newest installed version that satisfies it wins — while <code>:auth&lt;…&gt;</code> is accepted and ignored. The list of known edges is in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MODULES.md#current-status-and-limits">MODULES.md</a>; new ones belong at <a href="https://github.com/ash/rakupp/issues">https://github.com/ash/rakupp/issues</a> with the module name.</p>
 <footer>
 <span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
 <span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>

@@ -33,6 +33,38 @@ rakupp install --list           # what is installed: identity, installer,
 rakupp uninstall Foo            # remove what THIS installer put there
 ```
 
+## Can I install something that is not in the ecosystem?
+
+Yes — give a path or a URL where a name would go.
+
+```sh
+rakupp install my-dist          # a checkout: the directory with META6.json
+rakupp install ~/src/my-dist    # ./x, /x, ~/x, dists/x, C:\x all work too
+rakupp install https://github.com/ash/raku-modules/tree/main/Prompt-Hidden
+rakupp install https://host/Foo-1.0.tar.gz
+```
+
+A bare word is a path when it names a directory with a `META6.json` in it,
+and a module name otherwise, so `rakupp install Foo` does the obvious thing
+from either side of a checkout.
+
+The github form takes the URL from your address bar, including the
+`/tree/BRANCH/SUBDIR` shape a monorepo of modules produces; without a `/tree/`
+it tries `main` and then `master`. Either way the archive is fetched, unpacked
+and installed exactly as a directory would be — dependencies from the index,
+the distribution's own test suite, the same `~/.raku`.
+
+One thing is genuinely weaker than an index install, and it is worth knowing
+rather than discovering: **a URL has no checksum.** A fez archive's URL carries
+the SHA-1 of its contents, and `rakupp install Foo` refuses an archive that does
+not hash to it. Nothing in an arbitrary URL names the bytes it should deliver,
+so there is nothing to check and TLS is the only integrity — which the installer
+prints, every time, rather than leaving you to assume otherwise.
+
+`uninstall` does not take a URL: the store knows distributions by name, and
+finding the name behind a URL would mean downloading it first. Use the name, or
+`rakupp install --list` to see what is there.
+
 Each command prints its own full usage when you give it no arguments. If you
 want zef itself on such a machine, zef runs under Raku++ too — `rakupp
 /path/to/zef install Foo` — with the caveats in
@@ -40,16 +72,17 @@ want zef itself on such a machine, zef runs under Raku++ too — `rakupp
 
 ## `rakupp install` says it cannot find install.raku
 
-The installer is a Raku program shipped beside the binary, not inside it —
-`libexec/rakupp/install.raku` in an installed layout, `tools/install.raku` in
-a checkout — and the binary looks only there. A `rakupp` copied on its own
-into a container, or installed by a route that dropped `libexec/` (Homebrew's
-prebuilt macOS binary does, today), has no installer. Put the file from the
-same release back beside it, as
-[INSTALL.md](../INSTALL.md#prebuilt-binaries-macos-linux-windows) shows, and
-`rakupp install` is back; nothing else needs to be there. Everything on this
-page about *finding* modules is unaffected — that is the engine, not the
-installer.
+That message comes from v3.26.0 or earlier. The installer used to be a Raku program
+shipped beside the binary — `libexec/rakupp/install.raku` in an installed
+layout, `tools/install.raku` in a checkout — and the binary looked only there,
+so a `rakupp` copied on its own into a container, or installed by a route that
+dropped `libexec/` (Homebrew's prebuilt macOS binary did), had no installer at
+all. Either upgrade, or put the file from the **same release** back beside the
+binary.
+
+Since then the installer is carried inside the binary and the message cannot
+appear: `rakupp install` works from a lone executable, wherever it sits. So
+does `rakupp doc`, which carries its two guides the same way.
 
 ## Where does it look?
 
@@ -60,6 +93,8 @@ At the standard zef locations, and you never have to configure them:
 - every `~/.rakubrew/versions/*/install/share/perl6/{site,vendor}`
 - every Homebrew `Cellar/rakudo/*/share/perl6/{site,vendor}`
 - `lib`, `.` and `rakulib`, for the program's own files
+- the `rakulib` beside the `rakupp` binary itself, which is how a checkout's
+  bundled shims are found without an `-I`
 
 **The failure message is the list.** When a `use` fails, Raku++ prints every
 place it looked, in order:
@@ -70,6 +105,7 @@ Could not find Nope in:
     lib
     .
     rakulib
+    /path/to/rakupp/../rakulib
     /Users/ada/.raku
     /usr/local/Cellar/rakudo/2026.08/share/perl6/site
     /usr/local/Cellar/rakudo/2026.08/share/perl6/vendor
@@ -141,6 +177,6 @@ That is worth reporting — a parse error or a missing method *after* the module
 is located is an engine gap, not a path problem. Of the 35 distributions in one
 real store, 33 load unchanged; what usually fails is compile-time
 metaprogramming, slangs, or NativeCall bindings Raku++ does not model, and
-`use Foo:ver<…>` adverbs are accepted but not honoured. The list of known edges
+`use Foo:ver<…>` is honoured — the newest installed version that satisfies it wins — while `:auth<…>` is accepted and ignored. The list of known edges
 is in [MODULES.md](../MODULES.md#current-status-and-limits); new ones belong at
 <https://github.com/ash/rakupp/issues> with the module name.
