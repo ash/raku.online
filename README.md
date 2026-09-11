@@ -23,6 +23,7 @@ program still runs in a fraction of a second:
 |---|---|---|
 | `/` | The front page: what Raku++ is, with live editors | `www/index.html` |
 | `/install/` | Every way to get it, and every supported platform | `www/install/` |
+| `/install.sh` | The Unix engine installer the front page and `/install/` tell people to pipe into `sh`. A **byte copy** of `rakupp/tools/install.sh` — never edit it here; copy it over and push, and the rakupp repo's `installer-copy` CI job compares the two | `www/install.sh` |
 | `/play/` | The full playground | `www/play/` |
 | `/in-use/` | The Raku language, in use — adoptions (software other people built on Raku++) above the three sections below; the "In use" tab's home | generated from `sites/showcase/` |
 | `/in-use/adoptions/` | The adoptions list in full — rendered from `rakupp/live/ADOPTIONS.md`, synced in like every other README here | generated from `sites/showcase/` |
