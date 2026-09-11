@@ -19,14 +19,41 @@ react {
 
 That runs as written — and it runs identically on Rakudo, because
 `IO::Socket::Async` and `IO::Socket::INET` are core-setting classes *there* too.
-No module is missing; none was ever needed. Connecting and sending `hello\n`:
+No module is missing; none was ever needed.
+
+## Connecting to the echo server
+
+Leave the server running and open a second terminal. The asynchronous client is
+the mirror image of the server — `.connect` where the server has `.listen`:
+
+```raku
+my $conn = await IO::Socket::Async.connect('127.0.0.1', 15480);
+await $conn.write("hello\n".encode);
+react { whenever $conn.Supply -> $text { print $text } }
+```
+
+The synchronous class is shorter when you only have one thing to say, and needs
+no `react` around it:
+
+```raku
+my $conn = IO::Socket::INET.new(:host<127.0.0.1>, :port(15480));
+$conn.print("hello\n");
+print $conn.recv;
+$conn.close;
+```
+
+Either one prints, on both engines:
 
 ```
 echo: hello
 ```
 
-on both engines. What the program speaks is raw TCP: `"echo: "` is a byte
-prefix, not a protocol.
+With no Raku involved at all, `nc 127.0.0.1 15480` does the same — type a line,
+press Enter, and the reply comes back. Piping into it is a race, though:
+`echo hello | nc 127.0.0.1 15480` makes netcat close at end of input, and it can
+leave before the reply arrives.
+
+What the program speaks is raw TCP: `"echo: "` is a byte prefix, not a protocol.
 
 ## What the engine actually provides
 

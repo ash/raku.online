@@ -34,9 +34,21 @@
         }
     }
 }</code></pre>
-<p>That runs as written — and it runs identically on Rakudo, because <code>IO::Socket::Async</code> and <code>IO::Socket::INET</code> are core-setting classes <em>there</em> too. No module is missing; none was ever needed. Connecting and sending <code>hello\n</code>:</p>
+<p>That runs as written — and it runs identically on Rakudo, because <code>IO::Socket::Async</code> and <code>IO::Socket::INET</code> are core-setting classes <em>there</em> too. No module is missing; none was ever needed.</p>
+<h2 id="connecting-to-the-echo-server">Connecting to the echo server <a class="anchor" href="#connecting-to-the-echo-server" aria-label="link">#</a></h2>
+<p>Leave the server running and open a second terminal. The asynchronous client is the mirror image of the server — <code>.connect</code> where the server has <code>.listen</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$conn</span> = <span class="nb">await</span> <span class="n">IO::Socket::Async</span>.<span class="n">connect</span>(<span class="s">'127.0.0.1'</span>, <span class="mi">15480</span>);
+<span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;hello\n&quot;</span>.<span class="n">encode</span>);
+<span class="k">react</span> { <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span> -&gt; <span class="nv">$text</span> { <span class="nb">print</span> <span class="nv">$text</span> } }</code></pre>
+<p>The synchronous class is shorter when you only have one thing to say, and needs no <code>react</code> around it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$conn</span> = <span class="n">IO::Socket::INET</span>.<span class="nb">new</span>(:<span class="n">host</span>&lt;<span class="mf">127.0</span>.<span class="mf">0.1</span>&gt;, :<span class="n">port</span>(<span class="mi">15480</span>));
+<span class="nv">$conn</span>.<span class="nb">print</span>(<span class="s">&quot;hello\n&quot;</span>);
+<span class="nb">print</span> <span class="nv">$conn</span>.<span class="n">recv</span>;
+<span class="nv">$conn</span>.<span class="nb">close</span>;</code></pre>
+<p>Either one prints, on both engines:</p>
 <pre class="native-code"><code>echo: hello</code></pre>
-<p>on both engines. What the program speaks is raw TCP: <code>"echo: "</code> is a byte prefix, not a protocol.</p>
+<p>With no Raku involved at all, <code>nc 127.0.0.1 15480</code> does the same — type a line, press Enter, and the reply comes back. Piping into it is a race, though: <code>echo hello | nc 127.0.0.1 15480</code> makes netcat close at end of input, and it can leave before the reply arrives.</p>
+<p>What the program speaks is raw TCP: <code>"echo: "</code> is a byte prefix, not a protocol.</p>
 <h2 id="what-the-engine-actually-provides">What the engine actually provides <a class="anchor" href="#what-the-engine-actually-provides" aria-label="link">#</a></h2>
 <div class="tablewrap"><table><tr><th>Built in, no <code>use</code></th><th></th></tr><tr><td><code>IO::Socket::Async</code></td><td><code>.listen</code>, <code>.connect</code>, <code>.Supply(:bin)</code>, <code>.write</code> / <code>.print</code> / <code>.put</code> / <code>.say</code>, <code>.close</code></td></tr>
 <tr><td><code>IO::Socket::INET</code></td><td>synchronous client and server</td></tr>
