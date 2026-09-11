@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookbook — a command-line tool, from a script to a binary</title>
+<script>window.__SITE_BASE='/cookbook';</script>
+<script src="/theme/boot.js?v=6d544db7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/shell.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/cook.css?v=6d544db7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/cookbook/">← All recipes</a></p>
+<h1>A command-line tool, from a script to a binary</h1>
+
+<p>A word-frequency counter, grown from a <code>sub MAIN</code> into a program with options, a usage message, a standard-input mode, subcommands and, at the end, a single executable file that needs no interpreter.</p>
+<p>Every program on this page was run under Raku++ on macOS 15 (arm64), and the output shown is what it printed.</p>
+<h2 id="the-whole-tool">The whole tool <a class="anchor" href="#the-whole-tool" aria-label="link">#</a></h2>
+<p><code>MAIN</code> is the entry point, and its signature is the command line. A positional parameter is an argument, a named parameter is an option, and the declarator comments — <code>#|</code> above the routine, <code>#=</code> after a parameter — are the help text:</p>
+<pre class="native-code"><code class="lang-raku"><span class="c1">#!/usr/bin/env rakupp</span>
+
+<span class="c1"># Without this, a named option is only recognised BEFORE the first positional</span>
+<span class="c1"># argument: `wordfreq words.txt --top=3` would not match MAIN at all.</span>
+<span class="k">my</span> <span class="nv">%*SUB-MAIN-OPTS</span> = :<span class="n">named-anywhere</span>;
+
+<span class="c1">#| Count the commonest words in a text.</span>
+<span class="k">sub</span> <span class="n">MAIN</span>(
+    <span class="nb">Str</span>  <span class="nv">$file</span> = <span class="s">'-'</span>,        <span class="c1">#= file to read, or &quot;-&quot; for standard input</span>
+    <span class="nb">Int</span>  :<span class="nv">$top</span> = <span class="mi">10</span>,         <span class="c1">#= how many words to show</span>
+    <span class="nb">Int</span>  :<span class="nv">$min-length</span> = <span class="mi">1</span>,   <span class="c1">#= ignore words shorter than this</span>
+    <span class="nb">Bool</span> :<span class="nv">$json</span> = <span class="n">False</span>,     <span class="c1">#= print JSON instead of a table</span>
+) {
+    <span class="k">my</span> <span class="nv">$text</span>;
+    <span class="k">if</span> <span class="nv">$file</span> <span class="n">eq</span> <span class="s">'-'</span> {
+        <span class="nv">$text</span> = <span class="nv">$*IN</span>.<span class="nb">slurp</span>;
+    }
+    <span class="k">else</span> {
+        <span class="k">unless</span> <span class="nv">$file</span>.<span class="nb">IO</span>.<span class="n">f</span> {
+            <span class="nb">note</span> <span class="s">&quot;wordfreq: $file: no such file&quot;</span>;
+            <span class="nb">exit</span> <span class="mi">2</span>;
+        }
+        <span class="nv">$text</span> = <span class="nv">$file</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+    }
+
+    <span class="k">my</span> <span class="nv">$words</span> = <span class="n">bag</span> <span class="nv">$text</span>.<span class="nb">lc</span>.<span class="nb">comb</span>(<span class="sr">/ &lt;[\w']&gt;+ /</span>).<span class="nb">grep</span>(*.<span class="nb">chars</span> &gt;= <span class="nv">$min-length</span>);
+    <span class="k">my</span> <span class="nv">@top</span>   = <span class="nv">$words</span>.<span class="nb">sort</span>({ -.<span class="n">value</span>, .<span class="n">key</span> }).<span class="nb">head</span>(<span class="nv">$top</span>);
+
+    <span class="k">if</span> <span class="nv">$json</span> {
+        <span class="k">require</span> <span class="n">JSON::Fast</span> &lt;<span class="nv">&amp;to-json</span>&gt;;
+        <span class="nb">say</span> <span class="n">to-json</span> <span class="nv">@top</span>.<span class="nb">map</span>({ %( <span class="n">word</span> =&gt; .<span class="n">key</span>, <span class="n">count</span> =&gt; .<span class="n">value</span> ) });
+    }
+    <span class="k">else</span> {
+        <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s %4d'</span>, .<span class="n">key</span>, .<span class="n">value</span>) <span class="k">for</span> <span class="nv">@top</span>;
+    }
+}</code></pre>
+<p>The file is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/cli/wordfreq.raku">wordfreq.raku</a>. Against a three-line <code>words.txt</code>:</p>
+<pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku words.txt --top=5</code></pre>
+<pre class="native-code"><code class="lang-output">fox               4
+the               4
+a                 2
+dog               2
+quick             2</code></pre>
+<p>Four pieces of the signature are doing work that would otherwise be code. <code>Str $file = '-'</code> makes the argument optional with a default. <code>Int :$top</code> rejects <code>--top=abc</code> before the body runs. <code>Bool :$json</code> makes <code>--json</code> a flag rather than something that takes a value. And every <code>#=</code> becomes a line of the usage message.</p>
+<h2 id="the-usage-message-is-free">The usage message is free <a class="anchor" href="#the-usage-message-is-free" aria-label="link">#</a></h2>
+<p>Nothing in the program prints it. Run it with <code>--help</code>, or with arguments that do not fit the signature, and Raku assembles it from the signature and the declarator comments:</p>
+<pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku --help</code></pre>
+<pre class="native-code"><code class="lang-output">Usage:
+  wordfreq.raku [--top=&lt;Int&gt;] [--min-length=&lt;Int&gt;] [--json] [&lt;file&gt;] -- Count the commonest words in a text.
+  
+    [&lt;file&gt;]              file to read, or "-" for standard input [default: '-']
+    --top=&lt;Int&gt;           how many words to show [default: 10]
+    --min-length=&lt;Int&gt;    ignore words shorter than this [default: 1]
+    --json                print JSON instead of a table [default: False]</code></pre>
+<p><code>--help</code> exits 0. A command line that does not match exits <strong>2</strong>, with the same text — so a shell script calling this can tell "I asked for help" from "I got the call wrong".</p>
+<p>To write the message yourself, declare a <code>sub USAGE</code>; Raku calls it instead of generating one, and the exit code is unchanged:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">USAGE</span>() {
+    <span class="nb">say</span> <span class="s">&quot;wordfreq [--top=N] FILE&quot;</span>;
+    <span class="nb">say</span> <span class="s">&quot;  FILE   text to read, or - for standard input&quot;</span>;
+}</code></pre>
+<h2 id="reading-standard-input">Reading standard input <a class="anchor" href="#reading-standard-input" aria-label="link">#</a></h2>
+<p><code>'-'</code> as the default means the tool works in a pipeline with no arguments at all, which is what makes it composable with everything else:</p>
+<pre class="native-code"><code class="lang-sh">cat words.txt | rakupp wordfreq.raku --top=3 --min-length=4</code></pre>
+<pre class="native-code"><code class="lang-output">quick             2
+barks             1
+brown             1</code></pre>
+<p><code>$*IN.slurp</code> reads the whole of standard input in one go; <code>for $*IN.lines { }</code> hands the body one line at a time, which is the form to reach for when the input is a log file rather than three lines of prose.</p>
+<h2 id="paying-for-a-module-only-when-it-is-used">Paying for a module only when it is used <a class="anchor" href="#paying-for-a-module-only-when-it-is-used" aria-label="link">#</a></h2>
+<p><code>--json</code> is the only branch that needs a JSON library, and <code>require</code> loads one at run time rather than at compile time:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">require</span> <span class="n">JSON::Fast</span> &lt;<span class="nv">&amp;to-json</span>&gt;;
+<span class="nb">say</span> <span class="n">to-json</span> <span class="nv">@top</span>.<span class="nb">map</span>({ %( <span class="n">word</span> =&gt; .<span class="n">key</span>, <span class="n">count</span> =&gt; .<span class="n">value</span> ) });</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku words.txt --top=2 --json</code></pre>
+<pre class="native-code"><code class="lang-output">[
+  {
+    "word": "fox",
+    "count": 4
+  },
+  {
+    "word": "the",
+    "count": 4
+  }
+]</code></pre>
+<p>The <code>&lt;&amp;to-json&gt;</code> part is what makes the symbol callable in the surrounding code; <code>require JSON::Fast</code> alone loads the module and imports nothing. The trade is real: a typo in the module name is now a run-time failure in one branch instead of a compile-time one. Use it for the heavy optional dependency, not for everything.</p>
+<pre class="native-code"><code class="lang-sh">rakupp install JSON::Fast</code></pre>
+<h2 id="failing-usefully">Failing usefully <a class="anchor" href="#failing-usefully" aria-label="link">#</a></h2>
+<p>Two conventions, both one line of code. Diagnostics go to standard error, so a redirected stdout stays clean; and the exit code says what happened:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">note</span> <span class="s">&quot;wordfreq: $file: no such file&quot;</span>;
+<span class="nb">exit</span> <span class="mi">2</span>;</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku nope.txt ; echo "exit=$?"</code></pre>
+<pre class="native-code"><code class="lang-output">wordfreq: nope.txt: no such file
+exit=2</code></pre>
+<p><code>note</code> is <code>say</code> on <code>$*ERR</code>. <code>exit</code> ends the program at that point; <code>END</code> blocks still run, so anything that has to happen on the way out belongs in one.</p>
+<h2 id="subcommands-one-multi-main-per-verb">Subcommands: one <code>multi MAIN</code> per verb <a class="anchor" href="#subcommands-one-multi-main-per-verb" aria-label="link">#</a></h2>
+<p>A literal string in the signature makes the verb part of the dispatch, so <code>git</code>-style commands need no <code>given</code>/<code>when</code> at all:</p>
+<pre class="native-code"><code class="lang-raku"><span class="c1">#| add a note</span>
+<span class="k">multi</span> <span class="n">MAIN</span>(<span class="s">'add'</span>, *<span class="nv">@words</span>) { ... }
+
+<span class="c1">#| list notes, open ones only unless --all</span>
+<span class="k">multi</span> <span class="n">MAIN</span>(<span class="s">'list'</span>, <span class="nb">Bool</span> :<span class="nv">$all</span> = <span class="n">False</span>) { ... }
+
+<span class="c1">#| mark a note done</span>
+<span class="k">multi</span> <span class="n">MAIN</span>(<span class="s">'done'</span>, <span class="nb">Int</span> <span class="nv">$n</span>) { ... }</code></pre>
+<p>The whole program is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/cli/notes.raku">notes.raku</a> — a note keeper in 40 lines. Each candidate gets its own line in the usage message:</p>
+<pre class="native-code"><code class="lang-sh">rakupp notes.raku</code></pre>
+<pre class="native-code"><code class="lang-output">Usage:
+  notes.raku add [&lt;words&gt; ...] -- add a note
+  notes.raku [--all] list -- list notes, open ones only unless --all
+  notes.raku done &lt;n&gt; -- mark a note done</code></pre>
+<p>A session:</p>
+<pre class="native-code"><code class="lang-sh">rakupp notes.raku add buy milk
+rakupp notes.raku add write the cookbook
+rakupp notes.raku list
+rakupp notes.raku done 1
+rakupp notes.raku list
+rakupp notes.raku list --all</code></pre>
+<pre class="native-code"><code class="lang-output">added 1: buy milk
+added 2: write the cookbook
+ 1  [ ] buy milk
+ 2  [ ] write the cookbook
+done 1
+ 2  [ ] write the cookbook
+ 1  [x] buy milk
+ 2  [ ] write the cookbook</code></pre>
+<p><code>*@words</code> is why <code>add buy milk</code> needs no quoting — the slurpy takes whatever is left. <code>Int $n</code> on the <code>done</code> candidate means <code>done x</code> never reaches the body: it simply does not match, and the reader gets the usage message.</p>
+<p>An unknown verb behaves the same way. <code>notes.raku frobnicate</code> matches no candidate, so it prints the usage and exits 2, without a line of argument checking in the program.</p>
+<h2 id="turning-it-into-a-binary">Turning it into a binary <a class="anchor" href="#turning-it-into-a-binary" aria-label="link">#</a></h2>
+<p><code>--exe</code> compiles the program to C++ and then to a native executable, which carries its own runtime and the modules it uses:</p>
+<pre class="native-code"><code class="lang-sh">rakupp --exe wordfreq.raku -o wordfreq</code></pre>
+<pre class="native-code"><code class="lang-output">--exe: embedded 1 module: JSON::Fast
+Compiled (native) wordfreq.raku -&gt; wordfreq</code></pre>
+<p><code>JSON::Fast</code> is pulled in even though it is loaded with <code>require</code>: the compiler follows what the program can reach, not what this run happened to use. The result behaves the same, including standard input and the exit codes:</p>
+<pre class="native-code"><code class="lang-sh">./wordfreq words.txt --top=3
+cat words.txt | ./wordfreq --top=2
+./wordfreq nope.txt ; echo "exit=$?"</code></pre>
+<pre class="native-code"><code class="lang-output">fox               4
+the               4
+a                 2
+fox               4
+the               4
+wordfreq: nope.txt: no such file
+exit=2</code></pre>
+<p>What it buys, measured on this machine over 100 runs of the same command:</p>
+<div class="tablewrap"><table><tr><th></th><th>per run</th><th>on disk</th></tr><tr><td><code>rakupp wordfreq.raku …</code></td><td>3.0 ms</td><td>—</td></tr>
+<tr><td><code>./wordfreq …</code></td><td>2.6 ms</td><td>9.9 MB</td></tr></table></div>
+<p>For a script this size the startup difference is under half a millisecond — the reason to build the binary is that it runs on a machine with no interpreter and no module store, not that it is faster. The binary is also where the size goes: 9.9 MB of runtime for 30 lines of program.</p>
+<p>One thing does change. The usage message of a compiled program names the source file it was built from, with the path it had at build time, and drops the <code>#|</code> description:</p>
+<pre class="native-code"><code class="lang-output">Usage:
+  /path/to/wordfreq.raku [--top=&lt;Int&gt;] [--min-length=&lt;Int&gt;] [--json] [&lt;file&gt;]</code></pre>
+<p>If the usage text matters in the shipped tool — and for a tool it does — write <code>sub USAGE</code> and print exactly what you want, which is unaffected.</p>
+<h2 id="four-things-that-bite">Four things that bite <a class="anchor" href="#four-things-that-bite" aria-label="link">#</a></h2>
+<p><strong>A named option after a positional argument is not seen.</strong> This is the first one everybody hits:</p>
+<pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku words.txt --top=3     # usage message, exit 2
+rakupp wordfreq.raku --top=3 words.txt     # works</code></pre>
+<p>By default Raku stops treating arguments as options at the first positional, so <code>--top=3</code> is read as a second positional and nothing matches. One line at the top of the file fixes it for every candidate in the program:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%*SUB-MAIN-OPTS</span> = :<span class="n">named-anywhere</span>;</code></pre>
+<p><strong><code>--top 3</code> is not <code>--top=3</code>.</strong> With a space, <code>--top</code> is a flag and <code>3</code> is a positional argument. The value has to be attached with <code>=</code>. This is the same failure as the last one and looks identical — a usage message and exit 2 — which is why both are worth knowing at once.</p>
+<p><strong>A wrong type is a usage message, not an error.</strong> <code>--top=abc</code> does not reach the body and does not produce a message about <code>abc</code>; the candidate simply does not match, and the reader sees the usage text. The type constraint is the validation, and the usage text is the error message, so <code>#=</code> comments are worth writing for that reason alone.</p>
+<p><strong><code>#|</code> has to touch the routine.</strong> A declarator block comment documents the declaration that follows it <em>immediately</em>. At the top of a file, above a <code>my</code> or a blank line, it attaches to nothing and the usage message silently loses the description. Put it on the line above <code>sub MAIN</code>.</p>
+<h2 id="what-to-reach-for-next">What to reach for next <a class="anchor" href="#what-to-reach-for-next" aria-label="link">#</a></h2>
+<ul><li>Inside <code>sub USAGE</code>, <code>$*USAGE</code> holds the message Raku would have generated, so a custom usage can print your own header and then the generated option list rather than restating it.</li><li>A parameter can have a short alias: <code>Int :t(:$top)</code> accepts <code>--top=3</code> and <code>-t=3</code>.</li><li><code>MAIN</code> can take <code>*%named</code> or <code>*@positionals</code> to accept what the signature did not name, which is how a wrapper passes arguments through to another program.</li></ul>
+<footer>
+<span>Every program on this page was run for it, against a real service where the recipe needs one; the output shown is what it printed.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=6d544db7" defer></script>
+</body>
+</html>

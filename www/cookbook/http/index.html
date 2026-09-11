@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookbook — talking to a JSON API</title>
+<script>window.__SITE_BASE='/cookbook';</script>
+<script src="/theme/boot.js?v=6d544db7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/shell.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/cook.css?v=6d544db7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/cookbook/">← All recipes</a></p>
+<h1>Talking to a JSON API</h1>
+
+<p>Fetching JSON, posting JSON, and surviving a network that does not cooperate. Nothing here needs a third-party service: the recipe ships the API it talks to, so every program on the page can be run as it stands.</p>
+<p>Everything was run under Raku++ 3.27 on macOS 15 (arm64), against the server below, and the output shown is what it printed.</p>
+<pre class="native-code"><code class="lang-sh">rakupp install HTTP::Tiny JSON::Fast Cro::HTTP</code></pre>
+<h2 id="the-api-to-talk-to">The API to talk to <a class="anchor" href="#the-api-to-talk-to" aria-label="link">#</a></h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/api-server.raku">api-server.raku</a> is a Cro service with five routes — a list, one book, a create, and two that misbehave on purpose:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$app</span> = <span class="n">route</span> {
+    <span class="n">get</span> -&gt; <span class="s">'books'</span> {
+        <span class="n">content</span> <span class="s">'application/json'</span>, <span class="nv">@books</span>;
+    }
+
+    <span class="c1"># An Int in the signature is the route's type check: /books/x never</span>
+    <span class="c1"># reaches this handler, it is simply not a match.</span>
+    <span class="n">get</span> -&gt; <span class="s">'books'</span>, <span class="nb">Int</span> <span class="nv">$id</span> {
+        <span class="k">with</span> <span class="nv">@books</span>.<span class="nb">first</span>(*.<span class="s">&lt;id&gt;</span> == <span class="nv">$id</span>) -&gt; <span class="nv">%book</span> {
+            <span class="n">content</span> <span class="s">'application/json'</span>, <span class="nv">%book</span>;
+        }
+        <span class="k">else</span> {
+            <span class="n">not-found</span> <span class="s">'application/json'</span>, { <span class="n">error</span> =&gt; <span class="s">&quot;no book $id&quot;</span> };
+        }
+    }
+
+    <span class="n">post</span> -&gt; <span class="s">'books'</span> {
+        <span class="k">my</span> <span class="nv">%new</span> = <span class="nb">await</span> <span class="n">request</span>.<span class="n">body</span>;
+        ...
+    }
+};</code></pre>
+<p>Start it in one terminal and leave it running:</p>
+<pre class="native-code"><code class="lang-sh">rakupp api-server.raku</code></pre>
+<pre class="native-code"><code class="lang-output">listening on http://127.0.0.1:8099</code></pre>
+<p><code>content 'application/json', @books</code> is the whole of the serialisation: Cro takes the data structure and the media type and does the rest. <code>not-found</code>, <code>bad-request</code> and <code>created</code> are the same idea for the statuses that carry a body.</p>
+<h2 id="get-and-decode">GET and decode <a class="anchor" href="#get-and-decode" aria-label="link">#</a></h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/fetch.raku">fetch.raku</a>, with <code>HTTP::Tiny</code> — one small dependency, a blocking call, and the response is yours to decode:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">HTTP::Tiny</span>;
+<span class="k">use</span> <span class="n">JSON::Fast</span>;
+
+<span class="k">my</span> <span class="nv">%resp</span> = <span class="n">HTTP::Tiny</span>.<span class="nb">new</span>.<span class="n">get</span>(<span class="nv">$url</span>);
+
+<span class="k">unless</span> <span class="nv">%resp</span><span class="s">&lt;success&gt;</span> {
+    <span class="nb">note</span> <span class="s">&quot;GET $url: %resp&lt;status&gt; %resp&lt;reason&gt;&quot;</span>;
+    <span class="nb">note</span> <span class="s">'  '</span>, <span class="nv">%resp</span><span class="s">&lt;content&gt;</span>.<span class="n">decode</span>.<span class="nb">trim</span> <span class="k">if</span> <span class="nv">%resp</span><span class="s">&lt;content&gt;</span>;
+    <span class="nb">exit</span> <span class="mi">1</span>;
+}
+
+<span class="k">my</span> <span class="nv">@books</span> = <span class="n">from-json</span> <span class="nv">%resp</span><span class="s">&lt;content&gt;</span>.<span class="n">decode</span>;</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp fetch.raku</code></pre>
+<pre class="native-code"><code class="lang-output">id  title                  author             year
+1   Perl 6 Deep Dive       Andrew Shitov      2017
+2   Think Perl 6           Laurent Rosenfeld  2017
+3   Parsing with Raku      Moritz Lenz        2020
+3 books</code></pre>
+<p>Three details worth keeping. <code>%resp&lt;content&gt;</code> is a <code>Blob</code>, not a <code>Str</code> — a response is bytes until you say what they mean, hence the <code>.decode</code>. <code>%resp&lt;success&gt;</code> is <code>True</code> for a 2xx, which is the only status test most programs need. And header names are lowercased, so it is <code>%resp&lt;headers&gt;&lt;location&gt;</code> whatever the server sent.</p>
+<h2 id="post-and-read-it-back">POST, and read it back <a class="anchor" href="#post-and-read-it-back" aria-label="link">#</a></h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/post.raku">post.raku</a> sends JSON, reads the created resource, and then makes a request the server refuses:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%resp</span> = <span class="nv">$http</span>.<span class="n">post</span>(<span class="s">&quot;$BASE/books&quot;</span>,
+    <span class="n">content</span> =&gt; <span class="n">to-json</span>({ :<span class="nv">$title</span>, :<span class="nv">$author</span>, :<span class="nv">$year</span> }),
+    <span class="n">headers</span> =&gt; { <span class="s">'Content-Type'</span> =&gt; <span class="s">'application/json'</span> });</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp post.raku</code></pre>
+<pre class="native-code"><code class="lang-output">status   : 201 Created
+location : books/4
+created  : 4 Raku Fundamentals
+read back: 4 Raku Fundamentals by Moritz Lenz
+refused  : 400 title and author are required</code></pre>
+<p>Nothing throws on that last line. With <code>HTTP::Tiny</code> a 4xx is a status like any other, which means the decision about what counts as a failure stays in your program rather than in the client.</p>
+<p>The <code>Content-Type</code> header is not decoration: drop it and the same body comes back as <code>400 title and author are required</code>, because the server decodes a request body according to the type it was given, and an unlabelled body never becomes a hash.</p>
+<h2 id="four-ways-a-call-fails">Four ways a call fails <a class="anchor" href="#four-ways-a-call-fails" aria-label="link">#</a></h2>
+<p>A request to another machine has more outcomes than "it worked". These are the four that matter, and they want different answers:</p>
+<div class="tablewrap"><table><tr><th>what happened</th><th>how it looks</th><th>retry?</th></tr><tr><td>no answer at all</td><td>status <strong>599</strong>, reason <code>Internal Exception</code></td><td>yes</td></tr>
+<tr><td>the server is unwell</td><td>5xx</td><td>yes, with a pause</td></tr>
+<tr><td>the request is wrong</td><td>4xx</td><td>no — it will fail identically</td></tr>
+<tr><td>an answer that is not JSON</td><td>200, and <code>from-json</code> throws</td><td>no</td></tr></table></div>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/robust.raku">robust.raku</a> puts all four in one function — a deadline per attempt, a doubling pause, and one <code>if</code> chain that decides which outcome is which:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">get-json</span>(<span class="nb">Str</span> <span class="nv">$url</span>, <span class="nb">Real</span> :<span class="nv">$deadline</span> = <span class="mf">2.0</span>, <span class="nb">Int</span> :<span class="nv">$tries</span> = <span class="mi">3</span>) {
+    <span class="k">my</span> <span class="nv">$wait</span> = <span class="mf">0.2</span>;
+
+    <span class="k">for</span> <span class="mi">1</span> .. <span class="nv">$tries</span> -&gt; <span class="nv">$attempt</span> {
+        <span class="c1"># HTTP::Tiny has no timeout of its own, so the deadline is imposed from</span>
+        <span class="c1"># outside: whichever promise finishes first wins.</span>
+        <span class="k">my</span> <span class="nv">$work</span> = <span class="k">start</span> <span class="n">HTTP::Tiny</span>.<span class="nb">new</span>.<span class="n">get</span>(<span class="nv">$url</span>);
+        <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$work</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="nv">$deadline</span>));
+
+        <span class="k">unless</span> <span class="nv">$work</span>.<span class="n">status</span> == <span class="n">Kept</span> {
+            <span class="nb">say</span> <span class="s">&quot;  $attempt: no answer within $deadline s&quot;</span>;
+            <span class="nb">sleep</span> <span class="nv">$wait</span>;
+            <span class="nv">$wait</span> *= <span class="mi">2</span>;
+            <span class="k">next</span>;
+        }
+
+        <span class="k">my</span> <span class="nv">%resp</span> = <span class="nv">$work</span>.<span class="n">result</span>;
+
+        <span class="k">if</span> <span class="nv">%resp</span><span class="s">&lt;status&gt;</span> == <span class="mi">599</span> {
+            <span class="nb">say</span> <span class="s">&quot;  $attempt: { %resp&lt;content&gt;.decode.trim }&quot;</span>;
+        }
+        <span class="k">elsif</span> <span class="mi">400</span> &lt;= <span class="nv">%resp</span><span class="s">&lt;status&gt;</span> &lt; <span class="mi">500</span> {
+            <span class="nb">say</span> <span class="s">&quot;  $attempt: { %resp&lt;status&gt; } { %resp&lt;reason&gt; } — the request is wrong; retrying cannot help&quot;</span>;
+            <span class="k">return</span> <span class="nb">Nil</span>;
+        }
+        <span class="k">elsif</span> <span class="nv">%resp</span><span class="s">&lt;status&gt;</span> &gt;= <span class="mi">500</span> {
+            <span class="nb">say</span> <span class="s">&quot;  $attempt: { %resp&lt;status&gt; } { %resp&lt;reason&gt; }&quot;</span>;
+        }
+        <span class="k">else</span> {
+            <span class="k">my</span> <span class="nv">$data</span> = <span class="k">try</span> <span class="n">from-json</span> <span class="nv">%resp</span><span class="s">&lt;content&gt;</span>.<span class="n">decode</span>;
+            ...
+        }
+
+        <span class="nb">sleep</span> <span class="nv">$wait</span>;
+        <span class="nv">$wait</span> *= <span class="mi">2</span>;
+    }
+}</code></pre>
+<p>Against the four bad endpoints and one dead port:</p>
+<pre class="native-code"><code class="lang-sh">rakupp robust.raku</code></pre>
+<pre class="native-code"><code class="lang-output">flaky   (503, 503, then 200)
+  1: 503 Service Unavailable
+  2: 503 Service Unavailable
+  3: 200
+  -&gt; ${:attempt(3), :ok(Bool::True)}
+slow    (answers in 2s, deadline 1s)
+  1: no answer within 1 s
+  2: no answer within 1 s
+  gave up after 2 attempts
+  -&gt; Nil
+missing (404)
+  1: 404 Not Found — the request is wrong; retrying cannot help
+  -&gt; Nil
+notjson (200, text/plain)
+  1: 200, but the body is not JSON
+  -&gt; Nil
+nothing listening
+  1: Cannot connect to 127.0.0.1:8098: Connection refused
+  2: Cannot connect to 127.0.0.1:8098: Connection refused
+  gave up after 2 attempts
+  -&gt; Nil</code></pre>
+<p>The 404 and the unparsable body take one attempt each and stop. That is the part worth copying: a retry loop that retries everything turns a typo in a URL into three times the load on someone else's server.</p>
+<h2 id="https">HTTPS <a class="anchor" href="#https" aria-label="link">#</a></h2>
+<p><code>Cro::HTTP::Client</code> speaks TLS, through <code>IO::Socket::SSL</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">Cro::HTTP::Client</span>;
+
+<span class="k">my</span> <span class="nv">$resp</span> = <span class="nb">await</span> <span class="n">Cro::HTTP::Client</span>.<span class="n">get</span>(<span class="nv">$url</span>, <span class="n">http</span> =&gt; <span class="s">'1.1'</span>);
+<span class="nb">say</span> <span class="s">'status : '</span>, <span class="nv">$resp</span>.<span class="n">status</span>;
+<span class="nb">say</span> <span class="s">'type   : '</span>, <span class="nv">$resp</span>.<span class="n">header</span>(<span class="s">'Content-Type'</span>);
+<span class="nb">say</span> <span class="s">'bytes  : '</span>, (<span class="nb">await</span> <span class="nv">$resp</span>.<span class="n">body-text</span>).<span class="nb">chars</span>;</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp tls.raku</code></pre>
+<pre class="native-code"><code class="lang-output">status : 200
+type   : text/html; charset=utf-8
+bytes  : 67813</code></pre>
+<p>The program is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/tls.raku">tls.raku</a>. Two notes for Raku++ 3.27, both of which a first attempt runs straight into:</p>
+<ul><li><strong><code>http =&gt; '1.1'</code> is not optional here.</strong> Left to itself the client offers HTTP/2 in the TLS handshake, and against a server that accepts it the request then hangs rather than answering.</li><li><strong><code>HTTP::Tiny</code> will not do HTTPS under Raku++</strong>, whatever is installed. It decides by asking the module repository for candidates of <code>IO::Socket::SSL:ver&lt;0.0.2+&gt;</code>, and Raku++'s installation repository does not answer that question yet, so the check concludes the module is missing:</li></ul>
+<p>  ``<code>output   599 Internal Exception   HTTPS requests not supported: IO::Socket::SSL:ver&lt;0.0.2+&gt; must be installed   </code>``</p>
+<p>  The module is installed and TLS itself works — <code>IO::Socket::SSL</code> used   directly connects and returns <code>HTTP/1.1 200 OK</code>. Use <code>Cro::HTTP::Client</code> for   TLS until the repository answers.</p>
+<h2 id="three-things-that-bite">Three things that bite <a class="anchor" href="#three-things-that-bite" aria-label="link">#</a></h2>
+<p><strong>599 is not a status the server sent.</strong> <code>HTTP::Tiny</code> reports transport failures — DNS, connection refused, a socket that dies mid-response — as a response with status 599 and the reason in the body. It is a useful convention, and it means <code>%resp&lt;status&gt; &gt;= 500</code> quietly includes "there was no server at all" unless you separate them.</p>
+<p><strong><code>HTTP::Tiny.new(:timeout(1))</code> does nothing.</strong> There is no such attribute, and Raku does not complain about a named argument a class has no use for. The call runs to completion at whatever pace the far end chooses:</p>
+<pre class="native-code"><code class="lang-output">HTTP::Tiny :timeout(1) -&gt; 200 after 2009 ms</code></pre>
+<p>Bound it from outside, as <code>get-json</code> does.</p>
+<p><strong>A deadline does not cancel the request.</strong> <code>Promise.anyof</code> returns as soon as the timer wins, but the <code>start</code> block is still sitting in a blocking read, and it will finish in its own time. That is fine for a program that is about to retry or exit, and it is not fine in a loop that opens a new request every second: those threads accumulate. If the far end is reliably slow, the fix is a smaller request, not a shorter deadline.</p>
+<h2 id="what-to-reach-for-next">What to reach for next <a class="anchor" href="#what-to-reach-for-next" aria-label="link">#</a></h2>
+<ul><li><code>Cro::HTTP::Client.new(base-uri =&gt; …)</code> keeps the host in one place and takes paths from then on, which is what you want once there is more than one call.</li><li>Concurrent requests are <code>start</code> plus <code>await</code>: see <a href="/cookbook/parallel/">doing several things at once</a>.</li><li>For an API that needs a header on every call — a token, an accept type — <code>HTTP::Tiny.new(default-headers =&gt; { … })</code> sets them once.</li></ul>
+<footer>
+<span>Every program on this page was run for it, against a real service where the recipe needs one; the output shown is what it printed.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=6d544db7" defer></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookbook — doing several things at once</title>
+<script>window.__SITE_BASE='/cookbook';</script>
+<script src="/theme/boot.js?v=6d544db7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/shell.css?v=6d544db7">
+<link rel="stylesheet" href="/theme/cook.css?v=6d544db7">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/cookbook/">← All recipes</a></p>
+<h1>Doing several things at once</h1>
+
+<p>Four shapes of concurrency, the numbers each one produced on this machine, and the places where "it ran, so it works" is not the same as "it is correct".</p>
+<p>Every program was run under Raku++ 3.27 on macOS 15 (arm64, 8 cores), and where the comparison matters it was run under Rakudo 2026.08 as well. The box was not idle, so treat the milliseconds as ratios rather than records.</p>
+<h2 id="waiting-on-four-things-instead-of-one">Waiting on four things instead of one <a class="anchor" href="#waiting-on-four-things-instead-of-one" aria-label="link">#</a></h2>
+<p>The clearest win is work that is not your program's to do: a request goes out, and the thread that sent it sits there. <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/parallel/fetch-many.raku">fetch-many.raku</a> asks for the same two-second response four times.</p>
+<pre class="native-code"><code class="lang-raku"><span class="c1"># One at a time: each get returns before the next one starts.</span>
+<span class="k">my</span> <span class="nv">@one-by-one</span> = <span class="nv">@urls</span>.<span class="nb">map</span>({ <span class="n">HTTP::Tiny</span>.<span class="nb">new</span>.<span class="n">get</span>(<span class="nv">$_</span>)<span class="s">&lt;status&gt;</span> });
+
+<span class="c1"># start returns immediately with a Promise; the requests overlap, and the</span>
+<span class="c1"># await collects them in the order they were started.</span>
+<span class="k">my</span> <span class="nv">@promises</span> = <span class="nv">@urls</span>.<span class="nb">map</span>(-&gt; <span class="nv">$u</span> { <span class="k">start</span> <span class="n">HTTP::Tiny</span>.<span class="nb">new</span>.<span class="n">get</span>(<span class="nv">$u</span>)<span class="s">&lt;status&gt;</span> });
+<span class="k">my</span> <span class="nv">@together</span> = <span class="nb">await</span> <span class="nv">@promises</span>;</code></pre>
+<pre class="native-code"><code class="lang-output">one after another : 200 200 200 200 in 8020 ms
+all at once       : 200 200 200 200 in 2021 ms
+await in the loop : 200 200 200 200 in 8023 ms</code></pre>
+<p>That third line is the whole lesson. <code>await start …</code> inside the loop is the sequential version with extra ceremony — it starts one promise and immediately blocks on it. <code>start</code> everything first, <code>await</code> the list afterwards.</p>
+<p>The requests need the server from the <a href="/cookbook/http/">JSON API recipe</a>; start <code>api-server.raku</code> in another terminal first.</p>
+<h2 id="splitting-work-between-threads">Splitting work between threads <a class="anchor" href="#splitting-work-between-threads" aria-label="link">#</a></h2>
+<p>For arithmetic rather than waiting, the same two lines apply. <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/parallel/cpu.raku">cpu.raku</a> counts the primes below 400,000 in one thread, and then in eight chunks:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@promises</span> = (^<span class="nv">$parts</span>).<span class="nb">map</span>(-&gt; <span class="nv">$i</span> {
+    <span class="k">start</span> <span class="n">count-primes</span>(<span class="nb">max</span>(<span class="mi">2</span>, <span class="nv">$i</span> * <span class="nv">$size</span>), <span class="nb">min</span>(<span class="nv">$limit</span>, (<span class="nv">$i</span> + <span class="mi">1</span>) * <span class="nv">$size</span>))
+});
+<span class="k">my</span> <span class="nv">$parallel</span> = ([+] <span class="nb">await</span> <span class="nv">@promises</span>);</code></pre>
+<pre class="native-code"><code class="lang-output">primes below 400000
+  one thread    : 33860 in 145 ms
+  8 promises   : 33860 in 32 ms
+  ratio         : 4.5x
+  race(:degree(8)) : 33860 in 158 ms</code></pre>
+<p>4.5× out of 8 cores on a machine that was already busy, and both answers agree. The last line is the same computation written as <code>race</code>, which is the idiom you will see everywhere else — see the note under <a href="#four-things-that-bite">things that bite</a> for what it currently does here.</p>
+<h2 id="results-in-the-order-they-arrive">Results in the order they arrive <a class="anchor" href="#results-in-the-order-they-arrive" aria-label="link">#</a></h2>
+<p><code>await</code> gives you everything at once, in the order you started it. When the point is to act on each result as it lands — and to stop waiting at some point — that is <code>react</code> and <code>whenever</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">react</span> {
+    <span class="k">for</span> <span class="nv">@jobs</span> -&gt; <span class="nv">$p</span> {
+        <span class="k">whenever</span> <span class="nv">$p</span> -&gt; <span class="nv">$result</span> {
+            <span class="nb">say</span> <span class="s">&quot;  { ((now - $t0) * 1000).Int } ms  $result&quot;</span>;
+        }
+    }
+    <span class="k">whenever</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="nv">$deadline</span>) {
+        <span class="nb">say</span> <span class="s">&quot;  deadline: not waiting for the rest&quot;</span>;
+        <span class="n">done</span>;
+    }
+}</code></pre>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/parallel/as-they-finish.raku">as-they-finish.raku</a> starts four jobs of 0.9, 0.3, 0.6 and 2.0 seconds under a 1.5-second deadline:</p>
+<pre class="native-code"><code class="lang-output">  300 ms  job 2 (took 0.3s)
+  600 ms  job 3 (took 0.6s)
+  902 ms  job 1 (took 0.9s)
+  1500 ms  deadline: not waiting for the rest
+finished: 3 of 4
+still running: 1</code></pre>
+<p><code>react</code> blocks until every <code>whenever</code> has finished or something calls <code>done</code>. The deadline is just another source of events — a promise that keeps itself after a while — which is why it needs no special support.</p>
+<p>Note the last line: the fourth job is <em>still running</em>. <code>done</code> stops waiting; it does not cancel anything.</p>
+<h2 id="a-queue-and-a-pool-of-workers">A queue and a pool of workers <a class="anchor" href="#a-queue-and-a-pool-of-workers" aria-label="link">#</a></h2>
+<p>When the jobs are not known up front, put them on a <code>Channel</code> and let a fixed number of workers take them. <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/parallel/pool.raku">pool.raku</a>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@running</span> = (<span class="mi">1</span> .. <span class="nv">$workers</span>).<span class="nb">map</span>(-&gt; <span class="nv">$id</span> {
+    <span class="k">start</span> {
+        <span class="k">for</span> <span class="nv">$work</span>.<span class="nb">list</span> -&gt; <span class="nv">$job</span> {
+            <span class="nb">sleep</span> <span class="nv">$each</span>;                    <span class="c1"># stand-in for the real work</span>
+            <span class="nv">$out</span>.<span class="n">send</span>({ :<span class="nv">$id</span>, :<span class="nv">$job</span> });
+        }
+    }
+});
+
+<span class="nv">$work</span>.<span class="n">send</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="mi">1</span> .. <span class="nv">$jobs</span>;
+<span class="nv">$work</span>.<span class="nb">close</span>;                                <span class="c1"># tells the workers when to stop</span>
+<span class="nb">await</span> <span class="nv">@running</span>;                             <span class="c1"># every worker has finished</span>
+<span class="nv">$out</span>.<span class="nb">close</span>;</code></pre>
+<p>A <code>Channel</code> is the thread-safe part: <code>for $chan.list</code> blocks until there is something to take, two workers can never take the same job, and closing the channel is how the loop ends. Nothing else here locks anything.</p>
+<pre class="native-code"><code class="lang-output">9 jobs of 0.3s across 3 workers: 1519 ms
+  (one after another would be 2700 ms)
+  worker 1: 1
+  worker 2: 3 4 5
+  worker 3: 2 6 7 8 9</code></pre>
+<p>Which worker gets which job is never guaranteed, but the split above is lopsided enough to be worth stating plainly: on Raku++ 3.27 a <code>Channel</code> with several waiting consumers favours one of them, so the pool finishes in 1519 ms where an even split would take about 900 ms — and a second run of the same program gave one worker eight of the nine jobs and took 2433 ms. The same program under Rakudo 2026.08 splits the jobs 3/3/3 and finishes in 965 ms.</p>
+<p>Until that evens out: when the work is known in advance, chunk it and start one promise per chunk, as <code>cpu.raku</code> does. The pool shape is for work that arrives while the program runs.</p>
+<h2 id="sharing-state-between-threads">Sharing state between threads <a class="anchor" href="#sharing-state-between-threads" aria-label="link">#</a></h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/parallel/shared.raku">shared.raku</a> has eight threads produce 16,000 numbers three different ways:</p>
+<pre class="native-code"><code class="lang-raku"><span class="c1"># 1. Everybody pushes to the same Array.</span>
+<span class="nb">await</span> (<span class="mi">1</span> .. <span class="nv">$threads</span>).<span class="nb">map</span>(-&gt; <span class="nv">$n</span> {
+    <span class="k">start</span> { <span class="nv">@out</span>.<span class="nb">push</span>(<span class="nv">$_</span>) <span class="k">for</span> (<span class="nv">$n</span> - <span class="mi">1</span>) * <span class="nv">$each</span> ..^ <span class="nv">$n</span> * <span class="nv">$each</span> }
+});
+
+<span class="c1"># 2. The same Array, with a Lock around the push.</span>
+<span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">@locked</span>.<span class="nb">push</span>(<span class="nv">$_</span>) });
+
+<span class="c1"># 3. No sharing at all: each thread builds its own list and returns it.</span>
+<span class="k">my</span> <span class="nv">@parts</span> = <span class="nb">await</span> (<span class="mi">1</span> .. <span class="nv">$threads</span>).<span class="nb">map</span>(-&gt; <span class="nv">$n</span> {
+    <span class="k">start</span> { ((<span class="nv">$n</span> - <span class="mi">1</span>) * <span class="nv">$each</span> ..^ <span class="nv">$n</span> * <span class="nv">$each</span>).<span class="nb">List</span> }
+});</code></pre>
+<p>Under Raku++:</p>
+<pre class="native-code"><code class="lang-output">shared Array   : expected 16000, got 16000
+Array + Lock   : expected 16000, got 16000
+one list each  : expected 16000, got 16000</code></pre>
+<p>Under Rakudo, the same program, unchanged:</p>
+<pre class="native-code"><code class="lang-output">shared Array   : expected 16000, got 15268
+Array + Lock   : expected 16000, got 16000
+one list each  : expected 16000, got 16000</code></pre>
+<p>732 numbers gone, silently. <code>Array</code> is not thread-safe by specification, so whether a given engine loses elements is a question about that engine's internals and this run's timing — not a licence. The first form is a bug on both, and it is the kind that shows up in production and never in testing.</p>
+<p>Of the two fixes, prefer the third: a thread that shares nothing needs no lock, and 16,000 lock acquisitions are 16,000 chances to become the bottleneck. Reach for <code>Lock</code> when the state genuinely is shared — a cache, a counter — and keep what it protects small.</p>
+<h2 id="four-things-that-bite">Four things that bite <a class="anchor" href="#four-things-that-bite" aria-label="link">#</a></h2>
+<p><strong><code>await</code> inside the loop.</strong> Covered above, and worth repeating because it looks concurrent and reads as concurrent: 8023 ms against 2021 ms for the same four requests.</p>
+<p><strong><code>race</code> and <code>hyper</code> do not fan out on Raku++ 3.27.</strong> They give the right answer, in one thread, at serial speed: 158 ms against 145 ms for the loop they replace, where <code>start</code>/<code>await</code> over the same chunks took 32 ms. The same <code>race</code> under Rakudo 2026.08 took 51 ms against 220 ms serial. If a program here needs parallelism today, express it with <code>start</code> and <code>await</code>.</p>
+<p><strong>Counting threads will not tell you whether you are parallel.</strong> <code>$*THREAD.id</code> answers <code>1</code> inside every <code>start</code> block on Raku++ 3.27, including the ones that demonstrably run at the same time. Rakudo answers the real ids. Measure the wall clock instead — the ratio in <code>cpu.raku</code> is the honest test.</p>
+<p><strong>An exception in a <code>start</code> block waits for you.</strong> The promise is broken, not thrown; nothing appears until something awaits it, and a promise that is never awaited fails silently:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$p</span> = <span class="k">start</span> { <span class="nb">die</span> <span class="s">&quot;worker failed&quot;</span> };
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nb">await</span> <span class="nv">$p</span>;
+<span class="nb">say</span> <span class="nv">$!</span> ?? <span class="s">&quot;caught: { $!.message }&quot;</span> !! <span class="s">&quot;no error&quot;</span>;   <span class="c1"># caught: worker failed</span></code></pre>
+<p><code>await</code> on a list of promises rethrows the first failure, so a fan-out of eight where one dies gives you one exception and seven discarded results. If each job's failure should be handled on its own, catch inside the block and return the failure as a value.</p>
+<h2 id="what-to-reach-for-next">What to reach for next <a class="anchor" href="#what-to-reach-for-next" aria-label="link">#</a></h2>
+<ul><li><code>Promise.anyof</code> and <code>Promise.allof</code> build a promise out of promises, which is how a deadline is expressed without a <code>react</code> block — see <a href="/cookbook/http/">talking to a JSON API</a>.</li><li><code>Supply</code> is the stream form of all this: <code>supply</code>/<code>emit</code> produces values over time, and <code>whenever</code> consumes them.</li><li><code>Lock::Async</code> is the lock to use inside a <code>react</code> block, where blocking a thread would block the loop that feeds it.</li><li><a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">../guide/ASYNC.md</a> is the engine side of this page: what runs on which thread, what the runtime protects for you and what it does not, and the <code>RAKUPP_GIL=1</code> mode that serialises the lot.</li></ul>
+<footer>
+<span>Every program on this page was run for it, against a real service where the recipe needs one; the output shown is what it printed.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=6d544db7" defer></script>
+</body>
+</html>

@@ -91,7 +91,10 @@ sub repo-path(Str $t --> Str) {
 }
 
 sub link-target(Str $t --> Str) {
-    return $t if $t.starts-with('http') || $t.starts-with('#');
+    # An absolute URL, or an anchor on this page. The scheme is matched with
+    # its "://" on purpose: a recipe that ships a directory called http/ links
+    # to http/fetch.raku, which starts with "http" and is not a URL.
+    return $t if $t.starts-with('http://') || $t.starts-with('https://') || $t.starts-with('#');
     # ../SOMETHING.md — a rakupp doc that does not live on this site. The
     # recipes are written as if they sat in docs/cookbook/ of the rakupp repo,
     # so ../guide/FFI.md is docs/guide/FFI.md and ../status/ROAST.md is
