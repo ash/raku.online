@@ -103,14 +103,27 @@ You asked for /hello</code></pre>
 <p>The two failures are both Raku++ gaps, and neither is in the TLS transport:</p>
 <ul><li><strong><code>HTTP::Tiny</code> over https</strong> reports <code>HTTPS requests not supported: IO::Socket::SSL:ver&lt;0.0.2+&gt; must be installed</code> even when that module is installed and <code>use IO::Socket::SSL</code> loads it. Its <code>can-ssl</code> probe asks <code>$*REPO.repo-chain.map(*.?candidates: 'IO::Socket::SSL', :ver&lt;0.0.2+&gt;)</code>, and Raku++ has no <code>.candidates</code> method on a <code>CompUnit::Repository</code> — the <code>.?</code> call answers <code>Nil</code>, so the probe reads as "not installed".</li><li><strong><code>Cro::HTTP::Client</code> over https</strong> hangs. The layers under it do not: <code>IO::Socket::Async::SSL.connect</code> returns a verified connection, and <code>Cro::TLS::Connector.connect</code> returns its transform.</li></ul>
 <h2 id="tls">TLS <a class="anchor" href="#tls" aria-label="link">#</a></h2>
-<p>Encryption is a module too — <code>IO::Socket::Async::SSL</code>, driving the system OpenSSL through Raku++'s own NativeCall. Certificates are verified by default:</p>
+<p>Encryption is a module too — <code>IO::Socket::Async::SSL</code>, driving the system OpenSSL through Raku++'s own NativeCall. Certificates are verified by default. It is the plain client from above with <code>::SSL</code> on the class and 443 for the port:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">IO::Socket::Async::SSL</span>;
+
 <span class="k">my</span> <span class="nv">$conn</span> = <span class="nb">await</span> <span class="n">IO::Socket::Async::SSL</span>.<span class="n">connect</span>(<span class="s">'example.com'</span>, <span class="mi">443</span>);
-<span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;GET / HTTP/1.0\r\nHost: example.com\r\n\r\n&quot;</span>.<span class="n">encode</span>);</code></pre>
-<p>A self-signed, expired, untrusted-root or wrong-host certificate is refused with <code>X::IO::Socket::Async::SSL::Verification</code>; <code>:insecure</code> skips the checks, leaving the transport encrypted but unauthenticated. <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NETWORKING.md">NETWORKING.md</a> has the full example.</p>
+<span class="nb">await</span> <span class="nv">$conn</span>.<span class="n">write</span>(<span class="s">&quot;GET / HTTP/1.0\r\nHost: example.com\r\n\r\n&quot;</span>.<span class="n">encode</span>);
+
+<span class="k">my</span> <span class="nv">$response</span> = <span class="nb">Buf</span>.<span class="nb">new</span>;
+<span class="k">react</span> { <span class="k">whenever</span> <span class="nv">$conn</span>.<span class="nb">Supply</span>(:<span class="n">bin</span>) -&gt; <span class="nv">$chunk</span> { <span class="nv">$response</span>.<span class="nb">append</span>(<span class="nv">$chunk</span>) } }
+
+<span class="nb">say</span> <span class="nv">$response</span>.<span class="n">decode</span>(<span class="s">'latin-1'</span>).<span class="nb">lines</span>[<span class="mi">0</span>];
+<span class="nb">say</span> <span class="s">&quot;received {$response.bytes} bytes&quot;</span>;</code></pre>
+<pre class="native-code"><code>HTTP/1.1 200 OK
+received 828 bytes</code></pre>
+<p>The same request and the same 828 bytes as the unencrypted client, decrypted on the way in. A self-signed, expired, untrusted-root or wrong-host certificate is refused with <code>X::IO::Socket::Async::SSL::Verification</code>; <code>:insecure</code> skips the checks, leaving the transport encrypted but unauthenticated. <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NETWORKING.md">NETWORKING.md</a> has the verification detail.</p>
 <h2 id="why-there-is-no-http-client-in-the-engine-even-for-its-own-installer">Why there is no HTTP client in the engine, even for its own installer <a class="anchor" href="#why-there-is-no-http-client-in-the-engine-even-for-its-own-installer" aria-label="link">#</a></h2>
-<p><code>rakupp install</code> and <code>rakupp upgrade</code> both fetch over the network, and both do it by running <code>curl</code> in a subprocess. That is deliberate, and <code>tools/install.raku</code> says so where the choice is made: fetching is curl and unpacking is tar, so there is no HTTP client, no TLS stack, no tar reader and no index parser anywhere in the engine, in any language.</p>
-<p>The engine therefore carries no certificate store, no redirect policy and no protocol version to keep current. Programs that want HTTP reach for a module, exactly as they do on Rakudo.</p>
+<p><code>rakupp install</code> and <code>rakupp upgrade</code> both fetch over the network, and both do it by running <code>curl</code> in a subprocess; unpacking is <code>tar</code>, the same way. No HTTP client, no TLS stack and no tar reader lives in the engine, in any language, so it carries no certificate store, no redirect policy and no protocol version to keep current.</p>
+<p>JSON is the exception, and a deliberate one. The ecosystem index <em>is</em> JSON, and the engine parses it with a codec of its own — <code>Rakupp::Internals::JSON</code>, also reachable under the <code>Rakudo::Internals::JSON</code> name the ecosystem uses:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="n">Rakupp::Internals::JSON</span>.<span class="n">from-json</span>(<span class="s">'{&quot;ver&quot;:&quot;1.2.3&quot;}'</span>);</code></pre>
+<pre class="native-code"><code>{ver =&gt; 1.2.3}</code></pre>
+<p>Nothing is installed for that to work, which is the point: an installer that needed a JSON module before it could install anything would have nowhere to start.</p>
+<p>Programs that want HTTP reach for a module, exactly as they do on Rakudo.</p>
 <h2 id="limits-worth-knowing">Limits worth knowing <a class="anchor" href="#limits-worth-knowing" aria-label="link">#</a></h2>
 <ul><li><strong>IPv4 only.</strong> Every socket path in the engine is <code>AF_INET</code>; there is no IPv6.</li><li><strong><code>IO::Socket::INET.new</code> throws</strong> <code>X::AdHoc</code> on a refused connect or a failed bind, as Rakudo's does. The message text differs: Raku++ names the endpoint (<code>Cannot connect to 127.0.0.1:1: Connection refused</code>), Rakudo does not (<code>Could not connect to socket: Connection refused</code>).</li></ul>
 <hr>

@@ -157,30 +157,57 @@ The two failures are both Raku++ gaps, and neither is in the TLS transport:
 ## TLS
 
 Encryption is a module too — `IO::Socket::Async::SSL`, driving the system
-OpenSSL through Raku++'s own NativeCall. Certificates are verified by default:
+OpenSSL through Raku++'s own NativeCall. Certificates are verified by default.
+It is the plain client from above with `::SSL` on the class and 443 for the
+port:
 
 ```raku
 use IO::Socket::Async::SSL;
+
 my $conn = await IO::Socket::Async::SSL.connect('example.com', 443);
 await $conn.write("GET / HTTP/1.0\r\nHost: example.com\r\n\r\n".encode);
+
+my $response = Buf.new;
+react { whenever $conn.Supply(:bin) -> $chunk { $response.append($chunk) } }
+
+say $response.decode('latin-1').lines[0];
+say "received {$response.bytes} bytes";
+```
+```
+HTTP/1.1 200 OK
+received 828 bytes
 ```
 
-A self-signed, expired, untrusted-root or wrong-host certificate is refused with
-`X::IO::Socket::Async::SSL::Verification`; `:insecure` skips the checks, leaving
-the transport encrypted but unauthenticated. [NETWORKING.md](../NETWORKING.md)
-has the full example.
+The same request and the same 828 bytes as the unencrypted client, decrypted on
+the way in. A self-signed, expired, untrusted-root or wrong-host certificate is
+refused with `X::IO::Socket::Async::SSL::Verification`; `:insecure` skips the
+checks, leaving the transport encrypted but unauthenticated.
+[NETWORKING.md](../NETWORKING.md) has the verification detail.
 
 ## Why there is no HTTP client in the engine, even for its own installer
 
 `rakupp install` and `rakupp upgrade` both fetch over the network, and both do
-it by running `curl` in a subprocess. That is deliberate, and `tools/install.raku`
-says so where the choice is made: fetching is curl and unpacking is tar, so
-there is no HTTP client, no TLS stack, no tar reader and no index parser
-anywhere in the engine, in any language.
+it by running `curl` in a subprocess; unpacking is `tar`, the same way. No HTTP
+client, no TLS stack and no tar reader lives in the engine, in any language, so
+it carries no certificate store, no redirect policy and no protocol version to
+keep current.
 
-The engine therefore carries no certificate store, no redirect policy and no
-protocol version to keep current. Programs that want HTTP reach for a module,
-exactly as they do on Rakudo.
+JSON is the exception, and a deliberate one. The ecosystem index *is* JSON, and
+the engine parses it with a codec of its own — `Rakupp::Internals::JSON`, also
+reachable under the `Rakudo::Internals::JSON` name the ecosystem uses:
+
+```raku
+say Rakupp::Internals::JSON.from-json('{"ver":"1.2.3"}');
+```
+```
+{ver => 1.2.3}
+```
+
+Nothing is installed for that to work, which is the point: an installer that
+needed a JSON module before it could install anything would have nowhere to
+start.
+
+Programs that want HTTP reach for a module, exactly as they do on Rakudo.
 
 ## Limits worth knowing
 
