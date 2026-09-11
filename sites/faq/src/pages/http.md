@@ -207,6 +207,30 @@ Nothing is installed for that to work, which is the point: an installer that
 needed a JSON module before it could install anything would have nowhere to
 start.
 
+### Where that name comes from
+
+It is borrowed, not invented. Raku's standard library has no dependency-free
+JSON, so the toolchain leans on an undocumented Rakudo internal instead — and
+the clearest example is **zef**, whose own `from-json` and `to-json` are
+one-line wrappers around `::("Rakudo::Internals::JSON")`, looked up dynamically
+so zef compiles anywhere and only needs the name to exist when it runs. Zef's
+comment beside them gives the reason, and it is the same one as above: the
+compiler can already parse JSON, so making the installer depend on a module for
+it would be absurd — it is the thing that installs modules.
+
+zef is not alone. `OpenSSL` reads its own `resources/libraries.json` that way,
+and nine of the two hundred most-depended-on distributions call into
+`Rakudo::Internals` for something — JSON, a Windows test, a directory walk.
+
+So any engine that wants to run real code has to answer a name from another
+implementation's private surface. Raku++ answers it, and the code behind it is
+its own, which is why there are two spellings for one codec:
+`Rakupp::Internals::JSON` is the first-party name, what Raku++'s own tooling
+calls; `Rakudo::Internals::JSON` is a compatibility alias. The alias says who
+is asking, not where the code came from — there is no Rakudo in it.
+[RAKUDO-INTERNALS.md](../../dev/ecosystem/RAKUDO-INTERNALS.md) has the full
+census and the policy.
+
 Programs that want HTTP reach for a module, exactly as they do on Rakudo.
 
 ## Limits worth knowing
