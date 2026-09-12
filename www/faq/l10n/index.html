@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — can I write Raku in my own language?</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/faq.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Can I write Raku in my own language?</h1>
+
+<p>Yes. Install one of the <code>L10N::*</code> distributions, <code>use</code> it, and the rest of the file is German, Japanese or Afrikaans:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">L10N::DE</span>;
+<span class="n">mein</span> <span class="nv">@zahlen</span> = <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>;
+<span class="n">f</span>ü<span class="n">ralle</span> <span class="nv">@zahlen</span> -&gt; <span class="nv">$z</span> {
+    <span class="n">wenn</span> <span class="nv">$z</span> %% <span class="mi">2</span> { <span class="n">sag</span> <span class="s">&quot;$z ist gerade&quot;</span> }
+    <span class="n">sonst</span>        { <span class="n">sag</span> <span class="s">&quot;$z ist ungerade&quot;</span> }
+}</code></pre>
+<pre class="native-code"><code>1 ist ungerade
+2 ist gerade
+3 ist ungerade</code></pre>
+<p><code>mein</code> is <code>my</code>, <code>füralle</code> is <code>for</code>, <code>wenn</code>/<code>sonst</code> are <code>if</code>/<code>else</code>, <code>sag</code> is <code>say</code>. Your own names — <code>@zahlen</code>, <code>$z</code> — are yours and are never touched.</p>
+<p>The modules are not ours; they are <a href="https://raku.land/?q=L10N">Elizabeth Mattijsen's <code>L10N::*</code> family</a>. Install one the usual way:</p>
+<pre class="native-code"><code class="lang-bash">rakupp install L10N::DE</code></pre>
+<p><code>zef install L10N::DE</code> works too, and installs into the same store both engines read.</p>
+<h2 id="which-languages">Which languages <a class="anchor" href="#which-languages" aria-label="link">#</a></h2>
+<p>Thirteen are published, plus an <code>L10N::Complete</code> bundle. These eleven are verified here, with the spelling each uses for <code>my</code> and for <code>say</code>:</p>
+<div class="tablewrap"><table><tr><th></th><th></th><th><code>my</code></th><th><code>say</code></th></tr><tr><td><code>L10N::AF</code></td><td>Afrikaans</td><td>my</td><td>sê</td></tr>
+<tr><td><code>L10N::CY</code></td><td>Welsh</td><td>fy</td><td>dywedyd</td></tr>
+<tr><td><code>L10N::DE</code></td><td>German</td><td>mein</td><td>sag</td></tr>
+<tr><td><code>L10N::EO</code></td><td>Esperanto</td><td>mia</td><td>diru</td></tr>
+<tr><td><code>L10N::FR</code></td><td>French</td><td>ma</td><td>dis</td></tr>
+<tr><td><code>L10N::HU</code></td><td>Hungarian</td><td>enyém</td><td>mond</td></tr>
+<tr><td><code>L10N::IT</code></td><td>Italian</td><td>il-mio</td><td>dillo</td></tr>
+<tr><td><code>L10N::JA</code></td><td>Japanese</td><td>私の</td><td>言う</td></tr>
+<tr><td><code>L10N::NL</code></td><td>Dutch</td><td>mijn</td><td>zeg</td></tr>
+<tr><td><code>L10N::PT</code></td><td>Portuguese</td><td>meu</td><td>diga</td></tr>
+<tr><td><code>L10N::ZH</code></td><td>Chinese</td><td>局部</td><td>述</td></tr></table></div>
+<p><code>L10N::EN</code> exists and is the identity — English is what every other table translates <em>into</em>, so <code>use L10N::EN;</code> changes nothing. Afrikaans is a nice accident: its word for <code>my</code> is <code>my</code>.</p>
+<h2 id="on-rakudo-you-need-a-flag-here-you-do-not">On Rakudo you need a flag; here you do not <a class="anchor" href="#on-rakudo-you-need-a-flag-here-you-do-not" aria-label="link">#</a></h2>
+<p>The same file above, run by Rakudo 2026.08:</p>
+<pre class="native-code"><code>===SORRY!=== Error while compiling prog.raku
+Variable '@zahlen' is not declared. Perhaps you forgot a 'sub' if this
+was intended to be part of a signature?
+------&gt; mein &lt;HERE&gt;@zahlen = 1, 2, 3;</code></pre>
+<p>It needs the RakuAST front end, which is not yet the default there:</p>
+<pre class="native-code"><code class="lang-bash">RAKUDO_RAKUAST=1 raku prog.raku</code></pre>
+<p>and then it prints exactly what Raku++ prints. Raku++ needs no flag and has no second front end to switch to — the reason is the whole of the next section.</p>
+<h2 id="how-it-works-and-why-that-matters-to-you">How it works, and why that matters to you <a class="anchor" href="#how-it-works-and-why-that-matters-to-you" aria-label="link">#</a></h2>
+<p>Upstream an <code>L10N</code> module is a <strong>slang</strong>. Its <code>sub EXPORT</code> mixes a role of grammar rules into <code>$*LANG</code> <em>while your file is still being parsed</em>, because Rakudo's compiler front end is itself a Raku grammar. Raku++ has no grammar object to mix into: its front end is a hand-written lexer and parser in C++.</p>
+<p>That would be the end of it, except that an <code>L10N</code> slang is not really a grammar change. <strong>It is a table of keyword spellings</strong> — and Raku++'s lexer hands every keyword to the parser as a plain identifier, deciding nothing about it. So the whole slang is a rewrite of some words in the token stream, between the lexer and the parser, which is exactly where a slang would have acted. The table is read out of the module the same way <code>.AST($lang)</code> reads it.</p>
+<p>Three consequences you can see:</p>
+<p><strong>It is the whole file from the <code>use</code> onwards, not the enclosing block.</strong> Upstream the slang is lexically scoped. Here it is not:</p>
+<pre class="native-code"><code class="lang-raku">{
+    <span class="k">use</span> <span class="n">L10N::DE</span>;
+    <span class="n">sag</span> <span class="s">&quot;innen&quot;</span>;
+}
+<span class="n">sag</span> <span class="s">&quot;außen&quot;</span>;</code></pre>
+<p>Raku++ prints both lines. Rakudo refuses the second one:</p>
+<pre class="native-code"><code>===SORRY!=== Error while compiling scoped.raku
+Undeclared routine:
+    sag used at line 5. Did you mean 'bag', 'say'?</code></pre>
+<p>If you want the difference to stop mattering, put the <code>use</code> at the top of the file, which is where it belongs anyway.</p>
+<p><strong>It starts where the pragma is.</strong> A keyword above the <code>use</code> line is not rewritten — both engines agree, for different reasons:</p>
+<pre class="native-code"><code class="lang-raku"><span class="n">mein</span> <span class="nv">$frueh</span> = <span class="mi">1</span>;
+<span class="k">use</span> <span class="n">L10N::DE</span>;
+<span class="n">sag</span> <span class="nv">$frueh</span>;</code></pre>
+<pre class="native-code"><code>Variable '$frueh' is not declared
+  in block &lt;unit&gt; at early.raku line 1
+      1 | mein $frueh = 1;</code></pre>
+<p><strong>The module's own <code>EXPORT</code> still runs, and still fails to find <code>$*LANG</code>.</strong> That is expected — the thing it wanted to do has already been done — so Raku++ says nothing about it. It is not silence in general: a module that really fails to load still tells you, and a language that is not installed is still an error.</p>
+<h2 id="the-one-thing-that-does-not-translate">The one thing that does not translate <a class="anchor" href="#the-one-thing-that-does-not-translate" aria-label="link">#</a></h2>
+<p>A declarator that changes <strong>how the lexer scans what follows it</strong> cannot be reached by a rewrite of the tokens, because by then the scanning has happened. In practice that is <code>token</code> and <code>rule</code>: the lexer has to know it is looking at a regex body before it can read one.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">L10N::DE</span>;
+<span class="n">grammatik</span> <span class="n">G</span> {
+    <span class="n">wertmarke</span> <span class="n">TOP</span> { \<span class="n">d</span>+ }
+}
+<span class="n">sag</span> <span class="n">G</span>.<span class="n">parse</span>(<span class="s">'42'</span>) ?? <span class="s">'ja'</span> !! <span class="s">'nein'</span>;</code></pre>
+<p>Raku++:</p>
+<pre class="native-code"><code>===SORRY!=== Parse error at line 3: Missing required term after infix
+      3 |     wertmarke TOP { \d+ }</code></pre>
+<p>Rakudo, under <code>RAKUDO_RAKUAST=1</code>, prints <code>ja</code>.</p>
+<p><code>grammatik</code> (<code>grammar</code>) is fine, and so is <code>methode</code>, <code>klasse</code>, <code>hat</code> and every other declarator that does not change the lexer's mode. German is lucky in one respect: its word for <code>regex</code> <em>is</em> <code>regex</code>, so this works here —</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">L10N::DE</span>;
+<span class="n">grammatik</span> <span class="n">G</span> {
+    <span class="k">regex</span> TOP {<span class="sr"> \d+ </span>}
+}
+<span class="n">sag</span> <span class="n">G</span>.<span class="n">parse</span>(<span class="s">'42'</span>) ?? <span class="s">'ja'</span> !! <span class="s">'nein'</span>;</code></pre>
+<pre class="native-code"><code>ja</code></pre>
+<p>This is a real boundary of the approach, not a bug with a fix pending. Moving it would mean teaching the lexer the language before it starts, which is a different design.</p>
+<h2 id="translating-a-localized-program-to-english">Translating a localized program to English <a class="anchor" href="#translating-a-localized-program-to-english" aria-label="link">#</a></h2>
+<p><code>.AST($lang)</code> parses a string of localized Raku and gives you the tree; <code>.DEPARSE</code> renders it back as ordinary Raku. It is a plain method and needs no pragma:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">print</span> <span class="s">Q:to/DE/</span>.<span class="n">AST</span>(<span class="s">&quot;DE&quot;</span>).<span class="n">DEPARSE</span>;
+<span class="s">mein $summe = 1 + 2;
+sag $summe;
+DE</span></code></pre>
+<pre class="native-code"><code>my $summe = 1 + 2;
+say $summe</code></pre>
+<p>Both engines print that. This is also the form the <code>L10N</code> distributions' own test suites use, so it is the best-covered part of the feature. A language you do not have says so rather than quietly doing nothing:</p>
+<pre class="native-code"><code>`.AST("XX")`: L10N::XX is not installed</code></pre>
+<p>Deparsing is not byte-for-byte identical between the engines in every case — Raku++ writes <code>"Hallo, {$name}!"</code> where Rakudo writes <code>"Hallo, $name!"</code>, and Rakudo marks a required parameter <code>-&gt; $n!</code> where Raku++ writes <code>-&gt; $n</code>. Same program either way; different rendering of it.</p>
+<h2 id="does-the-rest-of-the-toolchain-understand-it">Does the rest of the toolchain understand it? <a class="anchor" href="#does-the-rest-of-the-toolchain-understand-it" aria-label="link">#</a></h2>
+<p>Yes. <code>-c</code>, <code>--lint</code>, <code>--ast</code>, <code>--fmt</code> and the compile modes all read a localized file as the program it is. For <code>use L10N::DE; mein $x = 1; sag $x;</code>:</p>
+<pre class="native-code"><code class="lang-bash">rakupp --ast prog.raku</code></pre>
+<pre class="native-code"><code>Program
+  Use L10N::DE
+  Assign =
+    VarExpr $x [decl my]
+    IntLit 1
+  Call say
+    VarExpr $x</code></pre>
+<p><code>mein</code> became a declaration and <code>sag</code> became <code>say</code> — which is the point. Without that, every one of those tools would be reasoning about a pile of unknown identifiers and telling you it was fine.</p>
+<p><code>--fmt</code> is whitespace-only, so it indents and spaces a German file exactly as it would an English one and never touches a keyword. One rule does less: the <code>else</code>-onto-its-own-line rule knows the English <code>else</code> / <code>elsif</code> / <code>orwith</code> / <code>without</code>, so a localized <code>sonst</code> is left where you put it.</p>
+<p>A <strong>module</strong> can be written in a localized Raku too — the rewrite is on the module load path as well as the program one, and <code>EVAL</code> gets it as well. What a module <em>exports</em> is ordinary Raku, so the program that <code>use</code>s it does not have to be in the same language.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+</body>
+</html>
