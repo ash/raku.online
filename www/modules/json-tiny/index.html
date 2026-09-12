@@ -73,14 +73,14 @@ Num</code></pre></div>
 <p>One caution on the writing side: a Raku <code>Hash</code> does not promise a key order, so <code>to-json</code> on a multi-key hash can print its pairs in a different order from one run to the next. The JSON is equally valid either way, but if a test or a cache key depends on the exact string, sort upstream — or use JSON::Fast, whose <code>:sorted-keys</code> exists for exactly this.</p>
 <h2 id="the-grammar-is-the-documentation">The grammar is the documentation <a class="anchor" href="#the-grammar-is-the-documentation" aria-label="link">#</a></h2>
 <p>The whole parser is <a href="https://github.com/moritz/json">one grammar of about thirty lines</a>, and it reads almost like the JSON specification's railroad diagrams:</p>
-<div class="native-ex"><pre class="native-code"><code><span class="k">token</span> <span class="n">TOP</span>       { \<span class="n">s</span>* <span class="s">&lt;value&gt;</span> \<span class="n">s</span>* }
-<span class="k">rule</span> <span class="n">object</span>     { <span class="s">'{'</span> ~ <span class="s">'}'</span> <span class="s">&lt;pairlist&gt;</span>     }
-<span class="k">rule</span> <span class="n">pairlist</span>   { <span class="s">&lt;pair&gt;</span> * % \,            }
-<span class="k">rule</span> <span class="n">pair</span>       { <span class="s">&lt;string&gt;</span> <span class="s">':'</span> <span class="s">&lt;value&gt;</span>     }
-<span class="k">rule</span> <span class="n">array</span>      { <span class="s">'['</span> ~ <span class="s">']'</span> <span class="s">&lt;arraylist&gt;</span>    }
-<span class="k">rule</span> <span class="n">arraylist</span>  {  <span class="s">&lt;value&gt;</span> * % [ \, ]      }
+<div class="native-ex"><pre class="native-code"><code><span class="k">token</span> TOP       {<span class="sr"> \s* &lt;value&gt; \s* </span>}
+<span class="k">rule</span> object     {<span class="sr"> '{' ~ '}' &lt;pairlist&gt;     </span>}
+<span class="k">rule</span> pairlist   {<span class="sr"> &lt;pair&gt; * % \,            </span>}
+<span class="k">rule</span> pair       {<span class="sr"> &lt;string&gt; ':' &lt;value&gt;     </span>}
+<span class="k">rule</span> array      {<span class="sr"> '[' ~ ']' &lt;arraylist&gt;    </span>}
+<span class="k">rule</span> arraylist  {<span class="sr">  &lt;value&gt; * % [ \, ]      </span>}
 
-<span class="k">proto</span> <span class="k">token</span> <span class="n">value</span> {*};
+<span class="k">proto</span> <span class="k">token</span> value {<span class="sr">*</span>};
 <span class="k">token</span> <span class="n">value</span>:<span class="n">sym</span><span class="s">&lt;number&gt;</span> { <span class="s">'-'</span>? [ <span class="mi">0</span> | <span class="s">&lt;[1..9]&gt;</span> &lt;[<span class="mi">0</span>.<span class="mf">.9</span>]&gt;* ] [ \. <span class="s">&lt;[0..9]&gt;</span>+ ]? … }</code></pre></div>
 <p>This is the module people read to learn what Raku grammars look like in production: <code>'{' ~ '}'</code> for delimiter pairs, <code>* % \,</code> for comma-separated lists, a <code>proto token</code> dispatching on what a value starts with. If you are working through <a href="/tour/grammars/">the tour's grammar lessons</a>, this is the graduation text.</p>
 <h2 id="subclass-it-json-with-comments">Subclass it: JSON with comments <a class="anchor" href="#subclass-it-json-with-comments" aria-label="link">#</a></h2>
@@ -89,22 +89,22 @@ Num</code></pre></div>
 <span class="k">use</span> <span class="n">JSON::Tiny::Actions</span>;
 
 <span class="k">grammar</span> <span class="n">JSON::WithComments</span> <span class="k">is</span> <span class="n">JSON::Tiny::Grammar</span> {
-    <span class="k">token</span> <span class="n">ws</span> { [ \<span class="sr">s | '//' \N* ]* }
+    <span class="k">token</span> ws {<span class="sr"> [ \s | '//' \N* ]* </span>}
 }
 
-my $config = q:to/END/;
-    {
+<span class="k">my</span> <span class="nv">$config</span> = <span class="s">q:to/END/</span>;
+<span class="s">    {
         &quot;port&quot;: 8080,       // where to listen
         &quot;workers&quot;: 4,       // one per core
         &quot;debug&quot;: false
     }
     END
-
-my $m = JSON::WithComments.parse($config, :actions(JSON::Tiny::Actions.new));
-my %conf = $m.made;
-say %conf&lt;port&gt;;
-say %conf&lt;workers&gt;;
-say %conf&lt;debug&gt;;</span></code></pre></div>
+</span>
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">JSON::WithComments</span>.<span class="n">parse</span>(<span class="nv">$config</span>, :<span class="n">actions</span>(<span class="n">JSON::Tiny::Actions</span>.<span class="nb">new</span>));
+<span class="k">my</span> <span class="nv">%conf</span> = <span class="nv">$m</span>.<span class="n">made</span>;
+<span class="nb">say</span> <span class="nv">%conf</span><span class="s">&lt;port&gt;</span>;
+<span class="nb">say</span> <span class="nv">%conf</span><span class="s">&lt;workers&gt;</span>;
+<span class="nb">say</span> <span class="nv">%conf</span><span class="s">&lt;debug&gt;</span>;</code></pre></div>
 <div class="expected"><span class="expected-label">Output</span><pre class="output"><code>8080
 4
 False</code></pre></div>

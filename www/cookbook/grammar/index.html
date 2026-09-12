@@ -45,18 +45,18 @@ server {
 <h2 id="the-grammar">The grammar <a class="anchor" href="#the-grammar" aria-label="link">#</a></h2>
 <p>A grammar is a class whose methods are named pieces of a pattern. This one is nine lines:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">grammar</span> <span class="n">Config</span> {
-    <span class="k">rule</span> <span class="n">TOP</span> { <span class="s">&lt;.ws&gt;</span> <span class="s">&lt;statement&gt;</span>* }
+    <span class="k">rule</span> TOP {<span class="sr"> &lt;.ws&gt; &lt;statement&gt;* </span>}
 
-    <span class="k">token</span> <span class="n">ws</span> { <span class="s">&lt;!ww&gt;</span> \<span class="n">h</span>* [ [ <span class="s">'#'</span> \<span class="n">N</span>* ]? \<span class="n">n</span> \<span class="n">s</span>* ]* }
+    <span class="k">token</span> ws {<span class="sr"> &lt;!ww&gt; \h* [ [ '#' \N* ]? \n \s* ]* </span>}
 
-    <span class="k">proto</span> <span class="k">rule</span> <span class="n">statement</span> {*}
+    <span class="k">proto</span> <span class="k">rule</span> statement {<span class="sr">*</span>}
     <span class="k">rule</span>  <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;block&gt;</span>   { <span class="s">&lt;name&gt;</span> <span class="s">&lt;arg&gt;</span>? <span class="s">'{'</span> <span class="s">&lt;statement&gt;</span>* <span class="s">'}'</span> }
     <span class="k">token</span> <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;setting&gt;</span> { <span class="s">&lt;name&gt;</span> \<span class="n">h</span>+ [ <span class="s">&lt;value&gt;</span>+ % \<span class="n">h</span>+ ] \<span class="n">h</span>* <span class="s">';'</span> &lt;.<span class="n">ws</span>&gt; }
 
-    <span class="k">token</span> <span class="n">name</span> { <span class="s">&lt;[\w\-]&gt;</span>+ }
-    <span class="k">token</span> <span class="n">arg</span>  { <span class="s">&lt;[\w/\.\-]&gt;</span>+ }
+    <span class="k">token</span> name {<span class="sr"> &lt;[\w\-]&gt;+ </span>}
+    <span class="k">token</span> arg  {<span class="sr"> &lt;[\w/\.\-]&gt;+ </span>}
 
-    <span class="k">proto</span> <span class="k">token</span> <span class="n">value</span> {*}
+    <span class="k">proto</span> <span class="k">token</span> value {<span class="sr">*</span>}
     <span class="k">token</span> <span class="n">value</span>:<span class="n">sym</span><span class="s">&lt;string&gt;</span> { <span class="s">'&quot;'</span> ~ <span class="s">'&quot;'</span> <span class="nv">$&lt;text&gt;</span>=<span class="s">&lt;-[&quot;]&gt;</span>* }
     <span class="k">token</span> <span class="n">value</span>:<span class="n">sym</span><span class="s">&lt;bare&gt;</span>   { <span class="s">&lt;[\w/:\.\-]&gt;</span>+ }
 }</code></pre>
@@ -128,10 +128,10 @@ listen port: 8080</code></pre>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$partial</span> = <span class="n">Config</span>.<span class="n">subparse</span>(<span class="nv">$text</span>);
 <span class="k">my</span> <span class="nv">$pos</span>     = <span class="nv">$partial</span> ?? <span class="nv">$partial</span>.<span class="n">to</span> !! <span class="mi">0</span>;</code></pre>
 <p><strong>Level two: the furthest position any rule reached.</strong> <code>ws</code> runs between every pair of atoms, which makes it the cheapest possible place to keep a high-water mark:</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">token</span> <span class="n">ws</span> {
-    <span class="s">&lt;!ww&gt;</span> \<span class="n">h</span>* [ [ <span class="s">'#'</span> \<span class="n">N</span>* ]? \<span class="n">n</span> \<span class="n">s</span>* ]*
-    { <span class="nv">$*FURTHEST</span> = <span class="nv">$/</span>.<span class="n">to</span> <span class="k">if</span> <span class="nv">$/</span>.<span class="n">to</span> &gt; <span class="nv">$*FURTHEST</span> }
-}</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">token</span> ws {<span class="sr">
+    &lt;!ww&gt; \h* [ [ '#' \N* ]? \n \s* ]*
+    { $*FURTHEST = $/.to if $/.to &gt; $*FURTHEST }
+</span>}</code></pre>
 <p><a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/grammar/config-where.raku">config-where.raku</a> prints both for <code>broken.conf</code>, a file whose line 5 is missing its semicolon:</p>
 <pre class="native-code"><code class="lang-output">subparse stopped at: line 3, column 1
     server {
@@ -166,8 +166,8 @@ broken.conf: line 5, column 26: expected ';' at the end of the setting</code></p
     &lt;.<span class="n">ws</span>&gt;
 }</code></pre>
 <p><strong><code>|</code> and <code>||</code> are different alternations.</strong> <code>|</code> is longest-token matching: all branches are considered and the longest match wins. <code>||</code> is sequential: the first branch that matches wins, even if a later one would have matched more.</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">token</span> <span class="n">word</span> { <span class="s">'foo'</span> | <span class="s">'foobar'</span> }    <span class="c1"># on &quot;foobar&quot;: matches foobar</span>
-<span class="k">token</span> <span class="n">word</span> { <span class="s">'foo'</span> || <span class="s">'foobar'</span> }   <span class="c1"># on &quot;foobar&quot;: matches foo, so TOP fails</span></code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">token</span> word {<span class="sr"> 'foo' | 'foobar' </span>}    <span class="c1"># on &quot;foobar&quot;: matches foobar</span>
+<span class="k">token</span> word {<span class="sr"> 'foo' || 'foobar' </span>}   <span class="c1"># on &quot;foobar&quot;: matches foo, so TOP fails</span></code></pre>
 <p>Write <code>|</code> for a set of alternatives and <code>||</code> when order is the point — which is exactly what the panic idiom needs, since <code>[ ';' || &lt;.panic(…)&gt; ]</code> must try the semicolon first.</p>
 <p><strong>A <code>token</code> never gives back what it has eaten.</strong> <code>token t { \w+ 'b' }</code> does not match <code>aab</code>: <code>\w+</code> takes all three characters and, unlike in a <code>regex</code>, does not backtrack to let <code>'b'</code> match.</p>
 <pre class="native-code"><code class="lang-output">token \w+ "b" on "aab" : no match
