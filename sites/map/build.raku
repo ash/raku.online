@@ -1,9 +1,9 @@
-# build.raku — generated RakuMap programs at raku.online/map.
+# build.raku — generated Rakumap programs at raku.online/map.
 #
 #   rakupp build.raku [--clean] [--map=PATH]
 #
-# Reads the small, committed fixture corpus from a RakuMap checkout. Campaign
-# output under RakuMap's ignored out/ directory is deliberately never published.
+# Reads the small, committed fixture corpus from a Rakumap checkout. Campaign
+# output under Rakumap's ignored out/ directory is deliberately never published.
 
 my %SITE;
 my $BASE = '';
@@ -40,7 +40,7 @@ sub page(Str $title, Str $body, Bool :$editor = False --> Str) {
     $body
     <footer>
       <span>Programs are generated deterministically from recorded seeds.</span>
-      <span><a href="{%SITE<repo>}">RakuMap on GitHub ↗</a></span>
+      <span><a href="{%SITE<repo>}">Rakumap on GitHub ↗</a></span>
     </footer>
     </div></main>
     <script src="/theme/shell.js" defer></script>{$engine}
@@ -70,7 +70,7 @@ sub read-cases(IO::Path $root) {
 sub index-page(@cases --> Str) {
     my @body = '<h1>' ~ esc(%SITE<title>) ~ '</h1>',
         '<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>',
-        '<p>These are the fixed programs checked into RakuMap for review and regression. '
+        '<p>These are the fixed programs checked into Rakumap for review and regression. '
         ~ 'Choose one to edit and run it directly in the browser. A generated difference '
         ~ 'is evidence to investigate—not automatically a Raku++ defect.</p>';
     my $group = '';
@@ -101,7 +101,7 @@ sub case-page(%case, $prev, $next --> Str) {
     @nav.push('<a href="' ~ $BASE ~ '/' ~ $prev<name> ~ '/">← ' ~ $prev<name> ~ '</a>') if $prev;
     @nav.push('<a class="next" href="' ~ $BASE ~ '/' ~ $next<name> ~ '/">' ~ $next<name> ~ ' →</a>') if $next;
     @body.push('<nav class="map-next">' ~ @nav.join(' ') ~ '</nav>') if @nav;
-    page(%case<name> ~ ' — RakuMap', @body.join("\n"), :editor)
+    page(%case<name> ~ ' — Rakumap', @body.join("\n"), :editor)
 }
 
 sub MAIN(Bool :$clean = False, Str :$map = '') {
@@ -109,7 +109,7 @@ sub MAIN(Bool :$clean = False, Str :$map = '') {
     $BASE = %SITE<base>;
     my $root = ($map || %SITE<map-src>).IO.absolute.IO;
     my @cases = read-cases($root);
-    die 'RakuMap generated corpus is empty' unless @cases;
+    die 'Rakumap generated corpus is empty' unless @cases;
     run('rm', '-rf', 'out') if $clean && 'out'.IO.d;
     mkdir('out');
     for @cases.kv -> $i, %case {
@@ -119,5 +119,5 @@ sub MAIN(Bool :$clean = False, Str :$map = '') {
         spurt("out/{%case<name>}/index.html", case-page(%case, $prev, $next));
     }
     spurt('out/index.html', index-page(@cases));
-    say "built {@cases.elems} RakuMap program page(s) + index -> out/";
+    say "built {@cases.elems} Rakumap program page(s) + index -> out/";
 }

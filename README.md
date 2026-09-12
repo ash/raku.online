@@ -35,7 +35,7 @@ program still runs in a fraction of a second:
 | `/spec/` | The Raku++ specification | generated from `sites/spec/` |
 | `/spec/rules/` | Raku Rules — the exhaustive rulebook | generated from `sites/spec/` |
 | `/grid/` | Rakugrid, browsable — every recorded test on every engine, with the divergences, rulings and crashes | generated from `sites/grid/` |
-| `/map/` | RakuMap’s deterministic generated-program corpus, grouped by generator and runnable in the browser | generated from `sites/map/` |
+| `/map/` | Rakumap’s deterministic generated-program corpus, grouped by generator and runnable in the browser | generated from `sites/map/` |
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
 | `/cookbook/` | The Cookbook — whole tasks worked end to end; the programs are linked to the rakupp repo, not copied here. The site bar calls it **Cook** | generated from `sites/cookbook/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
@@ -98,7 +98,7 @@ www/              what gets published, verbatim
 sites/            sources for the generated sub-sites
   tour/             build.raku + src/, emits out/
   spec/             build.raku + rules.raku + src/, emits out/
-  map/              build.raku + config, reads RakuMap fixtures and emits out/
+  map/              build.raku + config, reads Rakumap fixtures and emits out/
   faq/              build.raku + src/, emits out/ — articles synced by sync.sh
                     from rakupp/docs/guide/faq, which is where they are written
   book/             build.raku + src/, emits out/ — chapters and the PDF synced

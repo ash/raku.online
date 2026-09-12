@@ -116,12 +116,12 @@ build_grid() {
     cp -R "$ROOT/sites/grid/out" "$WWW/grid"
 }
 
-# RakuMap is another build-time data source. Only its committed fixture corpus
+# Rakumap is another build-time data source. Only its committed fixture corpus
 # is published; large ignored campaign output never reaches the site.
 build_map() {
     MAP_SRC="${RAKUMAP:-/Users/ash/rakumap}"
     if [ ! -d "$MAP_SRC" ]; then
-        echo "map: no RakuMap checkout at $MAP_SRC — keeping the committed www/map"
+        echo "map: no Rakumap checkout at $MAP_SRC — keeping the committed www/map"
         return 0
     fi
     echo "map -> www/map"
