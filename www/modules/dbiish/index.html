@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DBIish — The Raku Ecosystem, Working</title>
+<meta name="description" content="One interface to SQLite, PostgreSQL, MySQL and Oracle — connect by driver name, send SQL with placeholders, and get rows back as lists or hashes with the database's types already turned into Raku's.">
+<link rel="canonical" href="https://raku.online/modules/dbiish/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DBIish — The Raku Ecosystem, Working">
+<meta property="og:description" content="One interface to SQLite, PostgreSQL, MySQL and Oracle — connect by driver name, send SQL with placeholders, and get rows back as lists or hashes with the database's types already turned into Raku's.">
+<meta property="og:url" content="https://raku.online/modules/dbiish/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"DBIish","description":"One interface to SQLite, PostgreSQL, MySQL and Oracle — connect by driver name, send SQL with placeholders, and get rows back as lists or hashes with the database's types already turned into Raku's.","programmingLanguage":"Raku","version":"0.6.8","url":"https://raku.online/modules/dbiish/","license":"https://spdx.org/licenses/BSD-2-Clause","codeRepository":"https://github.com/raku-community-modules/DBIish"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · database</div><h1>DBIish</h1><span class="status st-full">Works</span></div><p class="summary">One interface to SQLite, PostgreSQL, MySQL and Oracle — connect by driver name, send SQL with placeholders, and get rows back as lists or hashes with the database's types already turned into Raku's.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.6.8</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>NativeHelpers::Blob</code>, <code>NativeLibs</code></dd></div><div class="fact"><dt>License</dt><dd>BSD-2-Clause</dd></div><div class="fact"><dt>Its own test suite</dt><dd>37 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/DBIish">raku.land</a> · <a href="https://github.com/raku-community-modules/DBIish">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install DBIish</code></pre></div><p class="fact-sub"><code>zef install DBIish</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A program that keeps its data in a real database wants three things from a library: a connection, a way to send SQL with the values kept <em>out</em> of the string, and rows back in a shape it can loop over. That is the whole of this distribution's surface, and it is the same surface whichever engine sits behind it — <code>DBDish::SQLite</code>, <code>DBDish::Pg</code>, <code>DBDish::mysql</code> and <code>DBDish::Oracle</code> are loaded by the name you hand to <code>connect</code>, and each one binds the vendor's C client library through NativeCall.</p>
+<p>SQLite is the one to start with, because it needs no server: the library ships with macOS and with every Linux distribution's base packages, and a database named <code>:memory:</code> lives exactly as long as your process does.</p>
+<h2 id="connect-insert-select">Connect, insert, select <a class="anchor" href="#connect-insert-select" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dbiish/01-sqlite.raku" title="This example as a file: 01-sqlite.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DBIish</span>;
+
+<span class="k">my</span> <span class="nv">$dbh</span> = <span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'SQLite'</span>, <span class="n">database</span> =&gt; <span class="s">':memory:'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'CREATE TABLE towns (name TEXT, population INTEGER, founded INTEGER)'</span>);
+
+<span class="k">my</span> <span class="nv">$ins</span> = <span class="nv">$dbh</span>.<span class="n">prepare</span>(<span class="s">'INSERT INTO towns (name, population, founded) VALUES (?, ?, ?)'</span>);
+<span class="nv">$ins</span>.<span class="n">execute</span>(<span class="s">'Ashby'</span>, <span class="mi">1200</span>, <span class="mi">1601</span>);
+<span class="nv">$ins</span>.<span class="n">execute</span>(<span class="s">'Brill'</span>, <span class="mi">950</span>, <span class="mi">1354</span>);
+<span class="nv">$ins</span>.<span class="n">execute</span>(<span class="s">'Cowes'</span>, <span class="mi">10400</span>, <span class="mi">1720</span>);
+
+<span class="k">my</span> <span class="nv">$sth</span> = <span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'SELECT name, population FROM towns WHERE population &gt; ? ORDER BY name'</span>, <span class="mi">1000</span>);
+<span class="k">for</span> <span class="nv">$sth</span>.<span class="n">allrows</span>(:<span class="n">array-of-hash</span>) -&gt; <span class="nv">%row</span> {
+    <span class="nb">say</span> <span class="s">&quot;%row&lt;name&gt;: %row&lt;population&gt;&quot;</span>;
+}
+<span class="nb">say</span> <span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'SELECT sum(population) AS total FROM towns'</span>).<span class="n">row</span>(:<span class="n">hash</span>);
+<span class="nb">say</span> <span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'SELECT name FROM towns WHERE founded &lt; 1500'</span>).<span class="n">row</span>;
+<span class="nv">$dbh</span>.<span class="n">dispose</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Ashby: 1200
+Cowes: 10400
+{total =&gt; 12550}
+[Brill]</code></pre></div>
+<p><code>prepare</code> once and <code>execute</code> many is the shape for a loop of inserts; for a one-off query <code>$dbh.execute</code> prepares and runs in one call, and its positional arguments fill the <code>?</code> placeholders in order. What comes back is a statement handle, and the handle is where the rows live: <code>row</code> gives the next one as an Array (or as a Hash with <code>:hash</code>), <code>allrows</code> the rest of them, and <code>allrows(:array-of-hash)</code> the rest keyed by column name — which is the one to reach for whenever the columns have names worth using.</p>
+<p>The values already have their Raku types. An <code>INTEGER</code> column arrives as an <code>Int</code>, <code>REAL</code> as a <code>Num</code>, <code>TEXT</code> as a <code>Str</code>, a <code>BLOB</code> as a <code>Buf</code>, and SQL's <code>NULL</code> as an undefined <code>Any</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dbiish/02-types.raku" title="This example as a file: 02-types.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DBIish</span>;
+
+<span class="k">my</span> <span class="nv">$dbh</span> = <span class="n">DBIish</span>.<span class="n">connect</span>(<span class="s">'SQLite'</span>, <span class="n">database</span> =&gt; <span class="s">':memory:'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'CREATE TABLE t (i INTEGER, r REAL, s TEXT, b BLOB, n INTEGER)'</span>);
+<span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'INSERT INTO t VALUES (?, ?, ?, ?, NULL)'</span>, <span class="mi">7</span>, <span class="mf">2.5</span>, <span class="s">'seven'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>));
+
+<span class="k">my</span> <span class="nv">@row</span> = <span class="nv">$dbh</span>.<span class="n">execute</span>(<span class="s">'SELECT i, r, s, b, n FROM t'</span>).<span class="n">row</span>;
+<span class="nb">say</span> <span class="nv">@row</span>.<span class="nb">map</span>({ .<span class="nb">defined</span> ?? .^<span class="n">name</span> !! <span class="s">'NULL'</span> }).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="nv">@row</span>[<span class="mi">3</span>].<span class="nb">list</span>.<span class="nb">join</span>(<span class="s">'-'</span>);
+
+<span class="k">my</span> <span class="nv">$sth</span> = <span class="nv">$dbh</span>.<span class="n">prepare</span>(<span class="s">'SELECT i FROM t WHERE i = ?'</span>);
+<span class="nb">say</span> <span class="nv">$sth</span>.<span class="n">execute</span>(<span class="mi">7</span>).<span class="n">row</span>;
+<span class="nb">say</span> <span class="nv">$sth</span>.<span class="n">execute</span>(<span class="mi">8</span>).<span class="n">row</span>.<span class="nb">elems</span>;
+<span class="nv">$dbh</span>.<span class="n">dispose</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Int, Num, Str, Buf, NULL
+1-2-3
+[7]
+0</code></pre></div>
+<p>The last line is worth a look: a query that matches nothing answers <code>row</code> with an <strong>empty Array</strong>, not with <code>Nil</code> or a failure, so the test for "no such row" is <code>.elems</code> or an <code>if @row</code>, never <code>.defined</code>. A SQL error — a column that does not exist, a constraint that fails — throws <code>X::DBDish::DBError</code>, with the driver's own message in it.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The driver is loaded, and its C library opened, at <code>connect</code> — not at <code>use DBIish</code>. A program compiles and starts happily on a machine without <code>libsqlite3</code> or <code>libpq</code>, and fails at the first connection with a message from NativeCall about a library it could not locate. Install the client library for the databases you actually talk to, and expect the error at that line.</p>
+<p>One more thing that follows from the dependency list. <code>NativeHelpers::Blob</code> is a distribution Raku++ answers itself: <code>rakupp install DBIish</code> notes that it is <em>provided by rakupp — using the bundled shadow</em> and writes nothing for it into the store. A Rakudo sharing that store then cannot find it, and its <code>DBDish::SQLite</code> refuses to compile. If both engines run on one machine, give Rakudo its own copy with <code>zef install NativeHelpers::Blob</code>; after that the examples above print the same thing under either.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

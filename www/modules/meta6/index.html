@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>META6 — The Raku Ecosystem, Working</title>
+<meta name="description" content="A distribution's META6.json as a typed object — name, version, provides, the four kinds of dependency — read from a string or a file and written back out, with every field the specification names as a method.">
+<link rel="canonical" href="https://raku.online/modules/meta6/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="META6 — The Raku Ecosystem, Working">
+<meta property="og:description" content="A distribution's META6.json as a typed object — name, version, provides, the four kinds of dependency — read from a string or a file and written back out, with every field the specification names as a method.">
+<meta property="og:url" content="https://raku.online/modules/meta6/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"META6","description":"A distribution's META6.json as a typed object — name, version, provides, the four kinds of dependency — read from a string or a file and written back out, with every field the specification names as a method.","programmingLanguage":"Raku","version":"0.0.31","url":"https://raku.online/modules/meta6/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/META6"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>META6</h1><span class="status st-full">Works</span></div><p class="summary">A distribution's META6.json as a typed object — name, version, provides, the four kinds of dependency — read from a string or a file and written back out, with every field the specification names as a method.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.31</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Class</code>, <code>JSON::Name</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>9 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/META6">raku.land</a> · <a href="https://github.com/jonathanstowe/META6">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install META6</code></pre></div><p class="fact-sub"><code>zef install META6</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Every distribution carries a <code>META6.json</code>, and every tool that works on distributions — an installer, a linter, a release script, the test that checks the file is sane — starts by reading it. Reading it with a JSON parser gives a hash with whatever keys happened to be there; reading it with this distribution gives an object whose methods are the fields the specification defines, with <code>version</code> already a <code>Version</code>, the dependency lists already lists, and the unknown keys where they belong.</p>
+<p>It is <code>JSON::Class</code> applied to one document type — the class declares an attribute per field, and the role does the reading and writing. <code>Test::META</code> is the best-known thing built on it; eight distributions depend on it.</p>
+<h2 id="reading-one">Reading one <a class="anchor" href="#reading-one" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/meta6/01-read.raku" title="This example as a file: 01-read.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">META6</span>;
+
+<span class="k">my</span> <span class="nv">$json</span> = <span class="s">q:to/JSON/</span>;
+<span class="s">    { &quot;name&quot;: &quot;Widget::Tools&quot;, &quot;version&quot;: &quot;1.2.3&quot;, &quot;auth&quot;: &quot;zef:someone&quot;,
+      &quot;description&quot;: &quot;Tools for widgets&quot;, &quot;raku&quot;: &quot;6.d&quot;, &quot;license&quot;: &quot;Artistic-2.0&quot;,
+      &quot;authors&quot;: [&quot;A. Person&quot;],
+      &quot;provides&quot;: { &quot;Widget::Tools&quot;: &quot;lib/Widget/Tools.rakumod&quot; },
+      &quot;depends&quot;: [&quot;JSON::Fast&quot;, &quot;URI:ver&lt;0.3+&gt;&quot;], &quot;test-depends&quot;: [&quot;Test::META&quot;],
+      &quot;source-url&quot;: &quot;https://example.org/widget-tools.git&quot; }
+    JSON
+</span>
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">META6</span>.<span class="nb">new</span>(:<span class="nv">$json</span>);
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">$m</span>.<span class="n">version</span>, <span class="s">' ('</span>, <span class="nv">$m</span>.<span class="n">version</span>.^<span class="n">name</span>, <span class="s">')'</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">raku-version</span>, <span class="s">' '</span>, <span class="nv">$m</span>.<span class="n">license</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">depends</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">test-depends</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">provides</span>.<span class="nb">keys</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="nv">$m</span><span class="s">&lt;auth&gt;</span>;
+<span class="nb">say</span> <span class="n">META6</span>.<span class="nb">new</span>(<span class="n">json</span> =&gt; <span class="nv">$m</span>.<span class="n">to-json</span>).<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Widget::Tools v1.2.3 (Version)
+v6.d Artistic-2.0
+JSON::Fast, URI:ver&lt;0.3+&gt;
+Test::META
+Widget::Tools
+zef:someone
+Widget::Tools</code></pre></div>
+<p><code>new(:$json)</code> reads a string and <code>new(file =&gt; 'META6.json')</code> a file; the object also answers hash subscripts (<code>$m&lt;auth&gt;</code>) for the times a field name is in a variable. <code>to-json</code> writes it back, and the last line shows that a document survives the round trip — a release script can read, bump <code>version</code>, and write.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The dependency fields keep the shape the file used, and the specification allows two. <code>"depends": ["A", "B"]</code> comes back as a list of strings, as above; the phase form, <code>"depends": { "runtime": { "requires": ["A"] } }</code>, comes back as that nested hash. <code>.depends</code> does not flatten one into the other, so a tool that walks dependencies has to accept both shapes — which the ecosystem's own installers do, and which a quick script tends to forget on the second one it meets.</p>
+<p>One more field to read carefully: the language version is taken from the <code>raku</code> key, as the current specification spells it. A file that still says <code>"perl": "6.d"</code> — and many older ones do — leaves <code>raku-version</code> undefined rather than being read under the old name, and <code>meta-version</code> defaults to <code>v0</code> when the key is absent, as it is in most files in the wild.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

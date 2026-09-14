@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Config — The Raku Ecosystem, Working</title>
+<meta name="description" content="A settings object with a template of allowed keys, dotted paths into nested values, and readers for hashes, files, environment variables and XDG directories — where every change hands back a new Config.">
+<link rel="canonical" href="https://raku.online/modules/config/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Config — The Raku Ecosystem, Working">
+<meta property="og:description" content="A settings object with a template of allowed keys, dotted paths into nested values, and readers for hashes, files, environment variables and XDG directories — where every change hands back a new Config.">
+<meta property="og:url" content="https://raku.online/modules/config/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Config","description":"A settings object with a template of allowed keys, dotted paths into nested values, and readers for hashes, files, environment variables and XDG directories — where every change hands back a new Config.","programmingLanguage":"Raku","version":"3.0.4","url":"https://raku.online/modules/config/","license":"https://spdx.org/licenses/LGPL-3.0-only","codeRepository":"https://home.tyil.nl/git/raku/Config/"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · configuration</div><h1>Config</h1><span class="status st-full">Works</span></div><p class="summary">A settings object with a template of allowed keys, dotted paths into nested values, and readers for hashes, files, environment variables and XDG directories — where every change hands back a new Config.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>3.0.4</code> <span class="fact-sub">cpan:TYIL</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Hash::Merge</code>, <code>IO::Glob</code>, <code>IO::Path::XDG</code>, <code>Log</code></dd></div><div class="fact"><dt>License</dt><dd>LGPL-3.0-only</dd></div><div class="fact"><dt>Its own test suite</dt><dd>9 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/cpan:TYIL/Config">raku.land</a> · <a href="https://home.tyil.nl/git/raku/Config/">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Config</code></pre></div><p class="fact-sub"><code>zef install Config</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Settings come from several places and the later ones win: the defaults in the program, then a file in the user's config directory, then the environment, then whatever was typed on the command line. Doing that with a plain hash means writing the merge, the dotted lookup (<code>db.port</code>) and the "is this key even allowed" check yourself, three times over three projects.</p>
+<p>This distribution is those three things as one object. A <code>Config</code> starts from a <strong>template</strong> — a hash whose keys are the settings that exist and whose values are their defaults — and then layers other sources onto it: another hash, a file, the environment, the XDG config directories. Eleven distributions build on it, mostly the author's own tools.</p>
+<h2 id="layers">Layers <a class="anchor" href="#layers" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/config/01-layers.raku" title="This example as a file: 01-layers.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Config</span>;
+
+<span class="k">my</span> <span class="nv">$defaults</span> = <span class="n">Config</span>.<span class="nb">new</span>({ <span class="n">name</span> =&gt; <span class="s">'app'</span>, <span class="n">port</span> =&gt; <span class="mi">8080</span>, <span class="n">db</span> =&gt; { <span class="n">host</span> =&gt; <span class="s">'localhost'</span>, <span class="n">port</span> =&gt; <span class="mi">5432</span> } },
+                          :!<span class="n">from-env</span>, :!<span class="n">from-xdg</span>);
+<span class="nb">say</span> <span class="nv">$defaults</span>.<span class="n">get</span>(<span class="s">'db.port'</span>);
+<span class="nb">say</span> <span class="nv">$defaults</span>.<span class="n">get</span>(<span class="s">'db.user'</span>, <span class="s">'nobody'</span>);
+<span class="nb">say</span> <span class="nv">$defaults</span>.<span class="n">has</span>(<span class="s">'db.host'</span>), <span class="s">' '</span>, <span class="nv">$defaults</span>.<span class="n">has</span>(<span class="s">'db.user'</span>);
+
+<span class="k">my</span> <span class="nv">$site</span> = <span class="nv">$defaults</span>.<span class="n">read</span>({ <span class="n">port</span> =&gt; <span class="mi">9090</span>, <span class="n">db</span> =&gt; { <span class="n">host</span> =&gt; <span class="s">'db.internal'</span> } });
+<span class="nb">say</span> <span class="nv">$site</span>.<span class="n">get</span>(<span class="s">'port'</span>), <span class="s">' '</span>, <span class="nv">$site</span>.<span class="n">get</span>(<span class="s">'db.host'</span>), <span class="s">' '</span>, <span class="nv">$site</span>.<span class="n">get</span>(<span class="s">'db.port'</span>);
+<span class="nb">say</span> <span class="nv">$defaults</span>.<span class="n">get</span>(<span class="s">'port'</span>);
+<span class="nb">say</span> <span class="nv">$site</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>5432
+nobody
+True False
+9090 db.internal 5432
+8080
+db.host,db.port,name,port</code></pre></div>
+<p><code>get</code> takes a dotted path and an optional fallback, <code>has</code> answers whether the path is set, and <code>keys</code> lists the leaves. <code>read</code> with a hash merges it in <strong>and returns a new object</strong> — the second <code>$defaults.get('port')</code> is still 8080 — which is the shape the author chose for every mutator: <code>set</code> and <code>unset</code> return a new Config too, and the old one is what it was.</p>
+<p>Two switches in <code>new</code> are worth knowing on day one, because they default to <em>on</em>: <code>:from-env</code> reads settings out of environment variables named after the config, and <code>:from-xdg</code> looks for files in the XDG config directories. Both are the point of the module in a deployed program and a surprise in a test, which is why the examples turn them off.</p>
+<p>Reading a file is <code>read('settings.json')</code>, and the parser is chosen by the extension — but this distribution ships <strong>no parsers</strong>. Each format is its own distribution (<code>Config::Parser::json</code>, <code>::yaml</code>, <code>::toml</code>), and without one installed the read fails after the file is found. A path that does not exist throws <code>X::Config::FileNotFound</code> first.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The copy that <code>set</code> makes is one level deep. A top-level key behaves as the immutable design promises; a nested one is reached through a hash the new object still shares with the old, so the write lands in both:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/config/02-write-through.raku" title="This example as a file: 02-write-through.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Config</span>;
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Config</span>.<span class="nb">new</span>({ <span class="n">port</span> =&gt; <span class="mi">8080</span>, <span class="n">db</span> =&gt; { <span class="n">port</span> =&gt; <span class="mi">5432</span> } }, :!<span class="n">from-env</span>, :!<span class="n">from-xdg</span>);
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nv">$c</span>.<span class="n">set</span>(<span class="s">'port'</span>, <span class="mi">9090</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'port'</span>), <span class="s">' '</span>, <span class="nv">$d</span>.<span class="n">get</span>(<span class="s">'port'</span>);
+<span class="k">my</span> <span class="nv">$e</span> = <span class="nv">$c</span>.<span class="n">set</span>(<span class="s">'db.port'</span>, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'db.port'</span>), <span class="s">' '</span>, <span class="nv">$e</span>.<span class="n">get</span>(<span class="s">'db.port'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>8080 9090
+1 1</code></pre></div>
+<p><code>read</code> does not have this problem — it merges through <code>Hash::Merge</code>, which builds fresh hashes on the way down. So if you keep an old Config around to compare against or to fall back to, change nested values with <code>read({ db =&gt; { port =&gt; 1 } })</code> rather than <code>set('db.port', 1)</code>, and the old object stays what it was. The same output appears under both engines: this is the module's copy, not the interpreter's.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

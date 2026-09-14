@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Class — The Raku Ecosystem, Working</title>
+<meta name="description" content="A role that gives any class a `to-json` and a `from-json` — public attributes out, typed objects back in, nested classes and typed arrays included — built on JSON::Marshal and JSON::Unmarshal.">
+<link rel="canonical" href="https://raku.online/modules/json-class/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::Class — The Raku Ecosystem, Working">
+<meta property="og:description" content="A role that gives any class a `to-json` and a `from-json` — public attributes out, typed objects back in, nested classes and typed arrays included — built on JSON::Marshal and JSON::Unmarshal.">
+<meta property="og:url" content="https://raku.online/modules/json-class/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::Class","description":"A role that gives any class a `to-json` and a `from-json` — public attributes out, typed objects back in, nested classes and typed arrays included — built on JSON::Marshal and JSON::Unmarshal.","programmingLanguage":"Raku","version":"0.0.21","url":"https://raku.online/modules/json-class/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/JSON-Class"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Class</h1><span class="status st-full">Works</span></div><p class="summary">A role that gives any class a <code>to-json</code> and a <code>from-json</code> — public attributes out, typed objects back in, nested classes and typed arrays included — built on JSON::Marshal and JSON::Unmarshal.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.21</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Marshal</code>, <code>JSON::Unmarshal</code>, <code>JSON::OptIn</code>, <code>JSON::Name</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>6 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/JSON::Class">raku.land</a> · <a href="https://github.com/jonathanstowe/JSON-Class">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Class</code></pre></div><p class="fact-sub"><code>zef install JSON::Class</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>JSON::Fast</code> turns JSON into hashes and arrays, and for a configuration file that is exactly right. For a record with a known shape it is one step short: you wanted a <code>Person</code> with an <code>Int</code> birth year and an <code>Address</code> inside it, not a hash you check the keys of by hand. This role closes the gap. Compose it into a class and the class gains <code>to-json</code>, which walks the public attributes, and <code>from-json</code>, which reads a document into a new instance — recursing into attributes whose types are themselves classes, and refusing values that do not fit the declared type.</p>
+<p>The two directions are separate distributions (<code>JSON::Marshal</code> and <code>JSON::Unmarshal</code>) and this one is the thirty-line role that puts both on a class; sixteen other distributions build on it, <code>META6</code> among them.</p>
+<h2 id="in-and-out">In and out <a class="anchor" href="#in-and-out" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-class/01-round-trip.raku" title="This example as a file: 01-round-trip.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Class</span>;
+
+<span class="k">class</span> <span class="n">Address</span> <span class="k">does</span> <span class="n">JSON::Class</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.city</span>; <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.country</span> }
+<span class="k">class</span> <span class="n">Person</span> <span class="k">does</span> <span class="n">JSON::Class</span> {
+    <span class="k">has</span> <span class="nb">Str</span>     <span class="nv">$.name</span>;
+    <span class="k">has</span> <span class="nb">Int</span>     <span class="nv">$.born</span>;
+    <span class="k">has</span> <span class="n">Address</span> <span class="nv">$.address</span>;
+    <span class="k">has</span> <span class="nb">Str</span>     <span class="nv">@.tags</span>;
+    <span class="k">has</span> <span class="nb">Bool</span>    <span class="nv">$.active</span> = <span class="n">True</span>;
+    <span class="k">has</span> <span class="nb">Str</span>     <span class="nv">$!secret</span> = <span class="s">'not yours'</span>;
+}
+
+<span class="k">my</span> <span class="nv">$ada</span> = <span class="n">Person</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'Ada'</span>, <span class="n">born</span> =&gt; <span class="mi">1815</span>, <span class="n">tags</span> =&gt; <span class="s">&lt;maths engines&gt;</span>,
+                     <span class="n">address</span> =&gt; <span class="n">Address</span>.<span class="nb">new</span>(<span class="n">city</span> =&gt; <span class="s">'London'</span>, <span class="n">country</span> =&gt; <span class="s">'UK'</span>));
+<span class="nb">say</span> <span class="nv">$ada</span>.<span class="n">to-json</span>(:!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+
+<span class="k">my</span> <span class="nv">$grace</span> = <span class="n">Person</span>.<span class="n">from-json</span>(<span class="s">'{&quot;name&quot;:&quot;Grace&quot;,&quot;born&quot;:1906,&quot;tags&quot;:[&quot;compilers&quot;],'</span>
+                           ~ <span class="s">'&quot;address&quot;:{&quot;city&quot;:&quot;New York&quot;,&quot;country&quot;:&quot;US&quot;}}'</span>);
+<span class="nb">say</span> <span class="nv">$grace</span>.<span class="n">address</span>.<span class="n">city</span>, <span class="s">', '</span>, <span class="nv">$grace</span>.<span class="n">address</span>.^<span class="n">name</span>, <span class="s">', born '</span>, <span class="nv">$grace</span>.<span class="n">born</span> + <span class="mi">0</span>;
+<span class="nb">say</span> <span class="nv">$grace</span>.<span class="n">active</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{"active":true,"address":{"city":"London","country":"UK"},"born":1815,"name":"Ada","tags":["maths","engines"]}
+New York, Address, born 1906
+True</code></pre></div>
+<p>Only attributes with accessors travel — <code>$!secret</code> is in neither direction — and a default fills in for anything the document leaves out, which is how <code>$grace.active</code> is <code>True</code>. A key the class does not declare is ignored on the way in; a value of the wrong type (<code>"born": "not a number"</code>) throws <code>JSON::Unmarshal::X::CannotUnmarshal</code>, naming the attribute.</p>
+<p>A document that is a list of records has a shape too, and the role covers it with one idiom: parameterise <code>Array</code> with the class and mix the role into the result.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-class/02-typed-array.raku" title="This example as a file: 02-typed-array.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Class</span>;
+
+<span class="k">class</span> <span class="n">Person</span> <span class="k">does</span> <span class="n">JSON::Class</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.name</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.born</span> }
+<span class="k">constant</span> <span class="n">People</span> = (<span class="nb">Array</span>[<span class="n">Person</span>] <span class="k">but</span> <span class="n">JSON::Class</span>);
+
+<span class="k">my</span> <span class="nv">$many</span> = <span class="n">People</span>.<span class="n">from-json</span>(<span class="s">'[{&quot;name&quot;:&quot;Ada&quot;,&quot;born&quot;:1815},{&quot;name&quot;:&quot;Grace&quot;,&quot;born&quot;:1906}]'</span>);
+<span class="nb">say</span> <span class="nv">$many</span>.<span class="nb">elems</span>, <span class="s">' '</span>, <span class="nv">$many</span>[<span class="mi">0</span>].^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">$many</span>.<span class="nb">map</span>(*.<span class="n">name</span>).<span class="nb">join</span>(<span class="s">' &amp; '</span>);
+<span class="nb">say</span> <span class="nv">$many</span>.<span class="n">to-json</span>(:!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2 Person Ada &amp; Grace
+[{"born":1815,"name":"Ada"},{"born":1906,"name":"Grace"}]</code></pre></div>
+<p>Under the Raku++ 3.28.0 release this second form came back as an array of plain hashes, because the mixed type answered <code>Mu</code> when asked what its elements were. The engine has been fixed since, and the example runs on both engines like every other one here.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Pass <code>:sorted-keys</code>, or the order of the keys is whatever the hash gives you. <code>to-json</code> walks a hash of the attributes, and Rakudo randomises hash order per process — so the same object serialises differently on two runs, which is harmless for a consumer and a nuisance for a test, a diff or a content hash. The examples above sort for exactly that reason.</p>
+<p>Two smaller defaults to know before relying on the output: <code>to-json</code> is pretty-printed unless you say <code>:!pretty</code>, and an attribute that holds no value is written as <code>null</code> rather than left out — <code>:skip-null</code> drops it. And if a class has attributes that must never reach the wire, <code>does JSON::Class[:opt-in]</code> flips the rule so that only the ones marked <code>is json</code> are serialised.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>
