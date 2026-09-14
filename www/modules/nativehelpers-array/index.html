@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NativeHelpers::Array — The Raku Ecosystem, Working</title>
+<meta name="description" content="Four subs that move data between a Raku Array or Buf and the CArray a C function wants — typed, sized and copied — so a NativeCall binding can hand a list to C and read one back without writing the loop each time.">
+<link rel="canonical" href="https://raku.online/modules/nativehelpers-array/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NativeHelpers::Array — The Raku Ecosystem, Working">
+<meta property="og:description" content="Four subs that move data between a Raku Array or Buf and the CArray a C function wants — typed, sized and copied — so a NativeCall binding can hand a list to C and read one back without writing the loop each time.">
+<meta property="og:url" content="https://raku.online/modules/nativehelpers-array/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"NativeHelpers::Array","description":"Four subs that move data between a Raku Array or Buf and the CArray a C function wants — typed, sized and copied — so a NativeCall binding can hand a list to C and read one back without writing the loop each time.","programmingLanguage":"Raku","version":"0.0.6","url":"https://raku.online/modules/nativehelpers-array/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/NativeHelpers-Array"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · native</div><h1>NativeHelpers::Array</h1><span class="status st-full">Works</span></div><p class="summary">Four subs that move data between a Raku Array or Buf and the CArray a C function wants — typed, sized and copied — so a NativeCall binding can hand a list to C and read one back without writing the loop each time.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.6</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/NativeHelpers::Array">raku.land</a> · <a href="https://github.com/jonathanstowe/NativeHelpers-Array">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install NativeHelpers::Array</code></pre></div><p class="fact-sub"><code>zef install NativeHelpers::Array</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A C function that takes <code>int *values, size_t n</code> wants a <code>CArray[int32]</code>, and a Raku program has an <code>Array</code>. The conversion is a loop, the loop is five lines, and every binding writes it twice — once in and once out, with the element count carried separately because a C array does not know its own length. This distribution is those loops, written once, with the type in the signature. Eleven distributions use it, mostly bindings to audio, image and database libraries.</p>
+<h2 id="the-four-copies">The four copies <a class="anchor" href="#the-four-copies" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativehelpers-array/01-copies.raku" title="This example as a file: 01-copies.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">use</span> <span class="n">NativeHelpers::Array</span>;
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">copy-to-carray</span>([<span class="mi">3</span>, <span class="mi">1</span>, <span class="mi">4</span>, <span class="mi">1</span>, <span class="mi">5</span>], <span class="nb">int32</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="nb">elems</span>, <span class="s">' '</span>, <span class="nv">$c</span>[<span class="mi">2</span>], <span class="s">' '</span>, <span class="nv">$c</span>.<span class="n">of</span>;
+<span class="nb">say</span> <span class="n">copy-to-array</span>(<span class="nv">$c</span>, <span class="mi">5</span>);
+<span class="nb">say</span> <span class="n">copy-to-array</span>(<span class="nv">$c</span>, <span class="mi">3</span>);
+
+<span class="k">my</span> <span class="nv">$bytes</span> = <span class="n">copy-buf-to-carray</span>(<span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mi">72</span>, <span class="mi">105</span>, <span class="mi">33</span>));
+<span class="nb">say</span> <span class="nv">$bytes</span>.<span class="n">of</span>, <span class="s">' '</span>, <span class="nv">$bytes</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">copy-carray-to-buf</span>(<span class="nv">$bytes</span>, <span class="mi">3</span>).<span class="n">decode</span>;
+<span class="nb">say</span> <span class="n">copy-carray-to-buf</span>(<span class="nv">$bytes</span>, <span class="mi">2</span>).<span class="n">decode</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>5 4 (int32)
+[3 1 4 1 5]
+[3 1 4]
+(uint8) 3
+Hi!
+Hi</code></pre></div>
+<p><code>copy-to-carray</code> takes the list and the native type — <code>int32</code>, <code>num64</code>, <code>uint8</code>, any type a <code>CArray</code> can be parameterised with — and gives back a freshly allocated <code>CArray</code> of that type. <code>copy-buf-to-carray</code> is the same for a <code>Buf</code>, whose element type is already known to be a byte. The two reverse subs take the count as their second argument, and that count is the whole point of the API: it is <em>your</em> number, because a <code>CArray</code> that came back from C has no idea how long it is. Ask for three of five and you get three.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>These are copies, and they are copies in both directions. <code>copy-to-carray</code> allocates new native memory and fills it; writing into the <code>CArray</code> after that does not change the Array it came from, and reading the Array back with <code>copy-to-array</code> after C has written into the <code>CArray</code> is the only way to see C's changes. That is the behaviour you want for a function that reads its input, and a trap for one that fills a buffer <em>in place</em>: pass the <code>CArray</code> itself, keep it, and copy out afterwards — the original Array is not aliased and never will be.</p>
+<p>The other thing to know is that <code>.^name</code> of a <code>CArray</code> differs between engines (<code>CArray[int32]</code> here, <code>NativeCall::Types::CArray[int32]</code> under Rakudo), which is why the example prints <code>.of</code> and <code>.elems</code> instead. The values are the same; only the spelling of the type is not.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

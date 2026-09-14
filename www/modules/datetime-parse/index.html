@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DateTime::Parse — The Raku Ecosystem, Working</title>
+<meta name="description" content="A DateTime from the date strings the web writes — RFC 1123, the older RFC 850, C's `asctime`, and ISO 8601 — through one constructor that tries the grammars in turn.">
+<link rel="canonical" href="https://raku.online/modules/datetime-parse/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DateTime::Parse — The Raku Ecosystem, Working">
+<meta property="og:description" content="A DateTime from the date strings the web writes — RFC 1123, the older RFC 850, C's `asctime`, and ISO 8601 — through one constructor that tries the grammars in turn.">
+<meta property="og:url" content="https://raku.online/modules/datetime-parse/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"DateTime::Parse","description":"A DateTime from the date strings the web writes — RFC 1123, the older RFC 850, C's `asctime`, and ISO 8601 — through one constructor that tries the grammars in turn.","programmingLanguage":"Raku","version":"0.9.3","url":"https://raku.online/modules/datetime-parse/","codeRepository":"https://github.com/sergot/datetime-parse"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · time</div><h1>DateTime::Parse</h1><span class="status st-full">Works</span></div><p class="summary">A DateTime from the date strings the web writes — RFC 1123, the older RFC 850, C's <code>asctime</code>, and ISO 8601 — through one constructor that tries the grammars in turn.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.9.3</code> <span class="fact-sub">github:sergot</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:sergot/DateTime::Parse">raku.land</a> · <a href="https://github.com/sergot/datetime-parse">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install DateTime::Parse</code></pre></div><p class="fact-sub"><code>zef install DateTime::Parse</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>DateTime.new('2026-09-14T15:04:05Z')</code> works because that is the one format the core understands. An HTTP <code>Date</code> header says <code>Sun, 06 Nov 1994 08:49:37 GMT</code>, a cookie's <code>expires</code> may still say <code>Sunday, 06-Nov-94 08:49:37 GMT</code>, and a log line from a C program says <code>Sun Nov  6 08:49:37 1994</code> — the three forms RFC 7231 tells a client it must accept. This distribution is a grammar for each with actions that build a <code>DateTime</code>, and a constructor that tries them. It is what <code>HTTP::UserAgent</code> and its relatives use to read a server's headers; five distributions depend on it.</p>
+<h2 id="the-four-forms">The four forms <a class="anchor" href="#the-four-forms" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/datetime-parse/01-parse.raku" title="This example as a file: 01-parse.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DateTime::Parse</span>;
+
+<span class="nb">say</span> <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'Sun, 06 Nov 1994 08:49:37 GMT'</span>);
+<span class="nb">say</span> <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'Sun Nov  6 08:49:37 1994'</span>);
+<span class="nb">say</span> <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'2026-09-14T15:04:05Z'</span>);
+<span class="nb">say</span> <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'Sun, 06 Nov 1994 08:49:37 GMT'</span>).^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'Sunday, 06-Nov-94 08:49:37 GMT'</span>).<span class="n">year</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="n">DateTime::Parse</span>.<span class="nb">new</span>(<span class="s">'2026-09-14 15:04:05'</span>) }) // <span class="nv">$!</span>.^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1994-11-06T08:49:37Z
+1994-11-06T08:49:37Z
+2026-09-14T15:04:05Z
+DateTime
+94
+X::DateTime::CannotParse</code></pre></div>
+<p>What comes back is a plain core <code>DateTime</code> — the class is named after the parser, but <code>new</code> returns the parsed value rather than an instance of itself, so nothing downstream has to know where the object came from. A string none of the grammars accept throws <code>X::DateTime::CannotParse</code> with the text in the message. The <code>:timezone</code> option applies an offset in seconds for a format that carries none, and <code>:rule</code> names one grammar to try instead of all of them.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The two-digit year is taken literally. RFC 850's <code>06-Nov-94</code> is the year <strong>94</strong>, not 1994 — the fifth line above — because the grammar reads the digits into the year field and nothing adds the century. The format was obsolete before the module was written and still turns up in cookies from old servers, so if you read cookie expiry dates, check <code>.year &lt; 100</code> and add 1900 or 2000 by RFC 6265's rule (69 and up is the twentieth century) before trusting the result. Nothing else in the module has this problem; the other three forms carry four digits.</p>
+<p>The space-separated ISO form, <code>2026-09-14 15:04:05</code>, is not one of the four: only the <code>T</code> spelling is accepted, so a timestamp from a database export needs its space turned into a <code>T</code> first.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -643,12 +643,30 @@ sub examples-readme($mod --> Str) {
 # reader clones, so the file is what has to work. (They cannot differ — the file
 # is generated from the page — but checking the generated artifact is what makes
 # that a fact rather than an intention.)
+#| How long one example may run before the gate gives up on it. An HTTP
+#| example whose client waited on a socket its server had closed sat for two
+#| hours with the gate behind it; nothing on these pages legitimately takes
+#| more than a few seconds, and a hang must fail the build, not stall it.
+constant EXAMPLE-TIMEOUT = 120;
+
 sub run-example(Str $exe, $mod, $ex) {
     my $path = example-dir($mod.slug) ~ '/' ~ $ex.file;
-    my $proc = run($exe, $path, :out, :err);
-    my $out = $proc.out.slurp(:close).subst(/ \n+ $ /, '');
-    my $err = $proc.err.slurp(:close);
-    $out, $err
+    my $proc = Proc::Async.new($exe, $path);
+    my ($out, $err) = ('', '');
+    $proc.stdout.tap({ $out ~= $_ });
+    $proc.stderr.tap({ $err ~= $_ });
+    my $done  = $proc.start;
+    my $timer = Promise.in(EXAMPLE-TIMEOUT);
+    await Promise.anyof($done, $timer);
+    if $done.status != Kept {
+        $proc.kill(SIGKILL);
+        my $ = try await $done;   # a killed Proc throws when SUNK, so keep it
+        $err ~= "TIMEOUT: still running after {EXAMPLE-TIMEOUT}s, killed\n";
+    }
+    else {
+        my $ = try await $done;   # …and so does one that exited non-zero
+    }
+    $out.subst(/ \n+ $ /, ''), $err
 }
 
 # Every example is run TWICE per engine. Once proves the output; twice proves it

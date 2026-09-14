@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenSSL — The Raku Ecosystem, Working</title>
+<meta name="description" content="The OpenSSL library through NativeCall — digests, symmetric ciphers, RSA, X.509 and the TLS socket that IO::Socket::SSL is built on — in nineteen units, of which most programs want two.">
+<link rel="canonical" href="https://raku.online/modules/openssl/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OpenSSL — The Raku Ecosystem, Working">
+<meta property="og:description" content="The OpenSSL library through NativeCall — digests, symmetric ciphers, RSA, X.509 and the TLS socket that IO::Socket::SSL is built on — in nineteen units, of which most programs want two.">
+<meta property="og:url" content="https://raku.online/modules/openssl/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"OpenSSL","description":"The OpenSSL library through NativeCall — digests, symmetric ciphers, RSA, X.509 and the TLS socket that IO::Socket::SSL is built on — in nineteen units, of which most programs want two.","programmingLanguage":"Raku","version":"0.2.9","url":"https://raku.online/modules/openssl/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/raku-community-modules/OpenSSL"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · crypto</div><h1>OpenSSL</h1><span class="status st-full">Works</span></div><p class="summary">The OpenSSL library through NativeCall — digests, symmetric ciphers, RSA, X.509 and the TLS socket that IO::Socket::SSL is built on — in nineteen units, of which most programs want two.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.9</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>8 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/OpenSSL">raku.land</a> · <a href="https://github.com/raku-community-modules/OpenSSL">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install OpenSSL</code></pre></div><p class="fact-sub"><code>zef install OpenSSL</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Everything cryptographic that the operating system already ships in <code>libcrypto</code> and <code>libssl</code>, reached from Raku without reimplementing any of it: a SHA-256 that runs at C speed, AES with a real key schedule, RSA keys that other tools can read, certificates, and the TLS handshake that every HTTPS client needs. Seventeen distributions depend on it, and the one most people meet first is <code>IO::Socket::SSL</code>, which is a thin layer over the <code>OpenSSL</code> unit here.</p>
+<p>Nineteen units is a lot, and the split is by what you are doing rather than by what OpenSSL calls it. <code>OpenSSL::Digest</code> and <code>OpenSSL::CryptTools</code> are the two for ordinary programs; <code>OpenSSL::RSATools</code> signs and verifies; <code>OpenSSL::X509</code> reads certificates; the rest are the socket and the raw bindings behind them.</p>
+<h2 id="a-digest-and-a-cipher">A digest and a cipher <a class="anchor" href="#a-digest-and-a-cipher" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/openssl/01-digest-and-cipher.raku" title="This example as a file: 01-digest-and-cipher.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">OpenSSL::Digest</span>;
+<span class="k">use</span> <span class="n">OpenSSL::CryptTools</span>;
+
+<span class="nb">say</span> <span class="n">sha256-hex</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="n">md5-hex</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="n">sha1</span>(<span class="s">'abc'</span>).<span class="nb">elems</span>, <span class="s">' '</span>, <span class="n">sha512</span>(<span class="s">'abc'</span>).<span class="nb">elems</span>;
+
+<span class="k">my</span> <span class="nv">$key</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(^<span class="mi">32</span>);
+<span class="k">my</span> <span class="nv">$iv</span>  = <span class="nb">Buf</span>.<span class="nb">new</span>(^<span class="mi">16</span>);
+<span class="k">my</span> <span class="nv">$secret</span> = <span class="s">'attack at dawn'</span>.<span class="n">encode</span>;
+<span class="k">my</span> <span class="nv">$sealed</span> = <span class="n">encrypt</span>(<span class="nv">$secret</span>, :<span class="n">aes256</span>, :<span class="nv">$key</span>, :<span class="nv">$iv</span>);
+<span class="nb">say</span> <span class="nv">$sealed</span>.<span class="nb">elems</span>, <span class="s">' bytes; starts like the plaintext: '</span>, <span class="nv">$sealed</span>.<span class="n">subbuf</span>(<span class="mi">0</span>, <span class="mi">4</span>) <span class="n">eqv</span> <span class="nv">$secret</span>.<span class="n">subbuf</span>(<span class="mi">0</span>, <span class="mi">4</span>);
+<span class="nb">say</span> <span class="n">decrypt</span>(<span class="nv">$sealed</span>, :<span class="n">aes256</span>, :<span class="nv">$key</span>, :<span class="nv">$iv</span>).<span class="n">decode</span>;
+<span class="nb">say</span> <span class="n">decrypt</span>(<span class="nv">$sealed</span>, :<span class="n">aes256</span>, <span class="n">key</span> =&gt; <span class="nb">Buf</span>.<span class="nb">new</span>((^<span class="mi">32</span>).<span class="nb">map</span>(* + <span class="mi">1</span>)), :<span class="nv">$iv</span>).<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+900150983cd24fb0d6963f7d28e17f72
+20 64
+16 bytes; starts like the plaintext: False
+attack at dawn
+0</code></pre></div>
+<p>Each digest comes in two spellings — <code>sha256</code> returns the bytes, <code>sha256-hex</code> the string — and takes a <code>Str</code> (encoded as UTF-8) or a <code>Blob</code>. Fourteen bytes of plaintext become sixteen of ciphertext because AES works in blocks and pads the last one, and the same key and IV get the text back.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A wrong key does not throw. The last line above decrypts with a key that is off by one in every byte and gets <strong>zero bytes</strong> back — the padding check fails inside OpenSSL, the binding reports that as an empty buffer, and no exception marks the spot. Code that treats an empty result as "the message was empty" has a silent hole in it; check <code>.elems</code> before trusting a decryption, or better, authenticate the ciphertext (an HMAC over it, keyed separately) and refuse to decrypt anything that fails the check.</p>
+<p>The key and IV lengths are the other thing the binding will not check for you: <code>:aes256</code> wants exactly 32 key bytes and a 16-byte IV, <code>:aes128</code> 16 and 16. Short buffers are read past their end by the C code, which is the kind of bug that works on one machine and not another.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

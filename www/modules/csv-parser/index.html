@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV::Parser — The Raku Ecosystem, Working</title>
+<meta name="description" content="A CSV reader that works from an open file handle a line at a time — quoted fields, a header row that becomes the keys, and the separators and quote characters as options — for files too big to slurp.">
+<link rel="canonical" href="https://raku.online/modules/csv-parser/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CSV::Parser — The Raku Ecosystem, Working">
+<meta property="og:description" content="A CSV reader that works from an open file handle a line at a time — quoted fields, a header row that becomes the keys, and the separators and quote characters as options — for files too big to slurp.">
+<meta property="og:url" content="https://raku.online/modules/csv-parser/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"CSV::Parser","description":"A CSV reader that works from an open file handle a line at a time — quoted fields, a header row that becomes the keys, and the separators and quote characters as options — for files too big to slurp.","programmingLanguage":"Raku","version":"0.1.4","url":"https://raku.online/modules/csv-parser/","codeRepository":"https://github.com/tony-o/perl6-csv-parser"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>CSV::Parser</h1><span class="status st-full">Works</span></div><p class="summary">A CSV reader that works from an open file handle a line at a time — quoted fields, a header row that becomes the keys, and the separators and quote characters as options — for files too big to slurp.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.4</code> <span class="fact-sub">zef:tony-o</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tony-o/CSV::Parser">raku.land</a> · <a href="https://github.com/tony-o/perl6-csv-parser">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install CSV::Parser</code></pre></div><p class="fact-sub"><code>zef install CSV::Parser</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Splitting a line on commas works until the first field that contains one. CSV's quoting rules are simple to state and tedious to get right — quotes around a field that has a comma or a newline in it, doubled quotes for a literal one — and the files that need them are usually the large ones, an export from a database or a spreadsheet, that you want to read row by row rather than into memory at once. This distribution reads from a handle you opened, hands back one row per call, and if the first row is a header it uses those names as the keys.</p>
+<h2 id="rows-from-a-handle">Rows from a handle <a class="anchor" href="#rows-from-a-handle" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/csv-parser/01-rows.raku" title="This example as a file: 01-rows.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">CSV::Parser</span>;
+
+<span class="k">my</span> <span class="nv">$file</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;towns-{$*PID}.csv&quot;</span>);
+<span class="nv">$file</span>.<span class="nb">spurt</span>(<span class="s">qq:to/CSV/</span>);
+<span class="s">    name,population,motto
+    Ashby,1200,&quot;Small, but proud&quot;
+    Brill,950,&quot;Says &quot;&quot;hello&quot;&quot;&quot;
+    Cowes,10400,
+    CSV
+</span><span class="k">my</span> <span class="nv">$fh</span> = <span class="nv">$file</span>.<span class="nb">open</span>;
+<span class="k">my</span> <span class="nv">$csv</span> = <span class="n">CSV::Parser</span>.<span class="nb">new</span>(<span class="n">file_handle</span> =&gt; <span class="nv">$fh</span>, <span class="n">contains_header_row</span> =&gt; <span class="n">True</span>);
+<span class="k">until</span> <span class="nv">$fh</span>.<span class="n">eof</span> {
+    <span class="k">my</span> <span class="nv">%row</span> = <span class="nv">$csv</span>.<span class="n">get_line</span>;
+    <span class="k">next</span> <span class="k">unless</span> <span class="nv">%row</span>;
+    <span class="nb">say</span> <span class="nv">%row</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_=&quot;</span> ~ <span class="nv">%row</span>{<span class="nv">$_</span>} }).<span class="nb">join</span>(<span class="s">' | '</span>);
+}
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$csv</span>.<span class="n">headers</span>.<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="n">value</span>).<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nv">$file</span>.<span class="nb">unlink</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>motto=Small, but proud | name=Ashby | population=1200
+motto=Says ""hello"" | name=Brill | population=950
+motto= | name=Cowes | population=10400
+name,population,motto</code></pre></div>
+<p><code>get_line</code> reads the next record — a record, not a line, since a quoted field may span several — and answers a hash. With <code>contains_header_row</code> the keys are the header's names; without it they are the column positions as strings, <code>"0"</code>, <code>"1"</code> and so on, which <code>headers</code> reports either way. <code>field_separator</code>, <code>line_separator</code>, <code>field_operator</code> (the quote character) and <code>escape_operator</code> turn it into a reader for tab-separated files or a dialect with single quotes.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A doubled quote inside a quoted field is <strong>left doubled</strong>. The standard way to write a literal <code>"</code> in CSV is <code>""</code>, and the second row above shows what this parser does with it: <code>Says ""hello""</code> comes out with both pairs intact, where every spreadsheet would show <code>Says "hello"</code>. The quoting is otherwise honoured — the comma in <em>Small, but proud</em> did not split the field — so this is an omission at one step of the unquoting, and one you can repair after the fact with <code>.subst('""', '"', :g)</code> on the fields that were quoted. Data that contains a lot of quotation marks is the case to check before relying on it.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>
