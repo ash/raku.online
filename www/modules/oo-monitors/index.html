@@ -31,27 +31,13 @@
 <main>
 <div class="content">
 <p class="crumb"><a href="/modules/">← All modules</a></p>
-<div class="page-head"><div class="crumb">Distribution · concurrency</div><h1>OO::Monitors</h1><span class="status st-div">Divergent</span></div><p class="summary">A <code>monitor</code> declarator — a class whose every method call takes the object's own lock on the way in, so one thread at a time is inside it and the methods carry no locking code of their own.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1.7</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, basic.rakutest fails under Raku++</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/OO::Monitors">raku.land</a> · <a href="https://github.com/raku-community-modules/OO-Monitors">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install OO::Monitors</code></pre></div><p class="fact-sub"><code>zef install OO::Monitors</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<div class="page-head"><div class="crumb">Distribution · concurrency</div><h1>OO::Monitors</h1><span class="status st-full">Works</span></div><p class="summary">A <code>monitor</code> declarator — a class whose every method call takes the object's own lock on the way in, so one thread at a time is inside it and the methods carry no locking code of their own.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1.7</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/OO::Monitors">raku.land</a> · <a href="https://github.com/raku-community-modules/OO-Monitors">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install OO::Monitors</code></pre></div><p class="fact-sub"><code>zef install OO::Monitors</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
 <p>An object that several threads share needs its state changed by one of them at a time, and the usual way to arrange that is a <code>Lock</code> attribute and a <code>$!lock.protect: { … }</code> around the body of every method — which is repetitive, easy to forget on the one method added later, and the reason Hoare's <em>monitor</em> exists as a concept: a class where the protection is a property of the type rather than of each method.</p>
 <p>This distribution adds that concept as a declarator. <code>monitor Foo { … }</code> is <code>class Foo { … }</code> with a different metaclass, which gives every instance a hidden <code>Lock</code> and wraps each method so the lock is held for the call. The lock is re-entrant, so a method that calls another method of the same object does not deadlock on itself. Thirteen distributions build on it, including <code>Terminal::ANSI</code>'s stateful terminal object.</p>
-<h2 id="a-monitor-is-a-class">A monitor is a class <a class="anchor" href="#a-monitor-is-a-class" aria-label="link">#</a></h2>
+<h2 id="a-monitor-is-a-class-that-serialises-itself">A monitor is a class that serialises itself <a class="anchor" href="#a-monitor-is-a-class-that-serialises-itself" aria-label="link">#</a></h2>
 <div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/oo-monitors/01-declare.raku" title="This example as a file: 01-declare.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">OO::Monitors</span>;
 
-<span class="n">monitor</span> <span class="n">Ledger</span> {
-    <span class="k">has</span> <span class="nv">%!balance</span>;
-    <span class="k">method</span> <span class="n">deposit</span>(<span class="nb">Str</span> <span class="nv">$who</span>, <span class="nb">Int</span> <span class="nv">$amount</span>) { <span class="nv">%!balance</span>{<span class="nv">$who</span>} += <span class="nv">$amount</span>; <span class="nb">self</span> }
-    <span class="k">method</span> <span class="n">balance</span>(<span class="nb">Str</span> <span class="nv">$who</span>)             { <span class="nv">%!balance</span>{<span class="nv">$who</span>} <span class="sr">//</span> <span class="mi">0</span> }
-    <span class="k">method</span> <span class="n">total</span>                         { <span class="nv">%!balance</span>.<span class="nb">values</span>.<span class="nb">sum</span> }
-}
-
-<span class="k">my</span> <span class="nv">$ledger</span> = <span class="n">Ledger</span>.<span class="nb">new</span>;
-<span class="nv">$ledger</span>.<span class="n">deposit</span>(<span class="s">'ada'</span>, <span class="mi">40</span>).<span class="n">deposit</span>(<span class="s">'ada'</span>, <span class="mi">2</span>).<span class="n">deposit</span>(<span class="s">'grace'</span>, <span class="mi">10</span>);
-<span class="nb">say</span> <span class="nv">$ledger</span>.<span class="n">balance</span>(<span class="s">'ada'</span>), <span class="s">' '</span>, <span class="nv">$ledger</span>.<span class="n">balance</span>(<span class="s">'grace'</span>), <span class="s">' '</span>, <span class="nv">$ledger</span>.<span class="n">total</span>;
-<span class="nb">say</span> <span class="n">Ledger</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">$ledger</span> ~~ <span class="n">Ledger</span>;</code></pre></div>
-<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>42 10 52
-Ledger True</code></pre></div>
-<p>Everything a class can do, a monitor can: attributes, <code>BUILD</code>, inheritance, roles, <code>.new</code> with named arguments. The difference only shows when two threads arrive at once, and that is the case the distribution's own test exercises — four threads, a thousand increments each, one counter:</p>
-<div class="native-ex"><pre class="native-code"><code><span class="n">monitor</span> <span class="n">Counter</span> {
+<span class="n">monitor</span> <span class="n">Counter</span> {
     <span class="k">has</span> <span class="nv">$!n</span> = <span class="mi">0</span>;
     <span class="k">method</span> <span class="n">inc</span> { <span class="nv">$!n</span>++ }
     <span class="k">method</span> <span class="n">n</span>   { <span class="nv">$!n</span> }
@@ -59,10 +45,57 @@ Ledger True</code></pre></div>
 
 <span class="k">my</span> <span class="nv">$counter</span> = <span class="n">Counter</span>.<span class="nb">new</span>;
 <span class="nb">await</span> <span class="k">do</span> <span class="k">for</span> ^<span class="mi">4</span> { <span class="k">start</span> { <span class="nv">$counter</span>.<span class="n">inc</span> <span class="k">for</span> ^<span class="mi">1000</span> } }
-<span class="nb">say</span> <span class="nv">$counter</span>.<span class="n">n</span>;    <span class="c1"># Rakudo: 4000, every run</span></code></pre></div>
+<span class="nb">say</span> <span class="nv">$counter</span>.<span class="n">n</span>;
+<span class="nb">say</span> <span class="n">Counter</span>.^<span class="n">name</span>, <span class="s">' '</span>, <span class="nv">$counter</span> ~~ <span class="n">Counter</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>4000
+Counter True</code></pre></div>
+<p>Four threads, a thousand increments each, and the answer is four thousand every time — the increment is read-modify-write, and without the lock the threads lose updates and the total lands somewhere in the high three thousands. Nothing in the class body says so: the only difference from <code>class</code> is the keyword.</p>
+<p>Everything else a class can do, a monitor can — attributes, <code>BUILD</code>, inheritance, roles, <code>.new</code> with named arguments — and a method calling another method on the same object is fine, because the lock is re-entrant:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/oo-monitors/02-reentrant.raku" title="This example as a file: 02-reentrant.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">OO::Monitors</span>;
+
+<span class="n">monitor</span> <span class="n">Ledger</span> {
+    <span class="k">has</span> <span class="nv">%!balance</span>;
+    <span class="k">method</span> <span class="n">deposit</span>(<span class="nb">Str</span> <span class="nv">$who</span>, <span class="nb">Int</span> <span class="nv">$amount</span>) { <span class="nv">%!balance</span>{<span class="nv">$who</span>} += <span class="nv">$amount</span>; <span class="nb">self</span> }
+    <span class="k">method</span> <span class="n">transfer</span>(<span class="nb">Str</span> <span class="nv">$from</span>, <span class="nb">Str</span> <span class="nv">$to</span>, <span class="nb">Int</span> <span class="nv">$amount</span>) {
+        <span class="nb">self</span>.<span class="n">deposit</span>(<span class="nv">$from</span>, -<span class="nv">$amount</span>);     <span class="c1"># a method, from inside a method</span>
+        <span class="nb">self</span>.<span class="n">deposit</span>(<span class="nv">$to</span>, <span class="nv">$amount</span>);
+    }
+    <span class="k">method</span> <span class="n">balance</span>(<span class="nb">Str</span> <span class="nv">$who</span>) { <span class="nv">%!balance</span>{<span class="nv">$who</span>} <span class="sr">//</span> <span class="mi">0</span> }
+    <span class="k">method</span> <span class="n">snapshot</span> { <span class="nv">%!balance</span>.<span class="nb">clone</span> }
+}
+
+<span class="k">my</span> <span class="nv">$ledger</span> = <span class="n">Ledger</span>.<span class="nb">new</span>;
+<span class="nv">$ledger</span>.<span class="n">deposit</span>(<span class="s">'ada'</span>, <span class="mi">100</span>).<span class="n">deposit</span>(<span class="s">'grace'</span>, <span class="mi">10</span>);
+<span class="nv">$ledger</span>.<span class="n">transfer</span>(<span class="s">'ada'</span>, <span class="s">'grace'</span>, <span class="mi">40</span>);
+<span class="nb">say</span> <span class="nv">$ledger</span>.<span class="n">balance</span>(<span class="s">'ada'</span>), <span class="s">' '</span>, <span class="nv">$ledger</span>.<span class="n">balance</span>(<span class="s">'grace'</span>);
+<span class="nb">say</span> <span class="nv">$ledger</span>.<span class="n">snapshot</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ .<span class="n">value</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>60 50
+ada=60 grace=50</code></pre></div>
+<p><code>transfer</code> holds the lock across both deposits, so no other thread sees the money after it has left one account and before it has reached the other — which is the property a lock per <em>method</em> would not give you.</p>
 <h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
-<p>Under Raku++ 3.28 that program prints something like 3,970 — a different number each run, and never 4,000. The <code>monitor</code> keyword is accepted and the type it makes reports the right metaclass, but the engine builds the class through its own machinery and never consults that metaclass's <code>new_type</code> and <code>add_method</code> hooks, which are where the lock attribute is added and each method is wrapped; nor does it run the <code>BUILDALL</code> the metaclass wraps to create the lock. So the wrap never happens, and the monitor is a plain class whose increments race like anyone else's.</p>
-<p>The distribution's own <code>basic.rakutest</code> measures exactly this and fails, so <code>rakupp install OO::Monitors</code> refuses unless you pass <code>--no-test</code>. If you do, know what you are installing: on Raku++ today a monitor gives you the syntax and none of the exclusion. Where the exclusion is the point, keep a <code>Lock</code> attribute and <code>protect</code> the bodies yourself until the engine catches up; the gap is filed and this page will change when it closes.</p>
+<p>The lock protects the <strong>call</strong>, not the data. A method that returns one of the object's own containers hands the caller a reference, and every write through that reference happens with no lock held:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/oo-monitors/03-escapes.raku" title="This example as a file: 03-escapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">OO::Monitors</span>;
+
+<span class="n">monitor</span> <span class="n">Registry</span> {
+    <span class="k">has</span> <span class="nv">%!items</span>;
+    <span class="k">method</span> <span class="n">add</span>(<span class="nb">Str</span> <span class="nv">$k</span>, <span class="nv">$v</span>) { <span class="nv">%!items</span>{<span class="nv">$k</span>} = <span class="nv">$v</span>; <span class="nb">self</span> }
+    <span class="k">method</span> <span class="n">items</span> { <span class="nv">%!items</span> }         <span class="c1"># hands the container out</span>
+    <span class="k">method</span> <span class="n">copy</span>  { <span class="nv">%!items</span>.<span class="nb">clone</span> }   <span class="c1"># hands a snapshot out</span>
+    <span class="k">method</span> <span class="n">count</span> { <span class="nv">%!items</span>.<span class="nb">elems</span> }
+}
+
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Registry</span>.<span class="nb">new</span>;
+<span class="nv">$r</span>.<span class="n">add</span>(<span class="s">'a'</span>, <span class="mi">1</span>);
+<span class="nv">$r</span>.<span class="n">items</span><span class="s">&lt;b&gt;</span> = <span class="mi">2</span>;                      <span class="c1"># written from outside, unlocked</span>
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">count</span>;
+<span class="k">my</span> <span class="nv">%snapshot</span> = <span class="nv">$r</span>.<span class="n">copy</span>;
+<span class="nv">%snapshot</span><span class="s">&lt;c&gt;</span> = <span class="mi">3</span>;                     <span class="c1"># written into the copy</span>
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">count</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2
+2</code></pre></div>
+<p>The first write lands <em>inside</em> the monitor without ever taking its lock; the second cannot, because <code>copy</code> handed out a clone. So return copies of anything mutable, or return the answer rather than the structure — the declarator cannot help you here, since by the time the caller writes, the method that leaked the container has already returned and released the lock.</p>
+<p>Two smaller consequences of wrapping every method. Reads are serialised too, so a monitor whose accessors are called in a hot loop is a bottleneck where a <code>Lock</code> taken only on writes would not be; and a call on the <em>type object</em>, <code>.new</code> above all, is delegated without locking, which is correct and worth knowing if you were counting on construction to be serialised.</p>
+<p>Until Raku++ 3.28 this page carried a red badge: the engine built the class without consulting the declarator's metaclass, so the lock attribute was never added and no method was ever wrapped — a monitor had the syntax and none of the exclusion, and the counter above landed near 3,970. The engine now runs those hooks, the distribution's own suite is green, and every example on this page is checked under both engines like the rest.</p>
 <footer>
 <span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
 <span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>

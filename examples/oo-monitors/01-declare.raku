@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
-# OO::Monitors — A monitor is a class
-# https://raku.online/modules/oo-monitors/#a-monitor-is-a-class
+# OO::Monitors — A monitor is a class that serialises itself
+# https://raku.online/modules/oo-monitors/#a-monitor-is-a-class-that-serialises-itself
 #
 # Install what it needs, then run it:
 #     rakupp install OO::Monitors
@@ -11,18 +11,17 @@
 
 use OO::Monitors;
 
-monitor Ledger {
-    has %!balance;
-    method deposit(Str $who, Int $amount) { %!balance{$who} += $amount; self }
-    method balance(Str $who)             { %!balance{$who} // 0 }
-    method total                         { %!balance.values.sum }
+monitor Counter {
+    has $!n = 0;
+    method inc { $!n++ }
+    method n   { $!n }
 }
 
-my $ledger = Ledger.new;
-$ledger.deposit('ada', 40).deposit('ada', 2).deposit('grace', 10);
-say $ledger.balance('ada'), ' ', $ledger.balance('grace'), ' ', $ledger.total;
-say Ledger.^name, ' ', $ledger ~~ Ledger;
+my $counter = Counter.new;
+await do for ^4 { start { $counter.inc for ^1000 } }
+say $counter.n;
+say Counter.^name, ' ', $counter ~~ Counter;
 
 # Output:
-#     42 10 52
-#     Ledger True
+#     4000
+#     Counter True

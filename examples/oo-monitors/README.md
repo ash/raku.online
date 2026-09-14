@@ -17,4 +17,6 @@ they are run, but their output is not compared.
 
 | File | Section | Output |
 |---|---|---|
-| [`01-declare.raku`](01-declare.raku) | A monitor is a class | checked |
+| [`01-declare.raku`](01-declare.raku) | A monitor is a class that serialises itself | checked |
+| [`02-reentrant.raku`](02-reentrant.raku) | A monitor is a class that serialises itself | checked |
+| [`03-escapes.raku`](03-escapes.raku) | The one thing to know | checked |
