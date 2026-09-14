@@ -6,7 +6,7 @@
 #     rakupp install Method::Also
 #     rakupp 02-multi-and-gist.raku
 #
-# Run under Raku++ 3.20.1 and Rakudo 2026.08 every time the site is
+# Run under Raku++ 3.28.0 and Rakudo 2026.08 every time the site is
 # built; the build fails if the output below stops matching.
 
 use Method::Also;

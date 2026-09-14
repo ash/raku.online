@@ -6,10 +6,10 @@ kind: Distribution · testing
 summary: The Test Anything Protocol as a library — parse TAP from a string, a
   file or a running program, add runs up into one verdict, and print the
   report you know from prove6.
-status: full
+status: divergent
 license: Artistic-2.0
 suite: 2 files, green
-tested: 2026-08-28
+tested: 2026-09-14
 raku-land: https://raku.land/zef:leont/TAP
 source: https://github.com/Raku/tap-harness6
 ---
@@ -111,9 +111,14 @@ without excuse, is in `failed`.
 `TAP::SourceHandler` decides per file what to do — a `.rakutest` or `.t6`
 file is run by the Raku that is running the harness, and a `.tap` file is
 read as text, which is how you re-examine a run that CI saved. `await` on
-the running harness returns a `TAP::Aggregator`, the sum over all files:
+the running harness returns a `TAP::Aggregator`, the sum over all files.
 
-```raku name="run-tap-files"
+This is the one part of the module Raku++ cannot run today, so — unlike
+everything else on this page — what follows is **not** executed when the site
+is built. It is shown as Rakudo runs it, and
+[the engines differ](#where-the-two-engines-differ) below says why:
+
+```raku fragment
 use TAP;
 
 my $dir = $*TMPDIR.add("tap-demo-$*PID");
@@ -135,7 +140,7 @@ indir $dir, {
 unlink $dir.add('results.tap'); rmdir $dir;
 ```
 
-```output
+```text
 results.tap .. ok
 All tests successful.
 Files=1, Tests=3,  0 wallclock secs
@@ -284,8 +289,32 @@ produce them all funnel through here.
 
 ## Where the two engines differ
 
-Nothing on this page any more — and getting that sentence took four engine
-fixes. When this page was first written the badge said *partial*: a
+`TAP::Harness` — the half of the module that runs files rather than parsing
+text — does not work under Raku++ today. Everything else on this page does,
+and every other example here is executed on both engines as the site builds.
+
+Two symptoms, both measured on Raku++ 3.28.0 against Rakudo 2026.08, and both
+in the same place: `Harness.run` hands back a `TAP::Harness::Run`, which is
+`does Awaitable` and delegates to a private `Promise` with
+`has Promise $!promise handles <result get-await-handle>`.
+
+- `await` on that object returns **the object itself** instead of the
+  `TAP::Aggregator` its promise will hold, so the harness's own report never
+  reaches standard output and the next line dies with
+  `No such method 'passed' for invocant of type 'TAP::Harness::Run'`.
+- Reaching for the delegated `.result` instead fails differently, with
+  `Variable '@working' is not declared` raised from inside the module — a
+  lexical that is plainly declared in `TAP`'s own `method run`.
+
+Neither reduces to a small case: a class that `does Awaitable` and delegates
+`get-await-handle` to a `Promise` attribute awaits correctly in isolation on
+both engines, whether the promise is already kept or still pending, and so
+does a `sub` declared after a `start` block that closes over an outer array.
+Something about the combination in `TAP`'s `method run` is what trips it, and
+finding it is engine work rather than page work.
+
+The rest of this section is history, kept because it is the same corner of the
+module. When this page was first written the badge said *partial*: a
 `.rakutest` file handed to `TAP::Harness` ran, exited cleanly, and counted
 for nothing —
 

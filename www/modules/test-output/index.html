@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test::Output — The Raku Ecosystem, Working</title>
+<meta name="description" content="Captures what a block writes to STDOUT and STDERR, either handing you the text or asserting on it directly as a test — the missing piece for testing code whose real output is printed, not returned.">
+<link rel="canonical" href="https://raku.online/modules/test-output/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Test::Output — The Raku Ecosystem, Working">
+<meta property="og:description" content="Captures what a block writes to STDOUT and STDERR, either handing you the text or asserting on it directly as a test — the missing piece for testing code whose real output is printed, not returned.">
+<meta property="og:url" content="https://raku.online/modules/test-output/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Test::Output","description":"Captures what a block writes to STDOUT and STDERR, either handing you the text or asserting on it directly as a test — the missing piece for testing code whose real output is printed, not returned.","programmingLanguage":"Raku","version":"1.001006","url":"https://raku.online/modules/test-output/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Test-Output"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · testing</div><h1>Test::Output</h1><span class="status st-full">Works</span></div><p class="summary">Captures what a block writes to STDOUT and STDERR, either handing you the text or asserting on it directly as a test — the missing piece for testing code whose real output is printed, not returned.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.001006</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Test</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Test::Output">raku.land</a> · <a href="https://github.com/raku-community-modules/Test-Output">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Test::Output</code></pre></div><p class="fact-sub"><code>zef install Test::Output</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Plenty of code is worth testing precisely because it prints: a usage message, a progress line, a warning on <code>$*ERR</code>, the formatted table a report subcommand emits. None of it is reachable through a return value, and the usual alternative — restructuring the code so the string is returned and printed by someone else — is a real design change made for the test's convenience rather than the program's.</p>
+<p>This module rebinds <code>$*OUT</code> and <code>$*ERR</code> around a block and collects what lands there. Ten exported subs, in two groups: three that <em>return</em> the captured text, and six that <em>assert</em> on it as <code>Test</code> assertions.</p>
+<h2 id="capture-or-assert">Capture, or assert <a class="anchor" href="#capture-or-assert" aria-label="link">#</a></h2>
+<p>The <code>-from</code> subs hand the text back, and are plain functions — usable outside a test file entirely:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/test-output/01-capture.raku" title="This example as a file: 01-capture.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Test::Output</span>;
+
+<span class="k">sub</span> <span class="n">greet</span>(<span class="nv">$name</span>) { <span class="nb">print</span> <span class="s">&quot;hello, $name&quot;</span>; <span class="nb">note</span> <span class="s">&quot;greeted $name&quot;</span> }
+
+<span class="k">my</span> <span class="nv">$out</span> = <span class="n">stdout-from</span> { <span class="n">greet</span>(<span class="s">'world'</span>) };
+<span class="k">my</span> <span class="nv">$err</span> = <span class="n">stderr-from</span> { <span class="n">greet</span>(<span class="s">'world'</span>) };
+
+<span class="nb">say</span> <span class="s">&quot;out: $out.raku()&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;err: $err.raku()&quot;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>out: "hello, world"
+err: "greeted world\n"</code></pre></div>
+<p><code>output-from</code> is the third: it captures both streams into one string, in the order they were written.</p>
+<p>In a test file you rarely want the string itself, only a verdict on it, and the <code>-is</code> and <code>-like</code> pairs are <code>Test</code> assertions that emit TAP directly — note that the block is the first argument and the description the last, like <code>Test</code>'s own <code>lives-ok</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/test-output/02-assert.raku" title="This example as a file: 02-assert.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Test</span>;
+<span class="k">use</span> <span class="n">Test::Output</span>;
+
+<span class="k">sub</span> <span class="n">banner</span>(<span class="nv">$t</span>) { <span class="nb">say</span> <span class="s">'== '</span> ~ <span class="nv">$t</span> ~ <span class="s">' =='</span> }
+
+<span class="n">plan</span> <span class="mi">3</span>;
+<span class="n">stdout-is</span>   { <span class="n">banner</span>(<span class="s">'hi'</span>) }, <span class="s">&quot;== hi ==\n&quot;</span>, <span class="s">'banner frames its title'</span>;
+<span class="n">stdout-like</span> { <span class="n">banner</span>(<span class="s">'hi'</span>) }, <span class="sr">/^ '==' /</span>,    <span class="s">'and starts with the rule'</span>;
+<span class="n">stderr-is</span>   { <span class="nb">note</span> <span class="s">'warned'</span> }, <span class="s">&quot;warned\n&quot;</span>,  <span class="s">'note goes to stderr'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1..3
+ok 1 - banner frames its title
+ok 2 - and starts with the rule
+ok 3 - note goes to stderr</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The capture works by swapping the dynamic variables <code>$*OUT</code> and <code>$*ERR</code> for the duration of the block, and that is the whole mechanism — which tells you exactly where it stops. Output written by a <strong>child process</strong> never passes through them, so <code>run</code> and <code>shell</code> print straight past the capture to the real terminal and come back as an empty string. Anything reached through a saved handle rather than the dynamic — a <code>my $fh = $*OUT</code> taken earlier, or a module that cached it at load time — escapes for the same reason.</p>
+<p><code>say</code> and <code>note</code> from the code under test are fine, because they look the dynamic up each time. For a subprocess, capture it where it is created: <code>run(…, :out, :err)</code> and read the pipes yourself.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

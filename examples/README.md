@@ -30,6 +30,8 @@ says so, and so does the file.
 | [`file-find/`](file-find/) | [File::Find](https://raku.online/modules/file-find/) | `rakupp install File::Find` |
 | [`file-temp/`](file-temp/) | [File::Temp](https://raku.online/modules/file-temp/) | `rakupp install File::Temp` |
 | [`file-which/`](file-which/) | [File::Which](https://raku.online/modules/file-which/) | `rakupp install File::Which` |
+| [`hash-merge/`](hash-merge/) | [Hash::Merge](https://raku.online/modules/hash-merge/) | `rakupp install Hash::Merge` |
+| [`html-escape/`](html-escape/) | [HTML::Escape](https://raku.online/modules/html-escape/) | `rakupp install HTML::Escape` |
 | [`http-status/`](http-status/) | [HTTP::Status](https://raku.online/modules/http-status/) | `rakupp install HTTP::Status` |
 | [`json-fast/`](json-fast/) | [JSON::Fast](https://raku.online/modules/json-fast/) | `rakupp install JSON::Fast` |
 | [`json-native/`](json-native/) | [JSON::Native](https://raku.online/modules/json-native/) | `rakupp install JSON::Native` |
@@ -40,7 +42,10 @@ says so, and so does the file.
 | [`statistics-distributions/`](statistics-distributions/) | [Statistics::Distributions](https://raku.online/modules/statistics-distributions/) | `rakupp install Statistics::Distributions` |
 | [`tap/`](tap/) | [TAP](https://raku.online/modules/tap/) | `rakupp install TAP` |
 | [`terminal-ansicolor/`](terminal-ansicolor/) | [Terminal::ANSIColor](https://raku.online/modules/terminal-ansicolor/) | `rakupp install Terminal::ANSIColor` |
+| [`terminal-wcwidth/`](terminal-wcwidth/) | [Terminal::WCWidth](https://raku.online/modules/terminal-wcwidth/) | `rakupp install Terminal::WCWidth` |
 | [`test-meta/`](test-meta/) | [Test::META](https://raku.online/modules/test-meta/) | `rakupp install Test::META` |
+| [`test-output/`](test-output/) | [Test::Output](https://raku.online/modules/test-output/) | `rakupp install Test::Output` |
+| [`text-miscutils/`](text-miscutils/) | [Text::MiscUtils](https://raku.online/modules/text-miscutils/) | `rakupp install Text::MiscUtils` |
 | [`uri/`](uri/) | [URI](https://raku.online/modules/uri/) | `rakupp install URI` |
 | [`uri-encode/`](uri-encode/) | [URI::Encode](https://raku.online/modules/uri-encode/) | `rakupp install URI::Encode` |
 | [`uuid/`](uuid/) | [UUID](https://raku.online/modules/uuid/) | `rakupp install UUID` |
@@ -68,7 +73,7 @@ To re-run that check yourself:
 
 ```sh
 cd sites/modules
-rakupp build.raku --verify --oracle=raku
+rakupp build.raku --verify --oracle=rakudo
 ```
 
 ## Editing them

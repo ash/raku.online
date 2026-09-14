@@ -137,10 +137,10 @@ history is intact.
 
 # the handbook's examples need the modules INSTALLED, so they are checked on
 # demand rather than on every build — run this before publishing a change
-( cd sites/ecosystem && rakupp build.raku --verify --oracle=raku )
+( cd sites/modules && rakupp build.raku --verify --oracle=rakudo )
 
 # and re-check what the pages claim about versions and test suites
-( cd sites/ecosystem && rakupp build.raku --probe )
+( cd sites/modules && rakupp build.raku --probe )
 ```
 
 It needs `rakupp` on `PATH` (override with `RAKUPP=/path/to/rakupp`) because

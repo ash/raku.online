@@ -59,7 +59,7 @@ build_book() {
 # The handbook's examples need the modules they document to be INSTALLED, so
 # --verify is not part of the ordinary build: a machine without the store would
 # fail a build that has nothing wrong with it. Run it before publishing:
-#   ( cd sites/modules && rakupp build.raku --verify --oracle=raku )
+#   ( cd sites/modules && rakupp build.raku --verify --oracle=rakudo )
 # (Lived at /ecosystem until 2026-08-26; www/ecosystem now holds redirect stubs
 # so old links keep resolving — "ecosystem" unqualified was too easy to read as
 # this handbook when it now names the system around Raku++ itself.)

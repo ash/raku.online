@@ -9,7 +9,7 @@ rakupp install File::Directory::Tree   # or: zef install File::Directory::Tree
 rakupp 01-mktree-and-rmtree.raku
 ```
 
-Each file is run under Raku++ 3.20.1 and under Rakudo 2026.08, twice on each,
+Each file is run under Raku++ 3.28.0 and under Rakudo 2026.08, twice on each,
 whenever the site is built. A file whose output has moved fails that build, so
 the "Output:" comment at the bottom of a file is what it printed, not what it
 was once expected to print. The ones marked *varies* draw random numbers —

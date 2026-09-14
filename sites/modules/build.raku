@@ -1,8 +1,9 @@
 # build.raku — the ecosystem handbook at raku.online/modules.
 #
 #   rakupp build.raku [--clean]
-#   rakupp build.raku --verify [--oracle=raku]   run every example, check its output
-#   rakupp build.raku --probe                    re-check what the pages CLAIM
+#   rakupp build.raku --verify [--oracle=rakudo] run every example, check its output
+#   rakupp build.raku --probe [--probe-limit=N]  re-check what the pages CLAIM
+#   rakupp build.raku --probe-all                 …re-measuring every one of them
 #
 # One page per distribution from raku.land that Raku++ can parse, install, test
 # and run. A page is a Markdown file under src/modules/ whose frontmatter records
@@ -592,7 +593,7 @@ sub write-examples-index(@mods) {
 
     ```sh
     cd sites/modules
-    rakupp build.raku --verify --oracle=raku
+    rakupp build.raku --verify --oracle=rakudo
     ```
 
     ## Editing them
@@ -655,10 +656,37 @@ sub run-example(Str $exe, $mod, $ex) {
 # random draw the author thought was pinned down, passes the first run and is a
 # coin flip on every build after. (Rakudo randomises its hash seed per process,
 # so the second run is the one that catches it.)
+#| What implementation answers to this command? Two engines that report the
+#| same compiler are not two engines.
+sub compiler-of(Str $exe --> Str) {
+    my $p = run($exe, '-e', 'print $*RAKU.compiler.name', :out, :err);
+    my $n = $p.out.slurp(:close).trim;
+    $p.err.slurp(:close);
+    $n || 'unknown'
+}
+
 sub verify-examples(@mods, Str $oracle --> Int) {
     my $checked = 0;
     my $ran     = 0;
     my $fails   = 0;
+
+    # The whole value of --oracle is that a SECOND implementation agrees. On a
+    # machine where Raku++ has been installed as a drop-in `raku` — which its
+    # own installer offers, and which is otherwise a perfectly good thing to
+    # want — the oracle silently becomes the engine, every example is checked
+    # against itself, and the build reports a clean run having proved nothing.
+    # That is a worse outcome than no oracle at all, so it is refused.
+    if $oracle {
+        my $engine-name = compiler-of($RAKUPP);
+        my $oracle-name = compiler-of($oracle);
+        if $engine-name eq $oracle-name {
+            note "verify: REFUSED — the oracle '$oracle' is $oracle-name, the same";
+            note "        implementation as the engine. Nothing would be compared.";
+            note "        Point --oracle at a real Rakudo (try `which rakudo`).";
+            return 1;
+        }
+        say "verify: engine $engine-name · oracle $oracle-name ($oracle)";
+    }
 
     sub check(Str $engine, Str $exe, $mod, $ex, Str $path) {
         my ($got, $err) = run-example($exe, $mod, $ex);
@@ -706,33 +734,122 @@ sub verify-examples(@mods, Str $oracle --> Int) {
 # The frontmatter records a version and a verdict on the distribution's own test
 # suite. Both go stale — a new release lands, or an engine change turns a green
 # suite red — and a handbook that is quietly out of date is worse than one that
-# admits it. This re-runs the two commands the claims come from.
-sub probe-modules(@mods --> Int) {
+# admits it.
+#
+# Re-running both commands for every page was affordable at 27 pages and is not
+# at 900: `rakupp test` on a whole handbook is hours of work, most of it
+# re-proving what was proved an hour ago. So the answers are CACHED, keyed by
+# the thing that can invalidate them — the module, the version the page claims,
+# and the engine build that judged it — and each run re-probes only the stalest
+# `--probe-limit` of the pages whose cache entry no longer applies.
+#
+# Every page is still CHECKED on every run. A page whose cache entry is current
+# is checked against that entry for free; only the act of re-measuring is
+# rationed. A claim that contradicts what we know fails the gate whether the
+# measurement is a second old or a week old.
+constant PROBE-CACHE = 'src/data/probe-cache.tsv';
+constant PROBE-STALE = 30;      # days after which a cached verdict is re-measured
+constant PROBE-LIMIT = 40;      # pages re-measured per run unless told otherwise
+
+sub engine-id(--> Str) {
+    my $p = run($RAKUPP, '--version', :out, :err);
+    my $v = $p.out.slurp(:close).trim;
+    $p.err.slurp(:close);
+    ($v.words[1] // $v) || 'unknown'
+}
+
+sub read-probe-cache(--> Hash) {
+    my %c;
+    return %c unless PROBE-CACHE.IO.e;
+    for PROBE-CACHE.IO.lines.skip(1) -> $line {
+        next unless $line.trim;
+        my @f = $line.split("\t");
+        next unless @f >= 5;
+        %c{@f[0]} = { version => @f[1], suite => @f[2], engine => @f[3], checked => @f[4] };
+    }
+    %c
+}
+
+sub write-probe-cache(%c) {
+    my @out = "name\tversion\tsuite\tengine\tchecked";
+    for %c.keys.sort -> $k {
+        my %e = %c{$k};
+        @out.push(($k, %e<version>, %e<suite>, %e<engine>, %e<checked>).join("\t"));
+    }
+    spurt PROBE-CACHE, @out.join("\n") ~ "\n";
+}
+
+#| Re-measure one module: what version the ecosystem offers, and is its suite green.
+sub measure(Str $name) {
+    my $p = run($RAKUPP, 'install', '--dry-run', $name, :out, :err);
+    my $plan = $p.out.slurp(:close);
+    $p.err.slurp(:close);
+    my $m = $plan ~~ / $name ':ver<' (<-[>]>+) '>' /;
+
+    my $t = run($RAKUPP, 'test', $name, :out, :err);
+    my $log = $t.out.slurp(:close) ~ $t.err.slurp(:close);
+
+    ($m ?? ~$0 !! ''), ($log.contains('suite green') ?? 'green' !! 'red')
+}
+
+sub probe-modules(@mods, Int :$limit is copy = PROBE-LIMIT, Bool :$all = False --> Int) {
+    my %cache  = read-probe-cache();
+    my $engine = engine-id();
+    my $today  = Date.today.Str;
+    $limit = @mods.elems if $all;
+
+    # Which pages does the cache no longer speak for? A cache entry applies only
+    # while it describes the same version this page claims, and was measured by
+    # this engine build, and is younger than PROBE-STALE.
+    my @stale = @mods.grep(-> $mod {
+        my %e = %cache{$mod.meta<name>} // {};
+        !%e
+          || %e<version> ne $mod.meta<version>
+          || %e<engine>  ne $engine
+          || (try { Date.new(%e<checked>) } // Date.new('2000-01-01')) before $today.Date.earlier(:days(PROBE-STALE))
+    });
+    # Oldest first, so a rationed run always makes progress on the worst of it.
+    my @todo = @stale.sort({ %cache{.meta<name>}<checked> // '' }).head($limit);
+    my %todo = @todo.map({ .meta<name> => True });
+
+    for @todo -> $mod {
+        my $name = $mod.meta<name>;
+        my ($latest, $suite) = measure($name);
+        %cache{$name} = {
+            version => $latest || $mod.meta<version>,
+            suite   => $suite,
+            engine  => $engine,
+            checked => $today,
+        };
+        say "probe: $name {$latest || '?'} · suite $suite";
+    }
+    write-probe-cache(%cache) if @todo;
+
+    # Now judge EVERY page against the best answer available for it.
     my $bad = 0;
+    my $unknown = 0;
     for @mods -> $mod {
         my $name = $mod.meta<name>;
-        my $p = run($RAKUPP, 'install', '--dry-run', $name, :out, :err);
-        my $plan = $p.out.slurp(:close);
-        $p.err.slurp(:close);
-        my $m = $plan ~~ / $name ':ver<' (<-[>]>+) '>' /;
-        my $latest = $m ?? ~$0 !! '';
-        if $latest && $latest ne $mod.meta<version> {
-            $bad++;
-            note "  $name: page says {$mod.meta<version>}, the ecosystem offers $latest";
-        }
+        my %e = %cache{$name} // {};
+        unless %e { $unknown++; next }
 
-        my $t = run($RAKUPP, 'test', $name, :out, :err);
-        my $log = $t.out.slurp(:close) ~ $t.err.slurp(:close);
-        my $green = so $log.contains('suite green');
+        if %e<version> && %e<version> ne $mod.meta<version> {
+            $bad++;
+            note "  $name: page says {$mod.meta<version>}, the ecosystem offers {%e<version>}"
+               ~ (%todo{$name} ?? '' !! " (cached {%e<checked>})");
+        }
+        my $green = %e<suite> eq 'green';
         my $claim = so ($mod.meta<suite> // '').contains('green');
         if $green != $claim {
             $bad++;
             note "  $name: page says suite '{$mod.meta<suite> // 'not run'}', the suite is "
-               ~ ($green ?? 'green' !! 'NOT green');
+               ~ ($green ?? 'green' !! 'NOT green')
+               ~ (%todo{$name} ?? '' !! " (cached {%e<checked>})");
         }
-        say "probe: $name {$latest || '?'} · suite " ~ ($green ?? 'green' !! 'red');
     }
-    say "probe: $bad claim(s) out of date";
+
+    say "probe: {@todo.elems} re-measured, {@mods.elems - @todo.elems - $unknown} checked from cache, "
+      ~ "$unknown never measured, {@stale.elems - @todo.elems} still stale · $bad claim(s) out of date";
     $bad ?? 1 !! 0
 }
 
@@ -780,16 +897,59 @@ sub render-module($mod --> Str) {
          jsonld => '{' ~ @ld.join(',') ~ '}')
 }
 
+# The topic a page files itself under: the tail of `kind: Distribution · web`.
+# A free-text tail was fine while the handbook was a shelf of 27; as it grows
+# past the length of any page a reader will scan, it becomes the axis they
+# filter on, so it is read out of the frontmatter rather than kept in a list
+# here that would drift away from the pages.
+sub topic-of(%m --> Str) {
+    my $kind = %m<kind> // '';
+    my $tail = $kind.contains('·') ?? $kind.split('·').tail.trim !! $kind.trim;
+    $tail && $tail ne 'Distribution' ?? $tail.lc !! 'general'
+}
+
 sub render-index(@mods --> Str) {
     my $examples = @mods.map({ @($_.examples).elems }).sum;
+
+    # Topics, commonest first: the chip row is a map of the handbook, so the
+    # areas with the most pages should be the ones a reader meets first.
+    my @topics = @mods.map({ topic-of(.meta) }).Bag.sort({ -.value, .key }).map(*.key);
+    my $chips = @topics.map(-> $t {
+        '<button class="idx-flt" data-t="' ~ esc-attr($t) ~ '">' ~ esc($t)
+          ~ ' <span>' ~ @mods.grep({ topic-of(.meta) eq $t }).elems ~ '</span></button>'
+    }).join(' ');
+
     my $rows = @mods.map(-> $mod {
         my %m = $mod.meta;
-        '<tr><td><a href="' ~ $BASE ~ '/' ~ $mod.slug ~ '/">' ~ esc(%m<name>) ~ '</a>'
+        my $topic = topic-of(%m);
+        # One lowercased haystack per row, so the filter is a substring test
+        # rather than five of them.
+        my $hay = (%m<name>, %m<summary>, $topic, %m<auth> // '').join(' ').lc;
+        '<tr data-t="' ~ esc-attr($topic) ~ '" data-st="' ~ esc-attr(%m<status>) ~ '"'
+          ~ ' data-s="' ~ esc-attr($hay) ~ '">'
+          ~ '<td><a href="' ~ $BASE ~ '/' ~ $mod.slug ~ '/">' ~ esc(%m<name>) ~ '</a>'
           ~ '<br><span class="fact-sub">' ~ esc(%m<summary>) ~ '</span></td>'
+          ~ '<td><span class="idx-topic">' ~ esc($topic) ~ '</span></td>'
           ~ '<td><code>' ~ esc(%m<version>) ~ '</code></td>'
           ~ '<td>' ~ status-badge(%m<status>) ~ '</td>'
           ~ '<td class="num">' ~ @($mod.examples).elems ~ '</td></tr>'
     }).join("\n");
+
+    my $style = q:to/CSS/;
+        <style>
+        .idx-tools { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:1rem 0 .6rem; }
+        .idx-tools input { flex:1 1 18rem; padding:.45rem .7rem; font:inherit;
+            border:1px solid var(--line, #ccc); border-radius:.4rem;
+            background:var(--bg, transparent); color:inherit; }
+        .idx-flt { font:inherit; font-size:.82rem; padding:.25rem .6rem; cursor:pointer;
+            border:1px solid var(--line, #ccc); border-radius:1rem;
+            background:transparent; color:inherit; }
+        .idx-flt span { opacity:.6; }
+        .idx-flt.on { border-color:currentColor; font-weight:600; }
+        .idx-topic { font-size:.78rem; opacity:.75; white-space:nowrap; }
+        .idx-none { margin:1.2rem 0; opacity:.75; }
+        </style>
+        CSS
 
     my $body =
         '<h1>' ~ esc(%SITE<title>) ~ '</h1>'
@@ -800,16 +960,62 @@ sub render-index(@mods --> Str) {
       ~ 'and <strong>run</strong> the examples on its page. Every example below is executed under '
       ~ esc(%SITE<engine>) ~ ' and under ' ~ esc(%SITE<oracle>) ~ ' as the build runs, twice on each, '
       ~ 'and the build fails if an output moves. What you copy is what ran.</p>'
+      ~ '<p>Every page here is written for this site — what the module is for, what its '
+      ~ 'API actually looks like, and the one thing worth knowing before you reach for it. '
+      ~ 'None of it is copied from the distribution\'s own documentation.</p>'
       ~ '<p><strong><a href="' ~ $BASE ~ '/ecosystem/">The whole Raku ecosystem — '
       ~ 'all 2,524 distributions and how each ran &rarr;</a></strong></p>'
+      ~ $style
+      ~ '<div class="idx-tools"><input type="search" id="idx-q" '
+      ~ 'placeholder="Filter by name, topic or what it does…" '
+      ~ 'aria-label="Filter by name, topic or what it does"> ' ~ $chips ~ '</div>'
+      ~ '<p class="fact-sub" id="idx-count"></p>'
       ~ '<div class="tablewrap"><table class="eco-index"><thead><tr>'
-      ~ '<th>Module</th><th>Version</th><th>State</th><th class="num">Examples</th>'
-      ~ '</tr></thead><tbody>' ~ $rows ~ '</tbody></table></div>'
+      ~ '<th>Module</th><th>Topic</th><th>Version</th><th>State</th><th class="num">Examples</th>'
+      ~ '</tr></thead><tbody id="idx-body">' ~ $rows ~ '</tbody></table></div>'
+      ~ '<p class="idx-none" id="idx-none" hidden>Nothing here matches that. '
+      ~ 'The <a href="' ~ $BASE ~ '/ecosystem/">whole-ecosystem listing</a> covers every '
+      ~ 'distribution, including the ones without a page yet.</p>'
       ~ '<p class="fact-sub">' ~ @mods.elems ~ (@mods.elems == 1 ?? ' module, ' !! ' modules, ')
       ~ $examples ~ (' example' ~ ($examples == 1 ?? '. ' !! 's. '))
       ~ 'Modules are added as they are checked — see the '
       ~ '<a href="/faq/modules/">module FAQ</a> for how installing works, and '
-      ~ '<a href="/spec/">the conformance site</a> for the engine itself.</p>';
+      ~ '<a href="/spec/">the conformance site</a> for the engine itself.</p>'
+      ~ q:to/JS/;
+        <script>
+        (function () {
+          var q = document.getElementById('idx-q');
+          var rows = [].slice.call(document.querySelectorAll('#idx-body tr[data-s]'));
+          var count = document.getElementById('idx-count');
+          var none = document.getElementById('idx-none');
+          var flts = [].slice.call(document.querySelectorAll('.idx-flt'));
+          var topic = '';
+          function apply() {
+            var needle = q.value.trim().toLowerCase(), shown = 0;
+            rows.forEach(function (r) {
+              var ok = (!topic || r.getAttribute('data-t') === topic)
+                    && (!needle || r.getAttribute('data-s').indexOf(needle) !== -1);
+              r.style.display = ok ? '' : 'none';
+              if (ok) shown++;
+            });
+            count.textContent = shown === rows.length
+              ? rows.length + ' modules'
+              : shown + ' of ' + rows.length + ' modules shown';
+            none.hidden = shown !== 0;
+          }
+          q.addEventListener('input', apply);
+          flts.forEach(function (b) {
+            b.addEventListener('click', function () {
+              var t = b.getAttribute('data-t');
+              topic = (topic === t) ? '' : t;
+              flts.forEach(function (o) { o.classList.toggle('on', o.getAttribute('data-t') === topic); });
+              apply();
+            });
+          });
+          apply();
+        })();
+        </script>
+        JS
     page(%SITE<title>, $body, :index, desc => %SITE<tagline>, path => '/')
 }
 
@@ -1196,6 +1402,7 @@ sub render-ecosystem(--> Str) {
 }
 
 sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
+         Int :$probe-limit = PROBE-LIMIT, Bool :$probe-all = False,
          Str :$rakupp = RAKUPP-DEFAULT, Str :$oracle = '') {
     %SITE   = EVAL slurp('src/site.raku');
     $BASE   = %SITE<base> // '';
@@ -1222,6 +1429,6 @@ sub MAIN(Bool :$clean = False, Bool :$verify = False, Bool :$probe = False,
 
     say "built {@mods.elems} module page(s) + index -> out/";
 
-    exit probe-modules(@mods) if $probe;
+    exit probe-modules(@mods, limit => $probe-limit, all => $probe-all) if $probe || $probe-all;
     exit verify-examples(@mods, $oracle) if $verify;
 }

@@ -1,6 +1,6 @@
 ---
 name: JSON::Native
-version: 0.0.1
+version: 0.0.2
 auth: zef:ash
 kind: Distribution · data format
 summary: JSON::Fast's interface with a native fast path — a C extension
@@ -10,7 +10,7 @@ status: full
 license: Artistic-2.0
 depends: JSON::Fast
 suite: 2 files, green
-tested: 2026-08-28
+tested: 2026-09-14
 raku-land: https://raku.land/zef:ash/JSON::Native
 source: https://github.com/ash/raku-modules
 ---
