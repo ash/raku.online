@@ -18,7 +18,7 @@ almost every lesson and a collapsed solution to compare against.
 
 `build.raku --verify` runs every example (and every exercise solution) through
 the real `rakupp` binary and fails the build on any output mismatch, so the tour
-cannot drift from the interpreter it teaches. `--oracle=raku` additionally
+cannot drift from the interpreter it teaches. `--oracle=rakudo` additionally
 cross-checks every example against Rakudo; the current lesson set passes both
 gates: 69 examples, 0 mismatches.
 
@@ -31,7 +31,7 @@ dogfooding the interpreter it teaches.
 ```sh
 rakupp build.raku                  # build src/ -> out/
 rakupp build.raku --verify         # + run every example through rakupp
-rakupp build.raku --verify --oracle=raku   # + cross-check against Rakudo
+rakupp build.raku --verify --oracle=rakudo   # + cross-check against Rakudo
 rakupp path/to/raku++/showcase/rakus/rakus.raku 8317 out   # preview locally
 ```
 

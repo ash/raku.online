@@ -40,7 +40,7 @@ say "6" + "3";
 
 The `Output` panel under an example is not typed by hand and hoped for. The generator
 runs every example through the real `rakupp` binary and fails the build if the output
-differs. With `--oracle=raku` it also runs the example through **Rakudo** and fails if
+differs. With `--oracle=rakudo` it also runs the example through **Rakudo** and fails if
 the declared output is not what Rakudo produces.
 
 That gives the two properties this site needs: an example cannot drift from the

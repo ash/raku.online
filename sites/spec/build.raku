@@ -938,7 +938,7 @@ sub run-snippet(Str $exe, Str $code, :@libs, Str :$sep = ':') {
 }
 
 # Verify each example's declared output against Raku++, and — when --oracle is set
-# (e.g. --oracle=raku) — against Rakudo too. The declared output should equal
+# (e.g. --oracle=rakudo) — against Rakudo too. The declared output should equal
 # Rakudo's (the authority); an oracle mismatch means the author didn't consult it,
 # a rakupp-only mismatch means a genuine divergence (mark the page `divergent`).
 sub verify-examples(@pages, Str $rakupp, Str $oracle, Str $wasm = '', Str $battery = '' --> Int) {

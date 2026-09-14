@@ -1,7 +1,7 @@
 #!/usr/bin/env raku
 # snapshot.raku — append the current state of the dots map to the history.
 #
-#   rakupp tools/snapshot.raku --rakupp=PATH --oracle=raku
+#   rakupp tools/snapshot.raku --rakupp=PATH --oracle=rakudo
 #
 # Every regeneration of the behaviour matrix and the three-way example run
 # overwrites its predecessor, so the *trend* — which is the interesting part
@@ -38,7 +38,7 @@ sub version-of(Str $exe --> Str) {
 
 sub MAIN(
     Str :$rakupp  = 'rakupp',
-    Str :$oracle  = 'raku',
+    Str :$oracle  = 'rakudo',
     Str :$runs    = 'src/data/typerun.raku',
     Str :$matrix  = 'src/data/matrix.raku',
     Str :$inv     = 'src/data/inventory.raku',

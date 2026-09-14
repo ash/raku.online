@@ -2,7 +2,7 @@
 # typerun.raku — run every extracted documentation example on both interpreters
 # and classify the result three ways.
 #
-#   rakupp tools/typerun.raku --rakupp=PATH --oracle=raku
+#   rakupp tools/typerun.raku --rakupp=PATH --oracle=rakudo
 #
 # Each example carries the output the official documentation ASSERTS. Running it
 # gives two more answers, and the interesting information is in how the three
@@ -59,7 +59,7 @@ sub same(Str $a, Str $b --> Bool) {
 
 sub MAIN(
     Str :$rakupp = 'rakupp',
-    Str :$oracle = 'raku',
+    Str :$oracle = 'rakudo',
     Str :$typedoc = 'src/data/typedoc.raku',
     Str :$out = 'src/data/typerun.raku',
     Int :$limit = 0,

@@ -167,19 +167,14 @@ say @a[0; 1];</pre>
 <div class="diverge"><span class="diverge-tag" title="The two engines are asserted to differ here; the build fails if they stop differing.">engines differ</span><pre><code>my @a = 1, 2, 3;
 say @a[1; 0];</code></pre></div>
 <h3 id="T4" class="rule"><a class="rule-id" href="#T4" title="Rule postcircumfix-brackets.T4">T4</a> Binding a slice: the same type with different rights</h3>
-<p><code>my @b := @a[0, 1]</code> binds a <code>List</code> in both implementations — but not the same kind of <code>List</code>. Rakudo's slice holds <code>@a</code>'s own containers: assigning to an element of <code>@b</code> writes through into <code>@a</code>, while growing the list is refused. Raku++ hands back a detached immutable <code>List</code>: assigning to an element is refused — and <code>.push</code>, inconsistently, is allowed. Assign (<code>=</code>) instead of bind (<code>:=</code>) unless you specifically need the binding.</p>
+<p><code>my @b := @a[0, 1]</code> binds a <code>List</code> in both implementations — but not the same kind of <code>List</code>. Rakudo's slice holds <code>@a</code>'s own containers, so assigning to an element of <code>@b</code> writes through into <code>@a</code>. Raku++ hands back a detached immutable <code>List</code>, and refuses the assignment. Assign (<code>=</code>) instead of bind (<code>:=</code>) unless you specifically need the binding.</p>
 <div class="diverge"><span class="diverge-tag" title="The two engines are asserted to differ here; the build fails if they stop differing.">engines differ</span><pre><code>my @a = 1, 2, 3;
 my @b := @a[0, 1];
 @b[0] = 9;
 say @a;</code></pre></div>
 <pre class="output"><code>Rakudo:  [9 2 3] — the slice elements are @a's own containers
 Raku++:  Cannot modify an immutable List ((1 2))</code></pre>
-<div class="diverge"><span class="diverge-tag" title="The two engines are asserted to differ here; the build fails if they stop differing.">engines differ</span><pre><code>my @a = 1, 2, 3;
-my @b := @a[0, 1];
-@b.push(9);
-say @b;</code></pre></div>
-<pre class="output"><code>Rakudo:  Cannot call 'push' on an immutable 'List'
-Raku++:  (1 2 9)</code></pre>
+<p><em>Growing</em> the bound slice is refused by both: <code>@b.push(9)</code> raises <code>Cannot call 'push' on an immutable 'List'</code> on either engine. That pair used to disagree — Raku++ allowed the <code>push</code> its own immutability should have stopped — and the engine was fixed, so only the assignment above still divides them.</p>
 <h2 id="see-also" class="sec">See also <a class="anchor" href="#see-also" aria-label="link">#</a></h2>
 <ul><li>[<code>circumfix:&lt;[ ]&gt;</code>](/rules/operators/circumfix-brackets/) — the same brackets with no preceding term: an array composer</li><li><a href="/spec/rules/operators/postcircumfix-braces/"><code>postcircumfix:&lt;{ }&gt;</code></a> — the associative subscript</li><li><a href="/spec/rules/operators/prefix-lbrack/"><code>prefix:&lt;[&gt;</code></a> — the reduction metaoperator, <code>[+] @a</code></li></ul>
 

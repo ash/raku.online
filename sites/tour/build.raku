@@ -7,7 +7,7 @@
 #   rakupp build.raku --verify        # build, then run every example through rakupp
 #   rakupp build.raku --clean         # remove out/ first
 #   rakupp build.raku --rakupp=PATH   # interpreter used for --verify
-#   rakupp build.raku --oracle=raku   # also check every example against Rakudo
+#   rakupp build.raku --oracle=rakudo   # also check every example against Rakudo
 #
 # The tour is a linear sequence of lessons: one Markdown-ish file per lesson under
 # src/lessons/NN-slug.md, ordered by filename, grouped into chapters by the
@@ -585,7 +585,7 @@ sub run-snippet(Str $exe, Str $code) {
 }
 
 # Verify each example's declared output against Raku++, and — when --oracle is set
-# (e.g. --oracle=raku) — against Rakudo too.
+# (e.g. --oracle=rakudo) — against Rakudo too.
 sub verify-examples(@lessons, Str $rakupp, Str $oracle --> Int) {
     if $rakupp.contains('/') && !$rakupp.IO.e {
         note "verify: rakupp not found at $rakupp";

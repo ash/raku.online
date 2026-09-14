@@ -2,7 +2,7 @@
 # matrix.raku — build the differential behaviour matrix the Rules site shows on
 # every operator page.
 #
-#   rakupp tools/matrix.raku --rakupp=PATH --oracle=raku
+#   rakupp tools/matrix.raku --rakupp=PATH --oracle=rakudo
 #
 # For each operator the inventory knows about, the same battery of operand types
 # is run through BOTH interpreters and the result type and value recorded. Three
@@ -103,7 +103,7 @@ sub printable(Str $s --> Str) {
 
 sub MAIN(
     Str  :$rakupp = 'rakupp',
-    Str  :$oracle = 'raku',
+    Str  :$oracle = 'rakudo',
     Str  :$inv    = 'src/data/inventory.raku',
     Str  :$out    = 'src/data/matrix.raku',
     Int  :$limit  = 0,

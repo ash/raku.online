@@ -4,7 +4,7 @@
 #
 #   rakupp rules.raku                      # build src/rules -> out/rules
 #   rakupp rules.raku --verify             # run every example through rakupp
-#   rakupp rules.raku --oracle=raku        # …and diff it against Rakudo too
+#   rakupp rules.raku --oracle=rakudo        # …and diff it against Rakudo too
 #
 # What makes this different from build.raku (spec 1.0):
 #

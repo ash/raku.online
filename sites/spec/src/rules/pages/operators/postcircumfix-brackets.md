@@ -252,11 +252,10 @@ say @a[1; 0];
 ### Binding a slice: the same type with different rights
 
 `my @b := @a[0, 1]` binds a `List` in both implementations — but not the same
-kind of `List`. Rakudo's slice holds `@a`'s own containers: assigning to an
-element of `@b` writes through into `@a`, while growing the list is refused.
-Raku++ hands back a detached immutable `List`: assigning to an element is
-refused — and `.push`, inconsistently, is allowed. Assign (`=`) instead of
-bind (`:=`) unless you specifically need the binding.
+kind of `List`. Rakudo's slice holds `@a`'s own containers, so assigning to an
+element of `@b` writes through into `@a`. Raku++ hands back a detached
+immutable `List`, and refuses the assignment. Assign (`=`) instead of bind
+(`:=`) unless you specifically need the binding.
 
 ```diverge
 my @a = 1, 2, 3;
@@ -269,16 +268,10 @@ Rakudo:  [9 2 3] — the slice elements are @a's own containers
 Raku++:  Cannot modify an immutable List ((1 2))
 ```
 
-```diverge
-my @a = 1, 2, 3;
-my @b := @a[0, 1];
-@b.push(9);
-say @b;
-```
-```text
-Rakudo:  Cannot call 'push' on an immutable 'List'
-Raku++:  (1 2 9)
-```
+*Growing* the bound slice is refused by both: `@b.push(9)` raises
+`Cannot call 'push' on an immutable 'List'` on either engine. That pair used to
+disagree — Raku++ allowed the `push` its own immutability should have stopped —
+and the engine was fixed, so only the assignment above still divides them.
 
 ## See also
 

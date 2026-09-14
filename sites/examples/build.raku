@@ -3,7 +3,7 @@
 #   rakupp build.raku [--clean]           build out/ from src/
 #   rakupp build.raku --capture           re-run every program natively and
 #                                         refresh src/outputs/*.txt first
-#   rakupp build.raku --capture --oracle=raku
+#   rakupp build.raku --capture --oracle=rakudo
 #                                         also run each program under Rakudo and
 #                                         fail on any output difference
 #   rakupp build.raku --rakupp=PATH       interpreter used for --capture

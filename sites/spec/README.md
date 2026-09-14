@@ -77,7 +77,7 @@ A rule ships only when its declared output is what **both** engines produce.
 
 ```sh
 rakupp rules.raku --verify                  # every example on rakupp
-rakupp rules.raku --verify --oracle=raku    # …and on Rakudo, which must agree
+rakupp rules.raku --verify --oracle=rakudo    # …and on Rakudo, which must agree
 ```
 
 `build.raku` adds a third gate — running every example through the node-target
@@ -106,10 +106,10 @@ site build needs neither a Rakudo checkout nor the doc sources.
 
 ```sh
 rakupp tools/inventory.raku --doc=/path/to/doc --rakupp=/path/to/rakupp
-rakupp tools/matrix.raku    --rakupp=/path/to/rakupp --oracle=raku
+rakupp tools/matrix.raku    --rakupp=/path/to/rakupp --oracle=rakudo
 rakupp tools/typedoc.raku   --doc=/path/to/doc
-rakupp tools/typerun.raku   --rakupp=/path/to/rakupp --oracle=raku
-rakupp tools/snapshot.raku  --rakupp=/path/to/rakupp --oracle=raku
+rakupp tools/typerun.raku   --rakupp=/path/to/rakupp --oracle=rakudo
+rakupp tools/snapshot.raku  --rakupp=/path/to/rakupp --oracle=rakudo
 ```
 
 Note that the run is not perfectly deterministic: two consecutive runs over
