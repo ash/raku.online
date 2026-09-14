@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UUID::V4 — The Raku Ecosystem, Working</title>
+<meta name="description" content="Version-4 UUIDs and a predicate that recognises them — two subs, no state, no configuration, and a flaw in how the random bytes reach the string that is worth knowing before you rely on it.">
+<link rel="canonical" href="https://raku.online/modules/uuid-v4/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="UUID::V4 — The Raku Ecosystem, Working">
+<meta property="og:description" content="Version-4 UUIDs and a predicate that recognises them — two subs, no state, no configuration, and a flaw in how the random bytes reach the string that is worth knowing before you rely on it.">
+<meta property="og:url" content="https://raku.online/modules/uuid-v4/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"UUID::V4","description":"Version-4 UUIDs and a predicate that recognises them — two subs, no state, no configuration, and a flaw in how the random bytes reach the string that is worth knowing before you rely on it.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/uuid-v4/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/masukomi/UUID-V4"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · identifiers</div><h1>UUID::V4</h1><span class="status st-full">Works</span></div><p class="summary">Version-4 UUIDs and a predicate that recognises them — two subs, no state, no configuration, and a flaw in how the random bytes reach the string that is worth knowing before you rely on it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">zef:masukomi</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Crypt::Random</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-14 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:masukomi/UUID::V4">raku.land</a> · <a href="https://github.com/masukomi/UUID-V4">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install UUID::V4</code></pre></div><p class="fact-sub"><code>zef install UUID::V4</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>When rows need identifiers that several machines can mint at once without asking each other, a large random number is the usual answer, and version 4 of the UUID standard is the agreed way to write one down: 36 characters, five hyphenated groups, with the version and variant pinned in fixed positions and the remaining 122 bits random.</p>
+<p>Sixty-nine lines and two exported subs, drawing from <code>Crypt::Random</code> — the operating system's cryptographic source rather than the process's ordinary PRNG.</p>
+<h2 id="both-subs">Both subs <a class="anchor" href="#both-subs" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uuid-v4/01-mint.raku" title="This example as a file: 01-mint.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UUID::V4</span>;
+
+<span class="k">my</span> <span class="nv">$id</span> = <span class="n">uuid-v4</span>();
+
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="nb">substr</span>(<span class="mi">14</span>, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">$id</span>.<span class="nb">comb</span>(<span class="s">'-'</span>).<span class="nb">elems</span>;
+
+<span class="nb">say</span> <span class="n">is-uuid-v4</span>(<span class="nv">$id</span>);
+<span class="nb">say</span> <span class="n">is-uuid-v4</span>(<span class="s">'3f4a-not-a-uuid'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>36
+4
+4
+True
+False</code></pre></div>
+<p>The example asserts the shape rather than printing the value, since the value differs every run: 36 characters, four hyphens, and the literal <code>4</code> at index 14 that makes it a <em>version 4</em> UUID rather than one of the time-based or name-based versions. <code>is-uuid-v4</code> checks that same shape with a regex, including the version nibble and the <code>8</code>/<code>9</code>/<code>a</code>/<code>b</code> variant nibble, so it rejects a well-formed UUID of a different version as well as an outright non-UUID.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The identifiers are <strong>not uniformly random</strong>, and the shortfall is large enough to matter. Count the hex digits over a few hundred draws, leaving out the two positions the standard fixes, and <code>a</code> to <code>f</code> never appear at all:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/uuid-v4/02-bias.raku" title="This example as a file: 02-bias.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UUID::V4</span>;
+
+<span class="k">my</span> <span class="nv">%seen</span>;
+<span class="k">for</span> ^<span class="mi">500</span> {
+    <span class="k">my</span> <span class="nv">$hex</span> = <span class="n">uuid-v4</span>().<span class="n">subst</span>(<span class="s">'-'</span>, <span class="s">''</span>, :<span class="n">g</span>);
+    <span class="c1"># index 12 is the version nibble and 16 the variant: both are fixed</span>
+    <span class="k">for</span> ^<span class="mi">32</span> -&gt; <span class="nv">$i</span> { <span class="k">next</span> <span class="k">if</span> <span class="nv">$i</span> == <span class="mi">12</span> | <span class="mi">16</span>; <span class="nv">%seen</span>{<span class="nv">$hex</span>.<span class="nb">substr</span>(<span class="nv">$i</span>, <span class="mi">1</span>)}++ }
+}
+
+<span class="nb">say</span> <span class="s">'digits that occur: '</span>, <span class="nv">%seen</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">''</span>);
+<span class="nb">say</span> <span class="s">'digits that never: '</span>, (<span class="nb">flat</span> <span class="s">'0'</span>..<span class="s">'9'</span>, <span class="s">'a'</span>..<span class="s">'f'</span>).<span class="nb">grep</span>({ !<span class="nv">%seen</span>{<span class="nv">$_</span>} }).<span class="nb">join</span>(<span class="s">''</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>digits that occur: 0123456789
+digits that never: abcdef</code></pre></div>
+<p>Six of the sixteen possible digits are unreachable, and the ten that remain are badly skewed — over 60,000 digits sampled, <code>3</code> turns up about twenty times more often than <code>0</code>. The cause is a double encoding: the sixteen random bytes are formatted into a hex <em>string</em>, and that string is then read back as raw bytes, so what lands in the UUID is the hexadecimal of the <strong>ASCII codes of hex characters</strong>. Those codes only ever span <code>0x30</code>–<code>0x39</code> and <code>0x61</code>–<code>0x66</code>, which is precisely why every digit is a <code>3</code>, a <code>6</code>, or one of the low nibbles that follow them. The same output appears under both engines, so this is the module's arithmetic and not an interpreter difference.</p>
+<p>Collisions are still unlikely at ordinary volumes, and nothing here breaks a database key. But a version-4 UUID is often reached for precisely <em>because</em> it is unguessable — a password-reset token, an unlisted URL, a capability handed to a client — and for those this module does not deliver the 122 bits the format implies. Prefer a UUID you build from <code>Crypt::Random</code> bytes directly, or any generator whose output uses the whole alphabet. <code>is-uuid-v4</code> is unaffected and remains a perfectly good validator for UUIDs from any source.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

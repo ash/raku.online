@@ -22,10 +22,12 @@ says so, and so does the file.
 | [`app-rakus/`](app-rakus/) | [App::Rakus](https://raku.online/modules/app-rakus/) | `rakupp install App::Rakus` |
 | [`base64/`](base64/) | [Base64](https://raku.online/modules/base64/) | `rakupp install Base64` |
 | [`color/`](color/) | [Color](https://raku.online/modules/color/) | `rakupp install Color` |
+| [`color-names/`](color-names/) | [Color::Names](https://raku.online/modules/color-names/) | `rakupp install Color::Names` |
 | [`data-dump/`](data-dump/) | [Data::Dump](https://raku.online/modules/data-dump/) | `rakupp install Data::Dump` |
 | [`data-generators/`](data-generators/) | [Data::Generators](https://raku.online/modules/data-generators/) | `rakupp install Data::Generators` |
 | [`datetime-format/`](datetime-format/) | [DateTime::Format](https://raku.online/modules/datetime-format/) | `rakupp install DateTime::Format` |
 | [`digest-hmac/`](digest-hmac/) | [Digest::HMAC](https://raku.online/modules/digest-hmac/) | `rakupp install Digest::HMAC` |
+| [`digest-sha256-native/`](digest-sha256-native/) | [Digest::SHA256::Native](https://raku.online/modules/digest-sha256-native/) | `rakupp install Digest::SHA256::Native` |
 | [`file-directory-tree/`](file-directory-tree/) | [File::Directory::Tree](https://raku.online/modules/file-directory-tree/) | `rakupp install File::Directory::Tree` |
 | [`file-find/`](file-find/) | [File::Find](https://raku.online/modules/file-find/) | `rakupp install File::Find` |
 | [`file-temp/`](file-temp/) | [File::Temp](https://raku.online/modules/file-temp/) | `rakupp install File::Temp` |
@@ -41,6 +43,7 @@ says so, and so does the file.
 | [`shell-command/`](shell-command/) | [Shell::Command](https://raku.online/modules/shell-command/) | `rakupp install Shell::Command` |
 | [`statistics-distributions/`](statistics-distributions/) | [Statistics::Distributions](https://raku.online/modules/statistics-distributions/) | `rakupp install Statistics::Distributions` |
 | [`tap/`](tap/) | [TAP](https://raku.online/modules/tap/) | `rakupp install TAP` |
+| [`terminal-ansi/`](terminal-ansi/) | [Terminal::ANSI](https://raku.online/modules/terminal-ansi/) | `rakupp install Terminal::ANSI` |
 | [`terminal-ansicolor/`](terminal-ansicolor/) | [Terminal::ANSIColor](https://raku.online/modules/terminal-ansicolor/) | `rakupp install Terminal::ANSIColor` |
 | [`terminal-wcwidth/`](terminal-wcwidth/) | [Terminal::WCWidth](https://raku.online/modules/terminal-wcwidth/) | `rakupp install Terminal::WCWidth` |
 | [`test-meta/`](test-meta/) | [Test::META](https://raku.online/modules/test-meta/) | `rakupp install Test::META` |
@@ -49,6 +52,7 @@ says so, and so does the file.
 | [`uri/`](uri/) | [URI](https://raku.online/modules/uri/) | `rakupp install URI` |
 | [`uri-encode/`](uri-encode/) | [URI::Encode](https://raku.online/modules/uri-encode/) | `rakupp install URI::Encode` |
 | [`uuid/`](uuid/) | [UUID](https://raku.online/modules/uuid/) | `rakupp install UUID` |
+| [`uuid-v4/`](uuid-v4/) | [UUID::V4](https://raku.online/modules/uuid-v4/) | `rakupp install UUID::V4` |
 | [`xml/`](xml/) | [XML](https://raku.online/modules/xml/) | `rakupp install XML` |
 | [`yamlish/`](yamlish/) | [YAMLish](https://raku.online/modules/yamlish/) | `rakupp install YAMLish` |
 
