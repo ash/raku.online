@@ -166,7 +166,7 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
 constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup
-                     sortby textsplit arraypush rats objects>;
+                     sortby textsplit arraypush rats objects multiwhere>;
 
 #| The revision BENCHMARKS.md says the sitting was taken at, out of its own
 #| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is

@@ -226,10 +226,17 @@
       var benchScale = { log: false };
       // BENCHMARKS.md's own order (widest gap first), with startup last: it is
       // process startup rather than a workload, so it sits outside the ranking.
+      // multiwhere sits after objects and before startup: the order is widest
+      // gap first, and it is now the widest gap the OTHER way — the kernel
+      // Rakudo leads by most. Its `native` line runs level with `interp`
+      // rather than below it, which is real and not a plotting bug: codegen
+      // declines a `where` on a multi candidate and bundles the interpreter,
+      // so that lane is the interpreter plus binary startup. The card title
+      // links to the kernel, whose comment says so.
       var KERNEL_ORDER = ['strcat', 'hash', 'sortby', 'bigint', 'sortnums',
                           'regex', 'textsplit', 'arrayops', 'hashfill',
                           'arraypush', 'loopsum', 'rats', 'fib', 'streq',
-                          'objects', 'startup'];
+                          'objects', 'multiwhere', 'startup'];
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
@@ -355,7 +362,18 @@
                    : v < ref ? ' · ' + (ref / v).toFixed(2) + '× faster than legacy'
                    : ' · same as legacy';
             }
-            else if (si !== 2 && ref) row += ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo';
+            // Say it in WORDS when the reference is ahead. The bare quotient is a
+            // speed multiple, so a lane slower than Rakudo renders as "0.5×
+            // Rakudo" and one 98× slower as "0.0× Rakudo" — both read as the
+            // opposite of the truth, or as nothing at all. This is the same trap
+            // the RakuAST lane above already words its way out of; it only became
+            // visible on the other lanes once a kernel arrived that Rakudo leads
+            // by a lot (multiwhere) with a mutsu column two orders out.
+            else if (si !== 2 && ref) {
+              row += v < ref ? ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo'
+                   : v > ref ? ' · Rakudo ' + (v / ref).toFixed(1) + '\u00d7 faster'
+                   : ' · level with Rakudo';
+            }
             if (si === 1 && cols[0][i]) row += ', ' + (cols[0][i] / v).toFixed(1) + '\u00d7 interp';
             return row;
           }
