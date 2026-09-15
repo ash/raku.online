@@ -366,6 +366,98 @@
                   benchScale, drawBench);
       drawBench();
 
+      // ---- the regression guard's own baselines --------------------------
+      // A different question from the benchmark multiples above: not "how does
+      // Raku++ compare to Rakudo on this kernel" but "is Raku++ faster than it
+      // was". One series per kernel, the baseline perf-guard recorded, in ms.
+      // Kernels enter the chart on the day they were added — each was added
+      // after a regression got through a gate that could not see its shape — so
+      // a short line is a young kernel, not a gap in the record.
+      var guardHost = document.getElementById('dash-guard');
+      var guard = Array.isArray(data.guard) ? data.guard : [];
+      if (guardHost && guard.length) {
+        var guardScale = { log: false };
+        var gLabels = guard.map(function (p) { return p.date.slice(5); });
+        var gPresent = {};
+        guard.forEach(function (p) {
+          if (p.kernels) Object.keys(p.kernels).forEach(function (k) { gPresent[k] = true; });
+        });
+        // Oldest kernels first, then the order they joined: the four the guard
+        // started with, then each batch as it was added.
+        var GUARD_ORDER = ['fib', 'asg', 'loopsum', 'hash', 'strscan', 'strpass',
+                           'subcall', 'rats', 'regexloop', 'method', 'attrread',
+                           'privmeth', 'multimeth', 'multiwhere', 'objnew',
+                           'mainnext', 'mainwhen'];
+        var gKernels = GUARD_ORDER.filter(function (k) { return gPresent[k]; });
+        Object.keys(gPresent).forEach(function (k) {
+          if (GUARD_ORDER.indexOf(k) < 0) gKernels.push(k);
+        });
+
+        function guardVals(kernel) {
+          return guard.map(function (p) {
+            // A recording taken on another machine is not a reading of this
+            // kernel's speed; absolute ms across machines compares nothing. It
+            // is charted as a gap, and the section note says which point.
+            if (p.corrected) return null;
+            return p.kernels && p.kernels[kernel] != null ? p.kernels[kernel] : null;
+          });
+        }
+
+        function drawGuardKernel(kernel) {
+          var vals = guardVals(kernel);
+          var seen = vals.filter(function (v) { return v != null; });
+          if (!seen.length) return;
+          var max = Math.max.apply(null, seen);
+          var min = Math.min.apply(null, seen);
+          var card = div('dash-bench-card', guardHost);
+          // These kernels are inline strings inside perf-guard.raku, not files
+          // of their own, so the title links to the guard rather than to a
+          // tools/<kernel>.raku that does not exist.
+          var t = div('dash-bench-title', card);
+          var a = document.createElement('a');
+          a.href = RAKUPP_TOOLS + 'perf-guard.raku';
+          a.textContent = kernel;
+          a.title = 'the ' + kernel + ' kernel, defined in tools/perf-guard.raku';
+          t.appendChild(a);
+          var host = div('dash-chart', card);
+          lineChart(host, {
+            labels: gLabels,
+            series: [{ name: 'baseline', cls: 's1', values: vals }],
+            log: guardScale.log,
+            dataMin: min,
+            yMax: guardScale.log ? max : niceMax(max),
+            yFmt: function (v) { return v < 1 ? String(v) : fmt(Math.round(v)); },
+            width: 380, height: 230, maxXLabels: 4,
+            tipRow: function (si, i) {
+              var p = guard[i];
+              if (p.corrected) return 'recorded on another machine \u2014 not charted';
+              var v = p.kernels ? p.kernels[kernel] : null;
+              if (v == null) return kernel + ': not yet a kernel';
+              var row = v + ' ms (' + p.date + ', ' + p.commit + ')';
+              // The first reading is the thing later ones are read against.
+              var base = null, j;
+              for (j = 0; j < guard.length; j++) {
+                if (!guard[j].corrected && guard[j].kernels &&
+                    guard[j].kernels[kernel] != null) { base = guard[j].kernels[kernel]; break; }
+              }
+              if (base && v !== base) {
+                row += v < base ? ' \u00b7 ' + (base / v).toFixed(2) + '\u00d7 faster than its first'
+                                : ' \u00b7 ' + (v / base).toFixed(2) + '\u00d7 slower than its first';
+              }
+              return row;
+            }
+          });
+        }
+
+        function drawGuard() {
+          guardHost.textContent = '';
+          gKernels.forEach(drawGuardKernel);
+        }
+        scaleSwitch(guardHost.parentNode.insertBefore(document.createElement('div'), guardHost),
+                    guardScale, drawGuard);
+        drawGuard();
+      }
+
       // ---- the -O optimizer small multiples -----------------------------
       // Same shape, different comparison: one program compiled two ways. Only
       // the refs where the -O table was actually re-measured carry a block, so
