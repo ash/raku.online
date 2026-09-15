@@ -1,6 +1,6 @@
 ---
 name: XML::Writer
-version: '*'
+version: *
 auth: none stated
 kind: Distribution · markup
 summary: Serialise a nested Raku data structure into XML, where a Pair with a

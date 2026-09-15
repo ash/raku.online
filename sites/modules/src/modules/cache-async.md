@@ -40,7 +40,9 @@ my $cache = Cache::Async.new(
     },
 );
 
-say 'get returns a : ', $cache.get('a').^name;
+my $first = $cache.get('a');
+say 'get returns a : ', $first.^name;
+await $first;
 say '';
 say 'a       -> ', await $cache.get('a');
 say 'a again -> ', await $cache.get('a');

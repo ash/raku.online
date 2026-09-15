@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Package::Updates — The Raku Ecosystem, Working</title>
+<meta name="description" content="Ask the host's system package manager which installed packages have newer versions available, as a hash of name to current and new.">
+<link rel="canonical" href="https://raku.online/modules/package-updates/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Package::Updates — The Raku Ecosystem, Working">
+<meta property="og:description" content="Ask the host's system package manager which installed packages have newer versions available, as a hash of name to current and new.">
+<meta property="og:url" content="https://raku.online/modules/package-updates/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Package::Updates","description":"Ask the host's system package manager which installed packages have newer versions available, as a hash of name to current and new.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/package-updates/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git@github.com:ramiroencinas/perl6-Package-Updates.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>Package::Updates</h1><span class="status st-full">Works</span></div><p class="summary">Ask the host's system package manager which installed packages have newer versions available, as a hash of name to current and new.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Package::Updates">raku.land</a> · <a href="git@github.com:ramiroencinas/perl6-Package-Updates.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Package::Updates</code></pre></div><p class="fact-sub"><code>zef install Package::Updates</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A monitoring script, a dashboard or a compliance check wants to know whether the machine it is on has pending package updates. Each package manager answers that differently — <code>apt-get -s upgrade</code>, <code>pacman -Qu</code>, <code>yum check-update</code> — and parsing three formats is three jobs.</p>
+<p>This distribution picks the right one by probing for a marker directory and returns a single shape.</p>
+<h2 id="asking">Asking <a class="anchor" href="#asking" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/package-updates/01-ask.raku" title="This example as a file: 01-ask.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Package::Updates</span>;
+
+<span class="k">my</span> <span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="k">my</span> <span class="nv">%updates</span> = <span class="n">get-updates</span>();
+<span class="k">my</span> <span class="nv">$elapsed</span> = <span class="nb">now</span> - <span class="nv">$t0</span>;
+
+<span class="nb">say</span> <span class="s">'returns a : '</span>, <span class="nv">%updates</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'entries   : '</span>, <span class="nv">%updates</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'Bool      : '</span>, ?<span class="nv">%updates</span>;
+<span class="nb">say</span> <span class="s">'and it answered in under a second : '</span>, <span class="nv">$elapsed</span> &lt; <span class="mi">1</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>returns a : Hash
+entries   : 0
+Bool      : False
+and it answered in under a second : True</code></pre></div>
+<p>One exported sub, no arguments. Each value in a populated result is a hash of <code>current</code> and <code>new</code>.</p>
+<h2 id="how-it-decides">How it decides <a class="anchor" href="#how-it-decides" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/package-updates/02-probe.raku" title="This example as a file: 02-probe.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Package::Updates</span>;
+
+<span class="nb">say</span> <span class="s">'the module probes for a marker directory:'</span>;
+<span class="k">for</span> &lt;<span class="sr">/etc/</span><span class="n">apt</span> /<span class="n">etc</span>/<span class="n">pacman</span>.<span class="n">d</span> /<span class="n">etc</span>/<span class="n">yum</span>&gt; -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-16s exists : %s'</span>, <span class="nv">$p</span>, <span class="nv">$p</span>.<span class="nb">IO</span>.<span class="n">e</span>);
+}
+<span class="nb">say</span> <span class="s">'  win32 kernel     : '</span>, <span class="nv">$*KERNEL</span>.<span class="n">name</span> <span class="n">eq</span> <span class="s">'win32'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'if none of the four matches, it returns an empty hash.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the module probes for a marker directory:
+  /etc/apt         exists : False
+  /etc/pacman.d    exists : False
+  /etc/yum         exists : False
+  win32 kernel     : False
+
+if none of the four matches, it returns an empty hash.</code></pre></div>
+<p>Which is the thing to know.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>"No updates" and "I do not support this operating system" are the <strong>same return value</strong>.</p>
+<p>There is no exception, no <code>Failure</code>, no flag and no way for a caller to tell the two apart. On a machine whose package manager is not one of the four, the result is <code>{}</code> — exactly what a fully up-to-date Debian box returns.</p>
+<p>The set of hosts that silently answer <code>{}</code> is large: macOS, every BSD, Alpine and anything else using <code>apk</code>, Void, Gentoo, NixOS, and any Debian derivative where <code>/etc/apt</code> has been relocated.</p>
+<p>A monitoring check written against this reports "all clear" on every one of them. Probe for the marker directory yourself first, as the example above does, and treat a miss as "unknown" rather than "clean".</p>
+<p>Two things read from the source and worth flagging even though no machine here could exercise them. The apt path runs <code>apt-get update</code> and the pacman path runs <code>pacman -Sy</code> — both of which <strong>mutate system state</strong> and normally need root, which is a surprise from a function called <code>get-updates</code>. And the yum path shells out once per candidate package, so its cost is linear in the number of pending updates.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. The probe, the timing and the empty result were identical on Raku++ and Rakudo.</p>
+<p>The Windows path shells <code>powershell ./get-updates.ps1</code> — a <strong>relative</strong> path resolved against the current working directory — and no such script is shipped in the distribution, so that branch cannot work as installed.</p>
+<p>The distribution states no <code>auth</code>, and its source URL is an SSH remote rather than a browsable one.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

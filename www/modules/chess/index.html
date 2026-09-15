@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess — The Raku Ecosystem, Working</title>
+<meta name="description" content="Two chess notation grammars — a position in FEN and a game score in PGN — plus a terminal board printer in Unicode chess glyphs.">
+<link rel="canonical" href="https://raku.online/modules/chess/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Chess — The Raku Ecosystem, Working">
+<meta property="og:description" content="Two chess notation grammars — a position in FEN and a game score in PGN — plus a terminal board printer in Unicode chess glyphs.">
+<meta property="og:url" content="https://raku.online/modules/chess/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Chess","description":"Two chess notation grammars — a position in FEN and a game score in PGN — plus a terminal board printer in Unicode chess glyphs.","programmingLanguage":"Raku","version":"0.2.4","url":"https://raku.online/modules/chess/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/grondilu/chess.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · games</div><h1>Chess</h1><span class="status st-full">Works</span></div><p class="summary">Two chess notation grammars — a position in FEN and a game score in PGN — plus a terminal board printer in Unicode chess glyphs.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.4</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Chess">raku.land</a> · <a href="git://github.com/grondilu/chess.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Chess</code></pre></div><p class="fact-sub"><code>zef install Chess</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Two text formats carry essentially all recorded chess. FEN describes a position in one line; PGN describes a whole game. Reading either means a grammar, and writing that grammar twice is what this distribution saves you.</p>
+<p>There is no board representation here, no move generator and no legality checking — the grammars recognise the notation and hand back a <code>Match</code>.</p>
+<h2 id="drawing-a-position">Drawing a position <a class="anchor" href="#drawing-a-position" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/chess/01-show.raku" title="This example as a file: 01-show.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Chess</span>;
+
+<span class="n">show-FEN</span>(<span class="nv">$Chess::startpos</span> //
+    <span class="s">'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[30m[47m♜[100m♞[47m♝[100m♛[47m♚[100m♝[47m♞[100m♜[0m
+[100m♟[47m♟[100m♟[47m♟[100m♟[47m♟[100m♟[47m♟[0m
+[47m [100m [47m [100m [47m [100m [47m [100m [0m
+[100m [47m [100m [47m [100m [47m [100m [47m [0m
+[47m [100m [47m [100m [47m [100m [47m [100m [0m
+[100m [47m [100m [47m [100m [47m [100m [47m [0m
+[47m♙[100m♙[47m♙[100m♙[47m♙[100m♙[47m♙[100m♙[0m
+[100m♖[47m♘[100m♗[47m♕[100m♔[47m♗[100m♘[47m♖[0m</code></pre></div>
+<p><code>show-FEN</code> prints and returns <code>Nil</code>. There is no string-producing form, and the ANSI escapes for the checkerboard are emitted unconditionally — redirect its output to a file and the escapes go into the file.</p>
+<h2 id="reading-a-position">Reading a position <a class="anchor" href="#reading-a-position" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/chess/02-fen.raku" title="This example as a file: 02-fen.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Chess</span>;
+<span class="k">use</span> <span class="n">Chess::FEN</span>;
+
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Chess::FEN</span>.<span class="n">parse</span>(<span class="s">'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'</span>);
+<span class="nb">say</span> <span class="s">'parsed         : '</span>, ?<span class="nv">$m</span>;
+<span class="nb">say</span> <span class="s">'active-color   : '</span>, ~<span class="nv">$m</span><span class="s">&lt;active-color&gt;</span>;
+<span class="nb">say</span> <span class="s">'castling       : '</span>, ~<span class="nv">$m</span><span class="s">&lt;castling&gt;</span>;
+<span class="nb">say</span> <span class="s">'en-passant     : '</span>, ~<span class="nv">$m</span><span class="s">&lt;en-passant&gt;</span>;
+<span class="nb">say</span> <span class="s">'half-move      : '</span>, ~<span class="nv">$m</span><span class="s">&lt;half-move-clock&gt;</span>;
+<span class="nb">say</span> <span class="s">'full-move      : '</span>, ~<span class="nv">$m</span><span class="s">&lt;full-move-number&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the constant the module ships:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$Chess::startpos</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parsed         : True
+active-color   : w
+castling       : KQkq
+en-passant     : -
+half-move      : 0
+full-move      : 1
+
+and the constant the module ships:
+  (Any)</code></pre></div>
+<h2 id="reading-a-game">Reading a game <a class="anchor" href="#reading-a-game" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/chess/03-pgn.raku" title="This example as a file: 03-pgn.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Chess::PGN</span>;
+
+<span class="k">my</span> <span class="nv">$game</span> = <span class="s">'1. e4 e5 2. Qh5 Nc6 3. Qxf7# 1-0'</span>;
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Chess::PGN</span>.<span class="n">parse</span>(<span class="nv">$game</span>);
+<span class="nb">say</span> <span class="s">'parsed       : '</span>, ?<span class="nv">$m</span>;
+<span class="nb">say</span> <span class="s">'games        : '</span>, <span class="nv">$m</span><span class="s">&lt;game&gt;</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'moves        : '</span>, <span class="nv">$m</span><span class="s">&lt;game&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;move&gt;</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'move texts   : '</span>, <span class="nv">$m</span><span class="s">&lt;game&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;move&gt;</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>.<span class="nb">trim</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'adjudication : '</span>, ~<span class="nv">$m</span><span class="s">&lt;game&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;adjudication&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="s">'1. e4 e5 2. Nf3'</span>,
+    <span class="s">'1. e8=Q Kh8 2. Qxh8# 1-0'</span>,
+    <span class="s">'1. e4 $1 {best by test} e5 1/2-1/2'</span>,
+    <span class="s">'1. e9 e5 1-0'</span>,
+    <span class="s">'hello world'</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-40s -&gt; %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="n">Chess::PGN</span>.<span class="n">parse</span>(<span class="nv">$s</span>) ?? <span class="s">'parses'</span> !! <span class="s">'no'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parsed       : True
+games        : 1
+moves        : 3
+move texts   : ("1. e4 e5", "2. Qh5 Nc6", "3. Qxf7#")
+adjudication : 1-0
+
+"1. e4 e5 2. Nf3"                        -&gt; parses
+"1. e8=Q Kh8 2. Qxh8# 1-0"               -&gt; parses
+"1. e4 \$1 \{best by test} e5 1/2-1/2"   -&gt; parses
+"1. e9 e5 1-0"                           -&gt; no
+"hello world"                            -&gt; no</code></pre></div>
+<p>Tags, castling, promotion, numeric annotation glyphs, comments and all four adjudications are handled, and the result is optional.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The <code>where Chess::FEN.parse($fen)</code> in <code>show-FEN</code>'s signature checks the <strong>shape</strong> of the string, not the board. A rank that does not add up to eight squares is "valid".</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/chess/04-shape-trap.raku" title="This example as a file: 04-shape-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Chess::FEN</span>;
+
+<span class="k">for</span> <span class="s">'44444444/8/8/8/8/8/8/8 w - - 0 1'</span>,
+    <span class="s">'4/8/8/8/8/8/8/8 w - - 0 1'</span>,
+    <span class="s">'8/8/8/8/8/8/8/8 w - - 0 1'</span>,
+    <span class="s">'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 99999 0'</span> -&gt; <span class="nv">$fen</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-64s parses: %s'</span>, <span class="nv">$fen</span>.<span class="nb">raku</span>, ?<span class="n">Chess::FEN</span>.<span class="n">parse</span>(<span class="nv">$fen</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'those are, in order: a rank of 32 squares, a rank of 4,'</span>;
+<span class="nb">say</span> <span class="s">'a board with no kings at all, and a five-digit half-move clock.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"44444444/8/8/8/8/8/8/8 w - - 0 1"                               parses: True
+"4/8/8/8/8/8/8/8 w - - 0 1"                                      parses: True
+"8/8/8/8/8/8/8/8 w - - 0 1"                                      parses: True
+"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 99999 0"  parses: True
+
+those are, in order: a rank of 32 squares, a rank of 4,
+a board with no kings at all, and a five-digit half-move clock.</code></pre></div>
+<p><code>token rank { &lt;symbol&gt; ** 1..8 }</code> counts <strong>symbols</strong>, never squares, so a rank may describe anywhere from one to sixty-four of them. A parameter constraint that runs a grammar reads like validation; here it is a spell-check.</p>
+<p>A <code>Chess::FEN</code> match is not a validated position. If you need one, count the squares yourself.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every position, every game and every rejection in this page was byte-identical on Raku++ and Rakudo, down to the ANSI escape bytes in the board.</p>
+<p>Two things worth knowing that are not engine differences. <code>show-FEN</code>'s body depends on <code>$/</code> leaking out of its own <strong>signature</strong> — the <code>where</code> clause runs the grammar and the body reads the match object it left behind — so the parameter constraint is load-bearing and cannot be replaced with a cheaper check. And the distribution declares <strong>no <code>auth</code></strong>, which is why it has no canonical raku.land path.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

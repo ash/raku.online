@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unicode::PRECIS — The Raku Ecosystem, Working</title>
+<meta name="description" content="The PRECIS framework of RFC 8264 — decide whether a string is acceptable as a username or a password, and normalise it for comparison.">
+<link rel="canonical" href="https://raku.online/modules/unicode-precis/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Unicode::PRECIS — The Raku Ecosystem, Working">
+<meta property="og:description" content="The PRECIS framework of RFC 8264 — decide whether a string is acceptable as a username or a password, and normalise it for comparison.">
+<meta property="og:url" content="https://raku.online/modules/unicode-precis/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Unicode::PRECIS","description":"The PRECIS framework of RFC 8264 — decide whether a string is acceptable as a username or a password, and normalise it for comparison.","programmingLanguage":"Raku","version":"0.5.2","url":"https://raku.online/modules/unicode-precis/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/MARTIMM/unicode-precis.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · Unicode</div><h1>Unicode::PRECIS</h1><span class="status st-part">Partial</span></div><p class="summary">The PRECIS framework of RFC 8264 — decide whether a string is acceptable as a username or a password, and normalise it for comparison.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.5.2</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Unicode::PRECIS">raku.land</a> · <a href="git://github.com/MARTIMM/unicode-precis.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Unicode::PRECIS</code></pre></div><p class="fact-sub"><code>zef install Unicode::PRECIS</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Two usernames that look identical should not be two accounts, and a password typed on a phone keyboard should match the one typed on a laptop. Getting that right across the whole of Unicode is a specification-sized problem, and PRECIS is the specification: two base string classes and four profiles covering case-mapped usernames, case-preserved usernames and opaque password strings.</p>
+<p>This distribution implements them, over about ten thousand lines of generated Unicode tables.</p>
+<h2 id="enforcing-a-profile">Enforcing a profile <a class="anchor" href="#enforcing-a-profile" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-precis/01-enforce.raku" title="This example as a file: 01-enforce.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::PRECIS</span>;
+<span class="k">use</span> <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>;
+<span class="k">use</span> <span class="n">Unicode::PRECIS::Identifier::UsernameCasePreserved</span>;
+<span class="k">use</span> <span class="n">Unicode::PRECIS::FreeForm::OpaqueString</span>;
+
+<span class="k">my</span> <span class="nv">$cm</span> = <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$cp</span> = <span class="n">Unicode::PRECIS::Identifier::UsernameCasePreserved</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$op</span> = <span class="n">Unicode::PRECIS::FreeForm::OpaqueString</span>.<span class="nb">new</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">$name</span>, <span class="nv">$obj</span>, <span class="nv">$in</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$obj</span>.<span class="n">enforce</span>(<span class="nv">$in</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s %-26s -&gt; %s'</span>, <span class="nv">$name</span>, <span class="nv">$in</span>.<span class="nb">raku</span>,
+        <span class="nv">$r</span> ~~ <span class="nb">Str</span> ?? <span class="nv">$r</span>.<span class="nb">raku</span> !! <span class="s">'rejected'</span>);
+}
+
+<span class="n">show</span> <span class="s">'CaseMapped'</span>,    <span class="nv">$cm</span>, <span class="s">'BobSmith'</span>;
+<span class="n">show</span> <span class="s">'CasePreserved'</span>, <span class="nv">$cp</span>, <span class="s">'BobSmith'</span>;
+<span class="n">show</span> <span class="s">'CaseMapped'</span>,    <span class="nv">$cm</span>, <span class="s">'correct horse battery'</span>;
+<span class="n">show</span> <span class="s">'OpaqueString'</span>,  <span class="nv">$op</span>, <span class="s">'correct horse battery'</span>;
+<span class="n">show</span> <span class="s">'OpaqueString'</span>,  <span class="nv">$op</span>, <span class="s">''</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>CaseMapped     "BobSmith"                 -&gt; "bobsmith"
+CasePreserved  "BobSmith"                 -&gt; "BobSmith"
+CaseMapped     "correct horse battery"    -&gt; rejected
+OpaqueString   "correct horse battery"    -&gt; "correct horse battery"
+OpaqueString   ""                         -&gt; rejected</code></pre></div>
+<p>The Identifier and FreeForm split is the point: a username may not contain a space and a password may. <code>enforce</code> returns the canonical form on success and <code>False</code> on rejection — the return is <code>Str | Bool</code>, not an enum.</p>
+<h2 id="comparison">Comparison <a class="anchor" href="#comparison" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-precis/02-compare.raku" title="This example as a file: 02-compare.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::PRECIS</span>;
+<span class="k">use</span> <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>;
+
+<span class="k">my</span> <span class="nv">$cm</span> = <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>.<span class="nb">new</span>;
+
+<span class="nb">say</span> <span class="s">'case folding:'</span>;
+<span class="nb">say</span> <span class="s">'  compare(&quot;BobSmith&quot;, &quot;bobsmith&quot;) : '</span>, <span class="nv">$cm</span>.<span class="n">compare</span>(<span class="s">'BobSmith'</span>, <span class="s">'bobsmith'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$latin</span> = <span class="s">'paypal'</span>;
+<span class="k">my</span> <span class="nv">$spoof</span> = <span class="s">&quot;p\c[CYRILLIC SMALL LETTER A]yp\c[CYRILLIC SMALL LETTER A]l&quot;</span>;
+<span class="nb">say</span> <span class="s">'a Cyrillic homograph:'</span>;
+<span class="nb">say</span> <span class="s">'  they render identically       : '</span>, <span class="nv">$latin</span>.<span class="nb">chars</span> == <span class="nv">$spoof</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="s">'  codepoints differ             : '</span>, <span class="nv">$latin</span>.<span class="nb">ords</span> <span class="n">ne</span> <span class="nv">$spoof</span>.<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="s">'  compare says                  : '</span>, <span class="nv">$cm</span>.<span class="n">compare</span>(<span class="nv">$latin</span>, <span class="nv">$spoof</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>case folding:
+  compare("BobSmith", "bobsmith") : True
+
+a Cyrillic homograph:
+  they render identically       : True
+  codepoints differ             : True
+  compare says                  : False</code></pre></div>
+<p>That last result is <strong>correct</strong> PRECIS behaviour, not a bug — PRECIS is not a confusables defence, and the specification is explicit about it. It is worth knowing that a comparison returning <code>False</code> for two strings that render identically is the design.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>width-mapping-rule</code> returns the decimal codepoint <strong>numbers</strong> as text, and <code>prepare</code> hands that back as a valid username.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-precis/03-width-trap.raku" title="This example as a file: 03-width-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::PRECIS</span>;
+<span class="k">use</span> <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>;
+
+<span class="k">my</span> <span class="nv">$cm</span> = <span class="n">Unicode::PRECIS::Identifier::UsernameCaseMapped</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$fw</span> = <span class="s">&quot;\c[FULLWIDTH LATIN CAPITAL LETTER A]&quot;</span> ~ <span class="s">&quot;\c[FULLWIDTH LATIN SMALL LETTER B]&quot;</span>;
+
+<span class="nb">say</span> <span class="s">'input codepoints      : '</span>, <span class="nv">$fw</span>.<span class="nb">ords</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'width-mapping-rule    : '</span>, <span class="nv">$cm</span>.<span class="n">width-mapping-rule</span>(<span class="nv">$fw</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'which is just those numbers concatenated : '</span>,
+    <span class="nv">$cm</span>.<span class="n">width-mapping-rule</span>(<span class="nv">$fw</span>) <span class="n">eq</span> <span class="nv">$fw</span>.<span class="nb">ords</span>.<span class="nb">join</span>(<span class="s">''</span>);
+<span class="nb">say</span> <span class="s">'a real width mapping would give          : '</span>,
+    <span class="nv">$fw</span>.<span class="nb">comb</span>.<span class="nb">map</span>({ <span class="k">my</span> <span class="nv">$o</span> = .<span class="nb">ord</span>; <span class="mh">0xFF01</span> &lt;= <span class="nv">$o</span> &lt;= <span class="mh">0xFF5E</span> ?? (<span class="nv">$o</span> - <span class="mh">0xFEE0</span>).<span class="nb">chr</span> !! <span class="nv">$_</span> }).<span class="nb">join</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and prepare and enforce disagree about it:'</span>;
+<span class="nb">say</span> <span class="s">'  prepare : '</span>, <span class="nv">$cm</span>.<span class="n">prepare</span>(<span class="nv">$fw</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  enforce : '</span>, <span class="nv">$cm</span>.<span class="n">enforce</span>(<span class="nv">$fw</span>) ~~ <span class="nb">Str</span> ?? <span class="nv">$cm</span>.<span class="n">enforce</span>(<span class="nv">$fw</span>).<span class="nb">raku</span> !! <span class="s">'rejected'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input codepoints      : (65313, 65346)
+width-mapping-rule    : "6531365346"
+which is just those numbers concatenated : True
+a real width mapping would give          : "Ab"
+
+and prepare and enforce disagree about it:
+  prepare : "6531365346"
+  enforce : rejected</code></pre></div>
+<p>Two failures at once. The mapping produces nonsense instead of folding fullwidth <code>Ａ</code> to <code>A</code>, and <code>prepare</code> <strong>accepts</strong> what <code>enforce</code> rejects, returning a plausible-looking ten-digit string that a caller would happily store as a username.</p>
+<p>ASCII passes through the rule untouched, which is why this survives casual testing.</p>
+<p>Use <code>enforce</code>, never <code>prepare</code>, and do not rely on width folding.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in how <code>TestValue</code> fails introspection: it is a <code>subset</code>, not an enum, so <code>.^enum_value_list</code> throws on both engines with different type names in the message. Treat the return as <code>Str | Bool</code>.</p>
+<p>One trap that is the same on both and is worth a line of its own. The low-level <code>PropValue</code> enum has <strong><code>PVALID</code> as 0 and <code>DISALLOWED</code> as 5</strong> — so <code>PVALID</code> is falsy and <code>DISALLOWED</code> is truthy. Any <code>if</code> test on a raw <code>PropValue</code> from the low-level interface is inverted.</p>
+<p>The distribution declares no <code>auth</code>, and ships one test file for a module of this size and security purpose.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

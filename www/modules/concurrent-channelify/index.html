@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concurrent::Channelify — The Raku Ecosystem, Working</title>
+<meta name="description" content="Hand a list to a start block that pushes every element into a Channel, so a producing pipeline overlaps with a consuming one.">
+<link rel="canonical" href="https://raku.online/modules/concurrent-channelify/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Concurrent::Channelify — The Raku Ecosystem, Working">
+<meta property="og:description" content="Hand a list to a start block that pushes every element into a Channel, so a producing pipeline overlaps with a consuming one.">
+<meta property="og:url" content="https://raku.online/modules/concurrent-channelify/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Concurrent::Channelify","description":"Hand a list to a start block that pushes every element into a Channel, so a producing pipeline overlaps with a consuming one.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/concurrent-channelify/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/gfldex/perl6-concurrent-channelify.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · concurrency</div><h1>Concurrent::Channelify</h1><span class="status st-div">Divergent</span></div><p class="summary">Hand a list to a start block that pushes every element into a Channel, so a producing pipeline overlaps with a consuming one.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">github:gfldex</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:gfldex/Concurrent::Channelify">raku.land</a> · <a href="git://github.com/gfldex/perl6-concurrent-channelify.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Concurrent::Channelify</code></pre></div><p class="fact-sub"><code>zef install Concurrent::Channelify</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A lazy list computed by one expensive step and consumed by another expensive step runs both on the same thread, alternating. Putting a <code>Channel</code> between them lets the producer run ahead on the thread pool while the consumer works, which is free throughput if the two steps are genuinely independent.</p>
+<p>This distribution is the thirty lines of plumbing that does that.</p>
+<h2 id="draining-a-list-through-a-channel">Draining a list through a channel <a class="anchor" href="#draining-a-list-through-a-channel" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/concurrent-channelify/01-channelify.raku" title="This example as a file: 01-channelify.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Concurrent::Channelify</span>;
+
+<span class="k">my</span> <span class="nv">@work</span> = <span class="mi">1</span> .. <span class="mi">8</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">channelify</span>(<span class="nv">@work</span>);
+
+<span class="nb">say</span> <span class="s">'channelify returns : '</span>, <span class="nv">$c</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  isa Channel      : '</span>, <span class="nv">$c</span> ~~ <span class="nb">Channel</span>;
+<span class="nb">say</span> <span class="s">'  .no-thread       : '</span>, <span class="nv">$c</span>.<span class="n">no-thread</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@got</span> = <span class="nv">$c</span>.<span class="nb">list</span>;
+<span class="nb">say</span> <span class="s">'drained (sorted) : '</span>, <span class="nv">@got</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'count            : '</span>, <span class="nv">@got</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a second consumer sees an exhausted channel : '</span>, <span class="nv">$c</span>.<span class="nb">list</span>.<span class="nb">elems</span>, <span class="s">' items'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>channelify returns : Channel+{&lt;anon|1&gt;}
+  isa Channel      : True
+  .no-thread       : False
+
+drained (sorted) : 1 2 3 4 5 6 7 8
+count            : 8
+
+a second consumer sees an exhausted channel : 0 items</code></pre></div>
+<p>The channel closes itself when the producer runs out, so <code>.list</code> terminates.</p>
+<h2 id="the-operator">The operator <a class="anchor" href="#the-operator" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/concurrent-channelify/02-operator.raku" title="This example as a file: 02-operator.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Concurrent::Channelify</span>;
+
+<span class="nb">say</span> <span class="s">'the module imports a sub and a postfix operator,'</span>;
+<span class="nb">say</span> <span class="s">'both bound to the same routine.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span> .. <span class="mi">5</span>;
+<span class="nb">say</span> <span class="s">'the sub form : '</span>, <span class="n">channelify</span>(<span class="nv">@a</span>).<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the module imports a sub and a postfix operator,
+both bound to the same routine.
+
+the sub form : 1 2 3 4 5</code></pre></div>
+<p>The second name is a <strong>postfix</strong> spelled with the Unicode double arrow, and it must be written tight against its operand, with no space before it. It collides with Raku's core infix of the same spelling — the Unicode form of <code>=&gt;</code> — which is the thing to weigh before importing it, and which the two engines handle differently; see the last section.</p>
+<h2 id="what-it-accepts">What it accepts <a class="anchor" href="#what-it-accepts" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/concurrent-channelify/03-accepts.raku" title="This example as a file: 03-accepts.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Concurrent::Channelify</span>;
+
+<span class="nb">say</span> <span class="s">'an Array : '</span>, <span class="n">channelify</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>]).<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'a List   : '</span>, <span class="n">channelify</span>((<span class="mi">4</span>, <span class="mi">5</span>, <span class="mi">6</span>)).<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">':no-thread runs the producer inline:'</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="n">channelify</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], :<span class="n">no-thread</span>);
+<span class="nb">say</span> <span class="s">'  .no-thread : '</span>, <span class="nv">$n</span>.<span class="n">no-thread</span>;
+<span class="nb">say</span> <span class="s">'  contents   : '</span>, <span class="nv">$n</span>.<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="mi">42</span>, <span class="s">'text'</span>, %(<span class="n">a</span> =&gt; <span class="mi">1</span>) -&gt; <span class="nv">$bad</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">channelify</span>(<span class="nv">$bad</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-6s -&gt; %s'</span>, <span class="nv">$bad</span>.^<span class="n">name</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'accepted'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>an Array : 1 2 3
+a List   : 4 5 6
+
+:no-thread runs the producer inline:
+  .no-thread : True
+  contents   : 1 2 3
+
+  Int    -&gt; refused
+  Str    -&gt; refused
+  Hash   -&gt; refused</code></pre></div>
+<p>The parameter is <code>Positional:D</code>, so anything that is not a list is refused.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>channelify</code> returns a different <strong>type</strong> depending on an environment variable read at import time.</p>
+<p>The module's <code>EXPORT</code> sub checks <code>RAKUDO_MAX_THREADS</code> and, when it is 1, silently substitutes a non-threaded implementation that returns a <strong><code>Seq</code></strong> instead of a <code>Channel</code>. So <code>$r ~~ Channel</code> goes from <code>True</code> to <code>False</code>, and every channel method — <code>.poll</code>, <code>.close</code>, <code>.receive</code>, <code>.send</code> — vanishes.</p>
+<p>Code that drains with <code>.list</code> survives the switch. Anything that polls or closes breaks on a machine that happens to have that variable set, at runtime, with a method-not-found far from the <code>use</code> statement that decided it.</p>
+<p>If you rely on the <code>Channel</code> interface, check <code>$c ~~ Channel</code> after constructing, or do not use this.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On what importing the postfix does to the core infix. Under Raku++, <code>use Concurrent::Channelify</code> <strong>destroys</strong> <code>infix:&lt;⇒&gt;</code> — <code>(1 ⇒ 2).raku</code> stops parsing — while under Rakudo the two coexist and <code>1 ⇒ 2</code> still builds a <code>Pair</code>. Either way the postfix must be written tight against its operand.</p>
+<p>Raku++ also declines to bind a bare <code>Range</code> to the <code>Positional:D</code> parameter even though <code>(1..5) ~~ Positional:D</code> is <code>True</code>, so <code>channelify(1..5)</code> works on Rakudo and is refused on Raku++. Pass an <code>Array</code> or a <code>List</code>, as the examples above do.</p>
+<p>One thing that is the same on both and is the reason to think before using this at all: the <code>Channel</code> is <strong>unbounded</strong>. There is no back-pressure, so a producer racing ahead of a slow consumer allocates until you close the channel. Feed it a lazy or infinite list and it will keep going. Closing does stop it — the producer loop checks <code>$channel.closed</code> — so close it when you stop consuming.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

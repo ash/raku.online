@@ -1,0 +1,39 @@
+#!/usr/bin/env rakupp
+# Automata::Cellular — Other rules, other glyphs
+# https://raku.online/modules/automata-cellular/#other-rules-other-glyphs
+#
+# Install what it needs, then run it:
+#     rakupp install Automata::Cellular
+#     rakupp 02-rules.raku
+#
+# Run under Raku++ 3.28.0 and Rakudo 2026.08 every time the site is
+# built; the build fails if the output below stops matching.
+
+use Automata::Cellular;
+
+for 90, 110, 184 -> $n {
+    my $w = Wolfram.new(number => $n, width => 17);
+    say "rule $n";
+    for ^4 { say '  ', $w.current; $w.succ }
+}
+say '';
+say 'custom glyphs : ', Wolfram.new(number => 90, width => 9, format => <_ #>).current;
+
+# Output:
+#     rule 90
+#       ........X........
+#       .......X.X.......
+#       ......X...X......
+#       .....X.X.X.X.....
+#     rule 110
+#       ........X........
+#       .......XX........
+#       ......XXX........
+#       .....XX.X........
+#     rule 184
+#       ........X........
+#       .........X.......
+#       ..........X......
+#       ...........X.....
+#     
+#     custom glyphs : ____#____

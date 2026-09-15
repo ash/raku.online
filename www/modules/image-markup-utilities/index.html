@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image::Markup::Utilities — The Raku Ecosystem, Working</title>
+<meta name="description" content="Turn an image file into a base64 data URI and wrap it in Markdown or HTML, so images can be embedded inline in notebooks and documents.">
+<link rel="canonical" href="https://raku.online/modules/image-markup-utilities/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Image::Markup::Utilities — The Raku Ecosystem, Working">
+<meta property="og:description" content="Turn an image file into a base64 data URI and wrap it in Markdown or HTML, so images can be embedded inline in notebooks and documents.">
+<meta property="og:url" content="https://raku.online/modules/image-markup-utilities/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Image::Markup::Utilities","description":"Turn an image file into a base64 data URI and wrap it in Markdown or HTML, so images can be embedded inline in notebooks and documents.","programmingLanguage":"Raku","version":"0.1.2","url":"https://raku.online/modules/image-markup-utilities/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/antononcube/Raku-Image-Markup-Utilities"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · images</div><h1>Image::Markup::Utilities</h1><span class="status st-full">Works</span></div><p class="summary">Turn an image file into a base64 data URI and wrap it in Markdown or HTML, so images can be embedded inline in notebooks and documents.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.2</code> <span class="fact-sub">zef:antononcube</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>HTTP::Tiny</code>, <code>MIME::Base64</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:antononcube/Image::Markup::Utilities">raku.land</a> · <a href="https://github.com/antononcube/Raku-Image-Markup-Utilities">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Image::Markup::Utilities</code></pre></div><p class="fact-sub"><code>zef install Image::Markup::Utilities</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A notebook cell, a Markdown report or a self-contained HTML page cannot refer to an image by path — the file has to travel with the document. The answer is a <code>data:</code> URI: the bytes base64-encoded and inlined.</p>
+<p>This distribution builds those, and wraps them in the markup the surrounding document wants.</p>
+<h2 id="encoding-an-image">Encoding an image <a class="anchor" href="#encoding-an-image" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-markup-utilities/01-encode.raku" title="This example as a file: 01-encode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::Markup::Utilities</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;img-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="c1"># a real 1x1 PNG, written from literal bytes</span>
+<span class="k">my</span> <span class="nv">$png</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'dot.png'</span>);
+<span class="nv">$png</span>.<span class="nb">spurt</span>: <span class="nb">Buf</span>.<span class="nb">new</span>(
+    <span class="mh">0x89</span>,<span class="mh">0x50</span>,<span class="mh">0x4E</span>,<span class="mh">0x47</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x1A</span>,<span class="mh">0x0A</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x0D</span>,
+    <span class="mh">0x49</span>,<span class="mh">0x48</span>,<span class="mh">0x44</span>,<span class="mh">0x52</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,
+    <span class="mh">0x08</span>,<span class="mh">0x06</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x1F</span>,<span class="mh">0x15</span>,<span class="mh">0xC4</span>,<span class="mh">0x89</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x0A</span>,<span class="mh">0x49</span>,<span class="mh">0x44</span>,<span class="mh">0x41</span>,<span class="mh">0x54</span>,<span class="mh">0x78</span>,<span class="mh">0x9C</span>,<span class="mh">0x63</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x05</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x2D</span>,<span class="mh">0xB4</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x49</span>,
+    <span class="mh">0x45</span>,<span class="mh">0x4E</span>,<span class="mh">0x44</span>,<span class="mh">0xAE</span>,<span class="mh">0x42</span>,<span class="mh">0x60</span>,<span class="mh">0x82</span>);
+
+<span class="nb">say</span> <span class="s">'fixture bytes : '</span>, <span class="nv">$png</span>.<span class="n">s</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$enc</span> = <span class="n">image-encode</span>(<span class="nv">$png</span>.<span class="n">absolute</span>, :<span class="n">type</span><span class="s">&lt;png&gt;</span>);
+<span class="nb">say</span> <span class="s">'image-encode returns a '</span>, <span class="nv">$enc</span>.^<span class="n">name</span>, <span class="s">' of '</span>, <span class="nv">$enc</span>.<span class="nb">chars</span>, <span class="s">' chars'</span>;
+<span class="nb">say</span> <span class="s">'  it starts : '</span>, <span class="nv">$enc</span>.<span class="nb">substr</span>(<span class="mi">0</span>, <span class="mi">40</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>fixture bytes : 67
+
+image-encode returns a Str of 114 chars
+  it starts : data:image/png;base64,iVBORw0KGgoAAAANSU</code></pre></div>
+<h2 id="wrapping-it">Wrapping it <a class="anchor" href="#wrapping-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-markup-utilities/02-wrap.raku" title="This example as a file: 02-wrap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::Markup::Utilities</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;img2-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="k">my</span> <span class="nv">$png</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'dot.png'</span>);
+<span class="nv">$png</span>.<span class="nb">spurt</span>: <span class="nb">Buf</span>.<span class="nb">new</span>(
+    <span class="mh">0x89</span>,<span class="mh">0x50</span>,<span class="mh">0x4E</span>,<span class="mh">0x47</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x1A</span>,<span class="mh">0x0A</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x0D</span>,
+    <span class="mh">0x49</span>,<span class="mh">0x48</span>,<span class="mh">0x44</span>,<span class="mh">0x52</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,
+    <span class="mh">0x08</span>,<span class="mh">0x06</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x1F</span>,<span class="mh">0x15</span>,<span class="mh">0xC4</span>,<span class="mh">0x89</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x0A</span>,<span class="mh">0x49</span>,<span class="mh">0x44</span>,<span class="mh">0x41</span>,<span class="mh">0x54</span>,<span class="mh">0x78</span>,<span class="mh">0x9C</span>,<span class="mh">0x63</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x05</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x2D</span>,<span class="mh">0xB4</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x49</span>,
+    <span class="mh">0x45</span>,<span class="mh">0x4E</span>,<span class="mh">0x44</span>,<span class="mh">0xAE</span>,<span class="mh">0x42</span>,<span class="mh">0x60</span>,<span class="mh">0x82</span>);
+
+<span class="k">for</span> <span class="s">'md-image'</span>, <span class="s">'html-image'</span>, <span class="s">'base64'</span> -&gt; <span class="nv">$f</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="n">image-import</span>(<span class="nv">$png</span>.<span class="n">absolute</span>, :<span class="n">format</span>(<span class="nv">$f</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s %3d chars, starts %s'</span>, <span class="nv">$f</span>, <span class="nv">$r</span>.<span class="nb">chars</span>, <span class="nv">$r</span>.<span class="nb">substr</span>(<span class="mi">0</span>, <span class="mi">28</span>).<span class="nb">raku</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>md-image     120 chars, starts "![](data:image/jpeg;base64,i"
+html-image    92 chars, starts "iVBORw0KGgoAAAANSUhEUgAAAAEA"
+base64       115 chars, starts "data:image/jpeg;base64,iVBOR"</code></pre></div>
+<p>Two of those names do not mean what they say. <code>:format&lt;html-image&gt;</code> returns <strong>bare base64 with no tag at all</strong>, and <code>:format&lt;base64&gt;</code> returns a full <code>data:</code> URI. The two are effectively swapped relative to what they produce.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The MIME type in the data URI is a caller-supplied label that is never checked against the file.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-markup-utilities/03-type-trap.raku" title="This example as a file: 03-type-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::Markup::Utilities</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;img3-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="k">my</span> <span class="nv">$png</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'dot.png'</span>);
+<span class="nv">$png</span>.<span class="nb">spurt</span>: <span class="nb">Buf</span>.<span class="nb">new</span>(
+    <span class="mh">0x89</span>,<span class="mh">0x50</span>,<span class="mh">0x4E</span>,<span class="mh">0x47</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x1A</span>,<span class="mh">0x0A</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x0D</span>,
+    <span class="mh">0x49</span>,<span class="mh">0x48</span>,<span class="mh">0x44</span>,<span class="mh">0x52</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,
+    <span class="mh">0x08</span>,<span class="mh">0x06</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x1F</span>,<span class="mh">0x15</span>,<span class="mh">0xC4</span>,<span class="mh">0x89</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x0A</span>,<span class="mh">0x49</span>,<span class="mh">0x44</span>,<span class="mh">0x41</span>,<span class="mh">0x54</span>,<span class="mh">0x78</span>,<span class="mh">0x9C</span>,<span class="mh">0x63</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+    <span class="mh">0x05</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,<span class="mh">0x0D</span>,<span class="mh">0x0A</span>,<span class="mh">0x2D</span>,<span class="mh">0xB4</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x49</span>,
+    <span class="mh">0x45</span>,<span class="mh">0x4E</span>,<span class="mh">0x44</span>,<span class="mh">0xAE</span>,<span class="mh">0x42</span>,<span class="mh">0x60</span>,<span class="mh">0x82</span>);
+
+<span class="nb">say</span> <span class="s">'the file is an unambiguous PNG — magic bytes 89 50 4E 47:'</span>;
+<span class="nb">say</span> <span class="s">'  first four bytes : '</span>, <span class="nv">$png</span>.<span class="nb">slurp</span>(:<span class="n">bin</span>).<span class="n">subbuf</span>(<span class="mi">0</span>, <span class="mi">4</span>).<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="s">'(no :type)'</span>, <span class="s">''</span>, <span class="s">':type&lt;png&gt;'</span>, <span class="s">'png'</span>, <span class="s">':type&lt;gif&gt;'</span>, <span class="s">'gif'</span>, <span class="s">':type&lt;banana&gt;'</span>, <span class="s">'banana'</span> -&gt; <span class="nv">$label</span>, <span class="nv">$t</span> {
+    <span class="k">my</span> <span class="nv">$e</span> = <span class="nv">$t</span> ?? <span class="n">image-encode</span>(<span class="nv">$png</span>.<span class="n">absolute</span>, :<span class="n">type</span>(<span class="nv">$t</span>)) !! <span class="n">image-encode</span>(<span class="nv">$png</span>.<span class="n">absolute</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="nv">$e</span>.<span class="nb">substr</span>(<span class="mi">0</span>, <span class="mi">27</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and image-import has no :type parameter at all,'</span>;
+<span class="nb">say</span> <span class="s">'so every image it embeds is announced as JPEG.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the file is an unambiguous PNG — magic bytes 89 50 4E 47:
+  first four bytes : 89 50 4E 47
+
+  (no :type)     -&gt; data:image/jpeg;base64,iVBO
+  :type&lt;png&gt;     -&gt; data:image/png;base64,iVBOR
+  :type&lt;gif&gt;     -&gt; data:image/gif;base64,iVBOR
+  :type&lt;banana&gt;  -&gt; data:image/banana;base64,iV
+
+and image-import has no :type parameter at all,
+so every image it embeds is announced as JPEG.</code></pre></div>
+<p>The default label is <code>jpeg</code> regardless of the file, and <code>:type&lt;banana&gt;</code> produces <code>data:image/banana;base64,…</code> without complaint. A browser that believes the label will refuse to render the image; one that sniffs the bytes will work, and you will not find out which until it matters.</p>
+<p>Pass the right <code>:type</code> every time, and do not use <code>image-import</code> for anything but JPEG.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only on a missing input file, where both return <code>Nil</code> with no exception and Rakudo additionally warns <code>Use of Nil.substr coerced to empty string</code>. Check <code>.e</code> yourself before calling.</p>
+<p>One thing to know before you point this at a path: the distribution depends on <code>HTTP::Tiny</code> because <code>$spec</code> can be a <strong>URL</strong>. Every call is therefore a potential network fetch, and a path that happens to look like one will be fetched rather than read.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

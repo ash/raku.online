@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5getgrnam — The Raku Ecosystem, Working</title>
+<meta name="description" content="The POSIX group-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back.">
+<link rel="canonical" href="https://raku.online/modules/p5getgrnam/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P5getgrnam — The Raku Ecosystem, Working">
+<meta property="og:description" content="The POSIX group-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back.">
+<meta property="og:url" content="https://raku.online/modules/p5getgrnam/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"P5getgrnam","description":"The POSIX group-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back.","programmingLanguage":"Raku","version":"0.0.10","url":"https://raku.online/modules/p5getgrnam/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/P5getgrnam.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>P5getgrnam</h1><span class="status st-full">Works</span></div><p class="summary">The POSIX group-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.10</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/P5getgrnam">raku.land</a> · <a href="https://github.com/lizmat/P5getgrnam.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install P5getgrnam</code></pre></div><p class="fact-sub"><code>zef install P5getgrnam</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Turning a group name into a gid, or a gid back into a name, is what <code>getgrnam(3)</code> and <code>getgrgid(3)</code> are for — and Raku has no built-in for either. Anything that sets group ownership, checks membership, or reports on a file's group needs them.</p>
+<p>This distribution binds them, and shapes the answer the way Perl's <code>getgr*</code> built-ins do.</p>
+<h2 id="looking-a-group-up">Looking a group up <a class="anchor" href="#looking-a-group-up" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getgrnam/01-lookup.raku" title="This example as a file: 01-lookup.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getgrnam</span>;
+
+<span class="c1"># gid 0 is the superuser group on every POSIX machine; its NAME is not</span>
+<span class="c1"># portable (wheel on BSD, root on Linux), so this checks shape.</span>
+<span class="k">my</span> <span class="nv">@g</span> = <span class="n">getgrgid</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'fields             : '</span>, <span class="nv">@g</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'name is a non-empty Str : '</span>, <span class="nv">@g</span>[<span class="mi">0</span>].<span class="nb">defined</span> &amp;&amp; <span class="nv">@g</span>[<span class="mi">0</span>].<span class="nb">chars</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'gid                : '</span>, <span class="nv">@g</span>[<span class="mi">2</span>];
+<span class="nb">say</span> <span class="s">'members field is a : '</span>, <span class="nv">@g</span>[<span class="mi">3</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'scalar by gid gives the name : '</span>, <span class="n">getgrgid</span>(<span class="nb">Scalar</span>, <span class="mi">0</span>) <span class="n">eqv</span> <span class="nv">@g</span>[<span class="mi">0</span>];
+<span class="nb">say</span> <span class="s">'scalar by name gives the gid : '</span>, <span class="n">getgrnam</span>(<span class="nb">Scalar</span>, <span class="nv">@g</span>[<span class="mi">0</span>]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>fields             : 4
+name is a non-empty Str : True
+gid                : 0
+members field is a : Str
+
+scalar by gid gives the name : True
+scalar by name gives the gid : 0</code></pre></div>
+<p>The record is <code>($name, $passwd, $gid, $members)</code> in Perl's order, and <code>$members</code> is a <strong>space-joined <code>Str</code></strong>, not a list — <code>.words</code> gets you the names.</p>
+<p>Perl asks for a scalar by calling in scalar context; Raku has no such thing, so the module takes the <code>Scalar</code> type object as an extra first argument. The result is asymmetric by design: by name gives the id, by id gives the name.</p>
+<h2 id="walking-the-database">Walking the database <a class="anchor" href="#walking-the-database" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getgrnam/02-enumerate.raku" title="This example as a file: 02-enumerate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getgrnam</span>;
+
+<span class="nb">say</span> <span class="s">'setgrent : '</span>, <span class="n">setgrent</span>();
+<span class="k">my</span> (<span class="nv">$n</span>, <span class="nv">$widest</span>) = <span class="mi">0</span>, <span class="mi">0</span>;
+<span class="k">loop</span> {
+    <span class="k">my</span> <span class="nv">@e</span> = <span class="n">getgrent</span>() <span class="k">or</span> <span class="k">last</span>;
+    <span class="nv">$n</span>++;
+    <span class="nv">$widest</span> = <span class="nv">@e</span>.<span class="nb">elems</span> <span class="k">if</span> <span class="nv">@e</span>.<span class="nb">elems</span> &gt; <span class="nv">$widest</span>;
+}
+<span class="nb">say</span> <span class="s">'endgrent : '</span>, <span class="n">endgrent</span>();
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'entries walked         : '</span>, <span class="nv">$n</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'every entry had 4 fields : '</span>, <span class="nv">$widest</span> == <span class="mi">4</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>setgrent : 1
+endgrent : 1
+
+entries walked         : True
+every entry had 4 fields : True</code></pre></div>
+<p>The enumeration is re-runnable — call <code>setgrent</code> again and you start over.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A failed lookup returns an <strong>empty list</strong>, not a list of undefined values and not an exception.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getgrnam/03-miss-trap.raku" title="This example as a file: 03-miss-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getgrnam</span>;
+
+<span class="k">my</span> <span class="nv">@miss</span> = <span class="n">getgrnam</span>(<span class="s">'nosuchgroup-xyzzy'</span>);
+<span class="nb">say</span> <span class="s">'the list form has '</span>, <span class="nv">@miss</span>.<span class="nb">elems</span>, <span class="s">' elements'</span>;
+<span class="nb">say</span> <span class="s">'the scalar form is defined : '</span>, <span class="n">getgrnam</span>(<span class="nb">Scalar</span>, <span class="s">'nosuchgroup-xyzzy'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'and nothing was thrown'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the natural Perl transcription leaves every variable undefined:'</span>;
+<span class="k">my</span> (<span class="nv">$name</span>, <span class="nv">$passwd</span>, <span class="nv">$gid</span>, <span class="nv">$members</span>) = <span class="n">getgrnam</span>(<span class="s">'nosuchgroup-xyzzy'</span>);
+<span class="nb">say</span> <span class="s">'  gid after a failed lookup : '</span>, <span class="nv">$gid</span>.<span class="nb">defined</span> ?? <span class="nv">$gid</span> !! <span class="s">'undefined'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the test has to be on the LIST:'</span>;
+<span class="nb">say</span> <span class="s">'  found : '</span>, ?<span class="n">getgrnam</span>(<span class="s">'nosuchgroup-xyzzy'</span>).<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the list form has 0 elements
+the scalar form is defined : False
+and nothing was thrown
+
+so the natural Perl transcription leaves every variable undefined:
+  gid after a failed lookup : undefined
+
+the test has to be on the LIST:
+  found : False</code></pre></div>
+<p>There is no <code>Failure</code>, no <code>die</code>, and — worse — no way to distinguish "group absent" from "end of enumeration", because <code>getgrent</code> uses the very same empty list as its sentinel.</p>
+<p>Test the list, never a field.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every lookup, both scalar forms, the enumeration and the miss produced identical output on Raku++ and Rakudo.</p>
+<p>Two notes on the family convention. The scalar forms return <code>Nil</code>, which becomes <code>Any</code> the moment you store it in a <code>$</code> container — so <code>.raku</code> on the return value and <code>.raku</code> on the variable say different things.</p>
+<p>And <code>$members</code> being a joined <code>Str</code> is <strong>not</strong> shared across the family: <code>P5getnetbyname</code> hands its aliases back as a live <code>Array</code> in the same slot. Code written against one sibling and reused on another gets the wrong type, and <code>.words</code> on an <code>Array</code> silently produces its gist.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

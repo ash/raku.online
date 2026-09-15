@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML::Lazy — The Raku Ecosystem, Working</title>
+<meta name="description" content="A lazy HTML builder where every constructor returns a thunk and nothing is rendered until the outermost one is passed to render.">
+<link rel="canonical" href="https://raku.online/modules/html-lazy/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTML::Lazy — The Raku Ecosystem, Working">
+<meta property="og:description" content="A lazy HTML builder where every constructor returns a thunk and nothing is rendered until the outermost one is passed to render.">
+<meta property="og:url" content="https://raku.online/modules/html-lazy/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"HTML::Lazy","description":"A lazy HTML builder where every constructor returns a thunk and nothing is rendered until the outermost one is passed to render.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/html-lazy/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/samgwise/html-lazy.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · markup</div><h1>HTML::Lazy</h1><span class="status st-part">Partial</span></div><p class="summary">A lazy HTML builder where every constructor returns a thunk and nothing is rendered until the outermost one is passed to render.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">cpan:SAMGWISE</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>HTML::Escape</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/HTML::Lazy">raku.land</a> · <a href="https://github.com/samgwise/html-lazy.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install HTML::Lazy</code></pre></div><p class="fact-sub"><code>zef install HTML::Lazy</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Building HTML as a tree of Raku values rather than as a string gets the nesting and the escaping right by construction. Building it <strong>lazily</strong> adds a second property: a document can be assembled, passed around and composed without anything being rendered, so the expensive parts run only if the page is actually asked for.</p>
+<p>This distribution does both. Every constructor returns a <code>Callable</code>.</p>
+<h2 id="building-a-document">Building a document <a class="anchor" href="#building-a-document" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/html-lazy/01-build.raku" title="This example as a file: 01-build.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTML::Lazy</span>;
+
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">html-en</span>(
+    :<span class="n">attributes</span>({ :<span class="n">lang</span><span class="s">&lt;en&gt;</span> }),
+    <span class="n">node</span>(<span class="s">'h1'</span>, {}, <span class="n">text</span>(<span class="s">'Totals'</span>)),
+    <span class="n">node</span>(<span class="s">'p'</span>, {}, <span class="n">text</span>(<span class="s">'Rows: 3'</span>)),
+));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;h1&gt;
+        Totals
+    &lt;/h1&gt;
+    &lt;p&gt;
+        Rows: 3
+    &lt;/p&gt;
+&lt;/html&gt;</code></pre></div>
+<p><code>node</code>, <code>text</code> and <code>html-en</code> all return thunks; <code>render</code> is what forces them. Nothing above touched a string until the last line.</p>
+<h2 id="tag-helpers">Tag helpers <a class="anchor" href="#tag-helpers" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/html-lazy/02-tags.raku" title="This example as a file: 02-tags.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTML::Lazy</span> (:<span class="n">DEFAULT</span>, :<span class="n">tags</span>);
+
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">html-en</span>(
+    :<span class="n">attributes</span>({ :<span class="n">lang</span><span class="s">&lt;en&gt;</span> }),
+    <span class="nb">head</span>({}, <span class="n">title</span>({}, <span class="n">text</span>(<span class="s">'A page'</span>))),
+    <span class="n">body</span>({}, <span class="n">div</span>({}, <span class="n">text</span>(<span class="s">'content'</span>))),
+));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;head&gt;
+        &lt;title&gt;
+            A page
+        &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div&gt;
+            content
+        &lt;/div&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</code></pre></div>
+<p>The <code>:tags</code> and <code>:ALL</code> import tags bring in about forty ready-made per-tag subs, each taking an attribute hash and children. <code>tag-factory</code> mints one for a tag they missed.</p>
+<h2 id="composition">Composition <a class="anchor" href="#composition" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/html-lazy/03-compose.raku" title="This example as a file: 03-compose.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTML::Lazy</span>;
+
+<span class="k">my</span> <span class="nv">$row</span> = -&gt; <span class="nv">$label</span>, <span class="nv">$value</span> {
+    <span class="n">node</span>(<span class="s">'tr'</span>, {}, <span class="n">node</span>(<span class="s">'td'</span>, {}, <span class="n">text</span>(<span class="nv">$label</span>)), <span class="n">node</span>(<span class="s">'td'</span>, {}, <span class="n">text</span>(<span class="nv">$value</span>)))
+};
+
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">node</span>(<span class="s">'table'</span>, {},
+    <span class="nv">$row</span>(<span class="s">'alpha'</span>, <span class="s">'1'</span>),
+    <span class="nv">$row</span>(<span class="s">'beta'</span>,  <span class="s">'2'</span>),
+));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;table&gt;
+    &lt;tr&gt;
+        &lt;td&gt;
+            alpha
+        &lt;/td&gt;
+        &lt;td&gt;
+            1
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;
+            beta
+        &lt;/td&gt;
+        &lt;td&gt;
+            2
+        &lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/table&gt;</code></pre></div>
+<p>Because the pieces are thunks, a helper that builds a row is an ordinary closure and composes without any template machinery.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>text()</code> escapes. <strong>Attribute values are not escaped at all.</strong></p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/html-lazy/04-escape-trap.raku" title="This example as a file: 04-escape-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTML::Lazy</span>;
+
+<span class="k">my</span> <span class="nv">$evil</span> = <span class="s">q{&lt;script&gt;alert(&quot;x&amp;y&quot;)&lt;/script&gt;}</span>;
+
+<span class="nb">say</span> <span class="s">'in a text node, escaped:'</span>;
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">node</span>(<span class="s">'p'</span>, {}, <span class="n">text</span>(<span class="nv">$evil</span>)));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'in an attribute, NOT escaped:'</span>;
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">node</span>(<span class="s">'a'</span>, { :<span class="n">title</span>(<span class="nv">$evil</span>) }));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'which means an attacker can close the quote:'</span>;
+<span class="nb">print</span> <span class="n">render</span>(<span class="n">node</span>(<span class="s">'a'</span>, { :<span class="n">title</span>(<span class="s">q{&quot; onmouseover=alert(1) x=&quot;}</span>) }));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>in a text node, escaped:
+&lt;p&gt;
+    &amp;lt;script&amp;gt;alert(&amp;quot;x&amp;amp;y&amp;quot;)&amp;lt;/script&amp;gt;
+&lt;/p&gt;
+in an attribute, NOT escaped:
+&lt;a title="&lt;script&gt;alert("x&amp;y")&lt;/script&gt;"&gt;&lt;/a&gt;
+which means an attacker can close the quote:
+&lt;a title="" onmouseover=alert(1) x=""&gt;&lt;/a&gt;</code></pre></div>
+<p>That last line emits <code>&lt;a title="" onmouseover=alert(1) x=""&gt;&lt;/a&gt;</code> — the attribute is closed and a new one injected. Tag <strong>names</strong> are interpolated raw as well.</p>
+<p>The module pulls in <code>HTML::Escape</code> and applies it only to text nodes, which is exactly the half of the job that makes the other half look safe. Escape attribute values yourself before they reach <code>node</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On attribute order, and it makes byte-comparing the output impossible.</p>
+<p>Attributes come out of an unordered <code>Hash</code>, so the order differs between engines and — under Rakudo — <strong>between calls in the same process</strong>. Five renders of the same three-attribute element produced three different orders in one Rakudo run and five identical ones under Raku++.</p>
+<p>That rules out snapshot-testing HTML::Lazy output. Compare parsed documents, or emit one attribute per element.</p>
+<p>There is also a compile-time divergence on the most natural way to write a nested document. <code>node</code> is declared <code>--&gt; Callable</code>, and Rakudo's compile-time arity check rejects <code>html-en(node(...))</code> with <code>Calling html-en(Callable) will never work</code> because the first positional does not match the signature's <code>Associative :$attributes</code>. Raku++ compiles and runs it. Passing <code>:attributes(…)</code> explicitly — as every example on this page does — works on both.</p>
+<p>One typo worth knowing: the <code>footer</code> helper is registered under the misspelled tag name <code>foorter</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

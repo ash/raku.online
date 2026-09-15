@@ -20,8 +20,10 @@ says so, and so does the file.
 | Directory | From the page | What it needs |
 |---|---|---|
 | [`abbreviations/`](abbreviations/) | [Abbreviations](https://raku.online/modules/abbreviations/) | `rakupp install Abbreviations` |
+| [`acme-scrub/`](acme-scrub/) | [Acme::Scrub](https://raku.online/modules/acme-scrub/) | `rakupp install Acme::Scrub` |
 | [`algorithm-binaryindexedtree/`](algorithm-binaryindexedtree/) | [Algorithm::BinaryIndexedTree](https://raku.online/modules/algorithm-binaryindexedtree/) | `rakupp install Algorithm::BinaryIndexedTree` |
 | [`algorithm-elo/`](algorithm-elo/) | [Algorithm::Elo](https://raku.online/modules/algorithm-elo/) | `rakupp install Algorithm::Elo` |
+| [`algorithm-kdimensionaltree/`](algorithm-kdimensionaltree/) | [Algorithm::KDimensionalTree](https://raku.online/modules/algorithm-kdimensionaltree/) | `rakupp install Algorithm::KDimensionalTree` |
 | [`algorithm-lcs/`](algorithm-lcs/) | [Algorithm::LCS](https://raku.online/modules/algorithm-lcs/) | `rakupp install Algorithm::LCS` |
 | [`algorithm-manacher/`](algorithm-manacher/) | [Algorithm::Manacher](https://raku.online/modules/algorithm-manacher/) | `rakupp install Algorithm::Manacher` |
 | [`algorithm-setunion/`](algorithm-setunion/) | [Algorithm::SetUnion](https://raku.online/modules/algorithm-setunion/) | `rakupp install Algorithm::SetUnion` |
@@ -29,14 +31,22 @@ says so, and so does the file.
 | [`algorithm-ternarysearchtree/`](algorithm-ternarysearchtree/) | [Algorithm::TernarySearchTree](https://raku.online/modules/algorithm-ternarysearchtree/) | `rakupp install Algorithm::TernarySearchTree` |
 | [`algorithm-zobristhashing/`](algorithm-zobristhashing/) | [Algorithm::ZobristHashing](https://raku.online/modules/algorithm-zobristhashing/) | `rakupp install Algorithm::ZobristHashing` |
 | [`app-rakus/`](app-rakus/) | [App::Rakus](https://raku.online/modules/app-rakus/) | `rakupp install App::Rakus` |
+| [`ascii-to-uni/`](ascii-to-uni/) | [ASCII::To::Uni](https://raku.online/modules/ascii-to-uni/) | `rakupp install ASCII::To::Uni` |
 | [`astro-sunrise/`](astro-sunrise/) | [Astro::Sunrise](https://raku.online/modules/astro-sunrise/) | `rakupp install Astro::Sunrise` |
+| [`automata-cellular/`](automata-cellular/) | [Automata::Cellular](https://raku.online/modules/automata-cellular/) | `rakupp install Automata::Cellular` |
+| [`avl-tree/`](avl-tree/) | [AVL-Tree](https://raku.online/modules/avl-tree/) | `rakupp install AVL-Tree` |
 | [`base64/`](base64/) | [Base64](https://raku.online/modules/base64/) | `rakupp install Base64` |
 | [`base64-native/`](base64-native/) | [Base64::Native](https://raku.online/modules/base64-native/) | `rakupp install Base64::Native` |
 | [`cache-async/`](cache-async/) | [Cache::Async](https://raku.online/modules/cache-async/) | `rakupp install Cache::Async` |
+| [`calculator/`](calculator/) | [Calculator](https://raku.online/modules/calculator/) | `rakupp install Calculator` |
+| [`chess/`](chess/) | [Chess](https://raku.online/modules/chess/) | `rakupp install Chess` |
+| [`clean/`](clean/) | [Clean](https://raku.online/modules/clean/) | `rakupp install Clean` |
 | [`color/`](color/) | [Color](https://raku.online/modules/color/) | `rakupp install Color` |
 | [`color-names/`](color-names/) | [Color::Names](https://raku.online/modules/color-names/) | `rakupp install Color::Names` |
+| [`color-scheme/`](color-scheme/) | [Color::Scheme](https://raku.online/modules/color-scheme/) | `rakupp install Color::Scheme` |
 | [`compress-lzstring/`](compress-lzstring/) | [Compress::LZString](https://raku.online/modules/compress-lzstring/) | `rakupp install Compress::LZString` |
 | [`compress-zlib-raw/`](compress-zlib-raw/) | [Compress::Zlib::Raw](https://raku.online/modules/compress-zlib-raw/) | `rakupp install Compress::Zlib::Raw` |
+| [`concurrent-channelify/`](concurrent-channelify/) | [Concurrent::Channelify](https://raku.online/modules/concurrent-channelify/) | `rakupp install Concurrent::Channelify` |
 | [`config/`](config/) | [Config](https://raku.online/modules/config/) | `rakupp install Config` |
 | [`config-clever/`](config-clever/) | [Config::Clever](https://raku.online/modules/config-clever/) | `rakupp install Config::Clever` |
 | [`config-ini/`](config-ini/) | [Config::INI](https://raku.online/modules/config-ini/) | `rakupp install Config::INI` |
@@ -44,6 +54,7 @@ says so, and so does the file.
 | [`csv-parser/`](csv-parser/) | [CSV::Parser](https://raku.online/modules/csv-parser/) | `rakupp install CSV::Parser` |
 | [`data-dump/`](data-dump/) | [Data::Dump](https://raku.online/modules/data-dump/) | `rakupp install Data::Dump` |
 | [`data-generators/`](data-generators/) | [Data::Generators](https://raku.online/modules/data-generators/) | `rakupp install Data::Generators` |
+| [`data-transformers/`](data-transformers/) | [Data::Transformers](https://raku.online/modules/data-transformers/) | `rakupp install Data::Transformers` |
 | [`data-typesystem/`](data-typesystem/) | [Data::TypeSystem](https://raku.online/modules/data-typesystem/) | `rakupp install Data::TypeSystem` |
 | [`date-calendar-bahai/`](date-calendar-bahai/) | [Date::Calendar::Bahai](https://raku.online/modules/date-calendar-bahai/) | `rakupp install Date::Calendar::Bahai` |
 | [`date-calendar-hijri/`](date-calendar-hijri/) | [Date::Calendar::Hijri](https://raku.online/modules/date-calendar-hijri/) | `rakupp install Date::Calendar::Hijri` |
@@ -55,9 +66,12 @@ says so, and so does the file.
 | [`date-names/`](date-names/) | [Date::Names](https://raku.online/modules/date-names/) | `rakupp install Date::Names` |
 | [`date-utils/`](date-utils/) | [Date::Utils](https://raku.online/modules/date-utils/) | `rakupp install Date::Utils` |
 | [`datetime-format/`](datetime-format/) | [DateTime::Format](https://raku.online/modules/datetime-format/) | `rakupp install DateTime::Format` |
+| [`datetime-format-likego/`](datetime-format-likego/) | [DateTime::Format::LikeGo](https://raku.online/modules/datetime-format-likego/) | `rakupp install DateTime::Format::LikeGo` |
 | [`datetime-grammar/`](datetime-grammar/) | [DateTime::Grammar](https://raku.online/modules/datetime-grammar/) | `rakupp install DateTime::Grammar` |
+| [`datetime-math/`](datetime-math/) | [DateTime::Math](https://raku.online/modules/datetime-math/) | `rakupp install DateTime::Math` |
 | [`datetime-parse/`](datetime-parse/) | [DateTime::Parse](https://raku.online/modules/datetime-parse/) | `rakupp install DateTime::Parse` |
 | [`dbiish/`](dbiish/) | [DBIish](https://raku.online/modules/dbiish/) | `rakupp install DBIish` |
+| [`die/`](die/) | [Die](https://raku.online/modules/die/) | `rakupp install Die` |
 | [`digest/`](digest/) | [Digest](https://raku.online/modules/digest/) | `rakupp install Digest` |
 | [`digest-fnv/`](digest-fnv/) | [Digest::FNV](https://raku.online/modules/digest-fnv/) | `rakupp install Digest::FNV` |
 | [`digest-hmac/`](digest-hmac/) | [Digest::HMAC](https://raku.online/modules/digest-hmac/) | `rakupp install Digest::HMAC` |
@@ -99,11 +113,14 @@ says so, and so does the file.
 | [`highlight-terminal/`](highlight-terminal/) | [Highlight::Terminal](https://raku.online/modules/highlight-terminal/) | `rakupp install Highlight::Terminal` |
 | [`holidays-us-federal/`](holidays-us-federal/) | [Holidays::US::Federal](https://raku.online/modules/holidays-us-federal/) | `rakupp install Holidays::US::Federal` |
 | [`html-escape/`](html-escape/) | [HTML::Escape](https://raku.online/modules/html-escape/) | `rakupp install HTML::Escape` |
+| [`html-lazy/`](html-lazy/) | [HTML::Lazy](https://raku.online/modules/html-lazy/) | `rakupp install HTML::Lazy` |
 | [`http-hpack/`](http-hpack/) | [HTTP::HPACK](https://raku.online/modules/http-hpack/) | `rakupp install HTTP::HPACK` |
+| [`http-parseparams/`](http-parseparams/) | [HTTP::ParseParams](https://raku.online/modules/http-parseparams/) | `rakupp install HTTP::ParseParams` |
 | [`http-status/`](http-status/) | [HTTP::Status](https://raku.online/modules/http-status/) | `rakupp install HTTP::Status` |
 | [`http-tiny/`](http-tiny/) | [HTTP::Tiny](https://raku.online/modules/http-tiny/) | `rakupp install HTTP::Tiny` |
 | [`i18n-simple/`](i18n-simple/) | [I18n::Simple](https://raku.online/modules/i18n-simple/) | `rakupp install I18n::Simple` |
 | [`idna-punycode/`](idna-punycode/) | [IDNA::Punycode](https://raku.online/modules/idna-punycode/) | `rakupp install IDNA::Punycode` |
+| [`image-markup-utilities/`](image-markup-utilities/) | [Image::Markup::Utilities](https://raku.online/modules/image-markup-utilities/) | `rakupp install Image::Markup::Utilities` |
 | [`intl-languagetaggish/`](intl-languagetaggish/) | [Intl::LanguageTaggish](https://raku.online/modules/intl-languagetaggish/) | `rakupp install Intl::LanguageTaggish` |
 | [`io-glob/`](io-glob/) | [IO::Glob](https://raku.online/modules/io-glob/) | `rakupp install IO::Glob` |
 | [`io-path-dirstack/`](io-path-dirstack/) | [IO::Path::Dirstack](https://raku.online/modules/io-path-dirstack/) | `rakupp install IO::Path::Dirstack` |
@@ -129,6 +146,8 @@ says so, and so does the file.
 | [`lingua-numericwordforms/`](lingua-numericwordforms/) | [Lingua::NumericWordForms](https://raku.online/modules/lingua-numericwordforms/) | `rakupp install Lingua::NumericWordForms` |
 | [`log/`](log/) | [Log](https://raku.online/modules/log/) | `rakupp install Log` |
 | [`logger/`](logger/) | [Logger](https://raku.online/modules/logger/) | `rakupp install Logger` |
+| [`lzw-revolunet/`](lzw-revolunet/) | [LZW::Revolunet](https://raku.online/modules/lzw-revolunet/) | `rakupp install LZW::Revolunet` |
+| [`math-curves/`](math-curves/) | [Math::Curves](https://raku.online/modules/math-curves/) | `rakupp install Math::Curves` |
 | [`math-distancefunctions/`](math-distancefunctions/) | [Math::DistanceFunctions](https://raku.online/modules/math-distancefunctions/) | `rakupp install Math::DistanceFunctions` |
 | [`math-distancefunctions-edit/`](math-distancefunctions-edit/) | [Math::DistanceFunctions::Edit](https://raku.online/modules/math-distancefunctions-edit/) | `rakupp install Math::DistanceFunctions::Edit` |
 | [`math-distancefunctions-native/`](math-distancefunctions-native/) | [Math::DistanceFunctions::Native](https://raku.online/modules/math-distancefunctions-native/) | `rakupp install Math::DistanceFunctions::Native` |
@@ -145,14 +164,20 @@ says so, and so does the file.
 | [`number-bytes-human/`](number-bytes-human/) | [Number::Bytes::Human](https://raku.online/modules/number-bytes-human/) | `rakupp install Number::Bytes::Human` |
 | [`oo-monitors/`](oo-monitors/) | [OO::Monitors](https://raku.online/modules/oo-monitors/) | `rakupp install OO::Monitors` |
 | [`openssl/`](openssl/) | [OpenSSL](https://raku.online/modules/openssl/) | `rakupp install OpenSSL` |
+| [`p5getgrnam/`](p5getgrnam/) | [P5getgrnam](https://raku.online/modules/p5getgrnam/) | `rakupp install P5getgrnam` |
+| [`p5getnetbyname/`](p5getnetbyname/) | [P5getnetbyname](https://raku.online/modules/p5getnetbyname/) | `rakupp install P5getnetbyname` |
 | [`p5getpriority/`](p5getpriority/) | [P5getpriority](https://raku.online/modules/p5getpriority/) | `rakupp install P5getpriority` |
 | [`p5getprotobyname/`](p5getprotobyname/) | [P5getprotobyname](https://raku.online/modules/p5getprotobyname/) | `rakupp install P5getprotobyname` |
+| [`p5getpwnam/`](p5getpwnam/) | [P5getpwnam](https://raku.online/modules/p5getpwnam/) | `rakupp install P5getpwnam` |
 | [`p5getservbyname/`](p5getservbyname/) | [P5getservbyname](https://raku.online/modules/p5getservbyname/) | `rakupp install P5getservbyname` |
 | [`p5localtime/`](p5localtime/) | [P5localtime](https://raku.online/modules/p5localtime/) | `rakupp install P5localtime` |
 | [`p5opendir/`](p5opendir/) | [P5opendir](https://raku.online/modules/p5opendir/) | `rakupp install P5opendir` |
+| [`package-updates/`](package-updates/) | [Package::Updates](https://raku.online/modules/package-updates/) | `rakupp install Package::Updates` |
 | [`path-finder/`](path-finder/) | [Path::Finder](https://raku.online/modules/path-finder/) | `rakupp install Path::Finder` |
 | [`pathtools/`](pathtools/) | [PathTools](https://raku.online/modules/pathtools/) | `rakupp install PathTools` |
+| [`physics-error/`](physics-error/) | [Physics::Error](https://raku.online/modules/physics-error/) | `rakupp install Physics::Error` |
 | [`pod-literate/`](pod-literate/) | [Pod::Literate](https://raku.online/modules/pod-literate/) | `rakupp install Pod::Literate` |
+| [`proc-easy/`](proc-easy/) | [Proc::Easy](https://raku.online/modules/proc-easy/) | `rakupp install Proc::Easy` |
 | [`queryos/`](queryos/) | [QueryOS](https://raku.online/modules/queryos/) | `rakupp install QueryOS` |
 | [`result/`](result/) | [Result](https://raku.online/modules/result/) | `rakupp install Result` |
 | [`serialise-map/`](serialise-map/) | [Serialise::Map](https://raku.online/modules/serialise-map/) | `rakupp install Serialise::Map` |
@@ -161,6 +186,7 @@ says so, and so does the file.
 | [`storable-lite/`](storable-lite/) | [Storable::Lite](https://raku.online/modules/storable-lite/) | `rakupp install Storable::Lite` |
 | [`string-fold/`](string-fold/) | [String::Fold](https://raku.online/modules/string-fold/) | `rakupp install String::Fold` |
 | [`svg/`](svg/) | [SVG](https://raku.online/modules/svg/) | `rakupp install SVG` |
+| [`sys-domainname/`](sys-domainname/) | [Sys::Domainname](https://raku.online/modules/sys-domainname/) | `rakupp install Sys::Domainname` |
 | [`tap/`](tap/) | [TAP](https://raku.online/modules/tap/) | `rakupp install TAP` |
 | [`terminal-ansi/`](terminal-ansi/) | [Terminal::ANSI](https://raku.online/modules/terminal-ansi/) | `rakupp install Terminal::ANSI` |
 | [`terminal-ansicolor/`](terminal-ansicolor/) | [Terminal::ANSIColor](https://raku.online/modules/terminal-ansicolor/) | `rakupp install Terminal::ANSIColor` |
@@ -181,6 +207,9 @@ says so, and so does the file.
 | [`time-duration-parser/`](time-duration-parser/) | [Time::Duration::Parser](https://raku.online/modules/time-duration-parser/) | `rakupp install Time::Duration::Parser` |
 | [`tinyfloats/`](tinyfloats/) | [TinyFloats](https://raku.online/modules/tinyfloats/) | `rakupp install TinyFloats` |
 | [`trap/`](trap/) | [Trap](https://raku.online/modules/trap/) | `rakupp install Trap` |
+| [`unicode-precis/`](unicode-precis/) | [Unicode::PRECIS](https://raku.online/modules/unicode-precis/) | `rakupp install Unicode::PRECIS` |
+| [`unicode-utf8-parser/`](unicode-utf8-parser/) | [Unicode::UTF8-Parser](https://raku.online/modules/unicode-utf8-parser/) | `rakupp install Unicode::UTF8-Parser` |
+| [`unix-privileges/`](unix-privileges/) | [UNIX::Privileges](https://raku.online/modules/unix-privileges/) | `rakupp install UNIX::Privileges` |
 | [`uri/`](uri/) | [URI](https://raku.online/modules/uri/) | `rakupp install URI` |
 | [`uri-encode/`](uri-encode/) | [URI::Encode](https://raku.online/modules/uri-encode/) | `rakupp install URI::Encode` |
 | [`util-bitfield/`](util-bitfield/) | [Util::Bitfield](https://raku.online/modules/util-bitfield/) | `rakupp install Util::Bitfield` |

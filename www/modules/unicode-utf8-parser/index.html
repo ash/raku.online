@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unicode::UTF8-Parser — The Raku Ecosystem, Working</title>
+<meta name="description" content="Turn a reactive stream of UTF-8 bytes into a stream of characters, holding partial multi-byte sequences across emissions.">
+<link rel="canonical" href="https://raku.online/modules/unicode-utf8-parser/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Unicode::UTF8-Parser — The Raku Ecosystem, Working">
+<meta property="og:description" content="Turn a reactive stream of UTF-8 bytes into a stream of characters, holding partial multi-byte sequences across emissions.">
+<meta property="og:url" content="https://raku.online/modules/unicode-utf8-parser/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Unicode::UTF8-Parser","description":"Turn a reactive stream of UTF-8 bytes into a stream of characters, holding partial multi-byte sequences across emissions.","programmingLanguage":"Raku","version":"0.3","url":"https://raku.online/modules/unicode-utf8-parser/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Unicode-UTF8-parser.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Unicode::UTF8-Parser</h1><span class="status st-div">Divergent</span></div><p class="summary">Turn a reactive stream of UTF-8 bytes into a stream of characters, holding partial multi-byte sequences across emissions.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Unicode::UTF8-Parser">raku.land</a> · <a href="https://github.com/raku-community-modules/Unicode-UTF8-parser.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Unicode::UTF8-Parser</code></pre></div><p class="fact-sub"><code>zef install Unicode::UTF8-Parser</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>Buf.decode('utf8')</code> needs the whole buffer. A socket does not give you the whole buffer — it gives you whatever arrived, which may end in the middle of a three-byte character, and the next read supplies the rest.</p>
+<p>This distribution is the streaming decoder for that case: bytes in on a <code>Supply</code>, characters out on a <code>Supply</code>, with the partial sequence held across the boundary.</p>
+<h2 id="decoding-a-stream">Decoding a stream <a class="anchor" href="#decoding-a-stream" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-utf8-parser/01-decode.raku" title="This example as a file: 01-decode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::UTF8-Parser</span>;
+
+<span class="k">sub</span> <span class="n">decode</span>(<span class="nv">@bytes</span>) {
+    <span class="k">my</span> <span class="nv">$supplier</span> = <span class="n">Supplier</span>.<span class="nb">new</span>;
+    <span class="k">my</span> <span class="nv">@out</span>;
+    <span class="n">parse-utf8-bytes</span>(<span class="nv">$supplier</span>.<span class="nb">Supply</span>).<span class="n">tap</span>(-&gt; <span class="nv">$c</span> { <span class="nv">@out</span>.<span class="nb">push</span>(<span class="nv">$c</span>) });
+    <span class="nv">$supplier</span>.<span class="n">emit</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="nv">@bytes</span>;
+    <span class="nv">$supplier</span>.<span class="n">done</span>;
+    <span class="nv">@out</span>
+}
+
+<span class="nb">say</span> <span class="s">'ASCII &quot;Hi&quot;          : '</span>, <span class="n">decode</span>([<span class="mh">0x48</span>, <span class="mh">0x69</span>]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'two bytes, U+00E9   : '</span>, <span class="n">decode</span>([<span class="mh">0xC3</span>, <span class="mh">0xA9</span>]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'three bytes, U+4E2D : '</span>, <span class="n">decode</span>([<span class="mh">0xE4</span>, <span class="mh">0xB8</span>, <span class="mh">0xAD</span>]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'four bytes, U+1F600 : '</span>, <span class="n">decode</span>([<span class="mh">0xF0</span>, <span class="mh">0x9F</span>, <span class="mh">0x98</span>, <span class="mh">0x80</span>]).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ASCII "Hi"          : ["H", "i"]
+two bytes, U+00E9   : ["é"]
+three bytes, U+4E2D : ["中"]
+four bytes, U+1F600 : ["😀"]</code></pre></div>
+<p>Note the input. The <code>Supply</code> must emit <strong>one <code>Int</code> per byte</strong> — not a <code>Buf</code> per chunk, which is what <code>IO::Socket::Async</code> actually gives you. Hand it a <code>Buf</code> and you get nonsense on one engine and a quit on the other; see the last section.</p>
+<h2 id="sequences-split-across-emissions">Sequences split across emissions <a class="anchor" href="#sequences-split-across-emissions" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-utf8-parser/02-split.raku" title="This example as a file: 02-split.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::UTF8-Parser</span>;
+
+<span class="k">sub</span> <span class="n">decode</span>(<span class="nv">@chunks</span>) {
+    <span class="k">my</span> <span class="nv">$supplier</span> = <span class="n">Supplier</span>.<span class="nb">new</span>;
+    <span class="k">my</span> <span class="nv">@out</span>;
+    <span class="n">parse-utf8-bytes</span>(<span class="nv">$supplier</span>.<span class="nb">Supply</span>).<span class="n">tap</span>(-&gt; <span class="nv">$c</span> { <span class="nv">@out</span>.<span class="nb">push</span>(<span class="nv">$c</span>) });
+    <span class="k">for</span> <span class="nv">@chunks</span> -&gt; <span class="nv">@chunk</span> { <span class="nv">$supplier</span>.<span class="n">emit</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="nv">@chunk</span> }
+    <span class="nv">$supplier</span>.<span class="n">done</span>;
+    <span class="nv">@out</span>
+}
+
+<span class="nb">say</span> <span class="s">'U+4E2D all at once   : '</span>, <span class="n">decode</span>([[<span class="mh">0xE4</span>, <span class="mh">0xB8</span>, <span class="mh">0xAD</span>],]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'the same, one byte at a time : '</span>, <span class="n">decode</span>([[<span class="mh">0xE4</span>], [<span class="mh">0xB8</span>], [<span class="mh">0xAD</span>]]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'and mixed with ASCII : '</span>, <span class="n">decode</span>([[<span class="mh">0x48</span>], [<span class="mh">0xE4</span>, <span class="mh">0xB8</span>], [<span class="mh">0xAD</span>], [<span class="mh">0x69</span>]]).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>U+4E2D all at once   : ["中"]
+the same, one byte at a time : ["中"]
+and mixed with ASCII : ["H", "中", "i"]</code></pre></div>
+<p>That is the whole point of the distribution, and it works: the partial sequence survives the boundary and the character arrives whole.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>It is a decoder wearing a parser's name. It accepts overlong encodings and surrogates that every UTF-8 validator must reject.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unicode-utf8-parser/03-permissive-trap.raku" title="This example as a file: 03-permissive-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Unicode::UTF8-Parser</span>;
+
+<span class="k">sub</span> <span class="n">decode</span>(<span class="nv">@bytes</span>) {
+    <span class="k">my</span> <span class="nv">$supplier</span> = <span class="n">Supplier</span>.<span class="nb">new</span>;
+    <span class="k">my</span> <span class="nv">@out</span>;
+    <span class="n">parse-utf8-bytes</span>(<span class="nv">$supplier</span>.<span class="nb">Supply</span>).<span class="n">tap</span>(-&gt; <span class="nv">$c</span> { <span class="nv">@out</span>.<span class="nb">push</span>(<span class="nv">$c</span>) });
+    <span class="nv">$supplier</span>.<span class="n">emit</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="nv">@bytes</span>;
+    <span class="nv">$supplier</span>.<span class="n">done</span>;
+    <span class="nv">@out</span>
+}
+
+<span class="nb">say</span> <span class="s">'C0 80    — an overlong U+0000 : '</span>, <span class="n">decode</span>([<span class="mh">0xC0</span>, <span class="mh">0x80</span>]).<span class="nb">map</span>({ .<span class="nb">ords</span> }).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'E0 80 AF — an overlong &quot;/&quot;    : '</span>, <span class="n">decode</span>([<span class="mh">0xE0</span>, <span class="mh">0x80</span>, <span class="mh">0xAF</span>]).<span class="nb">map</span>({ .<span class="nb">ords</span> }).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'ED A0 80 — a surrogate        : '</span>, <span class="n">decode</span>([<span class="mh">0xED</span>, <span class="mh">0xA0</span>, <span class="mh">0x80</span>]).<span class="nb">map</span>({ .<span class="nb">ords</span> }).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'for comparison, Raku\'s own decoder on the same bytes:'</span>;
+<span class="k">for</span> [<span class="mh">0xC0</span>, <span class="mh">0x80</span>], [<span class="mh">0xE0</span>, <span class="mh">0x80</span>, <span class="mh">0xAF</span>], [<span class="mh">0xED</span>, <span class="mh">0xA0</span>, <span class="mh">0x80</span>] -&gt; <span class="nv">@b</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="nv">@b</span>).<span class="n">decode</span>(<span class="s">'utf8'</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">@b</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>),
+        <span class="nv">$!</span> ?? <span class="s">'rejected'</span> !! <span class="s">'accepted'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>C0 80    — an overlong U+0000 : ((0,).Seq,).Seq
+E0 80 AF — an overlong "/"    : ((47,).Seq,).Seq
+ED A0 80 — a surrogate        : ((55296,).Seq,).Seq
+
+for comparison, Raku's own decoder on the same bytes:
+  C0 80        -&gt; rejected
+  E0 80 AF     -&gt; rejected
+  ED A0 80     -&gt; rejected</code></pre></div>
+<p><code>E0 80 AF</code> decoding to <code>/</code> is the textbook overlong-slash path-traversal bypass, and Raku's own decoder rejects all three.</p>
+<p>Do not use this to validate untrusted input. Decode with it if you must stream, then re-encode and compare, or validate separately.</p>
+<p>Two more hazards in the same area. The output <code>Supply</code> is <strong>heterogeneously typed</strong> — <code>Str</code> for decoded characters, bare <code>Int</code> for bytes it could not decode — so a <code>-&gt; Str $c</code> tap signature fails on malformed input. And a truncated sequence at end of stream is <strong>dropped silently</strong>, with no <code>quit</code> and no marker.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On what happens when you hand it the obvious wrong input.</p>
+<p><code>IO::Socket::Async</code> emits <code>Buf</code> chunks, so that is what everyone tries first. Under Rakudo the supply <strong>quits</strong> with <code>No such method 'chr' for invocant of type 'Buf'</code>, which is an unmistakable signal. Under Raku++ it returns <code>chr</code> of the byte <strong>count</strong> — plausible-looking single characters that are pure garbage, with no error at all.</p>
+<p>So the same mistake is loud on one engine and silent on the other. Flatten your chunks into individual <code>Int</code>s, as every example on this page does.</p>
+<p>One thing that is the same on both: a codepoint above U+10FFFF <strong>quits the whole supply</strong> rather than substituting a replacement character, killing the stream.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5getnetbyname — The Raku Ecosystem, Working</title>
+<meta name="description" content="The POSIX network-database calls, returning Perl's four-field record of name, aliases, address type and network number.">
+<link rel="canonical" href="https://raku.online/modules/p5getnetbyname/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P5getnetbyname — The Raku Ecosystem, Working">
+<meta property="og:description" content="The POSIX network-database calls, returning Perl's four-field record of name, aliases, address type and network number.">
+<meta property="og:url" content="https://raku.online/modules/p5getnetbyname/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"P5getnetbyname","description":"The POSIX network-database calls, returning Perl's four-field record of name, aliases, address type and network number.","programmingLanguage":"Raku","version":"0.0.9","url":"https://raku.online/modules/p5getnetbyname/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/P5getnetbyname.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>P5getnetbyname</h1><span class="status st-full">Works</span></div><p class="summary">The POSIX network-database calls, returning Perl's four-field record of name, aliases, address type and network number.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.9</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/P5getnetbyname">raku.land</a> · <a href="https://github.com/lizmat/P5getnetbyname.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install P5getnetbyname</code></pre></div><p class="fact-sub"><code>zef install P5getnetbyname</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>/etc/networks</code> maps names to network numbers the way <code>/etc/hosts</code> maps them to addresses — <code>loopback</code> to 127, and whatever local names an administrator has added. <code>getnetbyname(3)</code> is how a program reads it.</p>
+<p>This distribution binds it, along with the reverse lookup and the enumeration, in the shape Perl's <code>getnet*</code> built-ins use.</p>
+<h2 id="reading-the-database">Reading the database <a class="anchor" href="#reading-the-database" aria-label="link">#</a></h2>
+<p><code>/etc/networks</code> is empty or absent on a great many current machines, so an example has to drive off the enumeration and assert <strong>shape</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getnetbyname/01-enumerate.raku" title="This example as a file: 01-enumerate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getnetbyname</span>;
+
+<span class="n">setnetent</span>(<span class="mi">0</span>);
+<span class="k">my</span> <span class="nv">@first</span> = <span class="n">getnetent</span>();
+<span class="n">endnetent</span>();
+
+<span class="k">if</span> <span class="nv">@first</span> {
+    <span class="nb">say</span> <span class="s">'record fields  : '</span>, <span class="nv">@first</span>.<span class="nb">elems</span>;
+    <span class="nb">say</span> <span class="s">'name is a Str  : '</span>, <span class="nv">@first</span>[<span class="mi">0</span>] ~~ <span class="nb">Str</span>;
+    <span class="nb">say</span> <span class="s">'aliases are a  : '</span>, <span class="nv">@first</span>[<span class="mi">1</span>].^<span class="n">name</span>;
+    <span class="nb">say</span> <span class="s">'addrtype is 2 (AF_INET) : '</span>, <span class="nv">@first</span>[<span class="mi">2</span>] == <span class="mi">2</span>;
+    <span class="nb">say</span> <span class="s">'net is an Int  : '</span>, <span class="nv">@first</span>[<span class="mi">3</span>] ~~ <span class="nb">Int</span>;
+}
+<span class="k">else</span> {
+    <span class="nb">say</span> <span class="s">'this machine has no network database entries'</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'setnetent : '</span>, <span class="n">setnetent</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'endnetent : '</span>, <span class="n">endnetent</span>();</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>record fields  : 4
+name is a Str  : True
+aliases are a  : Array
+addrtype is 2 (AF_INET) : True
+net is an Int  : True
+
+setnetent : 1
+endnetent : 1</code></pre></div>
+<p>The record is <code>($name, $aliases, $addrtype, $net)</code>. <code>addrtype</code> 2 is <code>AF_INET</code> on both darwin and Linux.</p>
+<h2 id="misses">Misses <a class="anchor" href="#misses" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getnetbyname/02-miss.raku" title="This example as a file: 02-miss.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getnetbyname</span>;
+
+<span class="nb">say</span> <span class="s">'unknown name   -&gt; '</span>, <span class="n">getnetbyname</span>(<span class="s">'nosuchnet-xyzzy'</span>).<span class="nb">elems</span>, <span class="s">' fields'</span>;
+<span class="nb">say</span> <span class="s">'unknown scalar -&gt; '</span>, <span class="n">getnetbyname</span>(<span class="nb">Scalar</span>, <span class="s">'nosuchnet-xyzzy'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'bad address    -&gt; '</span>, <span class="n">getnetbyaddr</span>(<span class="mi">4294967295</span>, <span class="mi">2</span>).<span class="nb">elems</span>, <span class="s">' fields'</span>;
+<span class="nb">say</span> <span class="s">'bad addrtype   -&gt; '</span>, <span class="n">getnetbyaddr</span>(<span class="mi">127</span>, <span class="mi">99</span>).<span class="nb">elems</span>, <span class="s">' fields'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>unknown name   -&gt; 0 fields
+unknown scalar -&gt; False
+bad address    -&gt; 0 fields
+bad addrtype   -&gt; 0 fields</code></pre></div>
+<p>An empty list, never an exception — the convention across the whole <code>P5get*</code> family, and one that makes a miss indistinguishable from the end of an enumeration.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The aliases field <strong>breaks the family's convention</strong>: it is an <code>Array</code>, not a space-joined <code>Str</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getnetbyname/03-aliases-trap.raku" title="This example as a file: 03-aliases-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getnetbyname</span>;
+<span class="k">use</span> <span class="n">P5getprotobyname</span>;
+<span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="nb">say</span> <span class="s">'the same slot, across three siblings:'</span>;
+<span class="nb">say</span> <span class="s">'  P5getprotobyname aliases : '</span>, <span class="n">getprotobyname</span>(<span class="s">'tcp'</span>)[<span class="mi">1</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  P5getservbyname  aliases : '</span>, <span class="n">getservbyname</span>(<span class="s">'http'</span>, <span class="s">'tcp'</span>)[<span class="mi">1</span>].^<span class="n">name</span>;
+
+<span class="n">setnetent</span>(<span class="mi">0</span>);
+<span class="k">my</span> <span class="nv">@net</span> = <span class="n">getnetent</span>();
+<span class="n">endnetent</span>();
+<span class="nb">say</span> <span class="s">'  P5getnetbyname   aliases : '</span>, <span class="nv">@net</span> ?? <span class="nv">@net</span>[<span class="mi">1</span>].^<span class="n">name</span> !! <span class="s">'no entries here'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so .words — which is right for the other two — silently produces'</span>;
+<span class="nb">say</span> <span class="s">'an Array\'s gist here rather than the alias names. Use .list.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the same slot, across three siblings:
+  P5getprotobyname aliases : Str
+  P5getservbyname  aliases : Str
+  P5getnetbyname   aliases : Array
+
+so .words — which is right for the other two — silently produces
+an Array's gist here rather than the alias names. Use .list.</code></pre></div>
+<p><code>P5getgrnam</code>, <code>P5getservbyname</code> and <code>P5getprotobyname</code> all call <code>.join(" ")</code> before putting aliases into the record; this one does not. Code written against a sibling and reused here gets an <code>Array</code> where it expected a string, and the record arity stays 4 either way, so nothing looks wrong.</p>
+<p>The scalar forms break the convention too: <strong>both</strong> of them return the <strong>name</strong>, where every sibling's scalar-by-name gives an id.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every lookup, both scalar forms, the enumeration and all four misses produced identical output on Raku++ and Rakudo.</p>
+<p>The thing that will vary is the <strong>machine</strong>, not the engine. <code>/etc/networks</code> held <code>loopback</code> here, and <code>getnetbyname('localnet')</code> and <code>('arpanet')</code> — two names that used to be conventional — both returned empty lists. Many current Linux distributions ship the file empty or leave it out entirely, so any code that looks a network up by name needs a fallback for "not present at all".</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

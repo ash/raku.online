@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die — The Raku Ecosystem, Working</title>
+<meta name="description" content="Restore Perl's convention that a die message ending in a newline is a finished message for the user — printed to stderr, followed by exit 1.">
+<link rel="canonical" href="https://raku.online/modules/die/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Die — The Raku Ecosystem, Working">
+<meta property="og:description" content="Restore Perl's convention that a die message ending in a newline is a finished message for the user — printed to stderr, followed by exit 1.">
+<meta property="og:url" content="https://raku.online/modules/die/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Die","description":"Restore Perl's convention that a die message ending in a newline is a finished message for the user — printed to stderr, followed by exit 1.","programmingLanguage":"Raku","version":"1.1","url":"https://raku.online/modules/die/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Die.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · error handling</div><h1>Die</h1><span class="status st-full">Works</span></div><p class="summary">Restore Perl's convention that a die message ending in a newline is a finished message for the user — printed to stderr, followed by exit 1.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Die">raku.land</a> · <a href="https://github.com/raku-community-modules/Die.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Die</code></pre></div><p class="fact-sub"><code>zef install Die</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Perl has a convention forty years old: <code>die "message\n"</code> with a trailing newline means "this is a finished message for the user", and <code>die "message"</code> without one means "this is a programming error, add the file and line". Every Perl command-line tool relies on it.</p>
+<p>Raku dropped it. This distribution puts it back, in six lines of code.</p>
+<h2 id="the-convention">The convention <a class="anchor" href="#the-convention" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/die/01-die.raku" title="This example as a file: 01-die.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Die</span>;
+
+<span class="c1"># a message with no trailing newline is still an ordinary exception</span>
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> { <span class="nb">die</span> <span class="s">'plain'</span> };
+<span class="nb">say</span> <span class="s">'die(&quot;plain&quot;) -&gt; caught '</span>, <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">': '</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a message WITH a trailing newline does not come back here at all —'</span>;
+<span class="nb">say</span> <span class="s">'it is printed to stderr and the process exits 1.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>die("plain") -&gt; caught X::AdHoc: plain
+
+a message WITH a trailing newline does not come back here at all —
+it is printed to stderr and the process exits 1.</code></pre></div>
+<p>One <code>multi</code> is added: <code>die(Cool:D $msg where *.ends-with("\n"))</code>. Everything else — messages without a newline, exception objects, <code>die</code> with no arguments — falls through to the core candidates and throws as usual.</p>
+<h2 id="what-still-throws">What still throws <a class="anchor" href="#what-still-throws" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/die/02-falls-through.raku" title="This example as a file: 02-falls-through.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Die</span>;
+
+<span class="k">for</span> <span class="s">'no newline'</span>, <span class="mi">42</span>, <span class="mf">42.5</span> -&gt; <span class="nv">$arg</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> { <span class="nb">die</span> <span class="nv">$arg</span> };
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s -&gt; threw %s'</span>, <span class="nv">$arg</span>.<span class="nb">gist</span>, <span class="nv">$!</span>.^<span class="n">name</span>);
+}
+<span class="k">my</span> <span class="nv">$e</span> = <span class="k">try</span> { <span class="nb">die</span> <span class="n">X::AdHoc</span>.<span class="nb">new</span>(<span class="n">payload</span> =&gt; <span class="s">'an object'</span>) };
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s -&gt; threw %s'</span>, <span class="s">'an exception'</span>, <span class="nv">$!</span>.^<span class="n">name</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>no newline     -&gt; threw X::AdHoc
+42             -&gt; threw X::AdHoc
+42.5           -&gt; threw X::AdHoc
+an exception   -&gt; threw X::AdHoc</code></pre></div>
+<p>Only a <code>Cool</code> ending in a newline is intercepted. A number, a <code>Rat</code> and an exception object all reach the core.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>With this module loaded, <code>die "…\n"</code> is no longer an exception. <code>try</code> and <code>CATCH</code> cannot stop it, and your program ends on the spot.</p>
+<p>The candidate does not throw — it calls <code>note</code> and <code>exit 1</code>. So a <code>die</code> placed inside a <code>try</code> block that also carries a <code>CATCH { default { … } }</code> produces no <code>CATCH</code>, no code after the <code>try</code>, and exit status 1. <code>END</code> phasers still run, because <code>exit</code> is an orderly shutdown; <code>CATCH</code>, <code>KEEP</code> and <code>UNDO</code> on the aborted frame, and everything after the call, do not.</p>
+<p>Nothing at the call site signals this. The same <code>die</code> keyword, one trailing whitespace character apart, is catchable or an unstoppable process exit. And a trailing <code>\n</code> is invisible in source and easy to acquire by accident — from a heredoc, from interpolating a line read off a file, from concatenation.</p>
+<p>The reach is wider than your own file, too: the candidate is installed into the <strong>importing scope</strong>, so a library that loads <code>Die</code> changes the meaning of <code>die</code> for its caller's code. Any code with a cleanup <code>CATCH</code>, a retry loop, or a test harness expecting a throw silently stops working.</p>
+<p>Load it in a program, never in a library.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in introspection. <code>&amp;die.candidates</code> lists just the imported candidate on Raku++ and the full merged set of seven on Rakudo. Dispatch itself is correct on both — the same arguments reach the same candidate — so this affects a <code>.candidates</code> listing and nothing else.</p>
+<p>Two more things, the same on both. The exit status is hard-coded to <strong>1</strong>; there is no way to choose another. And the message is chomped by exactly one trailing newline and written with <code>note</code>, so it goes to stderr — which is where a finished user message belongs, and which means it will not appear in anything capturing stdout.</p>
+<p>The distribution's <code>provides</code> maps a unit named <code>Die</code>, but the file declares no package, so there is no <code>Die::</code> namespace to qualify anything with.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

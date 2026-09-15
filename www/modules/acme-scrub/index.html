@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acme::Scrub — The Raku Ecosystem, Working</title>
+<meta name="description" content="Hide a program inside its own source file as zero-width characters, and decode and run it on every later invocation.">
+<link rel="canonical" href="https://raku.online/modules/acme-scrub/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Acme::Scrub — The Raku Ecosystem, Working">
+<meta property="og:description" content="Hide a program inside its own source file as zero-width characters, and decode and run it on every later invocation.">
+<meta property="og:url" content="https://raku.online/modules/acme-scrub/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Acme::Scrub","description":"Hide a program inside its own source file as zero-width characters, and decode and run it on every later invocation.","programmingLanguage":"Raku","version":"0.2.1","url":"https://raku.online/modules/acme-scrub/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/thundergnat/Acme-Scrub.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · curiosities</div><h1>Acme::Scrub</h1><span class="status st-full">Works</span></div><p class="summary">Hide a program inside its own source file as zero-width characters, and decode and run it on every later invocation.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.1</code> <span class="fact-sub">zef:thundergnat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:thundergnat/Acme::Scrub">raku.land</a> · <a href="git://github.com/thundergnat/Acme-Scrub.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Acme::Scrub</code></pre></div><p class="fact-sub"><code>zef install Acme::Scrub</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>It is a joke, in the <code>Acme::Bleach</code> tradition, and a neat demonstration of two real things: that a Raku program can rewrite itself at load time, and that zero-width Unicode characters are invisible in every editor while still being data.</p>
+<p>On its first run it reads the program off disk, re-encodes everything after the <code>use</code> line as a bit string built from two zero-width characters, and overwrites the file. Run it again and it finds no visible code, decodes the payload and <code>EVAL</code>s it. The program keeps working while appearing to be one line long.</p>
+<h2 id="what-it-does-to-a-file">What it does to a file <a class="anchor" href="#what-it-does-to-a-file" aria-label="link">#</a></h2>
+<p>Because the module destroys the file it is used from, an example has to work on a disposable copy:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/acme-scrub/01-scrub.raku" title="This example as a file: 01-scrub.raku">File</a><pre class="native-code"><code><span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;scrub-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="k">my</span> <span class="nv">$prog</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'demo.raku'</span>);
+<span class="nv">$prog</span>.<span class="nb">spurt</span>: <span class="s">q:to/SRC/</span>;
+<span class="s">use Acme::Scrub;
+say &quot;hello from the original source&quot;;
+say &quot;answer: &quot;, 6 * 7;
+SRC
+</span>
+<span class="nb">say</span> <span class="s">'before : '</span>, <span class="nv">$prog</span>.<span class="n">s</span>, <span class="s">' bytes, '</span>, <span class="nv">$prog</span>.<span class="nb">slurp</span>.<span class="nb">lines</span>.<span class="nb">elems</span>, <span class="s">' lines'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'run 1:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nb">run</span>(<span class="nv">$*EXECUTABLE</span>, <span class="nv">$prog</span>.<span class="nb">Str</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">trim</span>.<span class="nb">lines</span>.<span class="nb">join</span>(<span class="s">' / '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'after  : '</span>, <span class="nv">$prog</span>.<span class="n">s</span>, <span class="s">' bytes'</span>;
+<span class="nb">say</span> <span class="s">'  the visible text is now : '</span>, <span class="nv">$prog</span>.<span class="nb">slurp</span>.<span class="n">subst</span>(<span class="sr">/&lt;:Cf&gt;/</span>, <span class="s">''</span>, :<span class="n">g</span>).<span class="nb">trim</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'run 2, from the scrubbed file:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nb">run</span>(<span class="nv">$*EXECUTABLE</span>, <span class="nv">$prog</span>.<span class="nb">Str</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">trim</span>.<span class="nb">lines</span>.<span class="nb">join</span>(<span class="s">' / '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>before : 78 bytes, 3 lines
+
+run 1:
+  hello from the original source / answer: 42
+
+after  : 1529 bytes
+  the visible text is now : "use Acme::Scrub; # for REALLY clean code."
+
+run 2, from the scrubbed file:
+  hello from the original source / answer: 42</code></pre></div>
+<p>Same output both times. The second run decoded 1,769 bytes of invisible characters back into the original three lines.</p>
+<h2 id="how-the-payload-is-built">How the payload is built <a class="anchor" href="#how-the-payload-is-built" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/acme-scrub/02-payload.raku" title="This example as a file: 02-payload.raku">File</a><pre class="native-code"><code><span class="nb">say</span> <span class="s">'the two characters it uses:'</span>;
+<span class="nb">say</span> <span class="s">'  U+FEFF ZERO WIDTH NO-BREAK SPACE -&gt; '</span>,
+    <span class="s">&quot;\c[ZERO WIDTH NO-BREAK SPACE]&quot;</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  U+200B ZERO WIDTH SPACE          -&gt; '</span>,
+    <span class="s">&quot;\c[ZERO WIDTH SPACE]&quot;</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one pair per BIT of the UTF-8 source, so the file grows by'</span>;
+<span class="nb">say</span> <span class="s">'a factor of about 24 — three bytes per character, eight bits per byte.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the two characters it uses:
+  U+FEFF ZERO WIDTH NO-BREAK SPACE -&gt; EF BB BF
+  U+200B ZERO WIDTH SPACE          -&gt; E2 80 8B
+
+one pair per BIT of the UTF-8 source, so the file grows by
+a factor of about 24 — three bytes per character, eight bits per byte.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>use Acme::Scrub;</code> <strong>rewrites the file it appears in</strong>, the first time that file is run. There is no function to call and no opt-in step: the <code>use</code> statement is the action, because the module's body runs at load time and ends in a write to <code>$*PROGRAM-NAME</code>.</p>
+<p>Two consequences follow, and the second is the dangerous one.</p>
+<p>The original formatting, comments and structure are gone. What remains is a bit-exact encoding of the code, decodable only by the module itself, so if the file was not under version control it is not practically recoverable.</p>
+<p>And it targets <strong><code>$*PROGRAM-NAME</code></strong> — the entry-point script — not the file containing the <code>use</code>. Put it in a module inside a larger program and the program's <strong>main file</strong> is overwritten with a payload that has no <code>use Acme::Scrub;</code> line in front of it. It can never decode itself again: it becomes a single comment, a permanent silent no-op, and the source is gone.</p>
+<p>After the first run, every later run is an <code>EVAL</code> under <code>MONKEY-SEE-NO-EVAL</code> of invisible text that anyone with write access to the file can edit without it looking edited.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. The cycle, the byte counts and the payload are identical on Raku++ and Rakudo, and a file scrubbed by one engine runs correctly under the other.</p>
+<p>There is no engine on which this is safe, which is rather the point of an <code>Acme::</code> distribution. Enjoy the trick; keep it out of anything you would mind losing.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

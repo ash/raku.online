@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proc::Easy — The Raku Ecosystem, Working</title>
+<meta name="description" content="One sub that wraps run, always capturing both output streams, and hands back the exit code, stderr and stdout together.">
+<link rel="canonical" href="https://raku.online/modules/proc-easy/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Proc::Easy — The Raku Ecosystem, Working">
+<meta property="og:description" content="One sub that wraps run, always capturing both output streams, and hands back the exit code, stderr and stdout together.">
+<meta property="og:url" content="https://raku.online/modules/proc-easy/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Proc::Easy","description":"One sub that wraps run, always capturing both output streams, and hands back the exit code, stderr and stdout together.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/proc-easy/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/tbrowder/Proc-Easy.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · process</div><h1>Proc::Easy</h1><span class="status st-div">Divergent</span></div><p class="summary">One sub that wraps run, always capturing both output streams, and hands back the exit code, stderr and stdout together.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:tbrowder</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tbrowder/Proc::Easy">raku.land</a> · <a href="https://github.com/tbrowder/Proc-Easy.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Proc::Easy</code></pre></div><p class="fact-sub"><code>zef install Proc::Easy</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Running a command and getting its output back is four lines of Raku: <code>run</code> with <code>:out</code> and <code>:err</code>, slurp both handles, close them, read the exit code. Four lines is three too many when you do it fifteen times in a script, and forgetting to close a handle is a resource leak nobody notices until it matters.</p>
+<p>This distribution is that wrapped into one call.</p>
+<h2 id="running-a-command">Running a command <a class="anchor" href="#running-a-command" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/proc-easy/01-run.raku" title="This example as a file: 01-run.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Proc::Easy</span>;
+
+<span class="k">my</span> (<span class="nv">$exit</span>, <span class="nv">$err</span>, <span class="nv">$out</span>) = <span class="n">run-command</span>(<span class="s">'echo hello'</span>);
+<span class="nb">say</span> <span class="s">'exit : '</span>, <span class="nv">$exit</span>;
+<span class="nb">say</span> <span class="s">'err  : '</span>, <span class="nv">$err</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'out  : '</span>, <span class="nv">$out</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'true  -&gt; exit '</span>, <span class="n">run-command</span>(<span class="s">'true'</span>,  :<span class="nb">exit</span>);
+<span class="nb">say</span> <span class="s">'false -&gt; exit '</span>, <span class="n">run-command</span>(<span class="s">'false'</span>, :<span class="nb">exit</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>exit : 0
+err  : ""
+out  : "hello\n"
+
+true  -&gt; exit 0
+false -&gt; exit 1</code></pre></div>
+<p>The bare call returns three things in that order: exit code, stderr, stdout. Nothing escapes to the terminal.</p>
+<h2 id="asking-for-one-of-them">Asking for one of them <a class="anchor" href="#asking-for-one-of-them" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/proc-easy/02-selectors.raku" title="This example as a file: 02-selectors.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Proc::Easy</span>;
+
+<span class="nb">say</span> <span class="s">':out alone : '</span>, <span class="n">run-command</span>(<span class="s">'echo one two'</span>, :<span class="n">out</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">':err alone : '</span>, <span class="n">run-command</span>(<span class="s">'echo one two'</span>, :<span class="n">err</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">':exit alone: '</span>, <span class="n">run-command</span>(<span class="s">'echo one two'</span>, :<span class="nb">exit</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the flags are checked in the order exit, err, out,'</span>;
+<span class="nb">say</span> <span class="s">'and the FIRST one set wins — they do not combine:'</span>;
+<span class="nb">say</span> <span class="s">'  :out and :err together : '</span>, <span class="n">run-command</span>(<span class="s">'echo x'</span>, :<span class="n">out</span>, :<span class="n">err</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  all three together     : '</span>, <span class="n">run-command</span>(<span class="s">'echo x'</span>, :<span class="n">out</span>, :<span class="n">err</span>, :<span class="nb">exit</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>:out alone : "one two\n"
+:err alone : ""
+:exit alone: 0
+
+the flags are checked in the order exit, err, out,
+and the FIRST one set wins — they do not combine:
+  :out and :err together : ""
+  all three together     : 0</code></pre></div>
+<p>Asking for <code>:out, :err</code> does not give you both. <code>:err</code> is tested first, so you silently get stderr only.</p>
+<h2 id="running-somewhere-else">Running somewhere else <a class="anchor" href="#running-somewhere-else" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/proc-easy/03-dir.raku" title="This example as a file: 03-dir.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Proc::Easy</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pe-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="k">my</span> <span class="nv">$before</span> = <span class="nv">$*CWD</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="n">run-command</span>(<span class="s">'pwd'</span>, :<span class="n">out</span>, :<span class="n">dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+<span class="nb">say</span> <span class="s">'ran in the fixture      : '</span>, <span class="nv">$out</span>.<span class="n">chomp</span>.<span class="n">ends-with</span>(<span class="s">&quot;pe-{$*PID}&quot;</span>);
+<span class="nb">say</span> <span class="s">'and came back afterwards : '</span>, <span class="nv">$*CWD</span>.<span class="n">absolute</span> <span class="n">eq</span> <span class="nv">$before</span>.<span class="n">absolute</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ran in the fixture      : True
+and came back afterwards : True</code></pre></div>
+<p><code>:dir</code> uses a process-global <code>chdir</code>, so it is not thread-safe and does not restore the directory if the run throws.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>run-command</code> takes a command <strong>string</strong> and never runs a shell. The string is split with <code>.words</code> and handed straight to <code>run</code>, so quotes, globs, pipes and redirections arrive at the program as literal arguments.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/proc-easy/04-no-shell.raku" title="This example as a file: 04-no-shell.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Proc::Easy</span>;
+
+<span class="nb">say</span> <span class="s">'plain     : '</span>, <span class="n">run-command</span>(<span class="s">'echo hello world'</span>, :<span class="n">out</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'quoted    : '</span>, <span class="n">run-command</span>(<span class="s">Q[echo 'hello world']</span>, :<span class="n">out</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'a glob    : '</span>, <span class="n">run-command</span>(<span class="s">'echo *'</span>, :<span class="n">out</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'a pipe    : '</span>, <span class="n">run-command</span>(<span class="s">'echo a | true'</span>, :<span class="n">out</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'a redirect: '</span>, <span class="n">run-command</span>(<span class="s">'echo a &gt; /dev/null'</span>, :<span class="n">out</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>plain     : "hello world\n"
+quoted    : "'hello world'\n"
+a glob    : "*\n"
+a pipe    : "a | true\n"
+a redirect: "a &gt; /dev/null\n"</code></pre></div>
+<p><code>echo 'hello world'</code> prints the quotes. <code>echo *</code> prints an asterisk. <code>echo a | true</code> prints <code>a | true</code>. The string interface reads exactly like <code>shell()</code> and behaves exactly like <code>run()</code>.</p>
+<p>Pass the arguments already split if any of them can contain a space, because this cannot do it for you.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Twice, and one of them is a wrong answer rather than a wrong message.</p>
+<p><code>:dir</code> to a directory that does <strong>not exist</strong> dies on Rakudo with <code>X::IO::Chdir</code> naming the path. On Raku++ it silently runs the command in the <strong>original</strong> directory and returns its output, because the module writes <code>chdir $dir if $dir;</code> and Raku++ does not sink-throw an unhandled <code>Failure</code> under a statement modifier. So a typo in a path is an error on one engine and a wrong answer on the other.</p>
+<p>And the exit code of a command that could not be started differs: Raku++ reports 127, Rakudo reports −1. Neither throws, so an example printing that number will not build on both engines.</p>
+<p>One thing that is the same on both: <strong><code>:debug</code> writes its <code>ERROR:</code> block to stdout</strong>, not stderr. That is output pollution in the middle of whatever you were capturing.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

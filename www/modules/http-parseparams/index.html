@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP::ParseParams — The Raku Ecosystem, Working</title>
+<meta name="description" content="Parse an HTTP cookie string or an x-www-form-urlencoded body into a hash, with the dialect chosen by a flag.">
+<link rel="canonical" href="https://raku.online/modules/http-parseparams/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP::ParseParams — The Raku Ecosystem, Working">
+<meta property="og:description" content="Parse an HTTP cookie string or an x-www-form-urlencoded body into a hash, with the dialect chosen by a flag.">
+<meta property="og:url" content="https://raku.online/modules/http-parseparams/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"HTTP::ParseParams","description":"Parse an HTTP cookie string or an x-www-form-urlencoded body into a hash, with the dialect chosen by a flag.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/http-parseparams/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/retupmoca/P6-HTTP-ParseParams.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · HTTP</div><h1>HTTP::ParseParams</h1><span class="status st-part">Partial</span></div><p class="summary">Parse an HTTP cookie string or an x-www-form-urlencoded body into a hash, with the dialect chosen by a flag.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>URI::Encode</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/HTTP::ParseParams">raku.land</a> · <a href="git://github.com/retupmoca/P6-HTTP-ParseParams.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install HTTP::ParseParams</code></pre></div><p class="fact-sub"><code>zef install HTTP::ParseParams</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Two of the oldest wire formats on the web are the query string and the cookie header, and they are almost but not quite the same: one splits on <code>&amp;</code>, the other on <code>;</code>, and they disagree about percent-decoding. Anything writing an HTTP server from the socket up needs both.</p>
+<p>This distribution is one routine that does either, told which by a flag.</p>
+<h2 id="parsing-a-query-string">Parsing a query string <a class="anchor" href="#parsing-a-query-string" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-parseparams/01-urlencoded.raku" title="This example as a file: 01-urlencoded.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::ParseParams</span>;
+
+<span class="k">my</span> <span class="nv">%p</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'name=Ada&amp;lang=raku&amp;year=2026'</span>, :<span class="n">urlencoded</span>);
+<span class="nb">say</span> <span class="nv">%p</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%p{$_}.raku}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'percent-decoded values:'</span>;
+<span class="k">my</span> <span class="nv">%d</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'n=%48%69&amp;s=a%20b'</span>, :<span class="n">urlencoded</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">%d</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%d{$_}.raku}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it splits on ; as well as &amp;:'</span>;
+<span class="k">my</span> <span class="nv">%s</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'a=1;b=2'</span>, :<span class="n">urlencoded</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">%s</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%s{$_}.raku}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>lang="raku" name="Ada" year="2026"
+
+percent-decoded values:
+  n="Hi" s="a b"
+
+it splits on ; as well as &amp;:
+  a="1" b="2"</code></pre></div>
+<p>Note the qualification. <code>parse</code> is declared in a <code>unit module</code> and is <strong>not exported</strong> — you must write <code>HTTP::ParseParams::parse</code>.</p>
+<h2 id="cookies">Cookies <a class="anchor" href="#cookies" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-parseparams/02-cookies.raku" title="This example as a file: 02-cookies.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::ParseParams</span>;
+
+<span class="k">my</span> <span class="nv">%c</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'session=abc; theme=dark'</span>, :<span class="n">cookie</span>);
+<span class="nb">say</span> <span class="nv">%c</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%c{$_}.raku}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a repeated key gives a container rather than a Str:'</span>;
+<span class="k">my</span> <span class="nv">%r</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'a=1; a=2; a=3'</span>, :<span class="n">cookie</span>);
+<span class="nb">say</span> <span class="s">'  the value for a is a '</span>, <span class="nv">%r</span><span class="s">&lt;a&gt;</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  and a single key is a '</span>, <span class="nv">%c</span><span class="s">&lt;session&gt;</span>.^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>session="abc" theme="dark"
+
+a repeated key gives a container rather than a Str:
+  the value for a is a Seq
+  and a single key is a Str</code></pre></div>
+<p>Every caller therefore has to handle both types for the same key, which is a condition you cannot know in advance from the wire.</p>
+<h2 id="choosing-the-dialect-from-a-header">Choosing the dialect from a header <a class="anchor" href="#choosing-the-dialect-from-a-header" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-parseparams/03-content-type.raku" title="This example as a file: 03-content-type.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::ParseParams</span>;
+
+<span class="k">my</span> <span class="nv">%p</span> = <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'a=1&amp;a=2'</span>,
+    :<span class="n">content-type</span>&lt;<span class="n">application</span>/<span class="n">x-www-form-urlencoded</span>&gt;);
+<span class="nb">say</span> <span class="s">'via content-type : '</span>, <span class="nv">%p</span><span class="s">&lt;a&gt;</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'a=1'</span>, :<span class="n">content-type</span>&lt;<span class="n">text</span>/<span class="n">plain</span>&gt;);
+<span class="nb">say</span> <span class="s">'an unknown content type : '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'accepted'</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="k">try</span> <span class="n">HTTP::ParseParams::parse</span>(<span class="s">'a=1'</span>);
+<span class="nb">say</span> <span class="s">'no dialect at all       : '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'accepted'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>via content-type : ("1", "2")
+
+an unknown content type : Unable to understand content type text/plain
+no dialect at all       : Nothing to do!</code></pre></div>
+<p>There is no default dialect. <code>:formdata</code> is declared and dies with <code>NYI</code>.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A key with no <code>=</code> crashes the parser, and so does the empty string.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-parseparams/04-no-equals-trap.raku" title="This example as a file: 04-no-equals-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::ParseParams</span>;
+
+<span class="k">for</span> <span class="s">'a&amp;b=2'</span>, <span class="s">''</span>, <span class="s">'debug&amp;x=1'</span> -&gt; <span class="nv">$q</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">HTTP::ParseParams::parse</span>(<span class="nv">$q</span>, :<span class="n">urlencoded</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s -&gt; %s'</span>, <span class="nv">$q</span>.<span class="nb">raku</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="s">'parsed'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'?debug&amp;x=1 is ordinary on the real web, and a request with no'</span>;
+<span class="nb">say</span> <span class="s">'query string at all gives you the empty string.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"a\&amp;b=2"     -&gt; threw
+""           -&gt; threw
+"debug\&amp;x=1" -&gt; threw
+
+?debug&amp;x=1 is ordinary on the real web, and a request with no
+query string at all gives you the empty string.</code></pre></div>
+<p>The split on <code>=</code> yields an undefined second element, and <code>uri_decode</code> requires a <code>Str</code>. So <code>parse($query, :urlencoded)</code> on a request with no query string is fatal, and a valueless flag in a query string is fatal.</p>
+<p>Guard both before calling, or filter out the keyless pairs yourself.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On whether <code>parse</code> is visible without qualification. Raku++ puts <code>&amp;parse</code> into the importing scope; Rakudo does not, and refuses to compile a file that calls it unqualified. So code written under one engine fails to compile on the other. Qualify it, as every example here does.</p>
+<p>The repeated-cookie container is also nested differently between the engines, which makes its exact <code>.raku</code> unportable — <code>.list</code> on it is not.</p>
+<p>Four things that are the same on both, and each one is a correctness bug for the format this claims to parse. <strong><code>+</code> is not decoded to a space</strong>, which is wrong for <code>application/x-www-form-urlencoded</code>. <strong>Keys are never percent-decoded</strong>, only values. <strong>Cookie values are not percent-decoded at all</strong>, unlike urlencoded ones. And the distribution states no licence.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

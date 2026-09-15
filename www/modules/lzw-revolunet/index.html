@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LZW::Revolunet — The Raku Ecosystem, Working</title>
+<meta name="description" content="A port of a JavaScript LZW routine that replaces repeated substrings with single characters drawn from a private code space.">
+<link rel="canonical" href="https://raku.online/modules/lzw-revolunet/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LZW::Revolunet — The Raku Ecosystem, Working">
+<meta property="og:description" content="A port of a JavaScript LZW routine that replaces repeated substrings with single characters drawn from a private code space.">
+<meta property="og:url" content="https://raku.online/modules/lzw-revolunet/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"LZW::Revolunet","description":"A port of a JavaScript LZW routine that replaces repeated substrings with single characters drawn from a private code space.","programmingLanguage":"Raku","version":"0.3.2","url":"https://raku.online/modules/lzw-revolunet/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://gitlab.com/pheix/lzw-revolunet-perl6.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · compression</div><h1>LZW::Revolunet</h1><span class="status st-div">Divergent</span></div><p class="summary">A port of a JavaScript LZW routine that replaces repeated substrings with single characters drawn from a private code space.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3.2</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/LZW::Revolunet">raku.land</a> · <a href="https://gitlab.com/pheix/lzw-revolunet-perl6.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install LZW::Revolunet</code></pre></div><p class="fact-sub"><code>zef install LZW::Revolunet</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>LZW builds a dictionary of repeated substrings as it goes and replaces each with a code, which is how GIF and the old <code>compress</code> worked. This implementation is a port of a JavaScript routine, and it keeps that routine's defining choice: both input and output are <code>Str</code>s, never byte buffers, with the dictionary codes drawn from a private Unicode range starting at codepoint 97000.</p>
+<p>That makes it a string-to-string transform that interoperates with the same JavaScript, rather than a byte compressor.</p>
+<h2 id="round-trips">Round trips <a class="anchor" href="#round-trips" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lzw-revolunet/01-roundtrip.raku" title="This example as a file: 01-roundtrip.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LZW::Revolunet</span>;
+
+<span class="k">my</span> <span class="nv">$lzw</span> = <span class="n">LZW::Revolunet</span>.<span class="nb">new</span>;
+
+<span class="k">for</span> <span class="s">'hello hello hello hello'</span>,
+    <span class="s">'TOBEORNOTTOBEORTOBEORNOT'</span>,
+    <span class="s">'a'</span> <span class="n">x</span> <span class="mi">30</span>,
+    <span class="s">'abc'</span> -&gt; <span class="nv">$in</span> {
+    <span class="k">my</span> <span class="nv">$c</span> = <span class="nv">$lzw</span>.<span class="n">compress</span>(<span class="n">s</span> =&gt; <span class="nv">$in</span>);
+    <span class="k">my</span> <span class="nv">$d</span> = <span class="nv">$lzw</span>.<span class="n">decompress</span>(<span class="n">s</span> =&gt; <span class="nv">$c</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%3d chars in -&gt; %3d chars out   round trip %s'</span>,
+        <span class="nv">$in</span>.<span class="nb">chars</span>, <span class="nv">$c</span>.<span class="nb">chars</span>, <span class="nv">$d</span> <span class="n">eq</span> <span class="nv">$in</span> ?? <span class="s">'exact'</span> !! <span class="s">'DIFFERS'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code> 23 chars in -&gt;  14 chars out   round trip exact
+ 24 chars in -&gt;  16 chars out   round trip exact
+ 30 chars in -&gt;   8 chars out   round trip exact
+  3 chars in -&gt;   3 chars out   round trip exact</code></pre></div>
+<p>Every round trip is exact for ASCII. The character counts go down, which is the part that looks like compression.</p>
+<h2 id="what-the-codes-actually-are">What the codes actually are <a class="anchor" href="#what-the-codes-actually-are" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lzw-revolunet/02-codes.raku" title="This example as a file: 02-codes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LZW::Revolunet</span>;
+
+<span class="k">my</span> <span class="nv">$lzw</span> = <span class="n">LZW::Revolunet</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="nv">$lzw</span>.<span class="n">compress</span>(<span class="n">s</span> =&gt; <span class="s">'TOBEORNOTTOBEORTOBEORNOT'</span>);
+
+<span class="nb">say</span> <span class="s">'compressed codepoints : '</span>, <span class="nv">$c</span>.<span class="nb">ords</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the highest one       : '</span>, <span class="nv">$c</span>.<span class="nb">ords</span>.<span class="nb">max</span>, <span class="s">'  (U+'</span>, <span class="nv">$c</span>.<span class="nb">ords</span>.<span class="nb">max</span>.<span class="n">base</span>(<span class="mi">16</span>), <span class="s">')'</span>;
+<span class="nb">say</span> <span class="s">'that character alone encodes to '</span>,
+    <span class="nv">$c</span>.<span class="nb">ords</span>.<span class="nb">max</span>.<span class="nb">chr</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">bytes</span>, <span class="s">' UTF-8 bytes'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>compressed codepoints : (84, 79, 66, 69, 79, 82, 78, 79, 84, 97000, 97002, 97004, 97009, 97003, 97005, 97007)
+
+the highest one       : 97009  (U+17AF1)
+that character alone encodes to 4 UTF-8 bytes</code></pre></div>
+<p>Which is the problem.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>This compressor makes text <strong>bigger</strong>, and its own ratio reporting hides it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lzw-revolunet/03-growth-trap.raku" title="This example as a file: 03-growth-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LZW::Revolunet</span>;
+
+<span class="k">my</span> <span class="nv">$lzw</span> = <span class="n">LZW::Revolunet</span>.<span class="nb">new</span>;
+
+<span class="nb">printf</span>(<span class="s">&quot;%-34s %6s %7s %8s %9s %8s\n&quot;</span>,
+       <span class="s">'input'</span>, <span class="s">'chars'</span>, <span class="s">'bytes'</span>, <span class="s">'c.bytes'</span>, <span class="s">'ratio()'</span>, <span class="s">'verdict'</span>);
+<span class="k">for</span> <span class="s">'TOBEORNOTTOBEORTOBEORNOT'</span>, <span class="s">'hello hello hello hello'</span>,
+    <span class="s">'a'</span> <span class="n">x</span> <span class="mi">60</span>, <span class="s">'abcdefghijklmnopqrstuvwxyz'</span>,
+    (<span class="s">'the quick brown fox '</span> <span class="n">x</span> <span class="mi">5</span>) -&gt; <span class="nv">$in</span> {
+    <span class="k">my</span> <span class="nv">$c</span>  = <span class="nv">$lzw</span>.<span class="n">compress</span>(<span class="n">s</span> =&gt; <span class="nv">$in</span>);
+    <span class="k">my</span> <span class="nv">$ib</span> = <span class="nv">$in</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">bytes</span>;
+    <span class="k">my</span> <span class="nv">$cb</span> = <span class="nv">$c</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">bytes</span>;
+    <span class="nb">printf</span>(<span class="s">&quot;%-34s %6d %7d %8d %9d %8s\n&quot;</span>,
+        <span class="nv">$in</span>.<span class="nb">chars</span> &gt; <span class="mi">32</span> ?? <span class="nv">$in</span>.<span class="nb">substr</span>(<span class="mi">0</span>, <span class="mi">29</span>) ~ <span class="s">'...'</span> !! <span class="nv">$in</span>,
+        <span class="nv">$in</span>.<span class="nb">chars</span>, <span class="nv">$ib</span>, <span class="nv">$cb</span>, <span class="nv">$lzw</span>.<span class="n">get_ratio</span>(),
+        <span class="nv">$cb</span> &lt; <span class="nv">$ib</span> ?? <span class="s">'smaller'</span> !! <span class="s">'LARGER'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input                               chars   bytes  c.bytes   ratio()  verdict
+TOBEORNOTTOBEORTOBEORNOT               24      24       37       -25   LARGER
+hello hello hello hello                23      23       38       -31   LARGER
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaa...       60      60       41        48  smaller
+abcdefghijklmnopqrstuvwxyz             26      26       26         0   LARGER
+the quick brown fox the quick...      100     100      153       -20   LARGER</code></pre></div>
+<p>The dictionary codes start at U+17AE8, which costs <strong>four UTF-8 bytes each</strong>, replacing substrings that were often two or three ASCII bytes. Four of those five inputs grew.</p>
+<p>And <code>get_bytes</code> — which <code>get_ratio</code> is computed from — sizes a codepoint by how many bytes the <em>number</em> needs rather than how many the character takes, so it charges three bytes for a four-byte character and undercounts every compressed string. The classic LZW demonstration string went from 24 bytes to 37 while the reported ratio said −25.</p>
+<p>Measure <code>.encode('utf8').bytes</code> yourself if the size is what you care about. Use this for interoperability with the JavaScript library, not for compression.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On non-Latin-1 input, and the boundary is exactly U+0100.</p>
+<p>Rakudo <strong>throws</strong> <code>Error encoding Latin-1 string: could not encode codepoint 256</code> for any character above U+00FF, so under Rakudo the module is usable only on Latin-1 text. Raku++'s Latin-1 encoder is lenient, so <code>"中文中文"</code> round-trips exactly there.</p>
+<p>Rakudo also emits a standing <code>Use of uninitialized value @out</code> warning from the decompressor on every call, which Raku++ does not.</p>
+<p>Two things that are the same on both. <strong><code>compress</code> on the empty string throws</strong> while <code>decompress</code> on it returns <code>""</code>, so the pair is asymmetric at that one input. And the decompressor <strong>never rejects anything</strong>: a plain string, a lone dictionary code, a code past anything the compressor ever issued — all decode to silent garbage rather than an error.</p>
+<p>The distribution declares no <code>auth</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

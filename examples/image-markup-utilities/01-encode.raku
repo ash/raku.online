@@ -1,0 +1,38 @@
+#!/usr/bin/env rakupp
+# Image::Markup::Utilities — Encoding an image
+# https://raku.online/modules/image-markup-utilities/#encoding-an-image
+#
+# Install what it needs, then run it:
+#     rakupp install Image::Markup::Utilities
+#     rakupp 01-encode.raku
+#
+# Run under Raku++ 3.28.0 and Rakudo 2026.08 every time the site is
+# built; the build fails if the output below stops matching.
+
+use Image::Markup::Utilities;
+
+my $dir = $*TMPDIR.add("img-{$*PID}");
+$dir.mkdir;
+LEAVE { .unlink for $dir.dir; $dir.rmdir }
+
+# a real 1x1 PNG, written from literal bytes
+my $png = $dir.add('dot.png');
+$png.spurt: Buf.new(
+    0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,0x00,0x00,0x00,0x0D,
+    0x49,0x48,0x44,0x52,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,
+    0x08,0x06,0x00,0x00,0x00,0x1F,0x15,0xC4,0x89,0x00,0x00,0x00,
+    0x0A,0x49,0x44,0x41,0x54,0x78,0x9C,0x63,0x00,0x01,0x00,0x00,
+    0x05,0x00,0x01,0x0D,0x0A,0x2D,0xB4,0x00,0x00,0x00,0x00,0x49,
+    0x45,0x4E,0x44,0xAE,0x42,0x60,0x82);
+
+say 'fixture bytes : ', $png.s;
+say '';
+my $enc = image-encode($png.absolute, :type<png>);
+say 'image-encode returns a ', $enc.^name, ' of ', $enc.chars, ' chars';
+say '  it starts : ', $enc.substr(0, 40);
+
+# Output:
+#     fixture bytes : 67
+#     
+#     image-encode returns a Str of 114 chars
+#       it starts : data:image/png;base64,iVBORw0KGgoAAAANSU

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNIX::Privileges — The Raku Ecosystem, Working</title>
+<meta name="description" content="Look a user or group up, drop to it in the correct order, change a path's owner, and chroot — over a small bundled C helper.">
+<link rel="canonical" href="https://raku.online/modules/unix-privileges/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="UNIX::Privileges — The Raku Ecosystem, Working">
+<meta property="og:description" content="Look a user or group up, drop to it in the correct order, change a path's owner, and chroot — over a small bundled C helper.">
+<meta property="og:url" content="https://raku.online/modules/unix-privileges/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"UNIX::Privileges","description":"Look a user or group up, drop to it in the correct order, change a path's owner, and chroot — over a small bundled C helper.","programmingLanguage":"Raku","version":"0.1.6","url":"https://raku.online/modules/unix-privileges/","license":"https://spdx.org/licenses/ISC","codeRepository":"https://github.com/jonathanstowe/raku-unix-privileges.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>UNIX::Privileges</h1><span class="status st-full">Works</span></div><p class="summary">Look a user or group up, drop to it in the correct order, change a path's owner, and chroot — over a small bundled C helper.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.6</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none at runtime</code></dd></div><div class="fact"><dt>License</dt><dd>ISC</dd></div><div class="fact"><dt>Its own test suite</dt><dd>7 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/UNIX::Privileges">raku.land</a> · <a href="https://github.com/jonathanstowe/raku-unix-privileges.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install UNIX::Privileges</code></pre></div><p class="fact-sub"><code>zef install UNIX::Privileges</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A daemon started as root has to give up that privilege before it does anything else, and the order matters: drop the supplementary groups, then the group, then the user, because once you are no longer root you cannot change your group. Getting that sequence wrong is a security bug that looks like working code.</p>
+<p>This distribution wraps a small C helper that does the fiddly parts correctly.</p>
+<h2 id="looking-a-user-up">Looking a user up <a class="anchor" href="#looking-a-user-up" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unix-privileges/01-userinfo.raku" title="This example as a file: 01-userinfo.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UNIX::Privileges</span> :<span class="n">USER</span>;
+
+<span class="c1"># root is uid 0 on every POSIX machine. Nothing here prints a login,</span>
+<span class="c1"># a home directory or a shell.</span>
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">userinfo</span>(<span class="s">'root'</span>);
+<span class="nb">say</span> <span class="s">'type        : '</span>, <span class="nv">$u</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'attributes  : '</span>, <span class="nv">$u</span>.^<span class="n">attributes</span>.<span class="nb">map</span>(*.<span class="n">name</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'uid         : '</span>, <span class="nv">$u</span>.<span class="n">uid</span>;
+<span class="nb">say</span> <span class="s">'gid is Int  : '</span>, <span class="nv">$u</span>.<span class="n">gid</span> ~~ <span class="nb">Int</span>;
+<span class="nb">say</span> <span class="s">'login is Str: '</span>, <span class="nv">$u</span>.<span class="n">login</span> ~~ <span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'home is absolute : '</span>, <span class="nv">$u</span>.<span class="n">home</span>.<span class="n">starts-with</span>(<span class="s">'/'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$g</span> = <span class="n">groupinfo</span>(<span class="s">'daemon'</span>);
+<span class="nb">say</span> <span class="s">'group type  : '</span>, <span class="nv">$g</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'group attrs : '</span>, <span class="nv">$g</span>.^<span class="n">attributes</span>.<span class="nb">map</span>(*.<span class="n">name</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'gid is Int  : '</span>, <span class="nv">$g</span>.<span class="n">gid</span> ~~ <span class="nb">Int</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>type        : UNIX::Privileges::User
+attributes  : $!gid $!home $!login $!shell $!uid
+uid         : 0
+gid is Int  : True
+login is Str: True
+home is absolute : True
+
+group type  : UNIX::Privileges::Group
+group attrs : $!gid $!name
+gid is Int  : True</code></pre></div>
+<p>Those two are the only routines this page exercises. <code>drop</code>, <code>chown</code> and <code>chroot</code> are deliberately not run: <code>drop</code> changes the process's uid and gid <strong>irreversibly</strong>, <code>chroot</code> changes the process root and then <code>chdir</code>s to it, and <code>chown</code> writes ownership metadata to a path.</p>
+<h2 id="the-import-tags">The import tags <a class="anchor" href="#the-import-tags" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unix-privileges/02-tags.raku" title="This example as a file: 02-tags.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UNIX::Privileges</span>;
+
+<span class="nb">say</span> <span class="s">'a plain `use` imports nothing at all.'</span>;
+<span class="nb">say</span> <span class="s">'the full name still works:'</span>;
+<span class="nb">say</span> <span class="s">'  UNIX::Privileges::userinfo(&quot;root&quot;).uid = '</span>,
+    <span class="n">UNIX::Privileges::userinfo</span>(<span class="s">'root'</span>).<span class="n">uid</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the three tags:'</span>;
+<span class="nb">say</span> <span class="s">'  :USER  gives userinfo and groupinfo'</span>;
+<span class="nb">say</span> <span class="s">'  :CH    gives chown and chroot'</span>;
+<span class="nb">say</span> <span class="s">'  :ALL   gives those four plus drop'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a plain `use` imports nothing at all.
+the full name still works:
+  UNIX::Privileges::userinfo("root").uid = 0
+
+the three tags:
+  :USER  gives userinfo and groupinfo
+  :CH    gives chown and chroot
+  :ALL   gives those four plus drop</code></pre></div>
+<p>There is <strong>no <code>:DEFAULT</code></strong>. This is exactly the class of surprise where a reader copies a call out of a synopsis, forgets the tag, and gets an undeclared-routine error with no hint that a tag is what is missing.</p>
+<h2 id="when-the-lookup-fails">When the lookup fails <a class="anchor" href="#when-the-lookup-fails" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/unix-privileges/03-miss.raku" title="This example as a file: 03-miss.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">UNIX::Privileges</span> :<span class="n">USER</span>;
+
+<span class="k">for</span> <span class="s">'nosuchuser-xyzzy'</span>, <span class="s">'nosuchgroup-xyzzy'</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$n</span>.<span class="n">starts-with</span>(<span class="s">'nosuchuser'</span>) ?? <span class="n">userinfo</span>(<span class="nv">$n</span>) !! <span class="n">groupinfo</span>(<span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-20s -&gt; %s'</span>, <span class="nv">$n</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'found'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>nosuchuser-xyzzy     -&gt; fatal: could not get user info: no such user
+nosuchgroup-xyzzy    -&gt; fatal: could not get user info: no such user</code></pre></div>
+<p>Both report "could not get <strong>user</strong> info", including the group lookup — the C helper reuses one message for both.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Three of the five routines are irreversible or system-altering, and the interface does not distinguish them from the two that only report.</p>
+<p><code>drop($user)</code> changes the process's uid and gid, and a non-root process cannot change back. <code>chroot($dir)</code> changes the process root and then <code>chdir</code>s to <code>/</code> inside it. <code>chown($user, $path)</code> writes filesystem metadata. They sit in the same export list as <code>userinfo</code> and <code>groupinfo</code>, which do nothing but read, and nothing in the naming separates the two kinds.</p>
+<p>Import <code>:USER</code> when you only need the lookups, and reach for <code>:ALL</code> only at the point where you actually mean to give up privilege.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On when an undeclared routine is reported, and on what <code>:CH</code> collides with.</p>
+<p>With no tag, Rakudo refuses to compile a file that calls <code>userinfo</code> while Raku++ runs until it reaches the call — so a rakupp-developed program with the call in a rarely taken branch will not compile on Rakudo at all.</p>
+<p>And importing <code>:CH</code> <strong>shadows Rakudo's core <code>chown</code></strong> with a three-candidate set of a different signature. Raku++ has no core <code>chown</code>, so the collision does not arise there — which means the same import is silently more disruptive on one engine.</p>
+<p>One more difference, in noise: Rakudo emits a deprecation report at exit on every run that loads this module, from the module's use of <code>Distribution::Resource.Str</code>. Anything capturing stderr will see it.</p>
+<p>The module's <code>groupinfo</code> also declares its native call with a <code>User</code> parameter while passing a <code>Group</code>; NativeCall does not enforce it and the call works, but the declaration is wrong.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

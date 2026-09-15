@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sys::Domainname — The Raku Ecosystem, Working</title>
+<meta name="description" content="Report the machine's DNS domain, by running hostname and removing everything up to the first dot.">
+<link rel="canonical" href="https://raku.online/modules/sys-domainname/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sys::Domainname — The Raku Ecosystem, Working">
+<meta property="og:description" content="Report the machine's DNS domain, by running hostname and removing everything up to the first dot.">
+<meta property="og:url" content="https://raku.online/modules/sys-domainname/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Sys::Domainname","description":"Report the machine's DNS domain, by running hostname and removing everything up to the first dot.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/sys-domainname/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jmaslak/Raku-Sys-Domainname.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>Sys::Domainname</h1><span class="status st-full">Works</span></div><p class="summary">Report the machine's DNS domain, by running hostname and removing everything up to the first dot.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">zef:jmaslak</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jmaslak/Sys::Domainname">raku.land</a> · <a href="https://github.com/jmaslak/Raku-Sys-Domainname.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Sys::Domainname</code></pre></div><p class="fact-sub"><code>zef install Sys::Domainname</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A program that builds a fully-qualified name, a mail identifier or a default service address wants the machine's DNS domain, and <code>$*KERNEL.hostname</code> gives you the whole thing rather than the domain part.</p>
+<p>This distribution is the one sub that separates them.</p>
+<h2 id="asking-for-the-domain">Asking for the domain <a class="anchor" href="#asking-for-the-domain" aria-label="link">#</a></h2>
+<p>The answer is specific to the machine, so an example asserts <strong>shape</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sys-domainname/01-domain.raku" title="This example as a file: 01-domain.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sys::Domainname</span>;
+
+<span class="k">my</span> <span class="nv">$d</span> = <span class="n">domainname</span>();
+<span class="nb">say</span> <span class="s">'returns a Str        : '</span>, <span class="nv">$d</span> ~~ <span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'is defined           : '</span>, <span class="nv">$d</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'has no trailing newline : '</span>, !<span class="nv">$d</span>.<span class="n">contains</span>(<span class="s">&quot;\n&quot;</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>returns a Str        : True
+is defined           : True
+has no trailing newline : True</code></pre></div>
+<p>That is the entire interface — one exported sub, no arguments.</p>
+<h2 id="how-it-works">How it works <a class="anchor" href="#how-it-works" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sys-domainname/02-mechanism.raku" title="This example as a file: 02-mechanism.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sys::Domainname</span>;
+
+<span class="nb">say</span> <span class="s">'this is not a syscall. the implementation is four lines:'</span>;
+<span class="nb">say</span> <span class="s">'  run `hostname -f`, chomp it, delete up to and including the first dot.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the answer depends on what `hostname` is on your PATH,'</span>;
+<span class="nb">say</span> <span class="s">'and on whether the name it prints contains a dot at all.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the sub is declared `sub ... is export` at file scope,'</span>;
+<span class="nb">say</span> <span class="s">'so it is importable but never qualifiable:'</span>;
+<span class="nb">say</span> <span class="s">'  Sys::Domainname::domainname is reachable : '</span>,
+    (<span class="k">try</span> <span class="nv">&amp;Sys::Domainname::domainname</span>.<span class="nb">defined</span>).<span class="nb">defined</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>this is not a syscall. the implementation is four lines:
+  run `hostname -f`, chomp it, delete up to and including the first dot.
+
+so the answer depends on what `hostname` is on your PATH,
+and on whether the name it prints contains a dot at all.
+
+the sub is declared `sub ... is export` at file scope,
+so it is importable but never qualifiable:
+  Sys::Domainname::domainname is reachable : True</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>It forks a shell, and it never returns an undefined value — so there is no signal that anything went wrong.</p>
+<p>A hostname with <strong>no dot in it</strong> is returned whole, because the stripping is a plain "delete up to the first dot" with no fallback. So a machine with no domain reports its own hostname as its domain.</p>
+<p>And when <code>hostname</code> fails, or is not on the <code>PATH</code> at all, the shell writes <code>command not found</code> to <strong>stderr</strong> and the sub returns the <strong>defined empty string</strong>. The <code>CATCH { return Str }</code> in the source is unreachable, because a failing external command produces empty output rather than throwing.</p>
+<p><code>.defined</code> is therefore useless as a success test. <code>$d.chars</code> is the only signal, and even that cannot distinguish "this machine has no domain" from "<code>hostname</code> is missing".</p>
+<p>Two consequences worth planning for. Because the answer comes from a subprocess resolved through <code>PATH</code>, it can be <strong>changed by changing <code>PATH</code></strong> — this is not a trusted source of identity. And every call forks a process, with no caching, so do not put it in a loop.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Not in this module, but in something it makes visible. <code>qx</code> and <code>qqx</code> do <strong>not</strong> pass the current <code>%*ENV</code> to the child under Raku++, while <code>run</code> and <code>shell</code> do — so a mutated <code>PATH</code> or any other environment change is invisible to a backtick command on one engine and honoured on the other.</p>
+<p>That matters here because the module shells out. It also matters to anything else that sets an environment variable and then shells out expecting the child to see it. Use <code>run</code> or <code>shell</code> with an explicit environment rather than backticks if the child needs to see your changes.</p>
+<p>Everything about this module's own behaviour was identical on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clean — The Raku Ecosystem, Working</title>
+<meta name="description" content="A fifteen-line destructor convention — mark a class with a role, implement clean, and call a sub that runs your block and then cleans up.">
+<link rel="canonical" href="https://raku.online/modules/clean/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Clean — The Raku Ecosystem, Working">
+<meta property="og:description" content="A fifteen-line destructor convention — mark a class with a role, implement clean, and call a sub that runs your block and then cleans up.">
+<meta property="og:url" content="https://raku.online/modules/clean/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Clean","description":"A fifteen-line destructor convention — mark a class with a role, implement clean, and call a sub that runs your block and then cleans up.","programmingLanguage":"Raku","version":"*","url":"https://raku.online/modules/clean/","license":"https://spdx.org/licenses/MIT","codeRepository":"git://github.com/azawawi/perl6-clean.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · resources</div><h1>Clean</h1><span class="status st-part">Partial</span></div><p class="summary">A fifteen-line destructor convention — mark a class with a role, implement clean, and call a sub that runs your block and then cleans up.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>*</code> <span class="fact-sub">github:azawawi</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:azawawi/Clean">raku.land</a> · <a href="git://github.com/azawawi/perl6-clean.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Clean</code></pre></div><p class="fact-sub"><code>zef install Clean</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Raku has no destructors. An object holding a file handle, a socket or a lock has to be told to let go, and the language's answer is a <code>LEAVE</code> phaser rather than anything on the object itself.</p>
+<p>This distribution proposes a convention instead: a role that marks a class as having a cleanup step, and a sub that runs your work and then takes it.</p>
+<h2 id="the-convention">The convention <a class="anchor" href="#the-convention" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/clean/01-clean.raku" title="This example as a file: 01-clean.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Clean</span>;
+
+<span class="k">class</span> <span class="n">TempResource</span> <span class="k">does</span> <span class="n">Cleanable</span> {
+    <span class="k">has</span> <span class="nb">Str</span>  <span class="nv">$.name</span>;
+    <span class="k">has</span> <span class="nb">Bool</span> <span class="nv">$.open</span> <span class="k">is</span> <span class="n">rw</span> = <span class="n">True</span>;
+    <span class="k">method</span> <span class="n">clean</span>() { <span class="nv">$!open</span> = <span class="n">False</span>; <span class="nb">say</span> <span class="s">&quot;  clean: released $!name&quot;</span> }
+}
+
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">TempResource</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'socket-7'</span>);
+<span class="nb">say</span> <span class="s">'before : open='</span>, <span class="nv">$r</span>.<span class="nb">open</span>;
+<span class="n">clean</span> <span class="nv">$r</span>, -&gt; <span class="nv">$o</span> { <span class="nb">say</span> <span class="s">&quot;  block sees {$o.name}, open={$o.open}&quot;</span> };
+<span class="nb">say</span> <span class="s">'after  : open='</span>, <span class="nv">$r</span>.<span class="nb">open</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>before : open=True
+  block sees socket-7, open=True
+  clean: released socket-7
+after  : open=False</code></pre></div>
+<p>Fifteen lines of implementation, and the whole body is <code>&amp;block($o) if &amp;block.defined; $o.clean if $o.defined</code>.</p>
+<h2 id="what-the-role-enforces">What the role enforces <a class="anchor" href="#what-the-role-enforces" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/clean/02-role.raku" title="This example as a file: 02-role.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Clean</span>;
+
+<span class="nb">say</span> <span class="s">'the role stubs a clean method, so a class that does not implement it'</span>;
+<span class="nb">say</span> <span class="s">'is refused at composition time:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">EVAL</span> <span class="s">'use Clean; class NoImpl does Cleanable { }; NoImpl.new'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$!</span> ?? <span class="s">'refused: '</span> ~ <span class="nv">$!</span>.<span class="n">message</span>.<span class="nb">lines</span>[<span class="mi">0</span>] !! <span class="s">'composed'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the role stubs a clean method, so a class that does not implement it
+is refused at composition time:
+  refused: Method 'clean' must be implemented by NoImpl because it is required by roles: Clean::Cleanable.</code></pre></div>
+<p>That much works, on both engines, and it is the useful half of the distribution: <code>$thing ~~ Cleanable</code> is a real type test and a class claiming it really does have a <code>clean</code>.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>clean</code> is not exception-safe, so the cleanup it promises does not happen on the path that most needs it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/clean/03-exception-trap.raku" title="This example as a file: 03-exception-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Clean</span>;
+
+<span class="k">class</span> <span class="n">Resource</span> <span class="k">does</span> <span class="n">Cleanable</span> {
+    <span class="k">has</span> <span class="nb">Str</span>  <span class="nv">$.name</span>;
+    <span class="k">has</span> <span class="nb">Bool</span> <span class="nv">$.released</span> <span class="k">is</span> <span class="n">rw</span> = <span class="n">False</span>;
+    <span class="k">method</span> <span class="n">clean</span>() { <span class="nv">$!released</span> = <span class="n">True</span> }
+}
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">Resource</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'A'</span>);
+<span class="k">try</span> { <span class="n">clean</span> <span class="nv">$a</span>, -&gt; <span class="nv">$o</span> { <span class="nb">die</span> <span class="s">'boom inside the block'</span> } };
+<span class="nb">say</span> <span class="s">'the block died, and A was released : '</span>, <span class="nv">$a</span>.<span class="n">released</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the same shape written with a real LEAVE phaser:'</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Resource</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'B'</span>);
+<span class="k">try</span> {
+    <span class="k">sub</span> <span class="n">scoped</span>(<span class="n">Resource</span> <span class="nv">$o</span>, <span class="nv">&amp;blk</span>) { <span class="k">LEAVE</span> <span class="nv">$o</span>.<span class="n">clean</span>; <span class="n">blk</span>(<span class="nv">$o</span>) }
+    <span class="n">scoped</span> <span class="nv">$b</span>, -&gt; <span class="nv">$o</span> { <span class="nb">die</span> <span class="s">'boom inside the block'</span> };
+}
+<span class="nb">say</span> <span class="s">'  B was released : '</span>, <span class="nv">$b</span>.<span class="n">released</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the block died, and A was released : False
+
+the same shape written with a real LEAVE phaser:
+  B was released : True</code></pre></div>
+<p>The implementation is <code>&amp;block($o); $o.clean;</code> with no <code>LEAVE</code>, no <code>KEEP</code>, no <code>UNDO</code> and no <code>try</code>. A destructor that skips on exception is the opposite of what a scope guard is for — the exceptional path is the only one where you cannot clean up by hand afterwards.</p>
+<p>Use <code>LEAVE</code> directly, as the second half of that example does. The role is still worth having for the type check.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On whether the type constraint is enforced at all.</p>
+<p><code>clean</code> is declared <code>clean(Cleanable $o, &amp;block)</code>. Rakudo refuses a non-<code>Cleanable</code> argument at binding time with a clear message. Raku++ does not check it: the block <strong>runs</strong> with whatever you passed, and the failure is deferred to <code>$o.clean</code> — or, with an undefined argument, never happens at all, and <code>clean</code> returns having silently done nothing.</p>
+<p>So a bug that Rakudo catches at the call site runs half-way through on Raku++ before failing somewhere else.</p>
+<p>Three smaller things, the same on both. The parameter is <code>Cleanable $o</code> without <code>:D</code>, so a <strong>type object</strong> binds and is silently skipped. The return value is whatever the trailing <code>if</code> statement produced — <code>True</code> when the clean ran and an empty <code>Slip</code> when it did not — which is meaningless; do not test it. And the distribution's metadata carries <strong>no version and no auth</strong>, so <code>use Clean:ver&lt;…&gt;</code> cannot pin anything.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

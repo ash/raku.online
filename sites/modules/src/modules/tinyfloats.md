@@ -1,6 +1,6 @@
 ---
 name: TinyFloats
-version: 0.0.4
+version: 0.0.5
 auth: zef:japhb
 kind: Distribution · numeric
 summary: Convert between Raku Nums and the bit patterns of four small
