@@ -47,6 +47,7 @@ says so, and so does the file.
 | [`browser-open/`](browser-open/) | [Browser::Open](https://raku.online/modules/browser-open/) | `rakupp install Browser::Open` |
 | [`cache-async/`](cache-async/) | [Cache::Async](https://raku.online/modules/cache-async/) | `rakupp install Cache::Async` |
 | [`calculator/`](calculator/) | [Calculator](https://raku.online/modules/calculator/) | `rakupp install Calculator` |
+| [`cbor-simple/`](cbor-simple/) | [CBOR::Simple](https://raku.online/modules/cbor-simple/) | `rakupp install CBOR::Simple` |
 | [`cccolor/`](cccolor/) | [CCColor](https://raku.online/modules/cccolor/) | `rakupp install CCColor` |
 | [`chess/`](chess/) | [Chess](https://raku.online/modules/chess/) | `rakupp install Chess` |
 | [`clean/`](clean/) | [Clean](https://raku.online/modules/clean/) | `rakupp install Clean` |
@@ -54,12 +55,14 @@ says so, and so does the file.
 | [`color-names/`](color-names/) | [Color::Names](https://raku.online/modules/color-names/) | `rakupp install Color::Names` |
 | [`color-scheme/`](color-scheme/) | [Color::Scheme](https://raku.online/modules/color-scheme/) | `rakupp install Color::Scheme` |
 | [`compress-lzstring/`](compress-lzstring/) | [Compress::LZString](https://raku.online/modules/compress-lzstring/) | `rakupp install Compress::LZString` |
+| [`compress-zlib/`](compress-zlib/) | [Compress::Zlib](https://raku.online/modules/compress-zlib/) | `rakupp install Compress::Zlib` |
 | [`compress-zlib-raw/`](compress-zlib-raw/) | [Compress::Zlib::Raw](https://raku.online/modules/compress-zlib-raw/) | `rakupp install Compress::Zlib::Raw` |
 | [`concurrent-channelify/`](concurrent-channelify/) | [Concurrent::Channelify](https://raku.online/modules/concurrent-channelify/) | `rakupp install Concurrent::Channelify` |
 | [`config/`](config/) | [Config](https://raku.online/modules/config/) | `rakupp install Config` |
 | [`config-clever/`](config-clever/) | [Config::Clever](https://raku.online/modules/config-clever/) | `rakupp install Config::Clever` |
 | [`config-ini/`](config-ini/) | [Config::INI](https://raku.online/modules/config-ini/) | `rakupp install Config::INI` |
 | [`constants-netinet-in/`](constants-netinet-in/) | [Constants::Netinet::In](https://raku.online/modules/constants-netinet-in/) | `rakupp install Constants::Netinet::In` |
+| [`cro-core/`](cro-core/) | [Cro::Core](https://raku.online/modules/cro-core/) | `rakupp install Cro::Core` |
 | [`crypt-random/`](crypt-random/) | [Crypt::Random](https://raku.online/modules/crypt-random/) | `rakupp install Crypt::Random` |
 | [`csv-parser/`](csv-parser/) | [CSV::Parser](https://raku.online/modules/csv-parser/) | `rakupp install CSV::Parser` |
 | [`data-dpath6/`](data-dpath6/) | [Data::DPath6](https://raku.online/modules/data-dpath6/) | `rakupp install Data::DPath6` |
@@ -146,6 +149,7 @@ says so, and so does the file.
 | [`http-tiny/`](http-tiny/) | [HTTP::Tiny](https://raku.online/modules/http-tiny/) | `rakupp install HTTP::Tiny` |
 | [`i18n-simple/`](i18n-simple/) | [I18n::Simple](https://raku.online/modules/i18n-simple/) | `rakupp install I18n::Simple` |
 | [`idna-punycode/`](idna-punycode/) | [IDNA::Punycode](https://raku.online/modules/idna-punycode/) | `rakupp install IDNA::Punycode` |
+| [`if/`](if/) | [if](https://raku.online/modules/if/) | `rakupp install if` |
 | [`image-markup-utilities/`](image-markup-utilities/) | [Image::Markup::Utilities](https://raku.online/modules/image-markup-utilities/) | `rakupp install Image::Markup::Utilities` |
 | [`image-png-inflated/`](image-png-inflated/) | [Image::PNG::Inflated](https://raku.online/modules/image-png-inflated/) | `rakupp install Image::PNG::Inflated` |
 | [`inline-basic/`](inline-basic/) | [Inline::BASIC](https://raku.online/modules/inline-basic/) | `rakupp install Inline::BASIC` |
@@ -238,6 +242,7 @@ says so, and so does the file.
 | [`path-canonical/`](path-canonical/) | [Path::Canonical](https://raku.online/modules/path-canonical/) | `rakupp install Path::Canonical` |
 | [`path-finder/`](path-finder/) | [Path::Finder](https://raku.online/modules/path-finder/) | `rakupp install Path::Finder` |
 | [`path-through/`](path-through/) | [Path::Through](https://raku.online/modules/path-through/) | `rakupp install Path::Through` |
+| [`paths/`](paths/) | [paths](https://raku.online/modules/paths/) | `rakupp install paths` |
 | [`pathtools/`](pathtools/) | [PathTools](https://raku.online/modules/pathtools/) | `rakupp install PathTools` |
 | [`physics-error/`](physics-error/) | [Physics::Error](https://raku.online/modules/physics-error/) | `rakupp install Physics::Error` |
 | [`pod-literate/`](pod-literate/) | [Pod::Literate](https://raku.online/modules/pod-literate/) | `rakupp install Pod::Literate` |
@@ -258,6 +263,7 @@ says so, and so does the file.
 | [`strictnamedarguments/`](strictnamedarguments/) | [StrictNamedArguments](https://raku.online/modules/strictnamedarguments/) | `rakupp install StrictNamedArguments` |
 | [`string-fold/`](string-fold/) | [String::Fold](https://raku.online/modules/string-fold/) | `rakupp install String::Fold` |
 | [`string-stream/`](string-stream/) | [String::Stream](https://raku.online/modules/string-stream/) | `rakupp install String::Stream` |
+| [`string-utils/`](string-utils/) | [String::Utils](https://raku.online/modules/string-utils/) | `rakupp install String::Utils` |
 | [`sublist/`](sublist/) | [sublist](https://raku.online/modules/sublist/) | `rakupp install sublist` |
 | [`svg/`](svg/) | [SVG](https://raku.online/modules/svg/) | `rakupp install SVG` |
 | [`swedish-textdates-sv/`](swedish-textdates-sv/) | [Swedish::TextDates_sv](https://raku.online/modules/swedish-textdates-sv/) | `rakupp install Swedish::TextDates_sv` |
@@ -287,6 +293,7 @@ says so, and so does the file.
 | [`text-levenshtein/`](text-levenshtein/) | [Text::Levenshtein](https://raku.online/modules/text-levenshtein/) | `rakupp install Text::Levenshtein` |
 | [`text-levenshtein-damerau/`](text-levenshtein-damerau/) | [Text::Levenshtein::Damerau](https://raku.online/modules/text-levenshtein-damerau/) | `rakupp install Text::Levenshtein::Damerau` |
 | [`text-lorem/`](text-lorem/) | [Text::Lorem](https://raku.online/modules/text-lorem/) | `rakupp install Text::Lorem` |
+| [`text-markdown/`](text-markdown/) | [Text::Markdown](https://raku.online/modules/text-markdown/) | `rakupp install Text::Markdown` |
 | [`text-miscutils/`](text-miscutils/) | [Text::MiscUtils](https://raku.online/modules/text-miscutils/) | `rakupp install Text::MiscUtils` |
 | [`text-sift4/`](text-sift4/) | [Text::Sift4](https://raku.online/modules/text-sift4/) | `rakupp install Text::Sift4` |
 | [`text-spintax/`](text-spintax/) | [Text::Spintax](https://raku.online/modules/text-spintax/) | `rakupp install Text::Spintax` |
