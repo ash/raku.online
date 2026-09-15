@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compress::Zlib::Raw — The Raku Ecosystem, Working</title>
+<meta name="description" content="The zlib C library bound function for function — the one-shot helpers, the streaming deflate and inflate state machine, and the checksums — with no Raku wrapper over any of it.">
+<link rel="canonical" href="https://raku.online/modules/compress-zlib-raw/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Compress::Zlib::Raw — The Raku Ecosystem, Working">
+<meta property="og:description" content="The zlib C library bound function for function — the one-shot helpers, the streaming deflate and inflate state machine, and the checksums — with no Raku wrapper over any of it.">
+<meta property="og:url" content="https://raku.online/modules/compress-zlib-raw/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Compress::Zlib::Raw","description":"The zlib C library bound function for function — the one-shot helpers, the streaming deflate and inflate state machine, and the checksums — with no Raku wrapper over any of it.","programmingLanguage":"Raku","version":"1.0.1","url":"https://raku.online/modules/compress-zlib-raw/","codeRepository":"https://github.com/retupmoca/P6-Compress-Zlib-Raw"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Compress::Zlib::Raw</h1><span class="status st-full">Works</span></div><p class="summary">The zlib C library bound function for function — the one-shot helpers, the streaming deflate and inflate state machine, and the checksums — with no Raku wrapper over any of it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.1</code></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:retupmoca/Compress::Zlib::Raw">raku.land</a> · <a href="https://github.com/retupmoca/P6-Compress-Zlib-Raw">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Compress::Zlib::Raw</code></pre></div><p class="fact-sub"><code>zef install Compress::Zlib::Raw</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Everything that compresses is zlib: the <code>.gz</code> files on disk, the <code>Content-Encoding: gzip</code> on the wire, the compressed chunk inside a PNG, the objects in a git repository. A Raku program that has to read or write any of those formats byte-for-byte needs the library itself rather than a convenience layer, because the details it would hide — which of the three framings, which window size, which compression level — are exactly the details the format specifies.</p>
+<p>This distribution is sixty-three functions bound straight through, plus the three C structures they pass around. Nothing is wrapped and nothing is made convenient; you allocate the destination buffer, pass the length in and out through a one-element array, and read the integer return codes yourself.</p>
+<h2 id="a-round-trip-and-the-checksums">A round trip, and the checksums <a class="anchor" href="#a-round-trip-and-the-checksums" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/compress-zlib-raw/01-roundtrip.raku" title="This example as a file: 01-roundtrip.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Compress::Zlib::Raw</span>;
+<span class="k">use</span> <span class="n">NativeCall</span>;
+
+<span class="nb">say</span> <span class="n">zlibVersion</span>();
+<span class="nb">say</span> <span class="n">compressBound</span>(<span class="mi">11</span>);
+
+<span class="k">my</span> <span class="nv">$source</span> = <span class="s">'hello hello hello hello hello'</span>.<span class="n">encode</span>(<span class="s">'ascii'</span>);
+<span class="k">my</span> <span class="nv">$cap</span>    = <span class="n">compressBound</span>(<span class="nv">$source</span>.<span class="nb">elems</span>);
+<span class="k">my</span> <span class="nv">$dest</span>   = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="n">allocate</span>(<span class="nv">$cap</span>);
+<span class="k">my</span> <span class="nv">$len</span>    = <span class="n">CArray</span>[<span class="n">long</span>].<span class="nb">new</span>; <span class="nv">$len</span>[<span class="mi">0</span>] = <span class="nv">$cap</span>;
+
+<span class="nb">say</span> <span class="n">compress</span>(<span class="nv">$dest</span>, <span class="nv">$len</span>, <span class="nv">$source</span>, <span class="nv">$source</span>.<span class="nb">elems</span>);
+<span class="nb">say</span> <span class="nv">$source</span>.<span class="nb">elems</span>, <span class="s">' bytes in, '</span>, <span class="nv">$len</span>[<span class="mi">0</span>], <span class="s">' out'</span>;
+<span class="k">my</span> <span class="nv">$packed</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="nv">$dest</span>[^<span class="nv">$len</span>[<span class="mi">0</span>]]);
+<span class="nb">say</span> <span class="nv">$packed</span>.<span class="nb">list</span>.<span class="nb">head</span>(<span class="mi">4</span>).<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+
+<span class="k">my</span> <span class="nv">$back</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="n">allocate</span>(<span class="nv">$source</span>.<span class="nb">elems</span> + <span class="mi">16</span>);
+<span class="k">my</span> <span class="nv">$blen</span> = <span class="n">CArray</span>[<span class="n">long</span>].<span class="nb">new</span>; <span class="nv">$blen</span>[<span class="mi">0</span>] = <span class="nv">$back</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">uncompress</span>(<span class="nv">$back</span>, <span class="nv">$blen</span>, <span class="nv">$packed</span>, <span class="nv">$packed</span>.<span class="nb">elems</span>);
+<span class="nb">say</span> <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="nv">$back</span>[^<span class="nv">$blen</span>[<span class="mi">0</span>]]).<span class="n">decode</span>(<span class="s">'ascii'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1.2.12
+24
+0
+29 bytes in, 17 out
+78 9c cb 48
+0
+hello hello hello hello hello</code></pre></div>
+<p>Zero is <code>Z_OK</code>; every other return code is a problem, and there are no exceptions anywhere in the binding. <code>compressBound</code> tells you how large the output buffer must be for the worst case, which is the only safe size to allocate.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>"Raw" in the name means raw <em>bindings</em>, not zlib's raw-deflate mode. What <code>compress</code> produces is the zlib framing — a two-byte header and a checksum trailer — which is neither a bare deflate stream nor a gzip file:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/compress-zlib-raw/02-three-framings.raku" title="This example as a file: 02-three-framings.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Compress::Zlib::Raw</span>;
+<span class="k">use</span> <span class="n">NativeCall</span>;
+
+<span class="k">constant</span> <span class="n">Z_DEFLATED</span> = <span class="mi">8</span>;
+<span class="k">constant</span> <span class="n">Z_FINISH</span>   = <span class="mi">4</span>;
+
+<span class="k">sub</span> <span class="n">deflate-with</span>(<span class="nb">Int</span> <span class="nv">$windowbits</span>, <span class="nb">Blob</span> <span class="nv">$src</span>) {
+    <span class="k">my</span> <span class="nv">$z</span> = <span class="n">Compress::Zlib::Raw::z_stream</span>.<span class="nb">new</span>;
+    <span class="n">deflateInit2</span>(<span class="nv">$z</span>, <span class="mi">6</span>, <span class="n">Z_DEFLATED</span>, <span class="nv">$windowbits</span>, <span class="mi">8</span>, <span class="mi">0</span>);
+    <span class="k">my</span> <span class="nv">$out</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="n">allocate</span>(<span class="mi">512</span>);
+    <span class="nv">$z</span>.<span class="n">set-input</span>(<span class="nv">$src</span>);
+    <span class="nv">$z</span>.<span class="n">set-output</span>(<span class="nv">$out</span>);
+    <span class="n">deflate</span>(<span class="nv">$z</span>, <span class="n">Z_FINISH</span>);
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="nv">$z</span>.<span class="n">total-out</span>;
+    <span class="n">deflateEnd</span>(<span class="nv">$z</span>);
+    <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="nv">$out</span>[^<span class="nv">$n</span>])
+}
+
+<span class="k">my</span> <span class="nv">$src</span> = <span class="s">'hello hello hello hello hello'</span>.<span class="n">encode</span>(<span class="s">'ascii'</span>);
+<span class="k">for</span> <span class="mi">15</span>, -<span class="mi">15</span>, <span class="mi">31</span> -&gt; <span class="nv">$wb</span> {
+    <span class="k">my</span> <span class="nv">$b</span> = <span class="n">deflate-with</span>(<span class="nv">$wb</span>, <span class="nv">$src</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'windowbits %3d : %2d bytes, starts %s'</span>,
+                <span class="nv">$wb</span>, <span class="nv">$b</span>.<span class="nb">elems</span>, <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">head</span>(<span class="mi">2</span>).<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>));
+}
+
+<span class="k">my</span> <span class="nv">$raw</span> = <span class="n">deflate-with</span>(-<span class="mi">15</span>, <span class="nv">$src</span>);
+<span class="k">my</span> <span class="nv">$out</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="n">allocate</span>(<span class="mi">128</span>);
+<span class="k">my</span> <span class="nv">$len</span> = <span class="n">CArray</span>[<span class="n">long</span>].<span class="nb">new</span>; <span class="nv">$len</span>[<span class="mi">0</span>] = <span class="mi">128</span>;
+<span class="nb">say</span> <span class="s">'uncompress on a raw deflate stream: '</span>, <span class="n">uncompress</span>(<span class="nv">$out</span>, <span class="nv">$len</span>, <span class="nv">$raw</span>, <span class="nv">$raw</span>.<span class="nb">elems</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>windowbits  15 : 17 bytes, starts 78 9c
+windowbits -15 : 11 bytes, starts cb 48
+windowbits  31 : 29 bytes, starts 1f 8b
+uncompress on a raw deflate stream: -3</code></pre></div>
+<p>The three window-size settings select the three framings: 15 is zlib, −15 is raw deflate with no header at all, and 31 is gzip — which is why the gzip form starts with the familiar <code>1f 8b</code> magic. <code>uncompress</code> handles only the first, and answers <code>-3</code>, <code>Z_DATA_ERROR</code>, for the other two. If you want to write a <code>.gz</code> file, you drive <code>deflateInit2</code> yourself with 31.</p>
+<p>One trap worth naming because it is silent: on a <code>Z_BUF_ERROR</code> the destination buffer still contains the partial result, so a caller that ignores the return code gets truncated data that looks like data. Check every return code, always.</p>
+<p>The checksum functions take a <code>CArray[int8]</code>, not a <code>Blob</code>. Raku++ accepts a <code>Blob</code> there and Rakudo refuses it, so convert explicitly if the code has to run on both — and remember <code>int8</code> is signed, so bytes above 127 need wrapping.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

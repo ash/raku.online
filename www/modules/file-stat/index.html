@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Stat — The Raku Ecosystem, Working</title>
+<meta name="description" content="The raw `stat(2)` fields an IO::Path does not expose — inode, device, mode bits, link count, block counts, owner and group — as a live query against a path.">
+<link rel="canonical" href="https://raku.online/modules/file-stat/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Stat — The Raku Ecosystem, Working">
+<meta property="og:description" content="The raw `stat(2)` fields an IO::Path does not expose — inode, device, mode bits, link count, block counts, owner and group — as a live query against a path.">
+<meta property="og:url" content="https://raku.online/modules/file-stat/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Stat","description":"The raw `stat(2)` fields an IO::Path does not expose — inode, device, mode bits, link count, block counts, owner and group — as a live query against a path.","programmingLanguage":"Raku","version":"1.0.3","url":"https://raku.online/modules/file-stat/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/0racle/raku-File-Stat"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>File::Stat</h1><span class="status st-full">Works</span></div><p class="summary">The raw <code>stat(2)</code> fields an IO::Path does not expose — inode, device, mode bits, link count, block counts, owner and group — as a live query against a path.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.3</code> <span class="fact-sub">zef:elcaro</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Exportable</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:elcaro/File::Stat">raku.land</a> · <a href="https://github.com/0racle/raku-File-Stat">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Stat</code></pre></div><p class="fact-sub"><code>zef install File::Stat</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>IO::Path</code> answers the questions most programs ask of a file — does it exist, how big is it, when was it modified — and stops there. The rest of the <code>stat</code> structure is what you need when the question is about the file system rather than the file: is this the same file as that one, reached by another name, which is an inode and device comparison; how much disk does it really occupy, which is blocks rather than bytes; how many hard links point at it; who owns it and with which permission bits.</p>
+<p>This distribution exposes those fields, and the <code>lstat</code> variant that describes a symbolic link instead of following it.</p>
+<h2 id="the-fields">The fields <a class="anchor" href="#the-fields" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-stat/01-fields.raku" title="This example as a file: 01-fields.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Stat</span>;
+
+<span class="k">my</span> <span class="nv">$file</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;stat-{$*PID}.bin&quot;</span>);
+<span class="nv">$file</span>.<span class="nb">spurt</span>(<span class="s">'0123456789'</span>);
+<span class="nv">$file</span>.<span class="n">chmod</span>(<span class="mo">0o640</span>);
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">File::Stat</span>.<span class="nb">new</span>(<span class="n">path</span> =&gt; <span class="nv">$file</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'size    '</span>, <span class="nv">$s</span>.<span class="n">size</span>;
+<span class="nb">say</span> <span class="s">'mode    '</span>, <span class="nv">$s</span>.<span class="n">mode</span>.<span class="n">base</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">'nlink   '</span>, <span class="nv">$s</span>.<span class="n">nlink</span>;
+<span class="nb">say</span> <span class="s">'blksize '</span>, <span class="nv">$s</span>.<span class="n">blksize</span>;
+<span class="nb">say</span> <span class="s">'inode   '</span>, <span class="nv">$s</span>.<span class="n">ino</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'device  '</span>, <span class="nv">$s</span>.<span class="n">dev</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'rdev    '</span>, <span class="nv">$s</span>.<span class="n">rdev</span>;
+<span class="nb">say</span> <span class="s">'owned   '</span>, <span class="nv">$s</span>.<span class="n">uid</span> == +<span class="nv">$*USER</span>;
+<span class="nb">say</span> <span class="s">'mtime   '</span>, <span class="nv">$s</span>.<span class="n">mtime</span>.^<span class="n">name</span>;
+
+<span class="nv">$file</span>.<span class="nb">unlink</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>size    10
+mode    100640
+nlink   1
+blksize 4096
+inode   True
+device  True
+rdev    0
+owned   True
+mtime   Int</code></pre></div>
+<p><code>mode</code> is the permission bits with the file type folded in, which is why <code>100640</code> in octal rather than <code>640</code>. The timestamps are plain epoch integers, not <code>DateTime</code>s, so turning one into a date is <code>DateTime.new($s.mtime)</code>.</p>
+<p>The <code>lstat</code> variant reports the link itself rather than what it points at, which is how you tell them apart:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-stat/02-symlinks.raku" title="This example as a file: 02-symlinks.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Stat</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;statl-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">my</span> <span class="nv">$target</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'target.txt'</span>);
+<span class="nv">$target</span>.<span class="nb">spurt</span>(<span class="s">'0123456789abcdef'</span>);
+<span class="k">my</span> <span class="nv">$link</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'thelink'</span>);
+<span class="nv">$target</span>.<span class="n">symlink</span>(<span class="nv">$link</span>);
+
+<span class="k">my</span> <span class="nv">$follow</span> = <span class="n">File::Stat</span>.<span class="nb">new</span>(<span class="n">path</span> =&gt; <span class="nv">$link</span>.<span class="nb">Str</span>);
+<span class="k">my</span> <span class="nv">$itself</span> = <span class="n">File::Stat</span>.<span class="nb">new</span>(<span class="n">path</span> =&gt; <span class="nv">$link</span>.<span class="nb">Str</span>, <span class="n">l</span> =&gt; <span class="n">True</span>);
+<span class="nb">say</span> <span class="s">'follows the link: size '</span>, <span class="nv">$follow</span>.<span class="n">size</span>, <span class="s">' mode '</span>, <span class="nv">$follow</span>.<span class="n">mode</span>.<span class="n">base</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">'the link itself : mode '</span>, <span class="nv">$itself</span>.<span class="n">mode</span>.<span class="n">base</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">'same inode      : '</span>, <span class="nv">$follow</span>.<span class="n">ino</span> == <span class="nv">$itself</span>.<span class="n">ino</span>;
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>follows the link: size 16 mode 100644
+the link itself : mode 120755
+same inode      : False</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The object caches nothing. Every accessor issues its own system call, so the "snapshot" changes underneath you and can start throwing after it has been working:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-stat/03-not-a-snapshot.raku" title="This example as a file: 03-not-a-snapshot.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Stat</span>;
+
+<span class="k">my</span> <span class="nv">$file</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;statg-{$*PID}.txt&quot;</span>);
+<span class="nv">$file</span>.<span class="nb">spurt</span>(<span class="s">'aaaa'</span>);
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">File::Stat</span>.<span class="nb">new</span>(<span class="n">path</span> =&gt; <span class="nv">$file</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">size</span>;
+<span class="nv">$file</span>.<span class="nb">spurt</span>(<span class="s">'aaaabbbbcccc'</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">size</span>;
+
+<span class="nv">$file</span>.<span class="nb">unlink</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$s</span>.<span class="n">size</span>) // <span class="s">'the file is gone, and so is every field'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>4
+12
+the file is gone, and so is every field</code></pre></div>
+<p>Two consequences most people miss. Reading all thirteen fields costs thirteen system calls, and they are not guaranteed to agree with each other — a file changed halfway through gives you a record that never existed on disk at any instant. And an object built for a path that does not exist constructs happily and fails only at the first field you ask for. If you need a consistent record, read the fields once into your own variables and work from those.</p>
+<p>The other thing to know is how to reach the module at all. It marks two subs, <code>stat</code> and <code>lstat</code>, with the <code>Exportable</code> distribution's trait, and the two engines disagree about what that trait delivers: Raku++ exports them on a plain <code>use</code> and refuses the tag form, Rakudo does the opposite. <code>File::Stat.new(path =&gt; …)</code> is the spelling that works on both, and it is what every example here uses.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

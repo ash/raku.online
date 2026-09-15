@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTTP::HPACK — The Raku Ecosystem, Working</title>
+<meta name="description" content="HTTP/2 header compression — the static and dynamic index tables, the integer and string primitives, and the Huffman code — as an encoder and a decoder you pair per connection.">
+<link rel="canonical" href="https://raku.online/modules/http-hpack/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP::HPACK — The Raku Ecosystem, Working">
+<meta property="og:description" content="HTTP/2 header compression — the static and dynamic index tables, the integer and string primitives, and the Huffman code — as an encoder and a decoder you pair per connection.">
+<meta property="og:url" content="https://raku.online/modules/http-hpack/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"HTTP::HPACK","description":"HTTP/2 header compression — the static and dynamic index tables, the integer and string primitives, and the Huffman code — as an encoder and a decoder you pair per connection.","programmingLanguage":"Raku","version":"1.0.3","url":"https://raku.online/modules/http-hpack/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/HTTP-HPACK"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · web</div><h1>HTTP::HPACK</h1><span class="status st-full">Works</span></div><p class="summary">HTTP/2 header compression — the static and dynamic index tables, the integer and string primitives, and the Huffman code — as an encoder and a decoder you pair per connection.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.3</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/HTTP::HPACK">raku.land</a> · <a href="https://github.com/raku-community-modules/HTTP-HPACK">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install HTTP::HPACK</code></pre></div><p class="fact-sub"><code>zef install HTTP::HPACK</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>HTTP/2 sends the same headers on every request of a connection, and sending <code>user-agent: …</code> in full each time would undo much of what the protocol gained. HPACK is the answer: a table of the sixty-one commonest headers known to both ends, a dynamic table of the ones this connection has actually used, and an integer index in place of a repeated string. The second request on a connection can be two bytes.</p>
+<p>This distribution is that layer and nothing around it. There are no sockets, no frames and no streams — you hand it headers and get the packed bytes that go inside a HEADERS frame.</p>
+<h2 id="packing-a-header-block">Packing a header block <a class="anchor" href="#packing-a-header-block" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-hpack/01-pack.raku" title="This example as a file: 01-pack.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::HPACK</span>;
+
+<span class="k">my</span> <span class="nv">$encoder</span> = <span class="n">HTTP::HPACK::Encoder</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">@headers</span> =
+    <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">':method'</span>,    <span class="n">value</span> =&gt; <span class="s">'GET'</span>),
+    <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">':scheme'</span>,    <span class="n">value</span> =&gt; <span class="s">'https'</span>),
+    <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">':path'</span>,      <span class="n">value</span> =&gt; <span class="s">'/'</span>),
+    <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">':authority'</span>, <span class="n">value</span> =&gt; <span class="s">'example.com'</span>),
+    <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'user-agent'</span>, <span class="n">value</span> =&gt; <span class="s">'demo/1'</span>);
+
+<span class="k">my</span> <span class="nv">$packed</span> = <span class="nv">$encoder</span>.<span class="n">encode-headers</span>(<span class="nv">@headers</span>);
+<span class="nb">say</span> <span class="nv">$packed</span>.<span class="nb">elems</span>, <span class="s">' bytes packed'</span>;
+<span class="nb">say</span> <span class="nv">@headers</span>.<span class="nb">map</span>({ .<span class="n">name</span>.<span class="nb">chars</span> + .<span class="n">value</span>.<span class="nb">chars</span> + <span class="mi">4</span> }).<span class="nb">sum</span>, <span class="s">' bytes of plain text'</span>;
+<span class="nb">say</span> <span class="nv">$packed</span>.<span class="nb">list</span>.<span class="nb">head</span>(<span class="mi">6</span>).<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+
+<span class="k">my</span> <span class="nv">$decoder</span> = <span class="n">HTTP::HPACK::Decoder</span>.<span class="nb">new</span>;
+<span class="k">for</span> <span class="nv">$decoder</span>.<span class="n">decode-headers</span>(<span class="nv">$packed</span>) -&gt; <span class="nv">$h</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s %s'</span>, <span class="nv">$h</span>.<span class="n">name</span>, <span class="nv">$h</span>.<span class="n">value</span>);
+}
+<span class="nb">say</span> <span class="s">'dynamic table: '</span>, <span class="nv">$encoder</span>.<span class="n">dynamic-table-size</span>, <span class="s">' of '</span>, <span class="nv">$encoder</span>.<span class="n">dynamic-table-limit</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>24 bytes packed
+85 bytes of plain text
+82 87 84 41 0b 65
+  :method      GET
+  :scheme      https
+  :path        /
+  :authority   example.com
+  user-agent   demo/1
+dynamic table: 101 of 4096</code></pre></div>
+<p>The four pseudo-headers cost one byte each because they are in the static table; only the two values that are not — the host and the user agent — carry their text. Huffman coding is off by default and turned on with <code>:huffman</code> on the encoder, which shrinks the strings further.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The encoder and decoder are stateful, and they are stateful <em>together</em>. Encoding the same headers twice does not give the same bytes:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/http-hpack/02-stateful.raku" title="This example as a file: 02-stateful.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">HTTP::HPACK</span>;
+
+<span class="k">sub</span> <span class="n">headers</span>() {
+    (<span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">':authority'</span>, <span class="n">value</span> =&gt; <span class="s">'example.com'</span>),
+     <span class="n">HTTP::HPACK::Header</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'user-agent'</span>, <span class="n">value</span> =&gt; <span class="s">'demo/1'</span>))
+}
+
+<span class="k">my</span> <span class="nv">$encoder</span> = <span class="n">HTTP::HPACK::Encoder</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$first</span>  = <span class="nv">$encoder</span>.<span class="n">encode-headers</span>(<span class="n">headers</span>());
+<span class="k">my</span> <span class="nv">$second</span> = <span class="nv">$encoder</span>.<span class="n">encode-headers</span>(<span class="n">headers</span>());
+<span class="nb">say</span> <span class="nv">$first</span>.<span class="nb">elems</span>, <span class="s">' bytes then '</span>, <span class="nv">$second</span>.<span class="nb">elems</span>, <span class="s">' bytes'</span>;
+
+<span class="k">my</span> <span class="nv">$decoder</span> = <span class="n">HTTP::HPACK::Decoder</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$decoder</span>.<span class="n">decode-headers</span>(<span class="nv">$first</span>).<span class="nb">map</span>({ .<span class="n">name</span> }).<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="nv">$decoder</span>.<span class="n">decode-headers</span>(<span class="nv">$second</span>).<span class="nb">map</span>({ .<span class="n">value</span> }).<span class="nb">join</span>(<span class="s">','</span>);
+
+<span class="k">my</span> <span class="nv">$fresh</span> = <span class="n">HTTP::HPACK::Decoder</span>.<span class="nb">new</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$fresh</span>.<span class="n">decode-headers</span>(<span class="nv">$second</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>21 bytes then 2 bytes
+:authority,user-agent
+example.com,demo/1
+X::HTTP::HPACK::IndexOutOfRange</code></pre></div>
+<p>The second block is two bytes because both headers are now in the dynamic table, and it is <em>only</em> decodable by a decoder that saw the first one. A fresh decoder fails outright, which is the last line.</p>
+<p>So: one encoder and one decoder per connection, for the life of the connection, and the blocks must be decoded in the order they were encoded. A block cannot be cached, replayed, reordered or decoded in isolation, and a dropped block corrupts everything after it. That is inherent to HPACK rather than a choice this module made, and it is the thing that catches people who reach for it expecting a stateless codec.</p>
+<p>Catch failures as <code>X::HTTP::HPACK</code>, with the <code>X::</code> prefix: the bare name resolves to a role on one engine and a plain package on the other, so matching against it works only on Raku++.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

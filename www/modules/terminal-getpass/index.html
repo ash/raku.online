@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal::Getpass — The Raku Ecosystem, Working</title>
+<meta name="description" content="Read a password from the terminal with echo switched off — one sub, a prompt, and the terminal restored afterwards however it ends.">
+<link rel="canonical" href="https://raku.online/modules/terminal-getpass/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Terminal::Getpass — The Raku Ecosystem, Working">
+<meta property="og:description" content="Read a password from the terminal with echo switched off — one sub, a prompt, and the terminal restored afterwards however it ends.">
+<meta property="og:url" content="https://raku.online/modules/terminal-getpass/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Terminal::Getpass","description":"Read a password from the terminal with echo switched off — one sub, a prompt, and the terminal restored afterwards however it ends.","programmingLanguage":"Raku","version":"0.0.11","url":"https://raku.online/modules/terminal-getpass/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/titsuki/raku-Terminal-Getpass"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · terminal</div><h1>Terminal::Getpass</h1><span class="status st-full">Works</span></div><p class="summary">Read a password from the terminal with echo switched off — one sub, a prompt, and the terminal restored afterwards however it ends.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.11</code> <span class="fact-sub">zef:titsuki</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Term::termios</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:titsuki/Terminal::Getpass">raku.land</a> · <a href="https://github.com/titsuki/raku-Terminal-Getpass">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Terminal::Getpass</code></pre></div><p class="fact-sub"><code>zef install Terminal::Getpass</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A program that asks for a password must not print it. The terminal echoes every keystroke by default, so the program has to turn that off, read the line, and turn it back on — including when the user presses Ctrl-C halfway, which is when leaving a terminal with echo disabled is most annoying.</p>
+<p>That is three calls into the terminal driver and a signal handler, and it is the same three calls in every program. This distribution is them, as one sub.</p>
+<h2 id="reading-a-password">Reading a password <a class="anchor" href="#reading-a-password" aria-label="link">#</a></h2>
+<div class="native-ex"><pre class="native-code"><code><span class="k">use</span> <span class="n">Terminal::Getpass</span>;
+
+<span class="k">my</span> <span class="nv">$password</span> = <span class="n">getpass</span>();
+<span class="nb">say</span> <span class="s">'got '</span>, <span class="nv">$password</span>.<span class="nb">chars</span>, <span class="s">' characters'</span>;
+
+<span class="k">my</span> <span class="nv">$other</span> = <span class="n">getpass</span>(<span class="s">'Repeat: '</span>);
+<span class="nb">say</span> <span class="nv">$password</span> <span class="n">eq</span> <span class="nv">$other</span> ?? <span class="s">'they match'</span> !! <span class="s">'they differ'</span>;</code></pre></div>
+<p>That example is shown rather than run, because it waits for a person to type. The prompt is the first argument and goes to standard error, which means it still appears when the program's output is being redirected — the right default for something the user must see. The second argument chooses a different stream for the prompt.</p>
+<p>Two control characters are handled: delete removes the previous character, and Ctrl-C restores the terminal before exiting, so the shell is not left in a strange state.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>It needs <strong>standard output</strong> to be a terminal, not standard input:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/terminal-getpass/01-needs-a-tty.raku" title="This example as a file: 01-needs-a-tty.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Terminal::Getpass</span>;
+
+<span class="nb">say</span> (<span class="k">try</span> { <span class="n">getpass</span>(<span class="s">'never asked: '</span>) }) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="s">'still running'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>tcgetattr failed
+still running</code></pre></div>
+<p>The implementation asks the driver about file descriptor 1. So a user sitting at a real terminal, with a real keyboard, running</p>
+<div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>myprogram | tee install.log</code></pre></div>
+<p>cannot type a password: standard input is still the terminal and standard output is now a pipe, and the call fails before the prompt appears. The message is <code>tcgetattr failed</code>, with no module name and no hint about which descriptor it means.</p>
+<p>It throws rather than hanging, which is the good news — the example above catches it and carries on. Check <code>$*OUT.t</code> before calling, and when it is false either refuse with a clear message or fall back to an environment variable or a file, the way other tools do when they detect a pipe.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

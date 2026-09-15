@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Config::Clever — The Raku Ecosystem, Working</title>
+<meta name="description" content="Layered JSON configuration by convention — a default file, an environment file and a machine-local override, merged in that order from one directory.">
+<link rel="canonical" href="https://raku.online/modules/config-clever/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Config::Clever — The Raku Ecosystem, Working">
+<meta property="og:description" content="Layered JSON configuration by convention — a default file, an environment file and a machine-local override, merged in that order from one directory.">
+<meta property="og:url" content="https://raku.online/modules/config-clever/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Config::Clever","description":"Layered JSON configuration by convention — a default file, an environment file and a machine-local override, merged in that order from one directory.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/config-clever/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/ShaneKilkelly/perl6-config-clever"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · configuration</div><h1>Config::Clever</h1><span class="status st-full">Works</span></div><p class="summary">Layered JSON configuration by convention — a default file, an environment file and a machine-local override, merged in that order from one directory.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Tiny</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Config::Clever">raku.land</a> · <a href="https://github.com/ShaneKilkelly/perl6-config-clever">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Config::Clever</code></pre></div><p class="fact-sub"><code>zef install Config::Clever</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The same program runs on a laptop, in continuous integration and in production, and wants mostly the same settings in each with a few deliberate differences. The pattern that has settled across a dozen ecosystems is three layers: a base file everyone shares, a file named after the environment, and a machine-local file that is not in version control. Later files win, missing ones are skipped.</p>
+<p>This distribution is that convention over a directory of JSON. There is nothing to configure about the configuration: the three names are fixed as <code>default.json</code>, <code>&lt;environment&gt;.json</code> and <code>local-&lt;environment&gt;.json</code>.</p>
+<h2 id="three-layers">Three layers <a class="anchor" href="#three-layers" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/config-clever/01-layers.raku" title="This example as a file: 01-layers.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Config::Clever</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;cfg-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'default.json'</span>).<span class="nb">spurt</span>:
+    <span class="s">'{ &quot;app&quot;: &quot;demo&quot;, &quot;port&quot;: 8080, &quot;debug&quot;: false }'</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'production.json'</span>).<span class="nb">spurt</span>:
+    <span class="s">'{ &quot;port&quot;: 80 }'</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'local-production.json'</span>).<span class="nb">spurt</span>:
+    <span class="s">'{ &quot;debug&quot;: true }'</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">$label</span>, <span class="nv">%c</span>) {
+    <span class="nb">say</span> <span class="nv">$label</span>, <span class="s">': '</span>, <span class="nv">%c</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_=&quot;</span> ~ <span class="nv">%c</span>{<span class="nv">$_</span>} }).<span class="nb">join</span>(<span class="s">' '</span>);
+}
+
+<span class="n">show</span> <span class="s">'default   '</span>, <span class="n">Config::Clever</span>.<span class="n">load</span>(:<span class="n">config-dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+<span class="n">show</span> <span class="s">'production'</span>, <span class="n">Config::Clever</span>.<span class="n">load</span>(:<span class="n">environment</span><span class="s">&lt;production&gt;</span>, :<span class="n">config-dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+<span class="n">show</span> <span class="s">'staging   '</span>, <span class="n">Config::Clever</span>.<span class="n">load</span>(:<span class="n">environment</span><span class="s">&lt;staging&gt;</span>, :<span class="n">config-dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>default   : app=demo debug=False port=8080
+production: app=demo debug=True port=80
+staging   : app=demo debug=False port=8080</code></pre></div>
+<p>Asking for an environment with no file of its own is not an error: the base file is all there is, and that is the third line. The result is a plain <code>Hash</code>, so everything downstream is ordinary Raku.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The merge is one level deep. A nested object in a later file <strong>replaces</strong> the whole object rather than merging into it, so overriding one field of a section silently deletes its siblings:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/config-clever/02-nested.raku" title="This example as a file: 02-nested.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Config::Clever</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;cfgn-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'default.json'</span>).<span class="nb">spurt</span>:
+    <span class="s">'{ &quot;app&quot;: &quot;demo&quot;, &quot;db&quot;: { &quot;host&quot;: &quot;localhost&quot;, &quot;port&quot;: 5432, &quot;name&quot;: &quot;devdb&quot; } }'</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'production.json'</span>).<span class="nb">spurt</span>:
+    <span class="s">'{ &quot;db&quot;: { &quot;host&quot;: &quot;db.internal&quot; } }'</span>;
+
+<span class="k">my</span> <span class="nv">%base</span> = <span class="n">Config::Clever</span>.<span class="n">load</span>(:<span class="n">config-dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+<span class="nb">say</span> <span class="s">'base db   : '</span>, <span class="nv">%base</span><span class="s">&lt;db&gt;</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);
+
+<span class="k">my</span> <span class="nv">%prod</span> = <span class="n">Config::Clever</span>.<span class="n">load</span>(:<span class="n">environment</span><span class="s">&lt;production&gt;</span>, :<span class="n">config-dir</span>(<span class="nv">$dir</span>.<span class="nb">Str</span>));
+<span class="nb">say</span> <span class="s">'prod top  : '</span>, <span class="nv">%prod</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="s">'prod db   : '</span>, <span class="nv">%prod</span><span class="s">&lt;db&gt;</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>base db   : host,name,port
+prod top  : app,db
+prod db   : host</code></pre></div>
+<p>The top-level keys merge exactly as advertised — <code>app</code> survives from the base file — and then the merge stops. <code>db</code> in the production file is not combined with <code>db</code> in the base file; it is put in its place, and the port and database name are gone. Nothing warns, and the shallow case works, so the breakage only appears the first time someone nests a section.</p>
+<p>Write nested overrides out in full, or flatten the configuration so that every key is top-level. Two more things to know before relying on it: a <code>config-dir</code> that does not exist returns an empty hash rather than failing, so a typo is indistinguishable from an empty configuration, and malformed JSON is not caught — the parser's exception comes straight through with its own type name on it.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

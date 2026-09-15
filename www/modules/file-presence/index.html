@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Presence — The Raku Ecosystem, Working</title>
+<meta name="description" content="Four compound questions about a path — does it exist and is it readable and is it a file — answered as one boolean each, with no exception when the path is not there.">
+<link rel="canonical" href="https://raku.online/modules/file-presence/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Presence — The Raku Ecosystem, Working">
+<meta property="og:description" content="Four compound questions about a path — does it exist and is it readable and is it a file — answered as one boolean each, with no exception when the path is not there.">
+<meta property="og:url" content="https://raku.online/modules/file-presence/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Presence","description":"Four compound questions about a path — does it exist and is it readable and is it a file — answered as one boolean each, with no exception when the path is not there.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/file-presence/","license":"https://spdx.org/licenses/Unlicense","codeRepository":"https://github.com/atweiden/file-presence"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>File::Presence</h1><span class="status st-full">Works</span></div><p class="summary">Four compound questions about a path — does it exist and is it readable and is it a file — answered as one boolean each, with no exception when the path is not there.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Unlicense</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/File::Presence">raku.land</a> · <a href="https://github.com/atweiden/file-presence">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Presence</code></pre></div><p class="fact-sub"><code>zef install File::Presence</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The check before opening a file is never one check. "Can I read this config file" means it exists, and it is readable, and it is a file rather than a directory — three tests whose order matters, because asking about readability of something that is not there is a different kind of answer than <code>False</code>.</p>
+<p>Raku's own <code>.e</code>, <code>.r</code> and <code>.f</code> each answer one third of it, and on a missing path some of them hand back a <code>Failure</code> that throws when you use it. This distribution rolls each useful combination into one call that always answers a plain <code>Bool</code>.</p>
+<h2 id="the-four-questions">The four questions <a class="anchor" href="#the-four-questions" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-presence/01-questions.raku" title="This example as a file: 01-questions.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Presence</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pres-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sub'</span>).<span class="nb">mkdir</span>;
+<span class="k">my</span> <span class="nv">$file</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'readable.txt'</span>);
+<span class="nv">$file</span>.<span class="nb">spurt</span>(<span class="s">&quot;hi\n&quot;</span>);
+<span class="nv">$file</span>.<span class="n">chmod</span>(<span class="mo">0o444</span>);
+
+<span class="k">my</span> <span class="nv">$P</span> = <span class="n">File::Presence</span>;
+<span class="nb">say</span> <span class="s">'file, readable       '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$file</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'file, read-write     '</span>, <span class="nv">$P</span>.<span class="n">exists-readwriteable-file</span>(<span class="nv">$file</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'dir, readable        '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-dir</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sub'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'dir, read-write      '</span>, <span class="nv">$P</span>.<span class="n">exists-readwriteable-dir</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sub'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'missing              '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'nope'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'a dir asked as file  '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sub'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'a file asked as dir  '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-dir</span>(<span class="nv">$file</span>.<span class="nb">Str</span>);
+
+<span class="nb">say</span> <span class="nv">$P</span>.<span class="n">show</span>(<span class="nv">$file</span>.<span class="nb">Str</span>).<span class="nb">sort</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ .<span class="n">value</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+
+<span class="nv">$file</span>.<span class="n">chmod</span>(<span class="mo">0o644</span>);
+<span class="nv">$file</span>.<span class="nb">unlink</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sub'</span>).<span class="n">rmdir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>file, readable       True
+file, read-write     False
+dir, readable        True
+dir, read-write      True
+missing              False
+a dir asked as file  False
+a file asked as dir  False
+d=False e=True f=True r=True w=False x=False</code></pre></div>
+<p>Nothing throws, everything is a <code>Bool</code>, and the file-versus-directory distinction is honoured in both directions. <code>show</code> is the underlying six-flag snapshot the four predicates are built from, for when you want to ask a question the four do not cover.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A <code>False</code> never distinguishes "not there" from "there, but I cannot see it". Every answer bottoms out in an existence test, and that test is <code>False</code> for a file you lack permission to reach:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-presence/02-indistinguishable.raku" title="This example as a file: 02-indistinguishable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Presence</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;presl-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked/inside.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;I exist\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$P</span> = <span class="n">File::Presence</span>;
+<span class="k">my</span> <span class="nv">$real</span>    = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked/inside.txt'</span>).<span class="nb">Str</span>;
+<span class="k">my</span> <span class="nv">$missing</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked/never-made.txt'</span>).<span class="nb">Str</span>;
+
+<span class="nb">say</span> <span class="s">'before: real    '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$real</span>);
+<span class="nb">say</span> <span class="s">'before: missing '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$missing</span>);
+
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked'</span>).<span class="n">chmod</span>(<span class="mo">0o000</span>);
+<span class="nb">say</span> <span class="s">'after:  real    '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$real</span>);
+<span class="nb">say</span> <span class="s">'after:  missing '</span>, <span class="nv">$P</span>.<span class="n">exists-readable-file</span>(<span class="nv">$missing</span>);
+<span class="nb">say</span> <span class="s">'identical snapshots: '</span>,
+    <span class="nv">$P</span>.<span class="n">show</span>(<span class="nv">$real</span>).<span class="nb">sort</span>.<span class="nb">gist</span> <span class="n">eq</span> <span class="nv">$P</span>.<span class="n">show</span>(<span class="nv">$missing</span>).<span class="nb">sort</span>.<span class="nb">gist</span>;
+
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked'</span>).<span class="n">chmod</span>(<span class="mo">0o755</span>);
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked/inside.txt'</span>).<span class="nb">unlink</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'locked'</span>).<span class="n">rmdir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>before: real    True
+before: missing False
+after:  real    False
+after:  missing False
+identical snapshots: True</code></pre></div>
+<p>With the parent directory unsearchable, a file that is certainly on disk and a path that was never created produce byte-identical all-false answers. So "this file does not exist, I will create it" is the wrong conclusion to draw from a <code>False</code> — the create will fail with a permission error, and the diagnostic you print will say the wrong thing.</p>
+<p>Where that distinction matters, test the parent directory's own searchability first, or attempt the open and read the error. A dangling symbolic link collapses the same way, reporting as nothing at all rather than as a link that points nowhere.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

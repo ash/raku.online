@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log — The Raku Ecosystem, Working</title>
+<meta name="description" content="A log4j-shaped logger — five levels, a pattern string, a registry of named loggers, and the two context stores that let a request tag every line it causes.">
+<link rel="canonical" href="https://raku.online/modules/log/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Log — The Raku Ecosystem, Working">
+<meta property="og:description" content="A log4j-shaped logger — five levels, a pattern string, a registry of named loggers, and the two context stores that let a request tag every line it causes.">
+<meta property="og:url" content="https://raku.online/modules/log/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Log","description":"A log4j-shaped logger — five levels, a pattern string, a registry of named loggers, and the two context stores that let a request tag every line it causes.","programmingLanguage":"Raku","version":"0.3.2","url":"https://raku.online/modules/log/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/whity/raku-log"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · debugging</div><h1>Log</h1><span class="status st-full">Works</span></div><p class="summary">A log4j-shaped logger — five levels, a pattern string, a registry of named loggers, and the two context stores that let a request tag every line it causes.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3.2</code></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>4 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Log">raku.land</a> · <a href="https://github.com/whity/raku-log">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Log</code></pre></div><p class="fact-sub"><code>zef install Log</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>say</code> is a fine logger until the program has more than one thing going on. Then you want levels, so that debugging detail can be left in the code and switched off; a format you set once rather than at every call site; and — the part people reach for log4j to get — a way to tag every line a particular request caused, without threading a request identifier through every function.</p>
+<p>That last one is what the two context stores are for: a nested stack and a key-value map, both rendered into the pattern, both set once where the work begins.</p>
+<h2 id="levels-patterns-contexts">Levels, patterns, contexts <a class="anchor" href="#levels-patterns-contexts" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/log/01-logging.raku" title="This example as a file: 01-logging.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Log</span>;
+
+<span class="k">my</span> <span class="nv">$log</span> = <span class="n">Log</span>.<span class="nb">new</span>(<span class="n">level</span> =&gt; <span class="n">Log::TRACE</span>, <span class="n">pattern</span> =&gt; <span class="s">'[%c] %m%n'</span>);
+<span class="nv">$log</span>.<span class="n">error</span>(<span class="s">'disk on fire'</span>);
+<span class="nv">$log</span>.<span class="nb">warn</span>(<span class="s">'disk warm'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'disk fine'</span>);
+<span class="nv">$log</span>.<span class="n">debug</span>(<span class="s">'and the detail'</span>);
+
+<span class="nv">$log</span>.<span class="n">level</span> = <span class="n">Log::WARN</span>;
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'dropped now'</span>);
+<span class="nb">say</span> <span class="nv">$log</span>.<span class="n">is-error</span>, <span class="s">' '</span>, <span class="nv">$log</span>.<span class="n">is-info</span>;
+
+<span class="k">my</span> <span class="nv">$req</span> = <span class="n">Log</span>.<span class="nb">new</span>(<span class="n">level</span> =&gt; <span class="n">Log::INFO</span>, <span class="n">pattern</span> =&gt; <span class="s">'[%c][%x][%X{user}] %m%n'</span>);
+<span class="nv">$req</span>.<span class="n">ndc</span>.<span class="nb">push</span>(<span class="s">'req-7'</span>);
+<span class="nv">$req</span>.<span class="n">ndc</span>.<span class="nb">push</span>(<span class="s">'shard-3'</span>);
+<span class="nv">$req</span>.<span class="n">mdc</span>.<span class="nb">put</span>(<span class="s">'user'</span>, <span class="s">'ada'</span>);
+<span class="nv">$req</span>.<span class="n">info</span>(<span class="s">'handling'</span>);
+<span class="nv">$req</span>.<span class="n">ndc</span>.<span class="nb">pop</span>;
+<span class="nv">$req</span>.<span class="n">info</span>(<span class="s">'one frame up'</span>);
+<span class="nv">$req</span>.<span class="n">ndc</span>.<span class="n">clear</span>;
+<span class="nv">$req</span>.<span class="n">mdc</span>.<span class="n">delete</span>(<span class="s">'user'</span>);
+<span class="nv">$req</span>.<span class="n">info</span>(<span class="s">'context gone'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[ERROR] disk on fire
+[WARN] disk warm
+[INFO] disk fine
+[DEBUG] and the detail
+True False
+[INFO][req-7 shard-3][ada] handling
+[INFO][req-7][ada] one frame up
+[INFO][undef][undef] context gone</code></pre></div>
+<p>The level methods are not declared anywhere — <code>FALLBACK</code> turns any level name into a method, which is also why a misspelled one throws rather than silently dropping the message. <code>%x</code> renders the nested context as a stack and <code>%X{key}</code> picks one value out of the map; an empty one renders as the literal word <code>undef</code>, not as nothing.</p>
+<p>Output goes to standard output by default, and <code>output =&gt; $fh</code> sends it to a file instead.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The message is substituted into the pattern <strong>first</strong>, so pattern escapes inside your text are then expanded as if they were part of the pattern:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/log/02-injection.raku" title="This example as a file: 02-injection.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Log</span>;
+
+<span class="k">my</span> <span class="nv">$log</span> = <span class="n">Log</span>.<span class="nb">new</span>(<span class="n">level</span> =&gt; <span class="n">Log::INFO</span>, <span class="n">pattern</span> =&gt; <span class="s">'[%c] %m%n'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'plain message'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'progress: 100%c done'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'a %x here'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'user said: %m'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[INFO] plain message
+[INFO] progress: 100INFO done
+[INFO] a undef here
+[INFO] user said: %m</code></pre></div>
+<p><code>%m</code> is replaced before <code>%c</code>, <code>%p</code> and <code>%X{}</code>, so a message containing any of those gets them interpolated. The second line prints the level in the middle of a sentence. A message with <code>%p</code> in it publishes your process identifier, and one with <code>%X{user}</code> publishes whatever the mapped context holds — which is a genuine leak if the text came from outside the program.</p>
+<p>There is no escape mechanism and no way to turn it off. Never log an untrusted string directly; put it through a placeholder of your own, or strip <code>%</code> from it first.</p>
+<p>Two smaller things. The pattern is fixed at construction — it is not <code>is rw</code>, so assigning to it dies, and the newer <code>Logger</code> distribution (which is this same codebase renamed) is the one that lets you change it. And <code>%d</code>, the timestamp, reads the clock at format time with no hook to replace it, so nothing that logs with the default pattern can be compared against a golden file.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

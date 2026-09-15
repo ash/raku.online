@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::OptIn — The Raku Ecosystem, Working</title>
+<meta name="description" content="One empty marker role and the trait that applies it — the shared answer to &quot;was this attribute deliberately made JSON-visible&quot;, so several serialisation modules can agree without depending on each other.">
+<link rel="canonical" href="https://raku.online/modules/json-optin/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::OptIn — The Raku Ecosystem, Working">
+<meta property="og:description" content="One empty marker role and the trait that applies it — the shared answer to &quot;was this attribute deliberately made JSON-visible&quot;, so several serialisation modules can agree without depending on each other.">
+<meta property="og:url" content="https://raku.online/modules/json-optin/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::OptIn","description":"One empty marker role and the trait that applies it — the shared answer to \"was this attribute deliberately made JSON-visible\", so several serialisation modules can agree without depending on each other.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/json-optin/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/JSON-OptIn"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::OptIn</h1><span class="status st-full">Works</span></div><p class="summary">One empty marker role and the trait that applies it — the shared answer to "was this attribute deliberately made JSON-visible", so several serialisation modules can agree without depending on each other.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/JSON::OptIn">raku.land</a> · <a href="https://github.com/jonathanstowe/JSON-OptIn">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::OptIn</code></pre></div><p class="fact-sub"><code>zef install JSON::OptIn</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A class with fifteen attributes usually wants three of them on the wire. Marking those three is easy; the hard part is that the marshaller, the unmarshaller and the renaming trait are three separate distributions, and they need to agree on what the mark <em>is</em> without any of them depending on the others.</p>
+<p>The answer is a fourth distribution that contains nothing but the mark. Thirteen lines: an empty role, and a trait that applies it. Everything policy-shaped lives in the modules that consult it.</p>
+<h2 id="the-mark">The mark <a class="anchor" href="#the-mark" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-optin/01-mark.raku" title="This example as a file: 01-mark.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::OptIn</span>;
+<span class="k">use</span> <span class="n">JSON::Class</span>;
+<span class="k">use</span> <span class="n">JSON::Marshal</span>;
+
+<span class="k">class</span> <span class="n">Account</span> <span class="k">does</span> <span class="n">JSON::Class</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.user</span> <span class="k">is</span> <span class="n">json</span>;
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.id</span>   <span class="k">is</span> <span class="n">json</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.token</span>;
+}
+
+<span class="k">for</span> <span class="n">Account</span>.^<span class="n">attributes</span> -&gt; <span class="nv">$a</span> {
+    <span class="nb">say</span> <span class="nv">$a</span>.<span class="n">name</span>, <span class="s">' marked: '</span>, (<span class="nv">$a</span> ~~ <span class="n">JSON::OptIn::OptedInAttribute</span>).<span class="nb">Str</span>;
+}
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">Account</span>.<span class="nb">new</span>(<span class="n">user</span> =&gt; <span class="s">'ada'</span>, <span class="n">id</span> =&gt; <span class="mi">7</span>, <span class="k">token</span> =&gt; <span class="s">'secret'</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$a</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$a</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>, :<span class="n">opt-in</span>);
+<span class="nb">say</span> <span class="n">JSON::OptIn::OptedInAttribute</span>.^<span class="n">methods</span>(:<span class="n">local</span>).<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>$!user marked: True
+$!id marked: True
+$!token marked: False
+{"id":7,"token":"secret","user":"ada"}
+{"id":7,"user":"ada"}
+0</code></pre></div>
+<p>The role is genuinely empty — no methods, no state, nothing to configure. It exists to be asked about. On its own the mark does nothing observable, which the third-from-last line shows: an ordinary <code>marshal</code> publishes everything regardless. Only <code>:opt-in</code> consults it, and then the token stays home.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>is json(False)</code> opts the attribute <strong>in</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-optin/02-no-off-switch.raku" title="This example as a file: 02-no-off-switch.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::OptIn</span>;
+<span class="k">use</span> <span class="n">JSON::Class</span>;
+<span class="k">use</span> <span class="n">JSON::Marshal</span>;
+
+<span class="k">class</span> <span class="n">Record</span> <span class="k">does</span> <span class="n">JSON::Class</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.keep</span> <span class="k">is</span> <span class="n">json</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.no</span>   <span class="k">is</span> <span class="n">json</span>(<span class="n">False</span>);
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.bare</span>;
+}
+
+<span class="k">for</span> <span class="n">Record</span>.^<span class="n">attributes</span> -&gt; <span class="nv">$a</span> {
+    <span class="nb">say</span> <span class="nv">$a</span>.<span class="n">name</span>, <span class="s">' -&gt; '</span>, (<span class="nv">$a</span> ~~ <span class="n">JSON::OptIn::OptedInAttribute</span>).<span class="nb">Str</span>;
+}
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="n">Record</span>.<span class="nb">new</span>(<span class="n">keep</span> =&gt; <span class="s">'k'</span>, <span class="k">no</span> =&gt; <span class="s">'n'</span>, <span class="n">bare</span> =&gt; <span class="s">'b'</span>),
+            :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>, :<span class="n">opt-in</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>$!keep -&gt; True
+$!no -&gt; True
+$!bare -&gt; False
+{"keep":"k","no":"n"}</code></pre></div>
+<p>The trait's argument is required by the signature and then never read: the body applies the role unconditionally. So the trait has no off position, and <code>is json(False)</code>, <code>is json(0)</code> and <code>is json(Nil)</code> all read as attempts to say "not this one" that mean the opposite. The only way to leave an attribute out is to write no trait at all.</p>
+<p>That matters more than it looks, because three other traits in the family apply this same role as a side effect — <code>is json-name</code>, <code>is json-skip-null</code>, and the <code>is marshalled-by</code> converters. An attribute can therefore be opted in without the word <code>json</code> appearing anywhere on it, and a class that uses <code>:opt-in</code> alongside a rename publishes a set nobody chose. Mark the set explicitly and check it with the loop above.</p>
+<p>One last thing: <code>is json</code> is an attribute trait only. Written on a class it fails with an inheritance error rather than an unknown-trait one, because <code>is Something</code> is also how a superclass is declared.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

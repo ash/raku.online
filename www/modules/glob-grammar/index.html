@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glob::Grammar — The Raku Ecosystem, Working</title>
+<meta name="description" content="A grammar for shell wildcard syntax, with an actions class that translates a glob into the source text of a Raku regex.">
+<link rel="canonical" href="https://raku.online/modules/glob-grammar/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Glob::Grammar — The Raku Ecosystem, Working">
+<meta property="og:description" content="A grammar for shell wildcard syntax, with an actions class that translates a glob into the source text of a Raku regex.">
+<meta property="og:url" content="https://raku.online/modules/glob-grammar/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Glob::Grammar","description":"A grammar for shell wildcard syntax, with an actions class that translates a glob into the source text of a Raku regex.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/glob-grammar/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/wayland/Glob-Grammar"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · text</div><h1>Glob::Grammar</h1><span class="status st-div">Divergent</span></div><p class="summary">A grammar for shell wildcard syntax, with an actions class that translates a glob into the source text of a Raku regex.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:wayland</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:wayland/Glob::Grammar">raku.land</a> · <a href="https://github.com/wayland/Glob-Grammar">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Glob::Grammar</code></pre></div><p class="fact-sub"><code>zef install Glob::Grammar</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Users know <code>*.txt</code>. They do not know <code>/ '.txt' $ /</code>, and asking them to learn it for a filter box or a configuration key is the wrong trade. A program that accepts glob patterns has to turn them into something it can match with, and this distribution is the smallest possible answer: a six-token grammar for the syntax, and an actions class that emits the equivalent regex as a string.</p>
+<p>It is two files and thirty-four lines, which is worth knowing before reaching for it — the whole thing is small enough to read in a minute, and its limits follow from that.</p>
+<h2 id="glob-in-regex-source-out">Glob in, regex source out <a class="anchor" href="#glob-in-regex-source-out" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/glob-grammar/01-translate.raku" title="This example as a file: 01-translate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Glob::Grammar</span>;
+<span class="k">use</span> <span class="n">Glob::ToRegexActions</span>;
+
+<span class="k">my</span> <span class="nv">$actions</span> = <span class="n">Glob::ToRegexActions</span>.<span class="nb">new</span>;
+<span class="k">sub</span> <span class="n">to-rx</span>(<span class="nb">Str</span> <span class="nv">$glob</span>) {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Glob::Grammar</span>.<span class="n">parse</span>(<span class="nv">$glob</span>, :<span class="nv">$actions</span>);
+    <span class="nv">$m</span> ?? <span class="nv">$m</span>.<span class="n">made</span> !! <span class="nb">Nil</span>
+}
+
+<span class="k">for</span> <span class="s">'*.txt'</span>, <span class="s">'a?c'</span>, <span class="s">'README'</span>, <span class="s">'src/*.rakumod'</span> -&gt; <span class="nv">$g</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s %s'</span>, <span class="nv">$g</span>, <span class="n">to-rx</span>(<span class="nv">$g</span>).<span class="nb">raku</span>);
+}
+
+<span class="k">my</span> <span class="nv">$rx</span> = <span class="n">to-rx</span>(<span class="s">'*.txt'</span>);
+<span class="nb">say</span> <span class="nv">$rx</span>.^<span class="n">name</span>;
+<span class="k">for</span> &lt;<span class="n">notes</span>.<span class="n">txt</span> <span class="n">notes</span>.<span class="n">md</span> <span class="n">a</span>.<span class="n">txt</span> <span class="n">txt</span>&gt; -&gt; <span class="nv">$name</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s %s'</span>, <span class="nv">$name</span>, <span class="k">so</span> <span class="nv">$name</span> ~~ <span class="sr">/&lt;$rx&gt;/</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>*.txt          "^.*\\.txt\$"
+a?c            "^a.c\$"
+README         "^README\$"
+src/*.rakumod  "^src\\/.*\\.rakumod\$"
+Str
+  notes.txt  True
+  notes.md   False
+  a.txt      True
+  txt        False</code></pre></div>
+<p><code>*</code> becomes <code>.*</code>, <code>?</code> becomes <code>.</code>, and every other character is escaped so it matches itself. The result is a <code>Str</code>, not a <code>Regex</code> — you interpolate it with <code>/&lt;$rx&gt;/</code>, and because it is anchored at both ends it always does whole-string matching.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A bracket group is not translated as a character class in the shell sense. The members are stringified with spaces between them, so a range is not a range and a negation is not a negation:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/glob-grammar/02-brackets.raku" title="This example as a file: 02-brackets.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Glob::Grammar</span>;
+<span class="k">use</span> <span class="n">Glob::ToRegexActions</span>;
+
+<span class="k">my</span> <span class="nv">$actions</span> = <span class="n">Glob::ToRegexActions</span>.<span class="nb">new</span>;
+<span class="k">sub</span> <span class="n">to-rx</span>(<span class="nb">Str</span> <span class="nv">$g</span>) {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Glob::Grammar</span>.<span class="n">parse</span>(<span class="nv">$g</span>, :<span class="nv">$actions</span>);
+    <span class="nv">$m</span> ?? <span class="nv">$m</span>.<span class="n">made</span> !! <span class="nb">Nil</span>
+}
+
+<span class="nb">say</span> <span class="n">to-rx</span>(<span class="s">'[abc]x'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">to-rx</span>(<span class="s">'[a-c]x'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">to-rx</span>(<span class="s">'[!a]bc'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">to-rx</span>(<span class="s">'{one,two}'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">to-rx</span>(<span class="s">'a\*b'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"^&lt;[a b c]&gt;x\$"
+"^&lt;[a - c]&gt;x\$"
+"^&lt;[! a]&gt;bc\$"
+"^\\\{one\\,two\\}\$"
+"^a\\\\.*b\$"</code></pre></div>
+<p>A plain list of characters works, which covers most real patterns. The second line is a range in every shell and is the literal three-member set <code>a</code>, <code>-</code>, <code>c</code> here — so <code>bx</code> does not match and <code>-x</code> does. The third is shell negation and matches <code>abc</code> while rejecting <code>xbc</code>, exactly inverted. Brace alternation is not glob syntax to this grammar at all, and a backslash does not escape anything, so a literal <code>*</code> cannot be matched.</p>
+<p>Within a plain wildcard pattern the translation is sound. Anything with brackets or braces in it needs checking against what you meant.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The generated string is Raku source, and the two engines do not accept quite the same Raku. <code>&lt;[a - c]&gt;</code> — what a range turns into — is a character class with a literal hyphen under Raku++ and a compile error under Rakudo, which refuses a bare <code>-</code> inside a class. A glob containing a space becomes an escaped space, which Raku++ accepts and Rakudo rejects as an unspace. And <code>\w</code> differs on non-ASCII letters, so an accented character is escaped by one engine and not the other.</p>
+<p>The failures surface at <em>match</em> time rather than at translation time, because the illegal construct is inside an interpolated string. If the patterns come from users and the code has to run on both engines, restrict the accepted syntax to <code>*</code>, <code>?</code> and plain bracket lists, and reject the rest before translating.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

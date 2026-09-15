@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Name — The Raku Ecosystem, Working</title>
+<meta name="description" content="One attribute trait that records a different JSON key for an attribute — for the `@type` and `created_at` spellings a Raku identifier cannot have.">
+<link rel="canonical" href="https://raku.online/modules/json-name/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::Name — The Raku Ecosystem, Working">
+<meta property="og:description" content="One attribute trait that records a different JSON key for an attribute — for the `@type` and `created_at` spellings a Raku identifier cannot have.">
+<meta property="og:url" content="https://raku.online/modules/json-name/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::Name","description":"One attribute trait that records a different JSON key for an attribute — for the `@type` and `created_at` spellings a Raku identifier cannot have.","programmingLanguage":"Raku","version":"0.0.7","url":"https://raku.online/modules/json-name/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/JSON-Name"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Name</h1><span class="status st-full">Works</span></div><p class="summary">One attribute trait that records a different JSON key for an attribute — for the <code>@type</code> and <code>created_at</code> spellings a Raku identifier cannot have.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.7</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::OptIn</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/JSON::Name">raku.land</a> · <a href="https://github.com/jonathanstowe/JSON-Name">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Name</code></pre></div><p class="fact-sub"><code>zef install JSON::Name</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The JSON you have to consume was not designed around Raku's identifier rules. Its keys are <code>@type</code>, <code>created_at</code>, <code>Content-Type</code>, <code>666.evil.name</code> — none of which can be an attribute name, and some of which no language would accept. The mapping has to live somewhere, and the natural place is on the attribute itself.</p>
+<p>This distribution is that one trait, and nothing else: a place for <code>JSON::Marshal</code> and <code>JSON::Unmarshal</code> to look when the key and the attribute have different names. Seven distributions depend on it.</p>
+<h2 id="renaming-an-attribute">Renaming an attribute <a class="anchor" href="#renaming-an-attribute" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-name/01-rename.raku" title="This example as a file: 01-rename.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Name</span>;
+<span class="k">use</span> <span class="n">JSON::Class</span>;
+<span class="k">use</span> <span class="n">JSON::Marshal</span>;
+<span class="k">use</span> <span class="n">JSON::Unmarshal</span>;
+
+<span class="k">class</span> <span class="n">Event</span> <span class="k">does</span> <span class="n">JSON::Class</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.kind</span>   <span class="k">is</span> <span class="n">json-name</span>(<span class="s">'@type'</span>);
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.at</span>     <span class="k">is</span> <span class="n">json-name</span>(<span class="s">'666.evil.name'</span>);
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.plain</span>;
+}
+
+<span class="k">my</span> <span class="nv">$e</span> = <span class="n">Event</span>.<span class="nb">new</span>(<span class="n">kind</span> =&gt; <span class="s">'ping'</span>, <span class="n">at</span> =&gt; <span class="mi">42</span>, <span class="n">plain</span> =&gt; <span class="s">'ordinary'</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$e</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+
+<span class="k">my</span> <span class="nv">$back</span> = <span class="n">unmarshal</span>(<span class="s">'{&quot;@type&quot;:&quot;pong&quot;,&quot;666.evil.name&quot;:7,&quot;plain&quot;:&quot;p&quot;}'</span>, <span class="n">Event</span>);
+<span class="nb">say</span> <span class="nv">$back</span>.<span class="n">kind</span>, <span class="s">' '</span>, <span class="nv">$back</span>.<span class="n">at</span>, <span class="s">' '</span>, <span class="nv">$back</span>.<span class="n">plain</span>;
+
+<span class="k">for</span> <span class="n">Event</span>.^<span class="n">attributes</span> -&gt; <span class="nv">$a</span> {
+    <span class="nb">say</span> <span class="nv">$a</span>.<span class="n">name</span>, <span class="s">' -&gt; '</span>,
+        (<span class="nv">$a</span> ~~ <span class="n">JSON::Name::NamedAttribute</span> ?? <span class="nv">$a</span>.<span class="n">json-name</span> !! <span class="s">'(same)'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{"666.evil.name":42,"@type":"ping","plain":"ordinary"}
+pong 7 p
+$!kind -&gt; @type
+$!at -&gt; 666.evil.name
+$!plain -&gt; (same)</code></pre></div>
+<p>The trait mixes a role into the attribute's meta-object carrying the replacement name, and the two serialisers consult it. Nothing else changes: the Raku side keeps its ordinary name and the wire side keeps its awkward one.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Renaming an attribute also opts it in to selective marshalling, which is a separate feature you did not ask for:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-name/02-opt-in.raku" title="This example as a file: 02-opt-in.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Name</span>;
+<span class="k">use</span> <span class="n">JSON::Class</span>;
+<span class="k">use</span> <span class="n">JSON::Marshal</span>;
+<span class="k">use</span> <span class="n">JSON::OptIn</span>;
+
+<span class="k">class</span> <span class="n">Record</span> <span class="k">does</span> <span class="n">JSON::Class</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.renamed</span> <span class="k">is</span> <span class="n">json-name</span>(<span class="s">'R'</span>);
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.ordinary</span>;
+}
+
+<span class="k">for</span> <span class="n">Record</span>.^<span class="n">attributes</span> -&gt; <span class="nv">$a</span> {
+    <span class="nb">say</span> <span class="nv">$a</span>.<span class="n">name</span>, <span class="s">' opted in: '</span>, (<span class="nv">$a</span> ~~ <span class="n">JSON::OptIn::OptedInAttribute</span>).<span class="nb">Str</span>;
+}
+
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Record</span>.<span class="nb">new</span>(<span class="n">renamed</span> =&gt; <span class="s">'one'</span>, <span class="n">ordinary</span> =&gt; <span class="s">'two'</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$r</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$r</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>, :<span class="n">opt-in</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>$!renamed opted in: True
+$!ordinary opted in: False
+{"R":"one","ordinary":"two"}
+{"R":"one"}</code></pre></div>
+<p><code>NamedAttribute</code> composes the opt-in marker role, so an attribute you renamed for purely cosmetic reasons is now one of the few that survive <code>:opt-in</code> — and the attribute you did nothing to is the one that vanishes. That is the opposite of what the <code>:opt-in</code> mode is for, which is to publish only the fields you explicitly listed.</p>
+<p>If you use <code>:opt-in</code>, mark every attribute you mean to publish with <code>is json</code> explicitly and do not let the rename do it implicitly. The same implicit opt-in comes from <code>is json-skip-null</code> and from the <code>is marshalled-by</code> converters, so the word <code>json</code> need not appear on an attribute for it to be in the set.</p>
+<p>Two smaller things: two attributes may be given the same JSON name with no complaint, and one of them then wins on the way out while both are filled from the same key on the way in. And Raku++ currently accepts a non-string argument to the trait where Rakudo rejects it at compile time, so pass a string literal.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Path::Resolve — The Raku Ecosystem, Working</title>
+<meta name="description" content="A path string turned into an absolute IO::Path, with a leading tilde expanded to the home directory first and every `..` collapsed.">
+<link rel="canonical" href="https://raku.online/modules/file-path-resolve/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Path::Resolve — The Raku Ecosystem, Working">
+<meta property="og:description" content="A path string turned into an absolute IO::Path, with a leading tilde expanded to the home directory first and every `..` collapsed.">
+<meta property="og:url" content="https://raku.online/modules/file-path-resolve/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Path::Resolve","description":"A path string turned into an absolute IO::Path, with a leading tilde expanded to the home directory first and every `..` collapsed.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/file-path-resolve/","license":"https://spdx.org/licenses/Unlicense","codeRepository":"https://github.com/atweiden/file-path-resolve"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>File::Path::Resolve</h1><span class="status st-full">Works</span></div><p class="summary">A path string turned into an absolute IO::Path, with a leading tilde expanded to the home directory first and every <code>..</code> collapsed.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Unlicense</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/File::Path::Resolve">raku.land</a> · <a href="https://github.com/atweiden/file-path-resolve">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Path::Resolve</code></pre></div><p class="fact-sub"><code>zef install File::Path::Resolve</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A path typed by a person, or read out of a configuration file, arrives in whatever shape suited whoever wrote it: relative to somewhere, with a tilde at the front, with <code>..</code> segments in the middle. Before the program can compare it with another path, use it as a hash key or print it in a diagnostic, it has to become one canonical absolute thing.</p>
+<p>Raku's <code>.resolve</code> does most of that. It does not expand the tilde, because the shell normally does that before a program sees it — and a path from a config file never went through a shell. This distribution is the tilde expansion plus <code>.resolve</code>, in one call.</p>
+<h2 id="resolving">Resolving <a class="anchor" href="#resolving" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-path-resolve/01-resolve.raku" title="This example as a file: 01-resolve.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Path::Resolve</span>;
+
+<span class="k">my</span> <span class="nv">$R</span> = <span class="n">File::Path::Resolve</span>;
+<span class="k">my</span> <span class="nv">$home</span> = <span class="nv">$*HOME</span>.<span class="nb">Str</span>;
+
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'~'</span>).<span class="nb">Str</span> <span class="n">eq</span> <span class="nv">$home</span>;
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'~/.config'</span>).<span class="nb">Str</span> <span class="n">eq</span> <span class="s">&quot;$home/.config&quot;</span>;
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'~//.config'</span>).<span class="nb">Str</span> <span class="n">eq</span> <span class="s">&quot;$home/.config&quot;</span>;
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'/tmp/../tmp'</span>).<span class="nb">Str</span>.<span class="n">ends-with</span>(<span class="s">'/tmp'</span>);
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'relative/bit'</span>).<span class="nb">Str</span>.<span class="n">starts-with</span>(<span class="nv">$*CWD</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'~'</span>).^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$R</span>.<span class="n">absolute</span>(<span class="s">'/no/such/path'</span>).<span class="nb">Str</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>True
+True
+True
+True
+True
+IO::Path
+/no/such/path</code></pre></div>
+<p>Everything comes back as an <code>IO::Path</code>, absolute, whether or not the path exists — the last line is a path to nothing and resolves happily, which is right, because you often want to canonicalise a name before creating it.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>relative($path, $base)</code> treats the base as a <strong>file</strong> and resolves against its parent directory, so passing a directory silently discards that directory:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-path-resolve/02-relative-base.raku" title="This example as a file: 02-relative-base.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Path::Resolve</span>;
+
+<span class="k">my</span> <span class="nv">$R</span> = <span class="n">File::Path::Resolve</span>;
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;fpr-{$*PID}&quot;</span>);
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/sub'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/conf.ini'</span>).<span class="nb">spurt</span>(<span class="s">&quot;k=v\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/sub/other.ini'</span>).<span class="nb">spurt</span>(<span class="s">&quot;k=v\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$dir</span>  = <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project'</span>).<span class="nb">Str</span>;
+<span class="k">my</span> <span class="nv">$file</span> = <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/conf.ini'</span>).<span class="nb">Str</span>;
+
+<span class="nb">say</span> <span class="s">'base is the directory: '</span>, <span class="nv">$R</span>.<span class="n">relative</span>(<span class="s">'sub/other.ini'</span>, <span class="nv">$dir</span>).<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'base is a file in it : '</span>, <span class="nv">$R</span>.<span class="n">relative</span>(<span class="s">'sub/other.ini'</span>, <span class="nv">$file</span>).<span class="n">e</span>;
+
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/sub/other.ini'</span>).<span class="nb">unlink</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/conf.ini'</span>).<span class="nb">unlink</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project/sub'</span>).<span class="n">rmdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'project'</span>).<span class="n">rmdir</span>;
+<span class="nv">$root</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>base is the directory: False
+base is a file in it : True</code></pre></div>
+<p>The first resolves to a path that does not exist, because <code>project</code> was dropped on the way. The second finds the file. So the argument means "the file whose neighbours you are resolving", not "the directory you are resolving inside" — the opposite of what the name suggests, and a mistake that produces a wrong path rather than an error.</p>
+<p>If your base really is a directory, append a dummy file name to it, or just use <code>$dir.IO.add($path)</code> and skip this method.</p>
+<p>Two smaller things: <code>~username</code> is not expanded, so <code>~root</code> becomes a relative path with a literal tilde in it, and an empty string throws a constraint failure rather than returning anything.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

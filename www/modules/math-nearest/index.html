@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math::Nearest — The Raku Ecosystem, Working</title>
+<meta name="description" content="Nearest-neighbour search over a point set — the k closest or everything inside a radius — with a k-d tree or an exhaustive scan behind one callable finder.">
+<link rel="canonical" href="https://raku.online/modules/math-nearest/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Math::Nearest — The Raku Ecosystem, Working">
+<meta property="og:description" content="Nearest-neighbour search over a point set — the k closest or everything inside a radius — with a k-d tree or an exhaustive scan behind one callable finder.">
+<meta property="og:url" content="https://raku.online/modules/math-nearest/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Math::Nearest","description":"Nearest-neighbour search over a point set — the k closest or everything inside a radius — with a k-d tree or an exhaustive scan behind one callable finder.","programmingLanguage":"Raku","version":"0.0.7","url":"https://raku.online/modules/math-nearest/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/antononcube/Raku-Math-Nearest"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · maths</div><h1>Math::Nearest</h1><span class="status st-div">Divergent</span></div><p class="summary">Nearest-neighbour search over a point set — the k closest or everything inside a radius — with a k-d tree or an exhaustive scan behind one callable finder.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.7</code> <span class="fact-sub">zef:antononcube</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Math::DistanceFunctions</code>, <code>Algorithm::KDimensionalTree</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:antononcube/Math::Nearest">raku.land</a> · <a href="https://github.com/antononcube/Raku-Math-Nearest">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Math::Nearest</code></pre></div><p class="fact-sub"><code>zef install Math::Nearest</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Which of my points is closest to this one" is the query under classification by nearest neighbour, under snapping a click to a feature, under deduplication, and under every recommendation that works by similarity. Asked once, a scan over the whole set is the right answer. Asked many times against the same set, it is worth building a structure first — which is what a k-d tree is, and what makes the repeated query logarithmic instead of linear.</p>
+<p>This distribution wraps both strategies behind one object, so the choice is an option rather than a rewrite.</p>
+<h2 id="building-a-finder-and-asking-it">Building a finder and asking it <a class="anchor" href="#building-a-finder-and-asking-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-nearest/01-nearest.raku" title="This example as a file: 01-nearest.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Nearest</span>;
+
+<span class="k">my</span> <span class="nv">@points</span> = [<span class="mi">0</span>,<span class="mi">0</span>], [<span class="mi">1</span>,<span class="mi">0</span>], [<span class="mi">0</span>,<span class="mi">1</span>], [<span class="mi">3</span>,<span class="mi">4</span>], [<span class="mi">5</span>,<span class="mi">5</span>], [<span class="mi">2</span>,<span class="mi">2</span>], [-<span class="mi">1</span>,-<span class="mi">1</span>];
+
+<span class="k">my</span> <span class="nv">&amp;find</span> = <span class="n">nearest</span>(<span class="nv">@points</span>);
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">@pts</span>) { <span class="nv">@pts</span>.<span class="nb">map</span>({ <span class="s">'('</span> ~ .<span class="nb">join</span>(<span class="s">','</span>) ~ <span class="s">')'</span> }).<span class="nb">join</span>(<span class="s">' '</span>) }
+
+<span class="nb">say</span> <span class="n">show</span>(<span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>]));
+<span class="nb">say</span> <span class="n">show</span>(<span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">3</span>));
+<span class="nb">say</span> <span class="n">show</span>(<span class="n">nearest</span>(<span class="nv">@points</span>, [<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">2</span>));
+
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">3</span>, :<span class="n">prop</span><span class="s">&lt;distance&gt;</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">3</span>, :<span class="n">prop</span><span class="s">&lt;index&gt;</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], :<span class="n">r</span>(<span class="mf">1.5</span>)).<span class="nb">elems</span>, <span class="s">' within 1.5'</span>;
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], :<span class="n">r</span>(<span class="mi">0</span>)).<span class="nb">elems</span>, <span class="s">' within 0'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1,0)
+(1,0) (0,1) (2,2)
+(1,0) (0,1)
+(1e0, 1e0, 1.4142135623730951e0)
+(1, 2, 5)
+4 within 1.5
+0 within 0</code></pre></div>
+<p>The finder is callable, so it reads as a function once built. Asking for <code>:prop&lt;distance&gt;</code> or <code>:prop&lt;index&gt;</code> gives you those instead of the points themselves, and <code>:prop('All')</code> gives a record of all four. A radius query takes <code>:r</code> instead of a count.</p>
+<p>Points may carry labels, by handing in pairs instead of bare coordinates:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-nearest/02-labels.raku" title="This example as a file: 02-labels.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Nearest</span>;
+
+<span class="k">my</span> <span class="nv">@places</span> = <span class="s">'origin'</span> =&gt; [<span class="mi">0</span>,<span class="mi">0</span>], <span class="s">'east'</span> =&gt; [<span class="mi">1</span>,<span class="mi">0</span>],
+             <span class="s">'north'</span>  =&gt; [<span class="mi">0</span>,<span class="mi">1</span>], <span class="s">'far'</span>  =&gt; [<span class="mi">5</span>,<span class="mi">5</span>];
+
+<span class="k">my</span> <span class="nv">&amp;find</span> = <span class="n">nearest</span>(<span class="nv">@places</span>);
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">2</span>).<span class="nb">map</span>({ <span class="s">'('</span> ~ .<span class="nb">join</span>(<span class="s">','</span>) ~ <span class="s">')'</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="nv">&amp;find</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">2</span>, :<span class="n">prop</span><span class="s">&lt;label&gt;</span>).<span class="nb">map</span>(*.<span class="nb">head</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="n">nearest</span>(<span class="nv">@places</span>, :<span class="k">method</span><span class="s">&lt;Scan&gt;</span>)([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">2</span>, :<span class="n">prop</span><span class="s">&lt;label&gt;</span>).<span class="nb">map</span>(*.<span class="nb">head</span>).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(1,0) (0,1)
+east north
+east north</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The distance function is pluggable and the default backend is a k-d tree, and that combination is only valid for some distances. A k-d tree prunes by comparing a single coordinate's gap against the best distance so far, which is sound for Euclidean, Manhattan and Chebyshev and <strong>unsound</strong> for Canberra and Bray–Curtis, whose per-axis contributions are scaled by the values themselves.</p>
+<p>Nothing warns you. You get a result of the right length, in ascending order, with the wrong points in it. Measured over forty queries against a hundred and twenty points, the tree was wrong on fourteen of them with Bray–Curtis, and exact with Euclidean.</p>
+<p>The fix is to name the other backend whenever the distance is not a plain metric:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-nearest/03-backends.raku" title="This example as a file: 03-backends.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Nearest</span>;
+
+<span class="k">my</span> <span class="nv">@points</span> = [<span class="mi">0</span>,<span class="mi">0</span>], [<span class="mi">1</span>,<span class="mi">0</span>], [<span class="mi">0</span>,<span class="mi">1</span>], [<span class="mi">3</span>,<span class="mi">4</span>], [<span class="mi">5</span>,<span class="mi">5</span>], [<span class="mi">2</span>,<span class="mi">2</span>], [-<span class="mi">1</span>,-<span class="mi">1</span>];
+
+<span class="k">for</span> &lt;<span class="n">Euclidean</span> <span class="n">Manhattan</span> <span class="n">BrayCurtis</span>&gt; -&gt; <span class="nv">$d</span> {
+    <span class="k">my</span> <span class="nv">&amp;tree</span> = <span class="n">nearest</span>(<span class="nv">@points</span>, :<span class="n">distance-function</span>(<span class="nv">$d</span>));
+    <span class="k">my</span> <span class="nv">&amp;scan</span> = <span class="n">nearest</span>(<span class="nv">@points</span>, :<span class="n">distance-function</span>(<span class="nv">$d</span>), :<span class="k">method</span><span class="s">&lt;Scan&gt;</span>);
+    <span class="k">sub</span> <span class="n">show</span>(<span class="nv">@pts</span>) { <span class="nv">@pts</span>.<span class="nb">map</span>({ <span class="s">'('</span> ~ .<span class="nb">join</span>(<span class="s">','</span>) ~ <span class="s">')'</span> }).<span class="nb">join</span>(<span class="s">' '</span>) }
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-11s tree=%-22s scan=%s'</span>, <span class="nv">$d</span>, <span class="n">show</span>(<span class="nv">&amp;tree</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">3</span>)), <span class="n">show</span>(<span class="nv">&amp;scan</span>([<span class="mi">1</span>,<span class="mi">1</span>], <span class="mi">3</span>)));
+}
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">nearest</span>(<span class="nv">@points</span>, :<span class="k">method</span><span class="s">&lt;kd-tree&gt;</span>)) // <span class="s">'kd-tree: refused'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Euclidean   tree=(1,0) (0,1) (2,2)      scan=(1,0) (0,1) (0,0)
+Manhattan   tree=(1,0) (0,1) (2,2)      scan=(1,0) (0,1) (0,0)
+BrayCurtis  tree=(2,2) (1,0) (0,1)      scan=(1,0) (0,1) (2,2)
+kd-tree: refused</code></pre></div>
+<p><code>:method&lt;Scan&gt;</code> is exact for every distance, at the cost of being linear. Use the tree for the metrics it is valid for and the scan for the rest; the spelling of <code>:method</code> is exact, and <code>KDTree</code> and <code>Scan</code> are the only two it accepts.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The k-d tree's wrong answers are not the same wrong answers on both engines. With Canberra it was wrong on twenty-three of forty queries under Raku++ and correct on all forty under Rakudo, from byte-identical input — so a program can pass its tests on one engine and return different neighbours on the other. The exhaustive scan agreed with brute force in every case on both.</p>
+<p>That is a second reason to prefer <code>:method&lt;Scan&gt;</code> for a non-metric distance: it is not only exact, it is the same on both engines.</p>
+<p>Two smaller things. A radius query returns its hits unordered where a count query returns them nearest-first, so sort it yourself if the order matters. And <code>:prop</code> is case-sensitive, accepting only <code>distance</code>, <code>index</code>, <code>label</code>, <code>point</code> and <code>All</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

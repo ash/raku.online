@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logger — The Raku Ecosystem, Working</title>
+<meta name="description" content="The continuation of the Log distribution under a new name — the same levels, pattern and contexts, plus a settable pattern and a hook for the timestamp.">
+<link rel="canonical" href="https://raku.online/modules/logger/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Logger — The Raku Ecosystem, Working">
+<meta property="og:description" content="The continuation of the Log distribution under a new name — the same levels, pattern and contexts, plus a settable pattern and a hook for the timestamp.">
+<meta property="og:url" content="https://raku.online/modules/logger/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Logger","description":"The continuation of the Log distribution under a new name — the same levels, pattern and contexts, plus a settable pattern and a hook for the timestamp.","programmingLanguage":"Raku","version":"0.4.6","url":"https://raku.online/modules/logger/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/whity/raku-log"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · debugging</div><h1>Logger</h1><span class="status st-full">Works</span></div><p class="summary">The continuation of the Log distribution under a new name — the same levels, pattern and contexts, plus a settable pattern and a hook for the timestamp.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.4.6</code> <span class="fact-sub">zef:whity</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>6 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:whity/Logger">raku.land</a> · <a href="https://github.com/whity/raku-log">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Logger</code></pre></div><p class="fact-sub"><code>zef install Logger</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>This is the same codebase as <code>Log</code>, from the same repository, under the name its author settled on. Everything on the <a href="../log/">Log page</a> applies: five levels, a pattern string, a registry of named loggers, and the nested and mapped context stores.</p>
+<p>Two things are different, and they are the two that matter most in practice. The pattern can be changed after construction, and the timestamp has a hook — which is what makes a logger testable, because a line with a live clock in it cannot be compared against anything.</p>
+<h2 id="a-pinned-timestamp">A pinned timestamp <a class="anchor" href="#a-pinned-timestamp" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/logger/01-timestamp.raku" title="This example as a file: 01-timestamp.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Logger</span>;
+
+<span class="k">my</span> <span class="nv">$log</span> = <span class="n">Logger</span>.<span class="nb">new</span>(
+    <span class="n">level</span>        =&gt; <span class="n">Logger::INFO</span>,
+    <span class="n">dt-formatter</span> =&gt; <span class="k">sub</span> (<span class="nv">$dt</span>) { <span class="s">'TS'</span> },
+);
+<span class="nv">$log</span>.<span class="n">error</span>(<span class="s">'disk on fire'</span>);
+<span class="nv">$log</span>.<span class="nb">warn</span>(<span class="s">'disk warm'</span>);
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'disk fine'</span>);
+<span class="nv">$log</span>.<span class="n">debug</span>(<span class="s">'dropped: level is INFO'</span>);
+
+<span class="nv">$log</span>.<span class="n">level</span> = <span class="n">Logger::TRACE</span>;
+<span class="nv">$log</span>.<span class="n">debug</span>(<span class="s">'now it appears'</span>);
+
+<span class="nv">$log</span>.<span class="n">pattern</span> = <span class="s">'[%c] %m%n'</span>;
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'a different layout'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[TS][ERROR] disk on fire
+[TS][WARN] disk warm
+[TS][INFO] disk fine
+[TS][DEBUG] now it appears
+[INFO] a different layout</code></pre></div>
+<p><code>dt-formatter</code> replaces the <code>%d</code> placeholder's value, and a formatter that ignores its argument and returns a constant is what a test wants. The default pattern includes <code>%d</code>, so without this every line carries the current time and nothing about the output is reproducible.</p>
+<p>The formatter is handed the <code>DateTime</code>, so a real one can format it however the deployment wants:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/logger/02-formatter.raku" title="This example as a file: 02-formatter.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Logger</span>;
+
+<span class="k">my</span> <span class="nv">$log</span> = <span class="n">Logger</span>.<span class="nb">new</span>(<span class="n">level</span> =&gt; <span class="n">Logger::INFO</span>, <span class="n">pattern</span> =&gt; <span class="s">'[%d] %m%n'</span>);
+
+<span class="nv">$log</span>.<span class="n">dt-formatter</span> = <span class="k">sub</span> (<span class="nv">$x</span>) { <span class="s">'given a '</span> ~ <span class="nv">$x</span>.^<span class="n">name</span> };
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'what does the hook receive?'</span>);
+
+<span class="nv">$log</span>.<span class="n">dt-formatter</span> = <span class="k">sub</span> (<span class="nv">$dt</span>) {
+    <span class="nb">sprintf</span>(<span class="s">'%04d-%02d-%02d'</span>, <span class="nv">$dt</span>.<span class="n">year</span>, <span class="nv">$dt</span>.<span class="n">month</span>, <span class="nv">$dt</span>.<span class="n">day</span>)
+};
+<span class="nv">$log</span>.<span class="n">info</span>(<span class="s">'a date only'</span>);
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">Logger</span>.<span class="nb">new</span>(<span class="n">level</span> =&gt; <span class="n">Logger::INFO</span>, <span class="n">pattern</span> =&gt; <span class="s">'[%x] %m%n'</span>);
+<span class="nv">$a</span>.<span class="n">ndc</span>.<span class="nb">push</span>(<span class="s">'orig'</span>);
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nv">$a</span>.<span class="nb">clone</span>;
+<span class="nv">$b</span>.<span class="n">ndc</span>.<span class="nb">push</span>(<span class="s">'cloned-only'</span>);
+<span class="nv">$a</span>.<span class="n">info</span>(<span class="s">'from the original'</span>);
+<span class="nv">$b</span>.<span class="n">info</span>(<span class="s">'from the clone'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>[given a DateTime] what does the hook receive?
+[2026-09-15] a date only
+[orig] from the original
+[orig cloned-only] from the clone</code></pre></div>
+<p><code>clone</code> copies the contexts by value, so the two loggers diverge from the moment they are cloned — which is what you want when a request handler takes a copy of the application logger and adds its own request identifier.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The shipped default formatter names its parameter <code>$self</code>, and it is not the logger — it is the <code>DateTime</code>:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="c1"># the default, as shipped</span>
+<span class="k">sub</span> (<span class="nv">$self</span>) { <span class="nb">DateTime</span>.<span class="nb">now</span>.<span class="nb">Str</span> }</code></pre></div>
+<p>It ignores its argument and reads the clock a second time. So anyone who writes a formatter trusting that name will reach for logger methods on a <code>DateTime</code> and get a method-not-found error that makes no sense. The first example above probes it and prints what actually arrives.</p>
+<p>Everything on the Log page's warning about pattern-escape injection applies here unchanged: the message goes into the pattern before the other placeholders are expanded, so a logged string containing <code>%p</code> or <code>%X{…}</code> has them interpolated. Under the Raku++ 3.28.0 release the class-level registry was dead here — <code>Logger.get</code> returned nothing, because the engine did not resolve the compile-time class name the registry keys on. That is fixed, and both spellings work now.</p>
+<p>If you are choosing between the two distributions: use this one. They are the same code, and <code>Log</code> is the older name. Do not load both — you get two registries and two incompatible level enumerations.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

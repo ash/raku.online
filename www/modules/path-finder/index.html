@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path::Finder — The Raku Ecosystem, Working</title>
+<meta name="description" content="A composable file-tree walker — build an immutable rule out of predicates, hand it a directory, and get back the paths that match, with whole subtrees pruned rather than filtered.">
+<link rel="canonical" href="https://raku.online/modules/path-finder/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Path::Finder — The Raku Ecosystem, Working">
+<meta property="og:description" content="A composable file-tree walker — build an immutable rule out of predicates, hand it a directory, and get back the paths that match, with whole subtrees pruned rather than filtered.">
+<meta property="og:url" content="https://raku.online/modules/path-finder/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Path::Finder","description":"A composable file-tree walker — build an immutable rule out of predicates, hand it a directory, and get back the paths that match, with whole subtrees pruned rather than filtered.","programmingLanguage":"Raku","version":"0.4.7","url":"https://raku.online/modules/path-finder/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/leont/path-iterator"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>Path::Finder</h1><span class="status st-full">Works</span></div><p class="summary">A composable file-tree walker — build an immutable rule out of predicates, hand it a directory, and get back the paths that match, with whole subtrees pruned rather than filtered.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.4.7</code> <span class="fact-sub">zef:leont</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>14 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:leont/Path::Finder">raku.land</a> · <a href="https://github.com/leont/path-iterator">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Path::Finder</code></pre></div><p class="fact-sub"><code>zef install Path::Finder</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Every <code>.rakumod</code> under <code>lib</code>, skipping anything inside a <code>.git</code>" is one sentence and about fifteen lines of recursive <code>dir</code> with a guard in the middle. The recursion is not the hard part; the pruning is. A filter that rejects <code>.git</code> entries still descends into them, and on a real project that is most of the walk.</p>
+<p>This distribution separates the two. You build a rule out of predicate methods, each returning a new rule, and hand the finished rule a starting directory. Rules that prune stop the walk descending rather than discarding what it found.</p>
+<h2 id="rules-and-pruning">Rules, and pruning <a class="anchor" href="#rules-and-pruning" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-finder/01-find.raku" title="This example as a file: 01-find.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Finder</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pf-{$*PID}&quot;</span>);
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/deep'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.git'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'README.md'</span>).<span class="nb">spurt</span>(<span class="s">&quot;top\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/A.rakumod'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class A;\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/deep/B.rakumod'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class B;\nneedle\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'.git/config'</span>).<span class="nb">spurt</span>(<span class="s">&quot;[core]\n&quot;</span>);
+
+<span class="nb">say</span> <span class="n">find</span>(<span class="nv">$root</span>, :<span class="n">file</span>, :<span class="n">name</span>(<span class="s">'*.rakumod'</span>), :<span class="n">relative</span>).<span class="nb">map</span>(~*).<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="n">find</span>(<span class="nv">$root</span>, :<span class="n">file</span>, :<span class="nb">lines</span>(<span class="sr">/needle/</span>), :<span class="n">relative</span>).<span class="nb">map</span>(~*).<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="n">find</span>(<span class="nv">$root</span>, :<span class="n">directory</span>, :<span class="n">relative</span>).<span class="nb">map</span>(~*).<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="n">find</span>(<span class="nv">$root</span>, :<span class="n">file</span>, :<span class="n">skip-dir</span>(<span class="s">'.git'</span>), :<span class="n">relative</span>).<span class="nb">map</span>(~*).<span class="nb">sort</span>;
+
+<span class="k">my</span> <span class="nv">$rule</span> = <span class="n">Path::Finder</span>.<span class="n">file</span>.<span class="n">name</span>(<span class="s">'*.md'</span>);
+<span class="nb">say</span> <span class="nv">$rule</span>.<span class="n">in</span>(<span class="nv">$root</span>, :<span class="n">relative</span>).<span class="nb">map</span>(~*).<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="nv">$rule</span>.^<span class="n">name</span>;
+
+<span class="k">sub</span> <span class="n">nuke</span>(<span class="nv">$d</span>) { <span class="k">for</span> <span class="nv">$d</span>.<span class="n">dir</span> { <span class="nv">$_</span>.<span class="n">d</span> ?? <span class="n">nuke</span>(<span class="nv">$_</span>) !! .<span class="nb">unlink</span> }; <span class="n">rmdir</span> <span class="nv">$d</span> }
+<span class="n">nuke</span>(<span class="nv">$root</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>(lib/A.rakumod lib/deep/B.rakumod)
+(lib/deep/B.rakumod)
+(. .git lib lib/deep)
+(README.md lib/A.rakumod lib/deep/B.rakumod)
+(README.md)
+Path::Finder</code></pre></div>
+<p><code>find</code> takes the rules as named options; the builder form takes them as chained methods and hands back a rule object you can keep and reuse. <code>:lines</code> matches the file's <em>contents</em>, which is the predicate that turns a walk into a search.</p>
+<p>Rules are immutable — each method returns a new one — so a base rule can be narrowed several different ways without the variants interfering.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>skip-dir</code> prunes the starting directory itself; <code>skip-subdir</code> does not:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-finder/02-skip-dir.raku" title="This example as a file: 02-skip-dir.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Finder</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pfs-{$*PID}&quot;</span>);
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'node_modules'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'node_modules/pkg'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'node_modules/pkg/y.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;y\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/x.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;x\n&quot;</span>);
+
+<span class="nb">say</span> <span class="s">'from the project root : '</span>,
+    <span class="n">find</span>(<span class="nv">$root</span>, :<span class="n">file</span>, :<span class="n">skip-dir</span>(<span class="s">'node_modules'</span>), :<span class="n">relative</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'started inside it     : '</span>,
+    <span class="n">find</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'node_modules'</span>), :<span class="n">file</span>, :<span class="n">skip-dir</span>(<span class="s">'node_modules'</span>), :<span class="n">relative</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'with skip-subdir      : '</span>,
+    <span class="n">find</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'node_modules'</span>), :<span class="n">file</span>, :<span class="n">skip-subdir</span>(<span class="s">'node_modules'</span>), :<span class="n">relative</span>).<span class="nb">elems</span>;
+
+<span class="k">sub</span> <span class="n">nuke</span>(<span class="nv">$d</span>) { <span class="k">for</span> <span class="nv">$d</span>.<span class="n">dir</span> { <span class="nv">$_</span>.<span class="n">d</span> ?? <span class="n">nuke</span>(<span class="nv">$_</span>) !! .<span class="nb">unlink</span> }; <span class="n">rmdir</span> <span class="nv">$d</span> }
+<span class="n">nuke</span>(<span class="nv">$root</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>from the project root : 1
+started inside it     : 0
+with skip-subdir      : 1</code></pre></div>
+<p>The rule tests every directory it meets at every depth, including depth zero — so a tool with <code>skip-dir('node_modules')</code> baked in finds <em>nothing</em> when someone runs it from inside <code>node_modules</code>. <code>skip-subdir</code> guards the same test with a depth check and behaves as expected. <code>skip-vcs</code> is built on <code>skip-dir</code> and inherits the same behaviour, so running your tool from inside a <code>.git</code> directory finds nothing either.</p>
+<p>Use <code>skip-subdir</code> for anything a user might run from an arbitrary directory, and keep <code>skip-dir</code> for rules applied to a known root.</p>
+<p>Two smaller things. <code>:name</code> is a <strong>glob</strong>, not a regex, so <code>:name('.txt')</code> matches nothing and <code>:name('*.txt')</code> is what you meant — though a <code>Regex</code> passed instead is used as one. And <code>:ext</code> compares against the extension without its dot, so <code>:ext('txt')</code> works and <code>:ext('.txt')</code> never does.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

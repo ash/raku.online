@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I18n::Simple — The Raku Ecosystem, Working</title>
+<meta name="description" content="User-facing strings in flat YAML files, looked up by key with placeholders filled from named arguments — layered so a translation can be loaded over a base language.">
+<link rel="canonical" href="https://raku.online/modules/i18n-simple/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="I18n::Simple — The Raku Ecosystem, Working">
+<meta property="og:description" content="User-facing strings in flat YAML files, looked up by key with placeholders filled from named arguments — layered so a translation can be loaded over a base language.">
+<meta property="og:url" content="https://raku.online/modules/i18n-simple/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"I18n::Simple","description":"User-facing strings in flat YAML files, looked up by key with placeholders filled from named arguments — layered so a translation can be loaded over a base language.","programmingLanguage":"Raku","version":"0.1.2","url":"https://raku.online/modules/i18n-simple/","license":"https://spdx.org/licenses/AGPL-3.0","codeRepository":"https://gitlab.com/tyil/perl6-i18n-Simple"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · language</div><h1>I18n::Simple</h1><span class="status st-full">Works</span></div><p class="summary">User-facing strings in flat YAML files, looked up by key with placeholders filled from named arguments — layered so a translation can be loaded over a base language.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.2</code></dd></div><div class="fact"><dt>Depends</dt><dd><code>Hash::Merge</code>, <code>YAMLish</code></dd></div><div class="fact"><dt>License</dt><dd>AGPL-3.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/I18n::Simple">raku.land</a> · <a href="https://gitlab.com/tyil/perl6-i18n-Simple">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install I18n::Simple</code></pre></div><p class="fact-sub"><code>zef install I18n::Simple</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The first step in translating a program is getting the strings out of the code, and the second is filling in the parts that vary. A message is a key and a template, the template has slots, and the slots are filled at the call site. Everything else — plurals, gender, locale-aware number formatting — is a much larger problem this distribution does not attempt, which is what the name promises.</p>
+<p>Strings live in flat YAML files. Loading a second file merges it over the first, which is how a translation is applied on top of a base language.</p>
+<h2 id="keys-slots-and-layering">Keys, slots, and layering <a class="anchor" href="#keys-slots-and-layering" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/i18n-simple/01-lookup.raku" title="This example as a file: 01-lookup.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">I18n::Simple</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;i18n-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'en.yml'</span>).<span class="nb">spurt</span>: <span class="s">q:to/YAML/</span>;
+<span class="s">    greeting: &quot;Hello, $(name)!&quot;
+    invoice: &quot;$(name), you owe $(amount) euro.&quot;
+    plain: &quot;No placeholders here&quot;
+    YAML
+</span><span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'nl.yml'</span>).<span class="nb">spurt</span>: <span class="s">q:to/YAML/</span>;
+<span class="s">    greeting: &quot;Hallo, $(name)!&quot;
+    YAML
+</span>
+<span class="n">i18n-init</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'en.yml'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'greeting'</span>, :<span class="n">name</span><span class="s">&lt;Ada&gt;</span>);
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'invoice'</span>, :<span class="n">name</span><span class="s">&lt;Ada&gt;</span>, :<span class="n">amount</span>(<span class="mi">42</span>));
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'plain'</span>);
+
+<span class="n">i18n-init</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'nl.yml'</span>).<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'greeting'</span>, :<span class="n">name</span><span class="s">&lt;Ada&gt;</span>);
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'invoice'</span>, :<span class="n">name</span><span class="s">&lt;Ada&gt;</span>, :<span class="n">amount</span>(<span class="mi">42</span>));
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Hello, Ada!
+Ada, you owe 42 euro.
+No placeholders here
+Hallo, Ada!
+Ada, you owe 42 euro.</code></pre></div>
+<p>The second <code>i18n-init</code> merges rather than replaces, so the Dutch greeting wins and the English invoice — which the Dutch file does not define — survives. That is the layering the design is built on, and it means a partial translation is usable from the first key.</p>
+<p>Note the placeholder syntax: <code>$(name)</code>, with parentheses. Not braces, not doubled braces, not a percent sign. Every other shape passes through as literal text.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Forgetting the context and getting it wrong fail in opposite directions:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/i18n-simple/02-missing-context.raku" title="This example as a file: 02-missing-context.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">I18n::Simple</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;i18nb-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'en.yml'</span>).<span class="nb">spurt</span>: <span class="s">qq:to/YAML/</span>;
+<span class="s">    greeting: &quot;Hello, \$(name)!&quot;
+    YAML
+</span><span class="n">i18n-init</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'en.yml'</span>).<span class="nb">Str</span>);
+
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'greeting'</span>, :<span class="n">name</span><span class="s">&lt;Ada&gt;</span>);
+<span class="nb">say</span> <span class="n">i18n</span>(<span class="s">'greeting'</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">i18n</span>(<span class="s">'greeting'</span>, :<span class="n">other</span><span class="s">&lt;x&gt;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+
+.<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>;
+<span class="nv">$dir</span>.<span class="n">rmdir</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Hello, Ada!
+Hello, $(name)!
+Unknown variable used: name</code></pre></div>
+<p>With no named arguments at all the substitution is skipped entirely and the template's own source text goes into your interface — <code>Hello, $(name)!</code>, shown to a user. With one irrelevant argument the substitution runs, finds no value for <code>name</code>, and throws. So the mistake that is easier to make is the one that fails silently, and it fails by displaying markup.</p>
+<p>Neither is a missing-key error, because there is no such thing: a key the table does not contain is an empty string under Raku++ and an internal error leaking out of the module under Rakudo. Check your keys with a test that walks the YAML rather than relying on the lookup to tell you.</p>
+<p>The YAML must be flat. A nested value is refused outright by the default validation, and with validation turned off it loads and then renders the nested structure stringified into your output.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encode — The Raku Ecosystem, Working</title>
+<meta name="description" content="Byte-to-text decoding for the legacy single-byte encodings the core does not carry — ISO-8859-2 and Windows-1251 above all — as one sub and three lookup tables.">
+<link rel="canonical" href="https://raku.online/modules/encode/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Encode — The Raku Ecosystem, Working">
+<meta property="og:description" content="Byte-to-text decoding for the legacy single-byte encodings the core does not carry — ISO-8859-2 and Windows-1251 above all — as one sub and three lookup tables.">
+<meta property="og:url" content="https://raku.online/modules/encode/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Encode","description":"Byte-to-text decoding for the legacy single-byte encodings the core does not carry — ISO-8859-2 and Windows-1251 above all — as one sub and three lookup tables.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/encode/","codeRepository":"https://github.com/sergot/perl6-encode"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Encode</h1><span class="status st-full">Works</span></div><p class="summary">Byte-to-text decoding for the legacy single-byte encodings the core does not carry — ISO-8859-2 and Windows-1251 above all — as one sub and three lookup tables.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">github:sergot</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>7 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:sergot/Encode">raku.land</a> · <a href="https://github.com/sergot/perl6-encode">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Encode</code></pre></div><p class="fact-sub"><code>zef install Encode</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Text from before UTF-8 won is still arriving: a CSV exported from an old Windows application, a database column filled in 2003, a mail archive, a government data set. Each byte is one character, and which character depends on a code page the file does not name. Raku's core decoder knows UTF-8, ASCII, Latin-1 and Windows-1252; it does not know Central European ISO-8859-2 or Cyrillic Windows-1251, and those are exactly the two that a Polish or Russian archive turns out to be in.</p>
+<p>This distribution adds them, as plain byte-to-codepoint tables with one routine over the top.</p>
+<h2 id="decoding-a-code-page">Decoding a code page <a class="anchor" href="#decoding-a-code-page" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encode/01-decode.raku" title="This example as a file: 01-decode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encode</span>;
+
+<span class="k">my</span> <span class="nv">$cyrillic</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0xCF</span>, <span class="mh">0xF0</span>, <span class="mh">0xE8</span>, <span class="mh">0xE2</span>, <span class="mh">0xE5</span>, <span class="mh">0xF2</span>);
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'cp1251'</span>, <span class="nv">$cyrillic</span>);
+
+<span class="k">my</span> <span class="nv">$polish</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0xA3</span>, <span class="mh">0xF3</span>, <span class="mh">0x64</span>, <span class="mh">0xBC</span>);
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'latin2'</span>, <span class="nv">$polish</span>);
+
+<span class="k">my</span> <span class="nv">$one</span> = <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0xA3</span>);
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'latin1'</span>, <span class="nv">$one</span>), <span class="s">' '</span>, <span class="n">Encode::decode</span>(<span class="s">'latin1'</span>, <span class="nv">$one</span>).<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'latin2'</span>, <span class="nv">$one</span>), <span class="s">' '</span>, <span class="n">Encode::decode</span>(<span class="s">'latin2'</span>, <span class="nv">$one</span>).<span class="nb">ords</span>;
+
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'utf8'</span>, <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0x63</span>, <span class="mh">0x61</span>, <span class="mh">0x66</span>, <span class="mh">0xC3</span>, <span class="mh">0xA9</span>));
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">Encode::decode</span>(<span class="s">'utf-16'</span>, <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0x61</span>))) // <span class="nv">$!</span>.<span class="n">message</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Привет
+Łódź
+£ (163)
+Ł (321)
+café
+Unknown encoding utf-16.</code></pre></div>
+<p>The same byte is a different letter in each table, which is the whole problem the module solves: <code>0xA3</code> is a pound sign in Latin-1 and a crossed L in Latin-2. Names are matched exactly and case-sensitively — <code>latin2</code>, <code>iso-8859-2</code>, <code>cp1251</code>, <code>windows-1251</code>, <code>utf8</code>, <code>utf-8</code>, <code>ascii</code> and their siblings all work, and <code>UTF-8</code> in capitals does not.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A module called Encode cannot encode. Its entire public surface is one routine that decodes, and even that is not imported: <code>use Encode;</code> puts nothing in your scope, so the name has to be written out in full.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encode/02-no-encode.raku" title="This example as a file: 02-no-encode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encode</span>;
+
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'latin2'</span>, <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0xE6</span>));
+<span class="nb">say</span> (<span class="k">try</span> { ::(<span class="s">'&amp;Encode::encode'</span>) ~~ <span class="nb">Callable</span> }) // <span class="n">False</span>;
+<span class="nb">say</span> (<span class="k">try</span> { ::(<span class="s">'&amp;Encode::decode'</span>) ~~ <span class="nb">Callable</span> }) // <span class="n">False</span>;
+
+<span class="k">my</span> <span class="nv">$blob</span> = <span class="s">'café'</span>.<span class="n">encode</span>(<span class="s">'latin-1'</span>);
+<span class="nb">say</span> <span class="nv">$blob</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">Encode::decode</span>(<span class="s">'latin1'</span>, <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="nv">$blob</span>.<span class="nb">list</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ć
+False
+True
+Blob[uint8]
+café</code></pre></div>
+<p>Going the other way is your problem: the tables in the sub-units map bytes to codepoints and would have to be inverted by hand. The last three lines are the other trap, and it is a portability one. The parameter is declared <code>Buf</code>, and <code>Str.encode</code> gives you a <code>Blob</code> — Raku++ accepts it and Rakudo refuses it, so code written against one engine breaks on the other. Wrap it in <code>Buf[uint8].new(...)</code>, as the example does, and it works on both.</p>
+<p>One more thing worth knowing before trusting a decode: a byte with no character in the target encoding is passed straight through as the codepoint of the same number rather than rejected or replaced. Nothing tells you the file was not really in the encoding you named.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

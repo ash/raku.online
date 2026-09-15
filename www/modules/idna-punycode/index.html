@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDNA::Punycode — The Raku Ecosystem, Working</title>
+<meta name="description" content="The bootstring encoding behind internationalised domain names — one sub each way, turning Unicode text into an `xn--` label and back.">
+<link rel="canonical" href="https://raku.online/modules/idna-punycode/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IDNA::Punycode — The Raku Ecosystem, Working">
+<meta property="og:description" content="The bootstring encoding behind internationalised domain names — one sub each way, turning Unicode text into an `xn--` label and back.">
+<meta property="og:url" content="https://raku.online/modules/idna-punycode/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"IDNA::Punycode","description":"The bootstring encoding behind internationalised domain names — one sub each way, turning Unicode text into an `xn--` label and back.","programmingLanguage":"Raku","version":"1.0.1","url":"https://raku.online/modules/idna-punycode/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/IDNA-Punycode"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>IDNA::Punycode</h1><span class="status st-full">Works</span></div><p class="summary">The bootstring encoding behind internationalised domain names — one sub each way, turning Unicode text into an <code>xn--</code> label and back.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/IDNA::Punycode">raku.land</a> · <a href="https://github.com/raku-community-modules/IDNA-Punycode">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install IDNA::Punycode</code></pre></div><p class="fact-sub"><code>zef install IDNA::Punycode</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The domain name system carries ASCII. A domain written in Greek, Japanese or German with an umlaut therefore travels as an ASCII transcription, and the transcription is Punycode: a bootstring encoding that packs the non-ASCII characters into a suffix and marks the result with <code>xn--</code>. Browsers do this in both directions every time someone types such a name, and any program that resolves, stores or compares one has to do it too.</p>
+<p>This distribution is the algorithm, RFC 3492, as two subs.</p>
+<h2 id="both-directions">Both directions <a class="anchor" href="#both-directions" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/idna-punycode/01-encode-decode.raku" title="This example as a file: 01-encode-decode.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">IDNA::Punycode</span>;
+
+<span class="k">for</span> &lt;<span class="sr">münchen bücher ελλάς 日本語 россия&gt; -&gt; $label {
+    my $encoded = encode_punycode($label);
+    say $label, ' -&gt; ', $encoded, ' -&gt; ', decode_punycode($encoded);
+}
+
+say encode_punycode('example');
+say decode_punycode('plain');</span></code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>münchen -&gt; xn--mnchen-3ya -&gt; münchen
+bücher -&gt; xn--bcher-kva -&gt; bücher
+ελλάς -&gt; xn--hxarsa0b -&gt; ελλάς
+日本語 -&gt; xn--wgv71a119e -&gt; 日本語
+россия -&gt; xn--h1alffa9f -&gt; россия
+example
+plain</code></pre></div>
+<p>Text that is already ASCII comes back unchanged and unprefixed, which is what the standard asks for: a label only becomes <code>xn--</code> something when it has to. The names use underscores rather than the hyphens modern Raku prefers, which is worth knowing when you go looking for them.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>It encodes a <strong>label</strong>, and it will not stop you handing it a whole domain name. The dot is just another character to the algorithm, so what comes back is a single label with a dot inside it — which no resolver will accept, and which does not even survive a round trip through this module's own decoder:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/idna-punycode/02-whole-domain.raku" title="This example as a file: 02-whole-domain.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">IDNA::Punycode</span>;
+
+<span class="nb">say</span> <span class="n">encode_punycode</span>(<span class="s">'münchen.de'</span>);
+<span class="nb">say</span> <span class="n">decode_punycode</span>(<span class="n">encode_punycode</span>(<span class="s">'münchen.de'</span>));
+<span class="nb">say</span> <span class="s">'münchen.de'</span>.<span class="nb">split</span>(<span class="s">'.'</span>).<span class="nb">map</span>({ <span class="n">encode_punycode</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">'.'</span>);
+<span class="nb">say</span> <span class="n">decode_punycode</span>(<span class="s">'XN--MNCHEN-3YA'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>xn--mnchen.de-q9a
+münchen.de
+xn--mnchen-3ya.de
+XN--MNCHEN-3YA</code></pre></div>
+<p>The round trip survives, which is exactly what makes this quiet: the first line is a well-formed Punycode string that decodes back to what you gave it, and it is still not a domain name, because a label may not contain a dot. The third line is the correct answer, and getting it is your job: split on the dot, encode each label, join them back. The fourth line is the other trap. Domain names are case-insensitive, the <code>xn--</code> test in this module is not, and an upper-case prefix is returned unchanged rather than decoded — silently, because a decode that finds no prefix is defined as a no-op. Lower-case before decoding, and treat "came back the same" as "was not encoded", never as "decoded successfully".</p>
+<p>There is no length check either. Sixty accented characters encode to a sixty-six character label, past the sixty-three octet limit the domain name system imposes, with no complaint from here.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

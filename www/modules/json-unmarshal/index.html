@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Unmarshal — The Raku Ecosystem, Working</title>
+<meta name="description" content="JSON into typed objects — matching keys to public attributes, recursing into nested classes and typed arrays, and checking each value against the attribute's declared type.">
+<link rel="canonical" href="https://raku.online/modules/json-unmarshal/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::Unmarshal — The Raku Ecosystem, Working">
+<meta property="og:description" content="JSON into typed objects — matching keys to public attributes, recursing into nested classes and typed arrays, and checking each value against the attribute's declared type.">
+<meta property="og:url" content="https://raku.online/modules/json-unmarshal/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::Unmarshal","description":"JSON into typed objects — matching keys to public attributes, recursing into nested classes and typed arrays, and checking each value against the attribute's declared type.","programmingLanguage":"Raku","version":"0.18","url":"https://raku.online/modules/json-unmarshal/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/JSON-Unmarshal"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Unmarshal</h1><span class="status st-full">Works</span></div><p class="summary">JSON into typed objects — matching keys to public attributes, recursing into nested classes and typed arrays, and checking each value against the attribute's declared type.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.18</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Fast</code>, <code>JSON::Name</code>, <code>JSON::OptIn</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>11 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/JSON::Unmarshal">raku.land</a> · <a href="https://github.com/raku-community-modules/JSON-Unmarshal">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Unmarshal</code></pre></div><p class="fact-sub"><code>zef install JSON::Unmarshal</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Parsing JSON gives you hashes and arrays. Most programs want something further along than that: an object whose attributes have types, so the rest of the code can stop checking. This distribution is the step between — given a target type and a document, it builds an instance, matching keys to public attributes, descending into attributes whose own types are classes, and filling a typed array with typed elements.</p>
+<p>It is the reading half of a pair whose writing half is <code>JSON::Marshal</code>, and the two are usually met together through <code>JSON::Class</code>, which composes both onto a class.</p>
+<h2 id="documents-into-objects">Documents into objects <a class="anchor" href="#documents-into-objects" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-unmarshal/01-into-objects.raku" title="This example as a file: 01-into-objects.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Unmarshal</span>;
+
+<span class="k">class</span> <span class="n">Point</span> { <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.x</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.y</span> }
+<span class="k">class</span> <span class="n">Box</span> {
+    <span class="k">has</span> <span class="nb">Str</span>    <span class="nv">$.label</span>;
+    <span class="k">has</span> <span class="n">Point</span>  <span class="nv">$.corner</span>;
+    <span class="k">has</span> <span class="n">Point</span>  <span class="nv">@.points</span>;
+    <span class="k">has</span> <span class="nb">Bool</span>   <span class="nv">$.active</span>;
+}
+
+<span class="k">my</span> <span class="nv">$box</span> = <span class="n">unmarshal</span>(
+    <span class="s">'{&quot;label&quot;:&quot;b1&quot;,&quot;corner&quot;:{&quot;x&quot;:1,&quot;y&quot;:2},&quot;points&quot;:[{&quot;x&quot;:3,&quot;y&quot;:4}],&quot;active&quot;:true}'</span>,
+    <span class="n">Box</span>);
+<span class="nb">say</span> <span class="nv">$box</span>.<span class="n">label</span>, <span class="s">' '</span>, <span class="nv">$box</span>.<span class="n">active</span>;
+<span class="nb">say</span> <span class="nv">$box</span>.<span class="n">corner</span>.^<span class="n">name</span>, <span class="s">' at '</span>, <span class="nv">$box</span>.<span class="n">corner</span>.<span class="n">x</span>, <span class="s">','</span>, <span class="nv">$box</span>.<span class="n">corner</span>.<span class="n">y</span>;
+<span class="nb">say</span> <span class="nv">$box</span>.<span class="n">points</span>.<span class="nb">elems</span>, <span class="s">' '</span>, <span class="nv">$box</span>.<span class="n">points</span>[<span class="mi">0</span>].^<span class="n">name</span>;
+
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'[1,2,3]'</span>, <span class="nb">Array</span>[<span class="nb">Int</span>]).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">unmarshal</span>({ <span class="n">x</span> =&gt; <span class="mi">5</span>, <span class="n">y</span> =&gt; <span class="mi">6</span> }, <span class="n">Point</span>).<span class="n">x</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>b1 True
+Point at 1,2
+1 Point
+(1, 2, 3)
+5</code></pre></div>
+<p>The nested object is a <code>Point</code>, not a hash, and so is the element inside the array — that recursion is the whole value of the module. It takes an already-parsed hash or array too, which is what you want when the JSON came from somewhere that already decoded it.</p>
+<p>A value of the wrong type is refused rather than coerced, and an unexpected key is ignored unless you ask otherwise:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-unmarshal/02-type-checks.raku" title="This example as a file: 02-type-checks.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Unmarshal</span>;
+
+<span class="k">class</span> <span class="n">Person</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.name</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.born</span> }
+
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;born&quot;:&quot;not a number&quot;}'</span>, <span class="n">Person</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;name&quot;:&quot;Ada&quot;,&quot;unexpected&quot;:1}'</span>, <span class="n">Person</span>).<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;unexpected&quot;:1}'</span>, <span class="n">Person</span>, :<span class="nb">die</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'{}'</span>, <span class="n">Person</span>).<span class="n">born</span>.<span class="nb">defined</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>JSON::Unmarshal::X::CannotUnmarshal
+Ada
+JSON::Unmarshal::X::UnusedKeys
+False</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The type checking is asymmetric, and the lenient direction is silent even under <code>:die</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-unmarshal/03-asymmetric.raku" title="This example as a file: 03-asymmetric.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Unmarshal</span>;
+
+<span class="k">class</span> <span class="n">Record</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.id</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.count</span>; <span class="k">has</span> <span class="nb">Bool</span> <span class="nv">$.on</span> }
+
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;count&quot;:&quot;42&quot;}'</span>, <span class="n">Record</span>)) // <span class="s">'string into Int: throws'</span>;
+
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;id&quot;:12345}'</span>, <span class="n">Record</span>).<span class="n">id</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;id&quot;:12345}'</span>, <span class="n">Record</span>, :<span class="nb">die</span>).<span class="n">id</span>.<span class="nb">defined</span>;
+
+<span class="nb">say</span> <span class="n">unmarshal</span>(<span class="s">'{&quot;on&quot;:&quot;false&quot;}'</span>, <span class="n">Record</span>).<span class="n">on</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>string into Int: throws
+False
+False
+True</code></pre></div>
+<p>A JSON string arriving at an <code>Int</code> attribute throws, which is right. A JSON <em>number</em> arriving at a <code>Str</code> attribute is dropped and the attribute left undefined — with no warning, under any error mode, including <code>:die</code>. So a document with <code>"id": 12345</code> where your class says <code>Str $.id</code> produces an object that looks fine and has no identifier, and you find out somewhere much later.</p>
+<p>The last line is the same leniency biting harder. <code>Bool</code> is built by coercion, and every non-empty string is true — so <code>"false"</code>, the string, unmarshals to <code>True</code>. Any producer that stringifies its booleans will be read inverted half the time. Declare such fields as <code>Str</code> and convert them yourself.</p>
+<p>Two smaller things: a misspelled option is a warning rather than an error unless you also passed <code>:die</code>, and the <code>Array</code> and <code>Hash</code> target forms use <code>fail</code> rather than throwing, so a shape mismatch hands back a <code>Failure</code> that only explodes when you use it.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

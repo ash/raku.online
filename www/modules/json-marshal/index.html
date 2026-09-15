@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Marshal — The Raku Ecosystem, Working</title>
+<meta name="description" content="An object's public attributes turned into JSON, with four traits for the per-attribute decisions — skip it, skip it when empty, run it through a converter, or publish only what is marked.">
+<link rel="canonical" href="https://raku.online/modules/json-marshal/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::Marshal — The Raku Ecosystem, Working">
+<meta property="og:description" content="An object's public attributes turned into JSON, with four traits for the per-attribute decisions — skip it, skip it when empty, run it through a converter, or publish only what is marked.">
+<meta property="og:url" content="https://raku.online/modules/json-marshal/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::Marshal","description":"An object's public attributes turned into JSON, with four traits for the per-attribute decisions — skip it, skip it when empty, run it through a converter, or publish only what is marked.","programmingLanguage":"Raku","version":"0.0.25","url":"https://raku.online/modules/json-marshal/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jonathanstowe/JSON-Marshal"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data format</div><h1>JSON::Marshal</h1><span class="status st-full">Works</span></div><p class="summary">An object's public attributes turned into JSON, with four traits for the per-attribute decisions — skip it, skip it when empty, run it through a converter, or publish only what is marked.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.25</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Fast</code>, <code>JSON::Name</code>, <code>JSON::OptIn</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>14 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/JSON::Marshal">raku.land</a> · <a href="https://github.com/jonathanstowe/JSON-Marshal">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Marshal</code></pre></div><p class="fact-sub"><code>zef install JSON::Marshal</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Writing an object out as JSON is a walk over its public attributes, and it is nearly always <em>nearly</em> right — except for the password you must not publish, the timestamp that needs formatting first, and the optional field that should be absent rather than null. Those three exceptions are why a generic serialiser needs per-attribute control, and this distribution provides it as traits on the attributes themselves.</p>
+<p>It is the writing half of the pair whose reader is <code>JSON::Unmarshal</code>.</p>
+<h2 id="objects-into-documents">Objects into documents <a class="anchor" href="#objects-into-documents" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-marshal/01-into-json.raku" title="This example as a file: 01-into-json.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Marshal</span>;
+
+<span class="k">class</span> <span class="n">Point</span> { <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.x</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.y</span> }
+<span class="k">class</span> <span class="n">Box</span> {
+    <span class="k">has</span> <span class="nb">Str</span>   <span class="nv">$.label</span>;
+    <span class="k">has</span> <span class="n">Point</span> <span class="nv">$.corner</span>;
+    <span class="k">has</span> <span class="n">Point</span> <span class="nv">@.points</span>;
+    <span class="k">has</span>       <span class="nv">%.meta</span>;
+}
+
+<span class="k">my</span> <span class="nv">$box</span> = <span class="n">Box</span>.<span class="nb">new</span>(
+    <span class="n">label</span>  =&gt; <span class="s">'b1'</span>,
+    <span class="n">corner</span> =&gt; <span class="n">Point</span>.<span class="nb">new</span>(<span class="n">x</span> =&gt; <span class="mi">1</span>, <span class="n">y</span> =&gt; <span class="mi">2</span>),
+    <span class="n">points</span> =&gt; (<span class="n">Point</span>.<span class="nb">new</span>(<span class="n">x</span> =&gt; <span class="mi">3</span>, <span class="n">y</span> =&gt; <span class="mi">4</span>),),
+    <span class="n">meta</span>   =&gt; { <span class="n">z</span> =&gt; <span class="mi">9</span> },
+);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$box</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="mi">42</span>, :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="s">'hi'</span>, :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">marshal</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nb">Int</span>, :!<span class="n">pretty</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{"corner":{"x":1,"y":2},"label":"b1","meta":{"z":9},"points":[{"x":3,"y":4}]}
+42
+"hi"
+[1,2,3]
+null</code></pre></div>
+<p>Nested objects, arrays of objects and plain hashes all recurse, so one call handles the whole tree. It will serialise non-objects too, which is occasionally handy and mostly a sign you meant to call the JSON writer directly.</p>
+<p>The four traits cover the per-attribute cases:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-marshal/02-traits.raku" title="This example as a file: 02-traits.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Marshal</span>;
+
+<span class="k">class</span> <span class="n">Account</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.user</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.token</span>    <span class="k">is</span> <span class="n">json-skip</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.nickname</span> <span class="k">is</span> <span class="n">json-skip-null</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.created</span>  <span class="k">is</span> <span class="n">marshalled-by</span>(<span class="s">'uc'</span>);
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.tag</span>      <span class="k">is</span> <span class="n">marshalled-by</span>(-&gt; <span class="nv">$v</span> { <span class="s">&quot;&lt;&lt;$v&gt;&gt;&quot;</span> });
+}
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">Account</span>.<span class="nb">new</span>(<span class="n">user</span> =&gt; <span class="s">'ada'</span>, <span class="k">token</span> =&gt; <span class="s">'secret'</span>,
+                    <span class="n">created</span> =&gt; <span class="s">'monday'</span>, <span class="n">tag</span> =&gt; <span class="s">'x'</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$a</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="nv">$a</span>, :!<span class="n">pretty</span>, :<span class="n">sorted-keys</span>, :<span class="n">skip-null</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{"created":"MONDAY","tag":"&lt;&lt;x&gt;&gt;","user":"ada"}
+{"created":"MONDAY","tag":"&lt;&lt;x&gt;&gt;","user":"ada"}</code></pre></div>
+<p><code>is json-skip</code> keeps the token out entirely. <code>is json-skip-null</code> drops the nickname only when <code>:skip-null</code> is on and it has no value. <code>is marshalled-by</code> takes either a method name to call on the value or a closure to pass it through, which is where a <code>DateTime</code> becomes a string.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>marshal</code> pretty-prints by default. <code>:pretty</code> is <code>True</code> in the signature, which is the opposite of what almost every other serialiser does:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-marshal/03-pretty-default.raku" title="This example as a file: 03-pretty-default.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Marshal</span>;
+
+<span class="k">class</span> <span class="n">Small</span> { <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.n</span> }
+
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="n">Small</span>.<span class="nb">new</span>(<span class="n">n</span> =&gt; <span class="mi">1</span>)).<span class="nb">lines</span>.<span class="nb">elems</span>, <span class="s">' lines by default'</span>;
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="n">Small</span>.<span class="nb">new</span>(<span class="n">n</span> =&gt; <span class="mi">1</span>), :!<span class="n">pretty</span>);
+<span class="nb">say</span> <span class="n">marshal</span>(<span class="n">Small</span>.<span class="nb">new</span>(<span class="n">n</span> =&gt; <span class="mi">1</span>), :!<span class="n">pretty</span>).<span class="nb">chars</span>, <span class="s">' characters compact'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>3 lines by default
+{"n":1}
+7 characters compact</code></pre></div>
+<p>A one-attribute object is three lines unless you say otherwise, so anything going onto a wire, into a database column or through a hash function needs <code>:!pretty</code> explicitly. Every example on this page passes it.</p>
+<p>The companion default is worth the same attention: without <code>:sorted-keys</code> the key order is hash order, which under Rakudo is randomised per process. So the same object serialises differently on two runs, which defeats diffing, caching by content, and golden-file tests. Pass both.</p>
+<p>One more thing that catches people using <code>:opt-in</code>: three of the four traits above quietly <em>add</em> their attribute to the opted-in set, because each composes the marker role that <code>JSON::OptIn</code> defines. Only <code>is json-skip</code> does not. So a class that renames one attribute and formats another has already chosen its <code>:opt-in</code> set without meaning to.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intl::LanguageTaggish — The Raku Ecosystem, Working</title>
+<meta name="description" content="The interface every language-tag type is expected to satisfy — one role with four required methods — so unrelated internationalisation libraries can accept each other's tags.">
+<link rel="canonical" href="https://raku.online/modules/intl-languagetaggish/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Intl::LanguageTaggish — The Raku Ecosystem, Working">
+<meta property="og:description" content="The interface every language-tag type is expected to satisfy — one role with four required methods — so unrelated internationalisation libraries can accept each other's tags.">
+<meta property="og:url" content="https://raku.online/modules/intl-languagetaggish/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Intl::LanguageTaggish","description":"The interface every language-tag type is expected to satisfy — one role with four required methods — so unrelated internationalisation libraries can accept each other's tags.","programmingLanguage":"Raku","version":"0.2","url":"https://raku.online/modules/intl-languagetaggish/","codeRepository":"https://github.com/alabamenhu/IntlLanguageTaggish"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · language</div><h1>Intl::LanguageTaggish</h1><span class="status st-full">Works</span></div><p class="summary">The interface every language-tag type is expected to satisfy — one role with four required methods — so unrelated internationalisation libraries can accept each other's tags.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2</code> <span class="fact-sub">zef:guifa</span></dd></div><div class="fact"><dt>Depends</dt><dd><span class="fact-sub">nothing outside the core</span></dd></div><div class="fact"><dt>License</dt><dd>see the source</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:guifa/Intl::LanguageTaggish">raku.land</a> · <a href="https://github.com/alabamenhu/IntlLanguageTaggish">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Intl::LanguageTaggish</code></pre></div><p class="fact-sub"><code>zef install Intl::LanguageTaggish</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Two libraries that both handle language tags will each have their own tag type, and a program using both then has to convert between them at every boundary. The usual fix is for one to depend on the other, which makes the ecosystem a chain. The better fix is a tiny shared distribution that neither owns: a role saying what a language tag must be able to do, which both can compose without either depending on the other.</p>
+<p>That is all this is. Forty-four lines, one role, four required methods and one optional. It ships no tag class of its own and parses nothing.</p>
+<h2 id="composing-it">Composing it <a class="anchor" href="#composing-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/intl-languagetaggish/01-compose.raku" title="This example as a file: 01-compose.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Intl::LanguageTaggish</span>;
+
+<span class="k">class</span> <span class="n">Tag</span> <span class="k">does</span> <span class="n">LanguageTaggish</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.bcp47</span>;
+    <span class="k">method</span> <span class="n">language</span> { <span class="nv">$!bcp47</span>.<span class="nb">split</span>(<span class="s">'-'</span>)[<span class="mi">0</span>] }
+    <span class="k">method</span> <span class="n">region</span>   { <span class="nv">$!bcp47</span>.<span class="nb">split</span>(<span class="s">'-'</span>)[<span class="mi">1</span>] // <span class="nb">Str</span> }
+    <span class="k">multi</span> <span class="k">method</span> <span class="n">COERCE</span>(<span class="n">LanguageTaggish</span>:<span class="n">D</span> <span class="nv">$t</span> --&gt; <span class="n">Tag</span>) { <span class="nb">self</span>.<span class="nb">new</span>: :<span class="n">bcp47</span>(<span class="nv">$t</span>.<span class="n">bcp47</span>) }
+    <span class="k">multi</span> <span class="k">method</span> <span class="n">COERCE</span>(<span class="nb">Str</span>:<span class="n">D</span> <span class="nv">$s</span> --&gt; <span class="n">Tag</span>)             { <span class="nb">self</span>.<span class="nb">new</span>: :<span class="n">bcp47</span>(<span class="nv">$s</span>) }
+    <span class="k">method</span> <span class="n">FALLBACK</span>(<span class="nv">$name</span>, |) { <span class="s">&quot;&lt;$name not modelled&gt;&quot;</span> }
+}
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Tag</span>.<span class="nb">new</span>(:<span class="n">bcp47</span>(<span class="s">'es-MX'</span>));
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">language</span>, <span class="s">' '</span>, <span class="nv">$t</span>.<span class="n">region</span>, <span class="s">' '</span>, <span class="nv">$t</span>.<span class="n">bcp47</span>;
+<span class="nb">say</span> <span class="nv">$t</span> ~~ <span class="n">LanguageTaggish</span>;
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">script</span>;
+
+<span class="k">my</span> <span class="n">Tag</span>() <span class="nv">$coerced</span> = <span class="s">'pt-BR'</span>;
+<span class="nb">say</span> <span class="nv">$coerced</span>.<span class="n">bcp47</span>, <span class="s">' '</span>, <span class="nv">$coerced</span>.<span class="n">language</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>es MX es-MX
+True
+&lt;script not modelled&gt;
+pt-BR pt</code></pre></div>
+<p><code>language</code>, <code>region</code>, <code>bcp47</code> and <code>COERCE</code> are required; leave any of them out and the class will not compile. <code>FALLBACK</code> is optional and is the interesting one: it lets a tag type answer questions about subtags it does not model, rather than failing, which is how a minimal implementation can still be handed to a library expecting a richer one.</p>
+<p>The <code>Tag()</code> coercion on the last two lines is what <code>COERCE</code> buys — any routine declaring a <code>Tag()</code> parameter now accepts a plain string.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>use Intl::LanguageTaggish;</code> does not give you a type called <code>Intl::LanguageTaggish</code>. It imports exactly one name, the short <code>LanguageTaggish</code>, and that name is a role rather than something you can instantiate:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/intl-languagetaggish/02-not-a-type.raku" title="This example as a file: 02-not-a-type.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Intl::LanguageTaggish</span>;
+
+<span class="nb">say</span> <span class="n">LanguageTaggish</span>.<span class="n">HOW</span>.^<span class="n">name</span>.<span class="n">subst</span>(<span class="sr">/^.*'::'/</span>, <span class="s">''</span>);
+<span class="nb">say</span> <span class="n">LanguageTaggish</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">LanguageTaggish</span>.<span class="nb">new</span>(<span class="s">'en-US'</span>)) // <span class="s">'new: refused'</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">LanguageTaggish</span>(<span class="s">'en-US'</span>)) // <span class="s">'coercion: refused'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ParametricRoleGroupHOW
+LanguageTaggish
+new: refused
+coercion: refused</code></pre></div>
+<p>So there is no tag in this distribution and nothing here parses <code>'es-MX'</code>. The <code>language</code> and <code>region</code> methods in the first example are three lines I wrote, not the module's. If you want a working language tag, the <code>Intl::LanguageTag</code> family is what composes this role; this distribution is for the author of such a family, or for a library that wants to accept any of them.</p>
+<p>One thing to watch when writing your own: the required <code>COERCE</code> must be declared <code>multi</code> with the role's exact signature. The natural-looking <code>method COERCE(Str $s)</code> compiles under Raku++ and is a hard compile error under Rakudo, so a class written and tested only on Raku++ will not build for Rakudo users.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>
