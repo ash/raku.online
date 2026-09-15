@@ -384,81 +384,6 @@ sub dev-series(Str $repo, Str $first-tag --> Array) {
 }
 
 # ---------------------------------------------------------------------------
-# The regression guard's own baselines, mined from tools/perf-baseline.raku
-# ---------------------------------------------------------------------------
-# A different question from the Benchmarks section above. That one asks how
-# Raku++ compares to OTHER engines on a kernel; this one asks whether Raku++ is
-# getting faster or slower THAN ITSELF, which is what tools/perf-guard.raku
-# gates each release on. The file is re-recorded at a release, so its git
-# history is already the series — no separate log to keep in step.
-#
-# Every recorded baseline so far was taken on the one machine the file names, so
-# the series is directly comparable end to end. If that ever stops being true the
-# `machine` string changes with it, and a point carrying a different one must not
-# be drawn on the same axis as its neighbours: absolute ms across machines is not
-# a measurement, it is two measurements. Points are therefore tagged with their
-# machine and the renderer breaks the line where it changes.
-
-sub guard-series(Str $repo --> Array) {
-    my @points;
-    for run-lines('git', '-C', $repo, 'log', '--reverse', '--format=%H %as',
-                  '--follow', '--', 'tools/perf-baseline.raku') -> $line {
-        my ($sha, $date) = $line.words;
-        next unless $date.defined;
-        my $body = show-file($repo, $sha, 'tools/perf-baseline.raku') or next;
-        my $machine = $body ~~ / "'machine'" \s* '=>' \s* "'" <( <-[']>+ )> "'" / ?? ~$/ !! '';
-        my %k;
-        # 'name' => { 'baseline' => N, … } — only the baseline is the gate's
-        # number; `best` is standing debt and is charted by nobody.
-        for $body.lines -> $l {
-            next unless $l ~~ / "'" (\w+) "'" \s* '=>' \s* '{' \s* "'baseline'" \s* '=>' \s* (<[0..9.]>+) /;
-            %k{~$0} = (~$1).Num;
-        }
-        next unless %k;
-        @points.push({ date => $date, commit => $sha.substr(0, 7),
-                       machine => $machine, kernels => %k });
-    }
-    # The WORKING TREE wins at HEAD, the same rule status-doc() follows. A
-    # kernel added today is in the file but not yet in any commit, so a
-    # history-only miner draws the chart that is missing exactly the newest
-    # kernel — the one whose baseline was just recorded and most wants watching.
-    my $wt = "$repo/tools/perf-baseline.raku".IO;
-    if $wt.e {
-        my $body = $wt.slurp;
-        my %k;
-        for $body.lines -> $l {
-            next unless $l ~~ / "'" (\w+) "'" \s* '=>' \s* '{' \s* "'baseline'" \s* '=>' \s* (<[0..9.]>+) /;
-            %k{~$0} = (~$1).Num;
-        }
-        # Only when it actually differs from the last committed recording —
-        # a clean tree must not add a duplicate point dated today.
-        if %k && (!@points || @points[*-1]<kernels> !eqv %k) {
-            my $machine = $body ~~ / "'machine'" \s* '=>' \s* "'" <( <-[']>+ )> "'" / ?? ~$/ !! '';
-            @points.push({ date => run-lines('git', '-C', $repo, 'log', '-1', '--format=%as', 'HEAD').head // '',
-                           commit => 'uncommitted', machine => $machine, kernels => %k });
-        }
-    }
-    # A release that recorded its baselines on the WRONG machine shows up as a
-    # step that the next commit undoes exactly — v3.6.0 did this on 2026-08-21
-    # and "perf gate: put the baselines back on the machine the file names"
-    # restored the previous numbers verbatim. Such a point is real history but it
-    # is not a performance reading, so it is flagged rather than drawn as one.
-    for 1 ..^ @points.end -> $i {
-        my %prev = @points[$i - 1]<kernels>;
-        my %cur  = @points[$i]<kernels>;
-        my %next = @points[$i + 1]<kernels>;
-        my @shared = %prev.keys.grep({ %cur{$_}:exists && %next{$_}:exists });
-        next unless @shared >= 3;
-        # every shared kernel: the next commit restores THIS one's predecessor
-        # exactly, and this one differed from it. `.map` then `.all` — mapping
-        # over a Junction instead flagged 15 of 17 points.
-        next unless @shared.map({ %next{$_} == %prev{$_} && %cur{$_} != %prev{$_} }).all.so;
-        @points[$i]<corrected> = True;
-    }
-    @points
-}
-
-# ---------------------------------------------------------------------------
 # Tier-2 battery standing out of the battery repo's commit subjects
 # ---------------------------------------------------------------------------
 
@@ -830,29 +755,13 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     }
     say "  conformance: {@conf.elems} snapshot points";
 
-    # The regression guard's own history: is Raku++ faster than Raku++ was?
-    my @guard;
-    for @(guard-series($rakupp-repo)) -> %p {
-        my @f;
-        @f.push('"date":' ~ json-esc(%p<date>));
-        @f.push('"commit":' ~ json-esc(%p<commit>));
-        @f.push('"machine":' ~ json-esc(%p<machine>)) if %p<machine>;
-        @f.push('"corrected":true')                   if %p<corrected>;
-        @f.push('"kernels":{' ~ %p<kernels>.keys.sort
-                                 .map({ json-esc($_) ~ ':' ~ %p<kernels>{$_} })
-                                 .join(',') ~ '}');
-        @guard.push('{' ~ @f.join(',') ~ '}');
-    }
-    say "  guard: {@guard.elems} perf-baseline recordings";
-
     my $today = run-lines('git', '-C', $rakupp-repo, 'log', '-1', '--format=%as', 'HEAD').head // '';
     my $json = '{"generated":' ~ json-esc($today) ~
                ',"dev":['      ~ @dev.join(',')     ~ ']' ~
                ',"releases":[' ~ @entries.join(',') ~ ']' ~
                ',"conformance":[' ~ @conf.join(',') ~ ']' ~
                ',"modules":['  ~ @mods.join(',')    ~ ']' ~
-               ',"sweep":['    ~ @sweepj.join(',')  ~ ']' ~
-               ',"guard":['    ~ @guard.join(',')   ~ ']}';
+               ',"sweep":['    ~ @sweepj.join(',')  ~ ']}';
     mkdir('src/data');
     spurt('src/data/dashboard.json', $json);
     say "wrote src/data/dashboard.json ({@entries.elems} releases)";
