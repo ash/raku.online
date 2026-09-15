@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lingua::Stem::Es — The Raku Ecosystem, Working</title>
+<meta name="description" content="The Snowball Spanish stemmer, ported — one string in, one stem out, and the merges it makes are not the ones you expect.">
+<link rel="canonical" href="https://raku.online/modules/lingua-stem-es/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lingua::Stem::Es — The Raku Ecosystem, Working">
+<meta property="og:description" content="The Snowball Spanish stemmer, ported — one string in, one stem out, and the merges it makes are not the ones you expect.">
+<meta property="og:url" content="https://raku.online/modules/lingua-stem-es/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Lingua::Stem::Es","description":"The Snowball Spanish stemmer, ported — one string in, one stem out, and the merges it makes are not the ones you expect.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/lingua-stem-es/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/chsanch/perl6-Lingua-Stem-Es.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · linguistics</div><h1>Lingua::Stem::Es</h1><span class="status st-full">Works</span></div><p class="summary">The Snowball Spanish stemmer, ported — one string in, one stem out, and the merges it makes are not the ones you expect.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">cpan:CHSANCH</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/cpan:CHSANCH/Lingua::Stem::Es">raku.land</a> · <a href="git://github.com/chsanch/perl6-Lingua-Stem-Es.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Lingua::Stem::Es</code></pre></div><p class="fact-sub"><code>zef install Lingua::Stem::Es</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A search index that stores <code>hablar</code>, <code>hablo</code> and <code>hablando</code> as three separate tokens will not match a query for any of the others. A stemmer collapses inflected forms onto a common string so they do match.</p>
+<p>This is a port of the Snowball Spanish stemmer: lower-case, strip punctuation, compute the RV/R1/R2 regions, then run attached-pronoun removal, one derivational-suffix step, one verbal-suffix step, a final-vowel step and accent stripping.</p>
+<h2 id="stemming">Stemming <a class="anchor" href="#stemming" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lingua-stem-es/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lingua::Stem::Es</span>;
+
+<span class="k">for</span> &lt;<span class="n">gato</span> <span class="n">gata</span> <span class="n">gatos</span> <span class="n">gatas</span> <span class="n">casa</span> <span class="n">libro</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">hablar</span> <span class="n">hablo</span> <span class="n">hablamos</span> <span class="n">hablando</span> <span class="n">hablado</span> <span class="n">hablar</span>í<span class="n">a</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">nacionalismo</span> <span class="n">nacional</span> <span class="n">nacionalidad</span> <span class="n">nacionalizar</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'case and punctuation are handled:'</span>;
+<span class="k">for</span> <span class="s">'Casa'</span>, <span class="s">'CASA'</span>, <span class="s">'casa,'</span>, <span class="s">'¡Hola!'</span> -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s -&gt; %s'</span>, <span class="nv">$w</span>.<span class="nb">raku</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  gato         -&gt; gat
+  gata         -&gt; gat
+  gatos        -&gt; gat
+  gatas        -&gt; gat
+  casa         -&gt; cas
+  libro        -&gt; libr
+
+  hablar       -&gt; habl
+  hablo        -&gt; habl
+  hablamos     -&gt; habl
+  hablando     -&gt; habl
+  hablado      -&gt; habl
+  hablaría     -&gt; habl
+
+  nacionalismo   -&gt; nacional
+  nacional       -&gt; nacional
+  nacionalidad   -&gt; nacional
+  nacionalizar   -&gt; nacionaliz
+
+case and punctuation are handled:
+  "Casa"     -&gt; cas
+  "CASA"     -&gt; cas
+  "casa,"    -&gt; cas
+  "¡Hola!"   -&gt; hol</code></pre></div>
+<p>Accents are part of the algorithm's final step, which is why <code>rápidamente</code> and <code>felicidad</code> both come out unaccented.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The stemmer merges words that share nothing but a spelling accident, and the merges hit very common vocabulary.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lingua-stem-es/02-merges.raku" title="This example as a file: 02-merges.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lingua::Stem::Es</span>;
+
+<span class="k">my</span> <span class="nv">%groups</span>;
+<span class="k">for</span> &lt;<span class="n">libra</span> <span class="n">librar</span> <span class="n">libre</span> <span class="n">libro</span> <span class="n">libros</span> <span class="n">tema</span> <span class="n">temas</span> <span class="n">temer</span> <span class="n">temo</span> <span class="n">tem</span>í<span class="n">a</span>
+     <span class="n">col</span> <span class="n">cola</span> <span class="n">colar</span> <span class="n">colas</span> <span class="n">sal</span> <span class="n">sala</span> <span class="n">salir</span> <span class="n">pera</span> <span class="n">peras</span> <span class="n">pero</span>
+     <span class="n">cara</span> <span class="n">caro</span> <span class="n">caras</span> <span class="n">casa</span> <span class="n">casar</span> <span class="n">casas</span> <span class="n">caso</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nv">%groups</span>{<span class="n">stem</span>(<span class="nv">$w</span>)}.<span class="nb">push</span>(<span class="nv">$w</span>);
+}
+<span class="k">for</span> <span class="nv">%groups</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$s</span> {
+    <span class="k">next</span> <span class="k">unless</span> <span class="nv">%groups</span>{<span class="nv">$s</span>}.<span class="nb">elems</span> &gt; <span class="mi">1</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-6s &lt;- %s'</span>, <span class="nv">$s</span>, <span class="nv">%groups</span>{<span class="nv">$s</span>}.<span class="nb">join</span>(<span class="s">' '</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'libro (book), libra (pound), libre (free) and librar (to free) all'</span>;
+<span class="nb">say</span> <span class="s">'become libr. That is inherent to a suffix stripper with no lexicon —'</span>;
+<span class="nb">say</span> <span class="s">'but a programmer reaching for &quot;stemming so that searches match&quot; will'</span>;
+<span class="nb">say</span> <span class="s">'not expect book and pound to be the same token.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  car    &lt;- cara caro caras
+  cas    &lt;- casa casar casas caso
+  col    &lt;- col cola colar colas
+  libr   &lt;- libra librar libre libro libros
+  per    &lt;- pera peras pero
+  sal    &lt;- sal sala salir
+  tem    &lt;- tema temas temer temo temía
+
+libro (book), libra (pound), libre (free) and librar (to free) all
+become libr. That is inherent to a suffix stripper with no lexicon —
+but a programmer reaching for "stemming so that searches match" will
+not expect book and pound to be the same token.</code></pre></div>
+<p>The opposite failure is just as sharp: the irregular verbs do not merge at all.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lingua-stem-es/03-irregular.raku" title="This example as a file: 03-irregular.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lingua::Stem::Es</span>;
+
+<span class="nb">say</span> <span class="s">'ser  : '</span>, <span class="s">&lt;ser es son fui era&gt;</span>.<span class="nb">map</span>({ <span class="n">stem</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'tener: '</span>, <span class="s">&lt;tener tengo tiene tuvo&gt;</span>.<span class="nb">map</span>({ <span class="n">stem</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'ir   : '</span>, <span class="s">&lt;ir voy fue&gt;</span>.<span class="nb">map</span>({ <span class="n">stem</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'five distinct tokens for the present and past of ser.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ser  : ser es son fui era
+tener: ten teng tien tuv
+ir   : ir voy fue
+
+five distinct tokens for the present and past of ser.</code></pre></div>
+<h2 id="two-shapes-that-will-bite-you">Two shapes that will bite you <a class="anchor" href="#two-shapes-that-will-bite-you" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lingua-stem-es/04-pitfalls.raku" title="This example as a file: 04-pitfalls.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lingua::Stem::Es</span>;
+
+<span class="nb">say</span> <span class="s">'it is NOT idempotent — never feed a stem back in:'</span>;
+<span class="k">my</span> <span class="nv">$once</span> = <span class="n">stem</span>(<span class="s">'rápidamente'</span>);
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  rápidamente -&gt; %s -&gt; %s'</span>, <span class="nv">$once</span>, <span class="n">stem</span>(<span class="nv">$once</span>));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it is NOT a tokenizer — the whole string is treated as one word:'</span>;
+<span class="nb">say</span> <span class="s">'  stem(&quot;la casa roja&quot;) = '</span>, <span class="n">stem</span>(<span class="s">'la casa roja'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'punctuation is DELETED, not split on:'</span>;
+<span class="k">for</span> <span class="s">'e-mail'</span>, <span class="s">'e-mails'</span>, <span class="s">'anti-oso'</span> -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'clitics come off only when the verb ending also falls inside RV:'</span>;
+<span class="k">for</span> &lt;<span class="n">hablarle</span> <span class="n">d</span>á<span class="n">ndoselo</span> <span class="n">c</span>ó<span class="n">mpramelo</span> <span class="n">v</span>á<span class="n">monos</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">stem</span>(<span class="nv">$w</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>it is NOT idempotent — never feed a stem back in:
+  rápidamente -&gt; rapid -&gt; rap
+
+it is NOT a tokenizer — the whole string is treated as one word:
+  stem("la casa roja") = "la casa roj"
+
+punctuation is DELETED, not split on:
+  e-mail     -&gt; email
+  e-mails    -&gt; emails
+  anti-oso   -&gt; antios
+
+clitics come off only when the verb ending also falls inside RV:
+  hablarle     -&gt; habl
+  dándoselo    -&gt; dandosel
+  cómpramelo   -&gt; compramel
+  vámonos      -&gt; vamon</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing. Every stem above is byte-identical under both engines, including the accented forms and the clitic cases — this is a pure string function with no container, no hash iteration and no floating-point arithmetic in it, which is exactly the shape that ports cleanly.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lingua-stem-es/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lingua::Stem::Es</span>;
+
+<span class="c1"># what a search index actually wants: tokenize first, then stem each token</span>
+<span class="k">sub</span> <span class="n">tokens</span>(<span class="nb">Str</span> <span class="nv">$text</span>) {
+    <span class="nv">$text</span>.<span class="nb">lc</span>.<span class="nb">comb</span>(<span class="sr">/ &lt;[\w] + [áéíóúüñ]&gt;+ /</span>).<span class="nb">map</span>({ <span class="n">stem</span>(<span class="nv">$_</span>) })
+}
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="s">'Los libros de la biblioteca están hablando de nacionalismo'</span>;
+<span class="nb">say</span> <span class="s">'text   : '</span>, <span class="nv">$text</span>;
+<span class="nb">say</span> <span class="s">'tokens : '</span>, <span class="n">tokens</span>(<span class="nv">$text</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note &quot;los&quot; -&gt; '</span>, <span class="n">stem</span>(<span class="s">'los'</span>), <span class="s">' and &quot;la&quot; -&gt; '</span>, <span class="n">stem</span>(<span class="s">'la'</span>),
+    <span class="s">' — stop words are your problem, not the stemmer`s.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>text   : Los libros de la biblioteca están hablando de nacionalismo
+tokens : los libr de la bibliotec estan habl de nacional
+
+note "los" -&gt; los and "la" -&gt; la — stop words are your problem, not the stemmer`s.</code></pre></div>
+<p>One measured property worth relying on: R2 makes similar-looking words behave differently, so <code>revolución</code> stems to <code>revolu</code> while <code>nación</code> stems to <code>nacion</code> — the shorter word has an empty R2 and the derivational step cannot fire. That is the algorithm working as specified, not a bug, and both engines agree on it.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

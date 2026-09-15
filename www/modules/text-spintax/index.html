@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text::Spintax — The Raku Ecosystem, Working</title>
+<meta name="description" content="Parse `{a|b|c}` alternation once, render as many random variants as you like — and any stray brace produces an undefined node, not an error.">
+<link rel="canonical" href="https://raku.online/modules/text-spintax/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Text::Spintax — The Raku Ecosystem, Working">
+<meta property="og:description" content="Parse `{a|b|c}` alternation once, render as many random variants as you like — and any stray brace produces an undefined node, not an error.">
+<meta property="og:url" content="https://raku.online/modules/text-spintax/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Text::Spintax","description":"Parse `{a|b|c}` alternation once, render as many random variants as you like — and any stray brace produces an undefined node, not an error.","programmingLanguage":"Raku","version":"0.1","url":"https://raku.online/modules/text-spintax/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Text-Spintax.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · text generation</div><h1>Text::Spintax</h1><span class="status st-div">Divergent</span></div><p class="summary">Parse <code>{a|b|c}</code> alternation once, render as many random variants as you like — and any stray brace produces an undefined node, not an error.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Text::Spintax">raku.land</a> · <a href="https://github.com/raku-community-modules/Text-Spintax.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Text::Spintax</code></pre></div><p class="fact-sub"><code>zef install Text::Spintax</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Spintax" is the template notation where <code>{this|that|the other}</code> means "pick one". It comes from content generation and survives wherever you want many plausible variants of one sentence — test fixtures, placeholder copy, a bot that should not repeat itself.</p>
+<p>This distribution parses such a template <strong>once</strong> into a tree, and then renders it as often as you like, choosing afresh each time.</p>
+<h2 id="parsing-once-rendering-many">Parsing once, rendering many <a class="anchor" href="#parsing-once-rendering-many" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-spintax/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Spintax</span>;
+
+<span class="k">my</span> <span class="nv">$tree</span> = <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="s">'This {is|was|will be} some {varied|random} text'</span>);
+<span class="nb">say</span> <span class="s">'the parse result : '</span>, <span class="nv">$tree</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@seen</span> = (^<span class="mi">200</span>).<span class="nb">map</span>({ <span class="nv">$tree</span>.<span class="n">render</span> }).<span class="nb">unique</span>.<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="s">'distinct renders over 200 calls : '</span>, <span class="nv">@seen</span>.<span class="nb">elems</span>;
+<span class="k">for</span> <span class="nv">@seen</span> -&gt; <span class="nv">$s</span> { <span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$s</span> }
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'that is exactly the cross-product, 3 x 2 — so .render re-randomises'</span>;
+<span class="nb">say</span> <span class="s">'per call and one parse feeds unlimited output.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the parse result : Text::Spintax::SequenceNode
+
+distinct renders over 200 calls : 6
+  This is some random text
+  This is some varied text
+  This was some random text
+  This was some varied text
+  This will be some random text
+  This will be some varied text
+
+that is exactly the cross-product, 3 x 2 — so .render re-randomises
+per call and one parse feeds unlimited output.</code></pre></div>
+<p>Groups nest:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-spintax/02-nesting.raku" title="This example as a file: 02-nesting.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Spintax</span>;
+
+<span class="k">my</span> <span class="nv">$tree</span> = <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="s">'{a{1|2}|b}'</span>);
+<span class="nb">say</span> <span class="s">'distinct : '</span>, (^<span class="mi">200</span>).<span class="nb">map</span>({ <span class="nv">$tree</span>.<span class="n">render</span> }).<span class="nb">unique</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'an empty alternative is legal, and one of its outcomes is &quot;&quot;:'</span>;
+<span class="k">my</span> <span class="nv">$empty</span> = <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="s">'{a||b}'</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, (^<span class="mi">200</span>).<span class="nb">map</span>({ <span class="nv">$empty</span>.<span class="n">render</span>.<span class="nb">raku</span> }).<span class="nb">unique</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and so is an empty group:'</span>;
+<span class="nb">say</span> <span class="s">'  {} renders as '</span>, <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="s">'{}'</span>).<span class="n">render</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>distinct : a1 a2 b
+
+an empty alternative is legal, and one of its outcomes is "":
+  "" "a" "b"
+
+and so is an empty group:
+  {} renders as ""</code></pre></div>
+<h2 id="the-node-classes">The node classes <a class="anchor" href="#the-node-classes" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-spintax/03-nodes.raku" title="This example as a file: 03-nodes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Spintax</span>;
+
+<span class="nb">say</span> <span class="s">'the tree is built from four classes, all with a no-argument .render:'</span>;
+<span class="nb">say</span> <span class="s">'  SequenceNode  has @.children'</span>;
+<span class="nb">say</span> <span class="s">'  TextNode      has $.text'</span>;
+<span class="nb">say</span> <span class="s">'  SpinNode      has @.children'</span>;
+<span class="nb">say</span> <span class="s">'  NullNode      declared, never constructed by the parser'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$tree</span> = <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="s">'plain text'</span>);
+<span class="nb">say</span> <span class="s">'a template with no groups still comes back as a SequenceNode:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$tree</span>.^<span class="n">name</span>, <span class="s">' -&gt; '</span>, <span class="nv">$tree</span>.<span class="n">render</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the grammar and actions are reachable by name too, as'</span>;
+<span class="nb">say</span> <span class="s">'Text::Spintax::Spintax and Text::Spintax::Spinaction.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the tree is built from four classes, all with a no-argument .render:
+  SequenceNode  has @.children
+  TextNode      has $.text
+  SpinNode      has @.children
+  NullNode      declared, never constructed by the parser
+
+a template with no groups still comes back as a SequenceNode:
+  Text::Spintax::SequenceNode -&gt; "plain text"
+
+the grammar and actions are reachable by name too, as
+Text::Spintax::Spintax and Text::Spintax::Spinaction.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>There is no escape for <code>{</code>, <code>}</code> or <code>|</code>. A string containing any of them outside a well-formed group does not raise a parse error — it produces an undefined node.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-spintax/04-unbalanced.raku" title="This example as a file: 04-unbalanced.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Spintax</span>;
+
+<span class="k">for</span> <span class="s">'a}b'</span>, <span class="s">'{a|b'</span>, <span class="s">'the {b} case'</span>, <span class="s">'C{ontent'</span> -&gt; <span class="nv">$src</span> {
+    <span class="k">my</span> <span class="nv">$tree</span> = <span class="k">try</span> <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="nv">$src</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-16s -&gt; %s'</span>, <span class="nv">$src</span>.<span class="nb">raku</span>,
+                (<span class="nv">$tree</span>.<span class="nb">defined</span> ?? <span class="s">'a '</span> ~ <span class="nv">$tree</span>.^<span class="n">name</span> !! <span class="s">'no usable tree'</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the grammar`s `token text` is &lt;-[\\{\\}|]&gt;+, so a stray brace or pipe'</span>;
+<span class="nb">say</span> <span class="s">'cannot be matched as text; the grammar fails, Grammar.parse returns'</span>;
+<span class="nb">say</span> <span class="s">'an undefined value, and the module calls .ast on it without checking.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'check before you render:'</span>;
+<span class="k">sub</span> <span class="n">spin</span>(<span class="nb">Str</span> <span class="nv">$src</span>) {
+    <span class="k">my</span> <span class="nv">$tree</span> = <span class="k">try</span> <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="nv">$src</span>);
+    <span class="nv">$tree</span>.<span class="nb">defined</span> <span class="k">or</span> <span class="nb">die</span> <span class="s">&quot;unbalanced spintax: $src&quot;</span>;
+    <span class="nv">$tree</span>
+}
+<span class="k">for</span> <span class="s">'a {b|c} d'</span>, <span class="s">'a}b'</span> -&gt; <span class="nv">$src</span> {
+    <span class="k">my</span> <span class="nv">$t</span> = <span class="k">try</span> <span class="n">spin</span>(<span class="nv">$src</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$src</span>.<span class="nb">raku</span>,
+                <span class="nv">$!</span> ?? <span class="s">'rejected'</span> !! <span class="s">'renders as '</span> ~ (<span class="nv">$t</span>.<span class="n">render</span>.<span class="nb">chars</span> ~ <span class="s">' characters'</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "a}b"            -&gt; no usable tree
+  "\{a|b"          -&gt; no usable tree
+  "the \{b} case"  -&gt; a Text::Spintax::SequenceNode
+  "C\{ontent"      -&gt; no usable tree
+
+the grammar`s `token text` is &lt;-[\{\}|]&gt;+, so a stray brace or pipe
+cannot be matched as text; the grammar fails, Grammar.parse returns
+an undefined value, and the module calls .ast on it without checking.
+
+check before you render:
+  "a \{b|c} d" -&gt; renders as 5 characters
+  "a}b"        -&gt; rejected</code></pre></div>
+<p><code>a}b</code> is an ordinary English-ish string — a JSON fragment, a shell brace, a sentence that mentions <code>{b}</code>. This is the failure you will actually hit.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Exactly at that undefined node. Rakudo raises <code>No such method 'ast' for invocant of type 'Any'</code> from inside <code>parse</code>, which is at least a signal; Raku++ returns <code>Any</code> silently and lets the program carry on until something later calls <code>.render</code> on it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-spintax/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Spintax</span>;
+
+<span class="c1"># the guard above makes the two engines agree</span>
+<span class="k">sub</span> <span class="n">spin</span>(<span class="nb">Str</span> <span class="nv">$src</span>) {
+    <span class="k">my</span> <span class="nv">$tree</span> = <span class="k">try</span> <span class="n">Text::Spintax</span>.<span class="n">parse</span>(<span class="nv">$src</span>);
+    <span class="k">return</span> <span class="nb">Nil</span> <span class="k">unless</span> <span class="nv">$tree</span>.<span class="nb">defined</span>;
+    <span class="nv">$tree</span>
+}
+<span class="k">for</span> <span class="s">'a {b|c} d'</span>, <span class="s">'a}b'</span>, <span class="s">''</span> -&gt; <span class="nv">$src</span> {
+    <span class="k">my</span> <span class="nv">$t</span> = <span class="n">spin</span>(<span class="nv">$src</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$src</span>.<span class="nb">raku</span>, <span class="nv">$t</span>.<span class="nb">defined</span> ?? <span class="s">'parsed'</span> !! <span class="s">'rejected'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two dead ends inside the grammar, for the curious: `rule chunk` is'</span>;
+<span class="nb">say</span> <span class="s">'never reached from TOP, and it references &lt;opt&gt;, which is not'</span>;
+<span class="nb">say</span> <span class="s">'declared anywhere. Rakudo would raise a method-not-found if anything'</span>;
+<span class="nb">say</span> <span class="s">'reached it; Raku++ fails the match silently, which is why nobody'</span>;
+<span class="nb">say</span> <span class="s">'noticed. Grammar introspection differs too — $g.^methods(:local)'</span>;
+<span class="nb">say</span> <span class="s">'lists all eleven rules on Rakudo and nothing on Raku++.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "a \{b|c} d" -&gt; parsed
+  "a}b"        -&gt; rejected
+  ""           -&gt; parsed
+
+two dead ends inside the grammar, for the curious: `rule chunk` is
+never reached from TOP, and it references &lt;opt&gt;, which is not
+declared anywhere. Rakudo would raise a method-not-found if anything
+reached it; Raku++ fails the match silently, which is why nobody
+noticed. Grammar introspection differs too — $g.^methods(:local)
+lists all eleven rules on Rakudo and nothing on Raku++.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

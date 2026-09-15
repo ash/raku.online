@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser::Open — The Raku Ecosystem, Working</title>
+<meta name="description" content="Picks a command that can open a URL, per kernel — and silently ignores `$BROWSER` when you set it to an absolute path.">
+<link rel="canonical" href="https://raku.online/modules/browser-open/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Browser::Open — The Raku Ecosystem, Working">
+<meta property="og:description" content="Picks a command that can open a URL, per kernel — and silently ignores `$BROWSER` when you set it to an absolute path.">
+<meta property="og:url" content="https://raku.online/modules/browser-open/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Browser::Open","description":"Picks a command that can open a URL, per kernel — and silently ignores `$BROWSER` when you set it to an absolute path.","programmingLanguage":"Raku","version":"1.0.1","url":"https://raku.online/modules/browser-open/","license":"https://spdx.org/licenses/MIT","codeRepository":"git://github.com/azawawi/raku-browser-open.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>Browser::Open</h1><span class="status st-full">Works</span></div><p class="summary">Picks a command that can open a URL, per kernel — and silently ignores <code>$BROWSER</code> when you set it to an absolute path.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.1</code> <span class="fact-sub">github:azawawi</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>File::Which</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:azawawi/Browser::Open">raku.land</a> · <a href="git://github.com/azawawi/raku-browser-open.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Browser::Open</code></pre></div><p class="fact-sub"><code>zef install Browser::Open</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Open this URL in the user's browser" has a different answer on every system: <code>open</code> on macOS, <code>xdg-open</code> or one of a dozen fallbacks on Linux, a registry lookup on Windows. This distribution walks a fixed table of candidates for the current kernel and hands you the first one that exists.</p>
+<h2 id="asking-what-it-would-run">Asking what it would run <a class="anchor" href="#asking-what-it-would-run" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/browser-open/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Browser::Open</span>;
+
+<span class="nb">say</span> <span class="s">'kernel               : '</span>, <span class="nv">$*KERNEL</span>.<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'open-browser-cmd     : '</span>, <span class="n">open-browser-cmd</span>();
+<span class="nb">say</span> <span class="s">'open-browser-cmd-all : '</span>, <span class="n">open-browser-cmd-all</span>();
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$cmd</span> = <span class="n">open-browser-cmd</span>();
+<span class="nb">say</span> <span class="s">'it is executable     : '</span>, <span class="nv">$cmd</span>.<span class="nb">IO</span>.<span class="n">x</span>;
+<span class="nb">say</span> <span class="s">'return type          : '</span>, <span class="nv">$cmd</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'open-browser($url) spawns that command with the URL as its single'</span>;
+<span class="nb">say</span> <span class="s">'argv element — Proc::Async.new($cmd, $url), no shell — so a URL'</span>;
+<span class="nb">say</span> <span class="s">'containing shell metacharacters is not an injection vector.'</span>;
+<span class="nb">say</span> <span class="s">'  it would run : '</span>, (<span class="nv">$cmd</span>, <span class="s">'https://example.invalid/x'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>kernel               : darwin
+open-browser-cmd     : /usr/bin/open
+open-browser-cmd-all : /usr/bin/open
+
+it is executable     : True
+return type          : Str
+
+open-browser($url) spawns that command with the URL as its single
+argv element — Proc::Async.new($cmd, $url), no shell — so a URL
+containing shell metacharacters is not an injection vector.
+  it would run : ("/usr/bin/open", "https://example.invalid/x")</code></pre></div>
+<p>The signature is <code>open-browser(Str $url, Bool $all = False)</code>, and on macOS the <code>$all</code> flag is a no-op: both <code>-cmd</code> subs answer the same string.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Setting <code>BROWSER</code> to an absolute path — the one way everybody sets it — is silently ignored. You get the OS default instead.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/browser-open/02-browser-env.raku" title="This example as a file: 02-browser-env.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Browser::Open</span>;
+<span class="k">use</span> <span class="n">File::Which</span>;
+
+<span class="nb">say</span> <span class="s">'the candidate table stores the $BROWSER value with no &quot;this is'</span>;
+<span class="nb">say</span> <span class="s">'already a path&quot; flag, so it goes through which():'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  which(&quot;cat&quot;)      = '</span>, <span class="n">which</span>(<span class="s">'cat'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  which(&quot;/bin/cat&quot;) = '</span>, <span class="n">which</span>(<span class="s">'/bin/cat'</span>).<span class="nb">raku</span>, <span class="s">'   &lt;- a real, executable file'</span>;
+<span class="nb">say</span> <span class="s">'  &quot;/bin/cat&quot;.IO.x   = '</span>, <span class="s">'/bin/cat'</span>.<span class="nb">IO</span>.<span class="n">x</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'File::Which only scans PATH directories, so an absolute path returns'</span>;
+<span class="nb">say</span> <span class="s">'Nil and the candidate is skipped. No error, no warning.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  BROWSER=/bin/cat -&gt; falls back to the OS default'</span>;
+<span class="nb">say</span> <span class="s">'  BROWSER=cat      -&gt; resolves to '</span>, <span class="n">which</span>(<span class="s">'cat'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'set BROWSER to a NAME on your PATH, not to a path.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the candidate table stores the $BROWSER value with no "this is
+already a path" flag, so it goes through which():
+
+  which("cat")      = "/bin/cat"
+  which("/bin/cat") = Any   &lt;- a real, executable file
+  "/bin/cat".IO.x   = True
+
+File::Which only scans PATH directories, so an absolute path returns
+Nil and the candidate is skipped. No error, no warning.
+
+  BROWSER=/bin/cat -&gt; falls back to the OS default
+  BROWSER=cat      -&gt; resolves to "/bin/cat"
+
+set BROWSER to a NAME on your PATH, not to a path.</code></pre></div>
+<p>There is a second half to the same trap: <code>$BROWSER</code> is read <strong>once</strong>, at module load, into a module-scope table. Assigning <code>%*ENV&lt;BROWSER&gt;</code> after <code>use Browser::Open</code> has no effect at all — only a <code>require</code> after the assignment sees it.</p>
+<h2 id="failure-is-silent">Failure is silent <a class="anchor" href="#failure-is-silent" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/browser-open/03-silent.raku" title="This example as a file: 03-silent.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Browser::Open</span>;
+
+<span class="nb">say</span> <span class="s">'open-browser returns nothing useful:'</span>;
+<span class="nb">say</span> <span class="s">'  the sub does Proc::Async.new($cmd, $url).start and DISCARDS the'</span>;
+<span class="nb">say</span> <span class="s">'  Promise, so it returns immediately and a script that exits right'</span>;
+<span class="nb">say</span> <span class="s">'  after calling it gives the child no time to start.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and if no candidate resolves at all, it returns without spawning'</span>;
+<span class="nb">say</span> <span class="s">'anything and without any indication. Check first:'</span>;
+<span class="k">my</span> <span class="nv">$cmd</span> = <span class="n">open-browser-cmd</span>();
+<span class="k">if</span> <span class="nv">$cmd</span> {
+    <span class="nb">say</span> <span class="s">'  a browser command is available : '</span>, <span class="nv">$cmd</span>;
+} <span class="k">else</span> {
+    <span class="nb">say</span> <span class="s">'  no browser command found — tell the user yourself'</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a wrapper worth having:'</span>;
+<span class="nb">say</span> <span class="s">'  sub open-url($url) {'</span>;
+<span class="nb">say</span> <span class="s">'      my $cmd = open-browser-cmd() or die &quot;no browser command found&quot;;'</span>;
+<span class="nb">say</span> <span class="s">'      await Proc::Async.new($cmd, $url).start;'</span>;
+<span class="nb">say</span> <span class="s">'  }'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>open-browser returns nothing useful:
+  the sub does Proc::Async.new($cmd, $url).start and DISCARDS the
+  Promise, so it returns immediately and a script that exits right
+  after calling it gives the child no time to start.
+
+and if no candidate resolves at all, it returns without spawning
+anything and without any indication. Check first:
+  a browser command is available : /usr/bin/open
+
+a wrapper worth having:
+  sub open-url($url) {
+      my $cmd = open-browser-cmd() or die "no browser command found";
+      await Proc::Async.new($cmd, $url).start;
+  }</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing. The candidate table, the <code>which</code> resolution, the <code>$BROWSER</code> handling and the load-time capture all behave identically — this is a table walk and a <code>File::Which</code> call, with no container-type or laziness question in it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/browser-open/04-table.raku" title="This example as a file: 04-table.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Browser::Open</span>;
+
+<span class="nb">say</span> <span class="s">'what the table holds for this kernel, in order, is an implementation'</span>;
+<span class="nb">say</span> <span class="s">'detail — but which one won is not:'</span>;
+<span class="nb">say</span> <span class="s">'  chosen : '</span>, <span class="n">open-browser-cmd</span>();
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two dead branches worth knowing about, since they explain the shape'</span>;
+<span class="nb">say</span> <span class="s">'of the code: two entries carry an unused fourth field $no_search, and'</span>;
+<span class="nb">say</span> <span class="s">'no row ever sets it, so `next if $no_search &amp;&amp; …` and'</span>;
+<span class="nb">say</span> <span class="s">'`return $cmd if $no_search` are both unreachable.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'on Windows the distribution declares a Win32::Registry dependency,'</span>;
+<span class="nb">say</span> <span class="s">'which is not in the ecosystem index — `rakupp test` reports it as'</span>;
+<span class="nb">say</span> <span class="s">'skipped by distro name, which is correct off Windows.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>what the table holds for this kernel, in order, is an implementation
+detail — but which one won is not:
+  chosen : /usr/bin/open
+
+two dead branches worth knowing about, since they explain the shape
+of the code: two entries carry an unused fourth field $no_search, and
+no row ever sets it, so `next if $no_search &amp;&amp; …` and
+`return $cmd if $no_search` are both unreachable.
+
+on Windows the distribution declares a Win32::Registry dependency,
+which is not in the ecosystem index — `rakupp test` reports it as
+skipped by distro name, which is correct off Windows.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

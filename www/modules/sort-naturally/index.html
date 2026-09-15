@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sort::Naturally — The Raku Ecosystem, Working</title>
+<meta name="description" content="Key transforms that put `file2` before `file10` — ranking digit runs by length first, which puts `0100` after `999`.">
+<link rel="canonical" href="https://raku.online/modules/sort-naturally/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sort::Naturally — The Raku Ecosystem, Working">
+<meta property="og:description" content="Key transforms that put `file2` before `file10` — ranking digit runs by length first, which puts `0100` after `999`.">
+<meta property="og:url" content="https://raku.online/modules/sort-naturally/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Sort::Naturally","description":"Key transforms that put `file2` before `file10` — ranking digit runs by length first, which puts `0100` after `999`.","programmingLanguage":"Raku","version":"0.2.3","url":"https://raku.online/modules/sort-naturally/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/thundergnat/Sort-Naturally.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · sorting</div><h1>Sort::Naturally</h1><span class="status st-full">Works</span></div><p class="summary">Key transforms that put <code>file2</code> before <code>file10</code> — ranking digit runs by length first, which puts <code>0100</code> after <code>999</code>.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.3</code> <span class="fact-sub">zef:thundergnat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:thundergnat/Sort::Naturally">raku.land</a> · <a href="git://github.com/thundergnat/Sort-Naturally.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Sort::Naturally</code></pre></div><p class="fact-sub"><code>zef install Sort::Naturally</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>sort</code> on filenames gives you <code>file1, file10, file2</code>, which is right for strings and wrong for humans. Natural sorting reads the embedded digits as numbers so <code>file2</code> comes first.</p>
+<p>This distribution supplies two <strong>key transforms</strong> — not comparators. Each takes one string and returns a different string, engineered so that ordinary <code>cmp</code> on the transformed keys does the right thing.</p>
+<h2 id="sorting-naturally">Sorting naturally <a class="anchor" href="#sorting-naturally" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sort-naturally/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sort::Naturally</span>;
+
+<span class="k">my</span> <span class="nv">@files</span> = <span class="s">&lt;file10.txt file2.txt file1.txt File3.TXT&gt;</span>;
+<span class="nb">say</span> <span class="s">'plain .sort : '</span>, <span class="nv">@files</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'naturally   : '</span>, <span class="nv">@files</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two things changed: numeric order for the digits, and case folding —'</span>;
+<span class="nb">say</span> <span class="s">'plain .sort puts File3.TXT first because F is 70 and f is 102.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@versions</span> = <span class="s">&lt;v1.2.10 v1.2.9 v1.10.0 v1.9.0&gt;</span>;
+<span class="nb">say</span> <span class="s">'versions, plain : '</span>, <span class="nv">@versions</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'versions, nat   : '</span>, <span class="nv">@versions</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>plain .sort : File3.TXT file1.txt file10.txt file2.txt
+naturally   : file1.txt file2.txt File3.TXT file10.txt
+
+two things changed: numeric order for the digits, and case folding —
+plain .sort puts File3.TXT first because F is 70 and f is 102.
+
+versions, plain : v1.10.0 v1.2.10 v1.2.9 v1.9.0
+versions, nat   : v1.2.9 v1.2.10 v1.9.0 v1.10.0</code></pre></div>
+<p>They are key transforms, so you use them with <code>.sort({ .&amp;naturally })</code>, not as a comparator. What they return is a string built for <code>cmp</code> and nothing else:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sort-naturally/02-keys.raku" title="This example as a file: 02-keys.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sort::Naturally</span>;
+
+<span class="k">for</span> <span class="s">'7'</span>, <span class="s">'007'</span>, <span class="s">'a10'</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  naturally(%-6s) = %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="n">naturally</span>(<span class="nv">$s</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'those keys contain NUL and low control characters by construction.'</span>;
+<span class="nb">say</span> <span class="s">'Never persist, log or round-trip them through anything line-based —'</span>;
+<span class="nb">say</span> <span class="s">'they are for sort and nothing else.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  naturally("7"   ) = "0\x[1]7\07"
+  naturally("007" ) = "0\x[3]007\0007"
+  naturally("a10" ) = "a0\x[2]10\0a10"
+
+those keys contain NUL and low control characters by construction.
+Never persist, log or round-trip them through anything line-based —
+they are for sort and nothing else.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>This is not numeric sorting. Digit runs are ranked by their <strong>character count</strong> first, so zero-padded numbers come out in the wrong order, with no warning.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sort-naturally/03-padding.raku" title="This example as a file: 03-padding.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sort::Naturally</span>;
+
+<span class="k">my</span> <span class="nv">@nums</span> = <span class="s">&lt;007 7 08 8 0100 999&gt;</span>;
+<span class="nb">say</span> <span class="s">'plain .sort : '</span>, <span class="nv">@nums</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'naturally   : '</span>, <span class="nv">@nums</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the key encodes a run as &quot;0&quot; ~ chr(length) ~ digits, and chr(4) is'</span>;
+<span class="nb">say</span> <span class="s">'greater than chr(3) — so a 4-character run always outranks a'</span>;
+<span class="nb">say</span> <span class="s">'3-character one. 0100 is one hundred and it sorts AFTER 999.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'zero-padded IDs, %03d filenames and embedded ISO dates are exactly'</span>;
+<span class="nb">say</span> <span class="s">'the data people reach for a natural sort with.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'decimals are read as integers too:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="s">&lt;1.5 1.10 1.9 1.25&gt;</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'and the minus sign is not part of the number:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="s">&lt;-5 -10 3 -3&gt;</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>plain .sort : 007 7 08 8 0100 999
+naturally   : 7 8 08 007 999 0100
+
+the key encodes a run as "0" ~ chr(length) ~ digits, and chr(4) is
+greater than chr(3) — so a 4-character run always outranks a
+3-character one. 0100 is one hundred and it sorts AFTER 999.
+
+zero-padded IDs, %03d filenames and embedded ISO dates are exactly
+the data people reach for a natural sort with.
+
+decimals are read as integers too:
+  1.5 1.9 1.10 1.25
+and the minus sign is not part of the number:
+  -3 -5 -10 3</code></pre></div>
+<h2 id="the-two-transforms-are-not-interchangeable">The two transforms are not interchangeable <a class="anchor" href="#the-two-transforms-are-not-interchangeable" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sort-naturally/04-p5.raku" title="This example as a file: 04-p5.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sort::Naturally</span>;
+
+<span class="k">my</span> <span class="nv">@mixed</span> = <span class="s">&lt;ab a10 az a1 aa a9z b2 b&gt;</span>;
+<span class="nb">say</span> <span class="s">'plain .sort  : '</span>, <span class="nv">@mixed</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'naturally    : '</span>, <span class="nv">@mixed</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'p5naturally  : '</span>, <span class="nv">@mixed</span>.<span class="nb">sort</span>({ .&amp;<span class="n">p5naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'naturally puts digits BEFORE letters; p5naturally puts them after,'</span>;
+<span class="nb">say</span> <span class="s">'because its key prefix for a non-leading run is &quot;z{&quot;. Swapping one'</span>;
+<span class="nb">say</span> <span class="s">'for the other silently reorders your output.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'both are total orders, with case as a tiebreak:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="s">&lt;b A a B aA Aa&gt;</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>plain .sort  : a1 a10 a9z aa ab az b b2
+naturally    : a1 a9z a10 aa ab az b b2
+p5naturally  : aa ab az a1 a9z a10 b b2
+
+naturally puts digits BEFORE letters; p5naturally puts them after,
+because its key prefix for a non-leading run is "z{". Swapping one
+for the other silently reorders your output.
+
+both are total orders, with case as a tiebreak:
+  A a Aa aA B b</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing in the transforms — the keys are byte-identical and so is every sort built on them. What differs is the <em>baseline</em> you might compare against, and that is worth knowing before you conclude the module is not doing anything.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/sort-naturally/05-allomorph.raku" title="This example as a file: 05-allomorph.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Sort::Naturally</span>;
+
+<span class="k">my</span> <span class="nv">@words</span> = <span class="s">&lt;100 14th 2&gt;</span>;
+<span class="nb">say</span> <span class="s">'element types : '</span>, <span class="nv">@words</span>.<span class="nb">map</span>({ .<span class="n">WHAT</span>.^<span class="n">name</span> }).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the numeric ones are IntStr allomorphs, and cmp between two of them'</span>;
+<span class="nb">say</span> <span class="s">'is NUMERIC while cmp between an allomorph and a Str is TEXTUAL.'</span>;
+<span class="nb">say</span> <span class="s">'That makes cmp non-transitive here:'</span>;
+<span class="nb">say</span> <span class="s">'  100 cmp 14th = '</span>, (<span class="s">'100'</span> <span class="n">cmp</span> <span class="s">'14th'</span> <span class="k">given</span> <span class="nv">@words</span>) // <span class="s">''</span>;
+<span class="k">for</span> <span class="nv">@words</span>.<span class="n">combinations</span>(<span class="mi">2</span>) -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-5s cmp %-5s = %s'</span>, <span class="nv">$a</span>, <span class="nv">$b</span>, <span class="nv">$a</span> <span class="n">cmp</span> <span class="nv">$b</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a non-transitive comparator lets sort return any permutation, and the'</span>;
+<span class="nb">say</span> <span class="s">'two engines do return different ones for the same input. naturally'</span>;
+<span class="nb">say</span> <span class="s">'fixes it by making the key a plain Str, which is why its output is'</span>;
+<span class="nb">say</span> <span class="s">'identical everywhere:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">@words</span>.<span class="nb">sort</span>({ .&amp;<span class="n">naturally</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>element types : IntStr, Str, IntStr
+
+the numeric ones are IntStr allomorphs, and cmp between two of them
+is NUMERIC while cmp between an allomorph and a Str is TEXTUAL.
+That makes cmp non-transitive here:
+  100 cmp 14th = Less
+  100   cmp 14th  = Less
+  100   cmp 2     = More
+  14th  cmp 2     = Less
+
+a non-transitive comparator lets sort return any permutation, and the
+two engines do return different ones for the same input. naturally
+fixes it by making the key a plain Str, which is why its output is
+identical everywhere:
+  2 14th 100</code></pre></div>
+<p>One edge, identical on both: <code>naturally(Any)</code> returns <code>"\0"</code> under Raku++ and raises <code>X::Method::NotFound</code> under Rakudo, so an undefined element in your list sorts first on one engine and is fatal on the other. Filter first.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

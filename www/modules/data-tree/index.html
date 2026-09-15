@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data::Tree — The Raku Ecosystem, Working</title>
+<meta name="description" content="A Haskell-shaped rooted tree with builders, folds and two ASCII renderers — where `levels` returns nothing for a falsy root.">
+<link rel="canonical" href="https://raku.online/modules/data-tree/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Data::Tree — The Raku Ecosystem, Working">
+<meta property="og:description" content="A Haskell-shaped rooted tree with builders, folds and two ASCII renderers — where `levels` returns nothing for a falsy root.">
+<meta property="og:url" content="https://raku.online/modules/data-tree/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Data::Tree","description":"A Haskell-shaped rooted tree with builders, folds and two ASCII renderers — where `levels` returns nothing for a falsy root.","programmingLanguage":"Raku","version":"0.3","url":"https://raku.online/modules/data-tree/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/stuart-little/raku-data-tree.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data structures</div><h1>Data::Tree</h1><span class="status st-div">Divergent</span></div><p class="summary">A Haskell-shaped rooted tree with builders, folds and two ASCII renderers — where <code>levels</code> returns nothing for a falsy root.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3</code> <span class="fact-sub">zef:stuart-little</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:stuart-little/Data::Tree">raku.land</a> · <a href="https://github.com/stuart-little/raku-data-tree.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Data::Tree</code></pre></div><p class="fact-sub"><code>zef install Data::Tree</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Haskell's <code>Data.Tree</code> is a rose tree: a value plus a list of child trees, with <code>unfoldTree</code> to build one from a seed and <code>foldTree</code> to reduce one. This distribution is that shape in Raku, plus <code>lol2tree</code> for nested-array literals and two renderers.</p>
+<h2 id="building-and-walking">Building and walking <a class="anchor" href="#building-and-walking" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-tree/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Tree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">lol2tree</span>([<span class="mi">1</span>, [<span class="mi">2</span>, [<span class="mi">4</span>, <span class="mi">5</span>]], [<span class="mi">3</span>, [<span class="mi">6</span>]]]);
+<span class="nb">say</span> <span class="s">'data     : '</span>, <span class="nv">$t</span>.<span class="n">data</span>;
+<span class="nb">say</span> <span class="s">'children : '</span>, <span class="nv">$t</span>.<span class="n">children</span>.<span class="nb">map</span>(*.<span class="n">data</span>).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'flatten  : '</span>, <span class="n">flatten</span>(<span class="nv">$t</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'foldTree : '</span>, <span class="n">foldTree</span>(-&gt; <span class="nv">$d</span>, <span class="nv">@kids</span> { <span class="nv">$d</span> + <span class="nv">@kids</span>.<span class="nb">sum</span> }, <span class="nv">$t</span>);
+<span class="nb">say</span> <span class="s">'  (levels is engine-dependent — see the last section)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">print</span> <span class="n">drawTree</span>(<span class="nv">$t</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>data     : 1
+children : 2, 3
+
+flatten  : [1, 2, 4, 5, 3, 6]
+foldTree : 21
+  (levels is engine-dependent — see the last section)
+
+1
+|
++-2
+| |
+| `-4
+|   |
+|   `-5
+|
+`-3
+  |
+  `-6</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-tree/02-unfold.raku" title="This example as a file: 02-unfold.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Tree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">unfoldTree</span>(-&gt; <span class="nv">$n</span> { (<span class="nv">$n</span>, <span class="nv">$n</span> &lt; <span class="mi">4</span> ?? (<span class="nv">$n</span> * <span class="mi">2</span>, <span class="nv">$n</span> * <span class="mi">2</span> + <span class="mi">1</span>) !! ()) }, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'unfoldTree from 1, branching while n &lt; 4:'</span>;
+<span class="nb">print</span> <span class="n">drawTree</span>(<span class="nv">$t</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two collections map and grep:'</span>;
+<span class="nb">say</span> <span class="s">'  doubled : '</span>, <span class="n">flatten</span>(<span class="nv">$t</span>.<span class="nb">map</span>(* * <span class="mi">10</span>)).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$f</span> = <span class="n">unfoldForest</span>(-&gt; <span class="nv">$n</span> { (<span class="nv">$n</span>, ()) }, [<span class="mi">7</span>, <span class="mi">8</span>, <span class="mi">9</span>]);
+<span class="nb">say</span> <span class="s">'a Forest of three singletons : '</span>, <span class="nv">$f</span>.<span class="n">trees</span>.<span class="nb">map</span>(*.<span class="n">data</span>).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">print</span> <span class="n">drawForest</span>(<span class="nv">$f</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>unfoldTree from 1, branching while n &lt; 4:
+1
+|
++-2
+| |
+| +-4
+| |
+| `-5
+|
+`-3
+  |
+  +-6
+  |
+  `-7
+the two collections map and grep:
+  doubled : [10, 20, 40, 50, 30, 60, 70]
+
+a Forest of three singletons : 7, 8, 9
+7
+
+8
+
+9</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>levels</code> returns an <strong>empty array</strong> for any tree whose root data is falsy — <code>0</code>, <code>''</code>, <code>False</code> — while <code>flatten</code> on the same tree returns everything.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-tree/03-falsy-root.raku" title="This example as a file: 03-falsy-root.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Tree</span>;
+
+<span class="k">for</span> <span class="mi">0</span>, <span class="s">''</span>, <span class="n">False</span>, <span class="s">'x'</span> -&gt; <span class="nv">$root</span> {
+    <span class="k">my</span> <span class="nv">$t</span> = <span class="n">lol2tree</span>([<span class="nv">$root</span>, [<span class="s">'kid'</span>]]);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  root %-14s flatten %-22s levels %s'</span>,
+                <span class="nv">$root</span>.<span class="nb">raku</span>, <span class="n">flatten</span>(<span class="nv">$t</span>).<span class="nb">raku</span>, <span class="n">levels</span>(<span class="nv">$t</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the guard is  (! $t.data) &amp;&amp; return [];  — so a tree of counters or'</span>;
+<span class="nb">say</span> <span class="s">'flags rooted at 0 silently has no levels.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'build your own if the root can be falsy:'</span>;
+<span class="k">sub</span> <span class="n">tiers</span>(<span class="nv">$t</span>) {
+    <span class="k">my</span> <span class="nv">@out</span>;
+    <span class="k">my</span> <span class="nv">@cur</span> = (<span class="nv">$t</span>,);
+    <span class="k">while</span> <span class="nv">@cur</span> { <span class="nv">@out</span>.<span class="nb">push</span>([<span class="nv">@cur</span>.<span class="nb">map</span>(*.<span class="n">data</span>)]); <span class="nv">@cur</span> = <span class="nv">@cur</span>.<span class="nb">map</span>({ |<span class="nv">$_</span>.<span class="n">children</span> }).<span class="nb">Array</span> }
+    <span class="nv">@out</span>
+}
+<span class="nb">say</span> <span class="s">'  tiers on a 0-rooted tree : '</span>, <span class="n">tiers</span>(<span class="n">lol2tree</span>([<span class="mi">0</span>, [<span class="s">'kid'</span>]])).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  root 0              flatten [0, "kid"]             levels []
+  root ""             flatten ["", "kid"]            levels []
+  root Bool::False    flatten [Bool::False, "kid"]   levels []
+  root "x"            flatten ["x", "kid"]           levels [["x"], ["kid"]]
+
+the guard is  (! $t.data) &amp;&amp; return [];  — so a tree of counters or
+flags rooted at 0 silently has no levels.
+
+build your own if the root can be falsy:
+  tiers on a 0-rooted tree : [[0], ["kid"]]</code></pre></div>
+<h2 id="the-names-are-not-what-you-type">The names are not what you type <a class="anchor" href="#the-names-are-not-what-you-type" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-tree/04-names.raku" title="This example as a file: 04-names.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Tree</span>;
+
+<span class="nb">say</span> <span class="s">'the file says `unit module Tree;`, so:'</span>;
+<span class="nb">say</span> <span class="s">'  RTree.^name  : '</span>, <span class="n">RTree</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  Forest.^name : '</span>, <span class="n">Forest</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  ::(&quot;Data::Tree::RTree&quot;).defined : '</span>, ::(<span class="s">'Data::Tree::RTree'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'  ::(&quot;Tree::RTree&quot;).defined       : '</span>, ::(<span class="s">'Tree::RTree'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the short names are exported, so you rarely need either — but a'</span>;
+<span class="nb">say</span> <span class="s">'fully qualified reference has to use Tree::, not Data::Tree::.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the grep predicate takes the NODE, not the data:'</span>;
+<span class="nb">say</span> <span class="s">'  $t.grep(* &gt; 2)             dies'</span>;
+<span class="nb">say</span> <span class="s">'  $t.grep({ .data &gt; 2 })     is what you want'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the file says `unit module Tree;`, so:
+  RTree.^name  : Tree::RTree
+  Forest.^name : Tree::Forest
+
+  ::("Data::Tree::RTree").defined : False
+  ::("Tree::RTree").defined       : False
+
+the short names are exported, so you rarely need either — but a
+fully qualified reference has to use Tree::, not Data::Tree::.
+
+and the grep predicate takes the NODE, not the data:
+  $t.grep(* &gt; 2)             dies
+  $t.grep({ .data &gt; 2 })     is what you want</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two. <code>levels</code> returns one node per level under Raku++ — <code>roundrobin</code> flattens its list arguments one level too deep there. And <code>.grep</code> on an <code>RTree</code> or <code>Forest</code> is broken under Raku++ entirely, because the real implementation is a file-scoped <code>my multi method grep</code> reached through <code>self.&amp;grep(&amp;f)</code>, which resolves to the built-in <code>Any.grep</code> instead.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-tree/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::Tree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">lol2tree</span>([<span class="mi">1</span>, [<span class="mi">2</span>, [<span class="mi">4</span>, <span class="mi">5</span>]], [<span class="mi">3</span>, [<span class="mi">6</span>]]]);
+<span class="nb">say</span> <span class="s">'flatten is identical on both engines : '</span>, <span class="n">flatten</span>(<span class="nv">$t</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'foldTree likewise                    : '</span>,
+    <span class="n">foldTree</span>(-&gt; <span class="nv">$d</span>, <span class="nv">@k</span> { <span class="nv">$d</span> + <span class="nv">@k</span>.<span class="nb">sum</span> }, <span class="nv">$t</span>);
+<span class="nb">say</span> <span class="s">'drawTree likewise.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'levels and grep are not. Write them yourself:'</span>;
+<span class="k">sub</span> <span class="n">tiers</span>(<span class="nv">$t</span>) {
+    <span class="k">my</span> <span class="nv">@out</span>; <span class="k">my</span> <span class="nv">@cur</span> = (<span class="nv">$t</span>,);
+    <span class="k">while</span> <span class="nv">@cur</span> { <span class="nv">@out</span>.<span class="nb">push</span>([<span class="nv">@cur</span>.<span class="nb">map</span>(*.<span class="n">data</span>)]); <span class="nv">@cur</span> = <span class="nv">@cur</span>.<span class="nb">map</span>({ |<span class="nv">$_</span>.<span class="n">children</span> }).<span class="nb">Array</span> }
+    <span class="nv">@out</span>
+}
+<span class="k">sub</span> <span class="n">prune</span>(<span class="nv">$t</span>, <span class="nv">&amp;keep</span>) {
+    <span class="k">return</span> <span class="nb">Nil</span> <span class="k">unless</span> <span class="n">keep</span>(<span class="nv">$t</span>);
+    <span class="n">RTree</span>.<span class="nb">new</span>(<span class="n">data</span> =&gt; <span class="nv">$t</span>.<span class="n">data</span>, <span class="n">children</span> =&gt; <span class="nv">$t</span>.<span class="n">children</span>.<span class="nb">map</span>({ <span class="n">prune</span>(<span class="nv">$_</span>, <span class="nv">&amp;keep</span>) }).<span class="nb">grep</span>(*.<span class="nb">defined</span>))
+}
+<span class="nb">say</span> <span class="s">'  tiers : '</span>, <span class="n">tiers</span>(<span class="nv">$t</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  prune : '</span>, <span class="n">flatten</span>(<span class="n">prune</span>(<span class="nv">$t</span>, { .<span class="n">data</span> != <span class="mi">2</span> })).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>flatten is identical on both engines : [1, 2, 4, 5, 3, 6]
+foldTree likewise                    : 21
+drawTree likewise.
+
+levels and grep are not. Write them yourself:
+  tiers : [[1], [2, 3], [4, 6], [5]]
+  prune : [1, 3, 6]</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

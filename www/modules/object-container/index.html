@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Object::Container — The Raku Ecosystem, Working</title>
+<meta name="description" content="A name-to-object registry with lazy initialisers — and a lock that stays locked if an initialiser throws.">
+<link rel="canonical" href="https://raku.online/modules/object-container/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Object::Container — The Raku Ecosystem, Working">
+<meta property="og:description" content="A name-to-object registry with lazy initialisers — and a lock that stays locked if an initialiser throws.">
+<meta property="og:url" content="https://raku.online/modules/object-container/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Object::Container","description":"A name-to-object registry with lazy initialisers — and a lock that stays locked if an initialiser throws.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/object-container/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/moznion/p6-Object-Container.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · dependency injection</div><h1>Object::Container</h1><span class="status st-div">Divergent</span></div><p class="summary">A name-to-object registry with lazy initialisers — and a lock that stays locked if an initialiser throws.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">cpan:MOZNION</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>4 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/cpan:MOZNION/Object::Container">raku.land</a> · <a href="git://github.com/moznion/p6-Object-Container.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Object::Container</code></pre></div><p class="fact-sub"><code>zef install Object::Container</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A service locator: register a database handle, a cache client and a logger under names, ask for them by name later, and let the expensive ones be built on first use rather than at startup.</p>
+<h2 id="registering-and-fetching">Registering and fetching <a class="anchor" href="#registering-and-fetching" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/object-container/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Object::Container</span>;
+
+<span class="k">class</span> <span class="n">Widget</span> { <span class="k">has</span> <span class="nv">$.id</span> }
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Object::Container</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'w'</span>, <span class="n">Widget</span>.<span class="nb">new</span>(<span class="n">id</span> =&gt; <span class="mi">7</span>));
+<span class="nb">say</span> <span class="s">'get(&quot;w&quot;)      : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'w'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'get(missing)  : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'nope'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'remove(&quot;w&quot;)   : '</span>, <span class="nv">$c</span>.<span class="n">remove</span>(<span class="s">'w'</span>);
+<span class="nb">say</span> <span class="s">'remove again  : '</span>, <span class="nv">$c</span>.<span class="n">remove</span>(<span class="s">'w'</span>);
+<span class="nb">say</span> <span class="s">'get after rm  : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'w'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$built</span> = <span class="mi">0</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'lazy'</span>, <span class="k">sub</span> { <span class="nv">$built</span>++; <span class="n">Widget</span>.<span class="nb">new</span>(<span class="n">id</span> =&gt; <span class="mi">99</span>) });
+<span class="nb">say</span> <span class="s">'built before get : '</span>, <span class="nv">$built</span>;
+<span class="nb">say</span> <span class="s">'first get        : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'lazy'</span>).<span class="nb">raku</span>, <span class="s">'  built='</span>, <span class="nv">$built</span>;
+<span class="nb">say</span> <span class="s">'second get       : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'lazy'</span>).<span class="nb">raku</span>, <span class="s">'  built='</span>, <span class="nv">$built</span>;
+<span class="nb">say</span> <span class="s">'same object      : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'lazy'</span>) === <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'lazy'</span>);
+<span class="nv">$c</span>.<span class="n">clear</span>;
+<span class="nb">say</span> <span class="s">'after clear      : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'lazy'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>get("w")      : Widget.new(id =&gt; 7)
+get(missing)  : Nil
+remove("w")   : True
+remove again  : False
+get after rm  : Nil
+
+built before get : 0
+first get        : Widget.new(id =&gt; 99)  built=1
+second get       : Widget.new(id =&gt; 99)  built=1
+same object      : True
+after clear      : Nil</code></pre></div>
+<h2 id="class-methods-are-a-different-container">Class methods are a different container <a class="anchor" href="#class-methods-are-a-different-container" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/object-container/02-singleton.raku" title="This example as a file: 02-singleton.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Object::Container</span>;
+
+<span class="k">class</span> <span class="n">Widget</span> { <span class="k">has</span> <span class="nv">$.id</span> }
+
+<span class="n">Object::Container</span>.<span class="n">register</span>(<span class="s">'shared'</span>, <span class="n">Widget</span>.<span class="nb">new</span>(<span class="n">id</span> =&gt; <span class="mi">1</span>));
+<span class="nb">say</span> <span class="s">'class method sees &quot;shared&quot;   : '</span>, <span class="n">Object::Container</span>.<span class="n">get</span>(<span class="s">'shared'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$inst</span> = <span class="n">Object::Container</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="s">'a fresh instance sees it     : '</span>, <span class="nv">$inst</span>.<span class="n">get</span>(<span class="s">'shared'</span>).<span class="nb">raku</span>;
+<span class="nv">$inst</span>.<span class="n">register</span>(<span class="s">'mine'</span>, <span class="n">Widget</span>.<span class="nb">new</span>(<span class="n">id</span> =&gt; <span class="mi">2</span>));
+<span class="nb">say</span> <span class="s">'class method sees &quot;mine&quot;     : '</span>, <span class="n">Object::Container</span>.<span class="n">get</span>(<span class="s">'mine'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'called as class methods the whole thing collapses to one'</span>;
+<span class="nb">say</span> <span class="s">'process-wide singleton; instances are separate. Mixing the two'</span>;
+<span class="nb">say</span> <span class="s">'styles silently loses registrations — pick one.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>class method sees "shared"   : Widget.new(id =&gt; 1)
+
+a fresh instance sees it     : Nil
+class method sees "mine"     : Nil
+
+called as class methods the whole thing collapses to one
+process-wide singleton; instances are separate. Mixing the two
+styles silently loses registrations — pick one.</code></pre></div>
+<h2 id="you-can-never-store-a-callable">You can never store a Callable <a class="anchor" href="#you-can-never-store-a-callable" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/object-container/03-callable.raku" title="This example as a file: 03-callable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Object::Container</span>;
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Object::Container</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">&amp;handler</span> = <span class="k">sub</span> { <span class="s">'I AM THE VALUE'</span> };
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'cb'</span>, <span class="nv">&amp;handler</span>);
+<span class="nb">say</span> <span class="s">'get(&quot;cb&quot;)       : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'cb'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  is it Code ?  : '</span>, (<span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'cb'</span>) ~~ <span class="nb">Code</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the Callable:D candidate is NARROWER than Any:D, so register always'</span>;
+<span class="nb">say</span> <span class="s">'takes the lazy branch and get hands you the RETURN VALUE. A registry'</span>;
+<span class="nb">say</span> <span class="s">'of handlers or factories is impossible without wrapping each one:'</span>;
+<span class="k">class</span> <span class="n">Holder</span> { <span class="k">has</span> <span class="nv">&amp;.fn</span> }
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'wrapped'</span>, <span class="n">Holder</span>.<span class="nb">new</span>(<span class="n">fn</span> =&gt; <span class="nv">&amp;handler</span>));
+<span class="nb">say</span> <span class="s">'  wrapped       : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'wrapped'</span>).<span class="n">fn</span>.().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and a type object or Nil is refused outright:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'t'</span>, <span class="nb">Int</span>);
+<span class="nb">say</span> <span class="s">'  register(&quot;t&quot;, Int) -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'X::Multi::NoMatch'</span> !! <span class="s">'accepted'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>get("cb")       : "I AM THE VALUE"
+  is it Code ?  : False
+
+the Callable:D candidate is NARROWER than Any:D, so register always
+takes the lazy branch and get hands you the RETURN VALUE. A registry
+of handlers or factories is impossible without wrapping each one:
+  wrapped       : "I AM THE VALUE"
+
+and a type object or Nil is refused outright:
+  register("t", Int) -&gt; X::Multi::NoMatch</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>An initialiser that throws leaves that entry's <code>Lock</code> locked forever. Every later <code>get</code> of that name <strong>from another thread</strong> blocks for good.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/object-container/04-poisoned.raku" title="This example as a file: 04-poisoned.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Object::Container</span>;
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Object::Container</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'bad'</span>, <span class="k">sub</span> { <span class="nv">$calls</span>++; <span class="nb">die</span> <span class="s">'initializer failed'</span> });
+
+<span class="k">my</span> <span class="nv">$first</span> = <span class="k">try</span> <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'bad'</span>);
+<span class="nb">say</span> <span class="s">'first get     : '</span>, <span class="nv">$!</span> ?? <span class="s">'threw — '</span> ~ <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'returned'</span>;
+<span class="nb">say</span> <span class="s">'calls so far  : '</span>, <span class="nv">$calls</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'get-instance does  $!lock.lock; … $!instance = $!initializer(); …'</span>;
+<span class="nb">say</span> <span class="s">'$!lock.unlock  with no LEAVE and no .protect — so the throw skips'</span>;
+<span class="nb">say</span> <span class="s">'the unlock.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the SAME thread can still get through, because Lock is reentrant'</span>;
+<span class="nb">say</span> <span class="s">'per-thread:'</span>;
+<span class="k">my</span> <span class="nv">$second</span> = <span class="k">try</span> <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'bad'</span>);
+<span class="nb">say</span> <span class="s">'  second get on this thread : '</span>, <span class="nv">$!</span> ?? <span class="s">'threw again'</span> !! <span class="s">'returned'</span>;
+<span class="nb">say</span> <span class="s">'  calls now                 : '</span>, <span class="nv">$calls</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a SECOND thread blocks forever. And each entry has its own Lock, so'</span>;
+<span class="nb">say</span> <span class="s">'other keys keep working — which makes it far harder to diagnose:'</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'ok'</span>, <span class="k">sub</span> { <span class="s">'healthy'</span> });
+<span class="nb">say</span> <span class="s">'  a different key still works : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'ok'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'wrap your initialisers so they cannot throw.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>first get     : threw — initializer failed
+calls so far  : 1
+
+get-instance does  $!lock.lock; … $!instance = $!initializer(); …
+$!lock.unlock  with no LEAVE and no .protect — so the throw skips
+the unlock.
+
+the SAME thread can still get through, because Lock is reentrant
+per-thread:
+  second get on this thread : threw again
+  calls now                 : 2
+
+a SECOND thread blocks forever. And each entry has its own Lock, so
+other keys keep working — which makes it far harder to diagnose:
+  a different key still works : "healthy"
+
+wrap your initialisers so they cannot throw.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>One case, and it is about a self-referential initialiser — an initialiser that asks the container for the key it is building. Raku++ has a recursion-depth guard and converts the runaway into a catchable <code>X::Recursion</code>; Rakudo spins until you kill it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/object-container/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Object::Container</span>;
+
+<span class="c1"># an initialiser that cannot throw, and cannot recurse</span>
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Object::Container</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'config'</span>, <span class="k">sub</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> { %( <span class="n">retries</span> =&gt; <span class="mi">3</span>, <span class="n">timeout</span> =&gt; <span class="mi">30</span> ) };
+    <span class="nv">$r</span> // %()
+});
+<span class="nb">say</span> <span class="s">'config : '</span>, <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'config'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'an initialiser returning Nil is cached as Any and NOT retried:'</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="nv">$c</span>.<span class="n">register</span>(<span class="s">'nil'</span>, <span class="k">sub</span> { <span class="nv">$n</span>++; <span class="nb">Nil</span> });
+<span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'nil'</span>); <span class="nv">$c</span>.<span class="n">get</span>(<span class="s">'nil'</span>);
+<span class="nb">say</span> <span class="s">'  get twice, initialiser ran : '</span>, <span class="nv">$n</span>, <span class="s">' time(s)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and get-instance`s double-checked-lock fast path returns while still'</span>;
+<span class="nb">say</span> <span class="s">'holding the lock — unreachable single-threaded, the same leak in a'</span>;
+<span class="nb">say</span> <span class="s">'race. Treat this container as single-threaded, or build your own.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>config : ${:retries(3), :timeout(30)}
+
+an initialiser returning Nil is cached as Any and NOT retried:
+  get twice, initialiser ran : 1 time(s)
+
+and get-instance`s double-checked-lock fast path returns while still
+holding the lock — unreachable single-threaded, the same leak in a
+race. Treat this container as single-threaded, or build your own.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

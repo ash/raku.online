@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data::RandomKeep — The Raku Ecosystem, Working</title>
+<meta name="description" content="Reservoir sampling — keep N items from a stream of unknown length in constant memory, and get them back sorted by value.">
+<link rel="canonical" href="https://raku.online/modules/data-randomkeep/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Data::RandomKeep — The Raku Ecosystem, Working">
+<meta property="og:description" content="Reservoir sampling — keep N items from a stream of unknown length in constant memory, and get them back sorted by value.">
+<meta property="og:url" content="https://raku.online/modules/data-randomkeep/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Data::RandomKeep","description":"Reservoir sampling — keep N items from a stream of unknown length in constant memory, and get them back sorted by value.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/data-randomkeep/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/lucs/Data-RandomKeep.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · sampling</div><h1>Data::RandomKeep</h1><span class="status st-full">Works</span></div><p class="summary">Reservoir sampling — keep N items from a stream of unknown length in constant memory, and get them back sorted by value.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">zef:lucs</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lucs/Data::RandomKeep">raku.land</a> · <a href="git://github.com/lucs/Data-RandomKeep.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Data::RandomKeep</code></pre></div><p class="fact-sub"><code>zef install Data::RandomKeep</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>You want a random sample of a stream, you do not know how long the stream is, and you cannot hold it in memory. Reservoir sampling solves exactly that: keep N items, and give each item offered an equal chance of being among them, whatever N and however many items arrive.</p>
+<h2 id="sampling">Sampling <a class="anchor" href="#sampling" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-randomkeep/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::RandomKeep</span>;
+
+<span class="k">my</span> <span class="nv">$k</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'nb-to-keep : '</span>, <span class="nv">$k</span>.<span class="n">nb-to-keep</span>;
+<span class="nv">$k</span>.<span class="n">offer</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="mi">1</span> .. <span class="mi">100</span>;
+<span class="nb">say</span> <span class="s">'nb-seen    : '</span>, <span class="nv">$k</span>.<span class="n">nb-seen</span>;
+<span class="nb">say</span> <span class="s">'nb-kept    : '</span>, <span class="nv">$k</span>.<span class="n">nb-kept</span>;
+<span class="k">my</span> <span class="nv">@kept</span> = <span class="nv">$k</span>.<span class="n">kept</span>;
+<span class="nb">say</span> <span class="s">'kept       : '</span>, <span class="nv">@kept</span>.<span class="nb">elems</span>, <span class="s">' items, all from 1..100 : '</span>,
+    <span class="k">so</span> <span class="nv">@kept</span>.<span class="n">all</span> ~~ <span class="mi">1</span>.<span class="mf">.100</span>;
+<span class="nb">say</span> <span class="s">'  distinct : '</span>, <span class="nv">@kept</span>.<span class="nb">unique</span>.<span class="nb">elems</span> == <span class="nv">@kept</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'offer is slurpy and flattens, so a whole list can go in at once:'</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">2</span>);
+<span class="nv">$b</span>.<span class="n">offer</span>(<span class="mi">1</span> .. <span class="mi">5</span>);
+<span class="nb">say</span> <span class="s">'  nb-seen after offer(1..5) : '</span>, <span class="nv">$b</span>.<span class="n">nb-seen</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>nb-to-keep : 3
+nb-seen    : 100
+nb-kept    : 3
+kept       : 3 items, all from 1..100 : True
+  distinct : True
+
+offer is slurpy and flattens, so a whole list can go in at once:
+  nb-seen after offer(1..5) : 5</code></pre></div>
+<h2 id="uniformity">Uniformity <a class="anchor" href="#uniformity" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-randomkeep/02-uniform.raku" title="This example as a file: 02-uniform.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::RandomKeep</span>;
+
+<span class="k">my</span> <span class="nv">%count</span>;
+<span class="k">my</span> <span class="nv">$trials</span> = <span class="mi">20_000</span>;
+<span class="k">for</span> ^<span class="nv">$trials</span> {
+    <span class="k">my</span> <span class="nv">$k</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">1</span>);
+    <span class="nv">$k</span>.<span class="n">offer</span>(<span class="nv">$_</span>) <span class="k">for</span> ^<span class="mi">20</span>;
+    <span class="nv">%count</span>{<span class="nv">$k</span>.<span class="n">kept</span>[<span class="mi">0</span>]}++;
+}
+<span class="nb">say</span> <span class="s">&quot;keep 1 of 20, $trials trials&quot;</span>;
+<span class="nb">say</span> <span class="s">'  distinct items ever kept : '</span>, <span class="nv">%count</span>.<span class="nb">keys</span>.<span class="nb">elems</span>;
+<span class="k">my</span> <span class="nv">$expected</span> = <span class="nv">$trials</span> / <span class="mi">20</span>;
+<span class="k">my</span> <span class="nv">$sigma</span> = <span class="nb">sqrt</span>(<span class="nv">$expected</span> * <span class="mi">19</span> / <span class="mi">20</span>);
+<span class="nb">say</span> <span class="s">'  expected per item        : '</span>, <span class="nv">$expected</span>.<span class="nb">Int</span>;
+<span class="nb">say</span> <span class="s">'  every count within 5 sigma : '</span>,
+    <span class="k">so</span> <span class="nv">%count</span>.<span class="nb">values</span>.<span class="n">all</span> ~~ (<span class="nv">$expected</span> - <span class="mi">5</span> * <span class="nv">$sigma</span>) .. (<span class="nv">$expected</span> + <span class="mi">5</span> * <span class="nv">$sigma</span>);
+<span class="nb">say</span> <span class="s">'  total kept == trials     : '</span>, <span class="nv">%count</span>.<span class="nb">values</span>.<span class="nb">sum</span> == <span class="nv">$trials</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>keep 1 of 20, 20000 trials
+  distinct items ever kept : 20
+  expected per item        : 1000
+  every count within 5 sigma : True
+  total kept == trials     : True</code></pre></div>
+<p>Nothing above asserts a value — the sample is random, and these are the properties that hold every run.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>.kept</code> does not return the items in offer order. It sorts them by their own numeric value — and that sort makes <code>.kept</code> <strong>throw</strong> for any non-numeric item.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-randomkeep/03-sorted.raku" title="This example as a file: 03-sorted.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::RandomKeep</span>;
+
+<span class="k">my</span> <span class="nv">$k</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">4</span>);
+<span class="nv">$k</span>.<span class="n">offer</span>(<span class="mi">40</span>, <span class="mi">30</span>, <span class="mi">20</span>, <span class="mi">10</span>);
+<span class="nb">say</span> <span class="s">'offered : 40, 30, 20, 10'</span>;
+<span class="nb">say</span> <span class="s">'kept    : '</span>, <span class="nv">$k</span>.<span class="n">kept</span>.<span class="nb">join</span>(<span class="s">', '</span>), <span class="s">'   &lt;- ascending, not offer order'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'offered words : delta alpha charlie bravo'</span>;
+<span class="nb">say</span> <span class="s">'kept          : it throws — the sort numifies each word, and'</span>;
+<span class="nb">say</span> <span class="s">'                &quot;delta&quot; is not a number'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the method is'</span>;
+<span class="nb">say</span> <span class="s">'  return @!kept.map({ $_[1] }).sort({ $^a[0] &lt;=&gt; $^b[0] });'</span>;
+<span class="nb">say</span> <span class="s">'and the .map has ALREADY replaced each [nb-seen, item] pair with the'</span>;
+<span class="nb">say</span> <span class="s">'bare item — so the comparator`s $^a[0] indexes the ITEM, which for a'</span>;
+<span class="nb">say</span> <span class="s">'scalar is the item itself, numified by &lt;=&gt;.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the module`s headline application — keeping N random LINES of a'</span>;
+<span class="nb">say</span> <span class="s">'file — cannot work directly. Offer INDICES and keep the lines'</span>;
+<span class="nb">say</span> <span class="s">'yourself; offer is a flattening slurpy, so a tuple would not survive'</span>;
+<span class="nb">say</span> <span class="s">'anyway:'</span>;
+<span class="k">my</span> <span class="nv">@lines</span> = <span class="s">&lt;first second third fourth fifth&gt;</span>;
+<span class="k">my</span> <span class="nv">$idx</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">2</span>);
+<span class="nv">$idx</span>.<span class="n">offer</span>(^<span class="nv">@lines</span>);
+<span class="k">my</span> <span class="nv">@chosen</span> = <span class="nv">$idx</span>.<span class="n">kept</span>.<span class="nb">map</span>({ <span class="nv">@lines</span>[<span class="nv">$_</span>] });
+<span class="nb">say</span> <span class="s">'  sampled 2 of '</span>, <span class="nv">@lines</span>.<span class="nb">elems</span>, <span class="s">' lines : '</span>, <span class="nv">@chosen</span>.<span class="nb">elems</span>, <span class="s">' back'</span>;
+<span class="nb">say</span> <span class="s">'  all of them real lines           : '</span>, <span class="k">so</span> <span class="nv">@chosen</span>.<span class="n">all</span> (<span class="n">elem</span>) <span class="nv">@lines</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>offered : 40, 30, 20, 10
+kept    : 10, 20, 30, 40   &lt;- ascending, not offer order
+
+offered words : delta alpha charlie bravo
+kept          : it throws — the sort numifies each word, and
+                "delta" is not a number
+
+the method is
+  return @!kept.map({ $_[1] }).sort({ $^a[0] &lt;=&gt; $^b[0] });
+and the .map has ALREADY replaced each [nb-seen, item] pair with the
+bare item — so the comparator`s $^a[0] indexes the ITEM, which for a
+scalar is the item itself, numified by &lt;=&gt;.
+
+so the module`s headline application — keeping N random LINES of a
+file — cannot work directly. Offer INDICES and keep the lines
+yourself; offer is a flattening slurpy, so a tuple would not survive
+anyway:
+  sampled 2 of 5 lines : 2 back
+  all of them real lines           : True</code></pre></div>
+<h2 id="the-constructor-takes-a-positional">The constructor takes a positional <a class="anchor" href="#the-constructor-takes-a-positional" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-randomkeep/04-constructor.raku" title="This example as a file: 04-constructor.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::RandomKeep</span>;
+
+<span class="nb">say</span> <span class="s">'new(6).nb-to-keep             : '</span>, <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">6</span>).<span class="n">nb-to-keep</span>;
+<span class="nb">say</span> <span class="s">'new(:nb-to-keep(6)).nb-to-keep: '</span>, <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="n">nb-to-keep</span> =&gt; <span class="mi">6</span>).<span class="n">nb-to-keep</span>;
+<span class="nb">say</span> <span class="s">'new().nb-to-keep              : '</span>, <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>.<span class="n">nb-to-keep</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'`new` is overridden with a POSITIONAL parameter, so the named form'</span>;
+<span class="nb">say</span> <span class="s">'lands in the implicit *%_ and is discarded. .bless(:nb-to-keep(6))'</span>;
+<span class="nb">say</span> <span class="s">'does work, which makes the failure look arbitrary — pass the'</span>;
+<span class="nb">say</span> <span class="s">'positional.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and new(0) is accepted and keeps nothing, forever, without complaint:'</span>;
+<span class="k">my</span> <span class="nv">$z</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">0</span>);
+<span class="nv">$z</span>.<span class="n">offer</span>(<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'  new(0): nb-seen='</span>, <span class="nv">$z</span>.<span class="n">nb-seen</span>, <span class="s">' nb-kept='</span>, <span class="nv">$z</span>.<span class="n">nb-kept</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>new(6).nb-to-keep             : 6
+new(:nb-to-keep(6)).nb-to-keep: 1
+new().nb-to-keep              : 1
+
+`new` is overridden with a POSITIONAL parameter, so the named form
+lands in the implicit *%_ and is discarded. .bless(:nb-to-keep(6))
+does work, which makes the failure look arbitrary — pass the
+positional.
+
+and new(0) is accepted and keeps nothing, forever, without complaint:
+  new(0): nb-seen=3 nb-kept=0</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing now. Until Raku++ 3.28.0 the reservoir silently lost items there: the module's slot chooser is</p>
+<div class="native-ex"><pre class="native-code"><code><span class="nv">@!kept</span>[
+    <span class="nv">$!nb-kept</span> &lt; <span class="nv">$!nb-to-keep</span> ?? <span class="nv">$!nb-kept</span>++ !! <span class="nv">$!nb-to-keep</span>.<span class="n">rand</span>;
+] = [<span class="nv">$!nb-seen</span>, <span class="nv">$item</span>];</code></pre></div>
+<p>and an element assignment used to evaluate its subscript <strong>twice</strong> — once to decide whether the subscript named many elements or one, and again to reach the slot. So <code>$!nb-kept++</code> advanced by two per stored item and the write landed in the wrong slot; 13.7% of draws came back short, and only for reservoirs larger than one, which is the case nobody tests first.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-randomkeep/05-reservoir.raku" title="This example as a file: 05-reservoir.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::RandomKeep</span>;
+
+<span class="k">my</span> <span class="nv">$short</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$with-any</span> = <span class="mi">0</span>;
+<span class="k">for</span> ^<span class="mi">2000</span> {
+    <span class="k">my</span> <span class="nv">$k</span> = <span class="n">Data::RandomKeep</span>.<span class="nb">new</span>(<span class="mi">3</span>);
+    <span class="nv">$k</span>.<span class="n">offer</span>(<span class="nv">$_</span>) <span class="k">for</span> ^<span class="mi">10</span>;
+    <span class="k">my</span> <span class="nv">@kept</span> = <span class="nv">$k</span>.<span class="n">kept</span>;
+    <span class="nv">$short</span>++ <span class="k">unless</span> <span class="nv">@kept</span>.<span class="nb">elems</span> == <span class="mi">3</span>;
+    <span class="nv">$with-any</span>++ <span class="k">if</span> <span class="nv">@kept</span>.<span class="nb">grep</span>({ !.<span class="nb">defined</span> });
+}
+<span class="nb">say</span> <span class="s">'2000 draws of keep-3-from-10:'</span>;
+<span class="nb">say</span> <span class="s">'  draws that came back short      : '</span>, <span class="nv">$short</span>;
+<span class="nb">say</span> <span class="s">'  draws containing an undefined   : '</span>, <span class="nv">$with-any</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'both zero on both engines. A keep-1 reservoir always indexed slot 0,'</span>;
+<span class="nb">say</span> <span class="s">'which is why the old bug never showed in the obvious first test.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2000 draws of keep-3-from-10:
+  draws that came back short      : 0
+  draws containing an undefined   : 0
+
+both zero on both engines. A keep-1 reservoir always indexed slot 0,
+which is why the old bug never showed in the obvious first test.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

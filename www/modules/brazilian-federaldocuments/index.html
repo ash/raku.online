@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brazilian::FederalDocuments — The Raku Ecosystem, Working</title>
+<meta name="description" content="CPF and CNPJ check-digit validation — missing the official 10→0 fold, so it rejects one in six well-formed documents and accepts every repdigit.">
+<link rel="canonical" href="https://raku.online/modules/brazilian-federaldocuments/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Brazilian::FederalDocuments — The Raku Ecosystem, Working">
+<meta property="og:description" content="CPF and CNPJ check-digit validation — missing the official 10→0 fold, so it rejects one in six well-formed documents and accepts every repdigit.">
+<meta property="og:url" content="https://raku.online/modules/brazilian-federaldocuments/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Brazilian::FederalDocuments","description":"CPF and CNPJ check-digit validation — missing the official 10→0 fold, so it rejects one in six well-formed documents and accepts every repdigit.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/brazilian-federaldocuments/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/raku-community-modules/Brazilian-FederalDocuments.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · validation</div><h1>Brazilian::FederalDocuments</h1><span class="status st-div">Divergent</span></div><p class="summary">CPF and CNPJ check-digit validation — missing the official 10→0 fold, so it rejects one in six well-formed documents and accepts every repdigit.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Brazilian::FederalDocuments">raku.land</a> · <a href="https://github.com/raku-community-modules/Brazilian-FederalDocuments.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Brazilian::FederalDocuments</code></pre></div><p class="fact-sub"><code>zef install Brazilian::FederalDocuments</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Brazil's two taxpayer identifiers carry check digits: the CPF for a person (eleven digits) and the CNPJ for a company (fourteen). A weighted-modulus sum over the leading digits reproduces the trailing ones, which lets a form reject a typo before it reaches a database.</p>
+<h2 id="using-it">Using it <a class="anchor" href="#using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/brazilian-federaldocuments/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Brazilian::FederalDocuments</span>;
+
+<span class="k">for</span> <span class="s">'12345678909'</span>, <span class="s">'00000000000'</span>, <span class="s">'191'</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$cpf</span> = <span class="n">FederalDocuments::CPF</span>.<span class="nb">new</span>(<span class="n">number</span> =&gt; <span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  CPF  %-14s -&gt; %s'</span>, <span class="nv">$n</span>.<span class="nb">raku</span>, <span class="nv">$cpf</span>.<span class="n">is-valid</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note the class name: `use Brazilian::FederalDocuments` installs NO'</span>;
+<span class="nb">say</span> <span class="s">'symbol of that name. What you get is FederalDocuments::CPF and'</span>;
+<span class="nb">say</span> <span class="s">'FederalDocuments::CNPJ, so the first line of your program does not'</span>;
+<span class="nb">say</span> <span class="s">'match the one above it.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the role behind them:'</span>;
+<span class="nb">say</span> <span class="s">'  is-valid : caches the answer computed at construction'</span>;
+<span class="nb">say</span> <span class="s">'  verify   : public and re-runnable — but $.number cannot change,'</span>;
+<span class="nb">say</span> <span class="s">'             so it can only ever produce the same answer.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  CPF  "12345678909"  -&gt; False
+  CPF  "00000000000"  -&gt; True
+  CPF  "191"          -&gt; True
+
+note the class name: `use Brazilian::FederalDocuments` installs NO
+symbol of that name. What you get is FederalDocuments::CPF and
+FederalDocuments::CNPJ, so the first line of your program does not
+match the one above it.
+
+the role behind them:
+  is-valid : caches the answer computed at construction
+  verify   : public and re-runnable — but $.number cannot change,
+             so it can only ever produce the same answer.</code></pre></div>
+<h2 id="the-padding">The padding <a class="anchor" href="#the-padding" aria-label="link">#</a></h2>
+<p>The number is left-zero-padded to length, which makes several surprising inputs valid:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/brazilian-federaldocuments/02-padding.raku" title="This example as a file: 02-padding.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Brazilian::FederalDocuments</span>;
+
+<span class="k">for</span> <span class="mi">0</span>, <span class="s">''</span>, <span class="mi">191</span>, <span class="s">'000.000.001-91'</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$cpf</span> = <span class="n">FederalDocuments::CPF</span>.<span class="nb">new</span>(<span class="n">number</span> =&gt; <span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s -&gt; is-valid %-5s   .number reads back as %s'</span>,
+                <span class="nv">$n</span>.<span class="nb">raku</span>, <span class="nv">$cpf</span>.<span class="n">is-valid</span>, <span class="nv">$cpf</span>.<span class="n">number</span>.<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'an empty string is a valid CPF. A formatted one is 14 characters,'</span>;
+<span class="nb">say</span> <span class="s">'over the 11-character ceiling, so it is rejected as invalid rather'</span>;
+<span class="nb">say</span> <span class="s">'than cleaned — strip the punctuation yourself.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and .number is stored verbatim, so the accessor and the value the'</span>;
+<span class="nb">say</span> <span class="s">'validator actually checked disagree.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  0                  -&gt; is-valid True    .number reads back as 0
+  ""                 -&gt; is-valid True    .number reads back as ""
+  191                -&gt; is-valid True    .number reads back as 191
+  "000.000.001-91"   -&gt; is-valid False   .number reads back as "000.000.001-91"
+
+an empty string is a valid CPF. A formatted one is 14 characters,
+over the 11-character ceiling, so it is rejected as invalid rather
+than cleaned — strip the punctuation yourself.
+
+and .number is stored verbatim, so the accessor and the value the
+validator actually checked disagree.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The check-digit arithmetic is missing the official <code>10 → 0</code> fold, so it rejects about one in six genuinely well-formed documents — and it accepts every one of the repdigit numbers Brazil rejects outright.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/brazilian-federaldocuments/03-checkdigits.raku" title="This example as a file: 03-checkdigits.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Brazilian::FederalDocuments</span>;
+
+<span class="c1"># the published rule: r = sum % 11; digit = r &lt; 2 ?? 0 !! 11 - r</span>
+<span class="k">sub</span> <span class="n">cpf-digits</span>(<span class="nv">@base</span>) {
+    <span class="k">my</span> <span class="nv">@d</span> = <span class="nv">@base</span>;
+    <span class="k">for</span> <span class="mi">0</span>, <span class="mi">1</span> -&gt; <span class="nv">$round</span> {
+        <span class="k">my</span> <span class="nv">$w</span> = <span class="mi">10</span> + <span class="nv">$round</span>;
+        <span class="k">my</span> <span class="nv">$sum</span> = [+] <span class="nv">@d</span>.<span class="nb">kv</span>.<span class="nb">map</span>(-&gt; <span class="nv">$i</span>, <span class="nv">$v</span> { <span class="nv">$v</span> * (<span class="nv">$w</span> - <span class="nv">$i</span>) });
+        <span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$sum</span> % <span class="mi">11</span>;
+        <span class="nv">@d</span>.<span class="nb">push</span>(<span class="nv">$r</span> &lt; <span class="mi">2</span> ?? <span class="mi">0</span> !! <span class="mi">11</span> - <span class="nv">$r</span>);
+    }
+    <span class="nv">@d</span>.<span class="nb">join</span>
+}
+
+<span class="k">my</span> <span class="nv">$good</span> = <span class="n">cpf-digits</span>([<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>,<span class="mi">4</span>,<span class="mi">5</span>,<span class="mi">6</span>,<span class="mi">7</span>,<span class="mi">8</span>,<span class="mi">9</span>]);
+<span class="nb">say</span> <span class="s">'the published algorithm turns 123456789 into '</span>, <span class="nv">$good</span>;
+<span class="nb">say</span> <span class="s">'  the module says is-valid = '</span>,
+    <span class="n">FederalDocuments::CPF</span>.<span class="nb">new</span>(<span class="n">number</span> =&gt; <span class="nv">$good</span>).<span class="n">is-valid</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the repdigits, which the real specification blacklists by name:'</span>;
+<span class="k">for</span> &lt;<span class="mi">00000000000</span> <span class="mi">11111111111</span> <span class="mi">55555555555</span> <span class="mi">99999999999</span>&gt; -&gt; <span class="nv">$n</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s -&gt; %s'</span>, <span class="nv">$n</span>, <span class="n">FederalDocuments::CPF</span>.<span class="nb">new</span>(<span class="n">number</span> =&gt; <span class="nv">$n</span>).<span class="n">is-valid</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the formula genuinely self-satisfies for those, which is exactly why'</span>;
+<span class="nb">say</span> <span class="s">'the specification carries an explicit blacklist. This module has none.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the published algorithm turns 123456789 into 12345678909
+  the module says is-valid = False
+
+the repdigits, which the real specification blacklists by name:
+  00000000000    -&gt; True
+  11111111111    -&gt; True
+  55555555555    -&gt; True
+  99999999999    -&gt; True
+
+the formula genuinely self-satisfies for those, which is exactly why
+the specification carries an explicit blacklist. This module has none.</code></pre></div>
+<p>The module computes <code>sum * 10 % 11</code> and compares that directly, which agrees with the official rule everywhere except where the official rule folds a 10 down to 0 — about 17% of well-formed documents.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two things, both about inputs you should be rejecting before they get this far. Calling the class as if it were a sub works under Raku++ and dies under Rakudo, and a number with a trailing non-digit throws on one engine and answers <code>False</code> on the other.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/brazilian-federaldocuments/04-portable.raku" title="This example as a file: 04-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Brazilian::FederalDocuments</span>;
+
+<span class="c1"># the portable shape: validate the string yourself, then construct</span>
+<span class="k">sub</span> <span class="n">cpf-valid</span>(<span class="nb">Str</span> <span class="nv">$raw</span>) {
+    <span class="k">my</span> <span class="nv">$digits</span> = <span class="nv">$raw</span>.<span class="n">subst</span>(<span class="sr">/&lt;-[0..9]&gt;/</span>, <span class="s">''</span>, :<span class="n">g</span>);
+    <span class="k">return</span> <span class="n">False</span> <span class="k">unless</span> <span class="nv">$digits</span>.<span class="nb">chars</span> &lt;= <span class="mi">11</span>;
+    <span class="k">return</span> <span class="n">False</span> <span class="k">if</span> <span class="nv">$digits</span>.<span class="nb">comb</span>.<span class="nb">unique</span>.<span class="nb">elems</span> == <span class="mi">1</span>;   <span class="c1"># the blacklist the module lacks</span>
+    <span class="n">FederalDocuments::CPF</span>.<span class="nb">new</span>(<span class="n">number</span> =&gt; <span class="nv">$digits</span>).<span class="n">is-valid</span>
+}
+
+<span class="k">for</span> <span class="s">'000.000.001-91'</span>, <span class="s">'0000000019a'</span>, <span class="s">'11111111111'</span>, <span class="s">''</span> -&gt; <span class="nv">$raw</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s -&gt; %s'</span>, <span class="nv">$raw</span>.<span class="nb">raku</span>, <span class="n">cpf-valid</span>(<span class="nv">$raw</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'without that guard, &quot;0000000019a&quot; throws X::Str::Numeric on Raku++'</span>;
+<span class="nb">say</span> <span class="s">'and returns False on Rakudo, and `FederalDocuments::CPF(number =&gt; 191)`'</span>;
+<span class="nb">say</span> <span class="s">'builds an instance on Raku++ and raises &quot;No such method CALL-ME&quot; on'</span>;
+<span class="nb">say</span> <span class="s">'Rakudo. Always write .new, and always sanitise first.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "000.000.001-91"   -&gt; True
+  "0000000019a"      -&gt; False
+  "11111111111"      -&gt; False
+  ""                 -&gt; True
+
+without that guard, "0000000019a" throws X::Str::Numeric on Raku++
+and returns False on Rakudo, and `FederalDocuments::CPF(number =&gt; 191)`
+builds an instance on Raku++ and raises "No such method CALL-ME" on
+Rakudo. Always write .new, and always sanitise first.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

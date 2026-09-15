@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X::Intl — The Raku Ecosystem, Working</title>
+<meta name="description" content="Two empty marker roles so internationalization libraries can tag their exceptions with a common type — and one of them does not compose.">
+<link rel="canonical" href="https://raku.online/modules/x-intl/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="X::Intl — The Raku Ecosystem, Working">
+<meta property="og:description" content="Two empty marker roles so internationalization libraries can tag their exceptions with a common type — and one of them does not compose.">
+<meta property="og:url" content="https://raku.online/modules/x-intl/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"X::Intl","description":"Two empty marker roles so internationalization libraries can tag their exceptions with a common type — and one of them does not compose.","programmingLanguage":"Raku","version":"0.1","url":"https://raku.online/modules/x-intl/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/alabamenhu/XIntl.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · exceptions</div><h1>X::Intl</h1><span class="status st-div">Divergent</span></div><p class="summary">Two empty marker roles so internationalization libraries can tag their exceptions with a common type — and one of them does not compose.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1</code> <span class="fact-sub">zef:guifa</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:guifa/X::Intl">raku.land</a> · <a href="git://github.com/alabamenhu/XIntl.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install X::Intl</code></pre></div><p class="fact-sub"><code>zef install X::Intl</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A program using four internationalization libraries wants one <code>CATCH</code> that handles "a locale problem" without naming all four. That needs a type the four libraries agree on, and it needs to be a role, because each library's exception already has a superclass of its own.</p>
+<p>This distribution is that type, and nothing else: two empty roles, no methods, no attributes, no exports.</p>
+<h2 id="composing-it">Composing it <a class="anchor" href="#composing-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/x-intl/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">X::Intl</span>;
+
+<span class="k">class</span> <span class="n">X::Bad::Locale</span> <span class="k">does</span> <span class="n">X::Intl</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.tag</span>;
+    <span class="k">method</span> <span class="n">message</span> { <span class="s">&quot;unusable locale tag: $!tag&quot;</span> }
+}
+
+<span class="k">my</span> <span class="nv">$e</span> = <span class="n">X::Bad::Locale</span>.<span class="nb">new</span>(<span class="n">tag</span> =&gt; <span class="s">'xx-YY-zz'</span>);
+<span class="nb">say</span> <span class="s">'message        : '</span>, <span class="nv">$e</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="s">'~~ X::Intl     : '</span>, <span class="nv">$e</span> ~~ <span class="n">X::Intl</span>;
+<span class="nb">say</span> <span class="s">'~~ Exception   : '</span>, <span class="nv">$e</span> ~~ <span class="nb">Exception</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$caught</span> = <span class="k">try</span> { <span class="nv">$e</span>.<span class="n">throw</span> };
+<span class="nb">say</span> <span class="s">'caught as X::Intl : '</span>, <span class="nv">$!</span> ~~ <span class="n">X::Intl</span>;
+<span class="nb">say</span> <span class="s">'  its message     : '</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'that is the whole use case, and it works on both engines.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>message        : unusable locale tag: xx-YY-zz
+~~ X::Intl     : True
+~~ Exception   : True
+
+caught as X::Intl : True
+  its message     : unusable locale tag: xx-YY-zz
+
+that is the whole use case, and it works on both engines.</code></pre></div>
+<p>The role supplies no <code>message</code>, so you must write one — composing the role is not enough to make a usable exception.</p>
+<h2 id="the-warning-half">The warning half <a class="anchor" href="#the-warning-half" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/x-intl/02-warn.raku" title="This example as a file: 02-warn.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">CX::Warn::Intl</span>;
+
+<span class="nb">say</span> <span class="s">'the sibling role is CX::Warn::Intl, in its own unit:'</span>;
+<span class="nb">say</span> <span class="s">'  use X::Intl does NOT give it to you on Rakudo — `use` it separately.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">class</span> <span class="n">CX::Locale::Fallback</span> <span class="k">does</span> <span class="n">CX::Warn::Intl</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.wanted</span>;
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.used</span>;
+    <span class="k">method</span> <span class="n">message</span> { <span class="s">&quot;no data for $!wanted; fell back to $!used&quot;</span> }
+}
+<span class="k">my</span> <span class="nv">$w</span> = <span class="n">CX::Locale::Fallback</span>.<span class="nb">new</span>(<span class="n">wanted</span> =&gt; <span class="s">'gsw-CH'</span>, <span class="n">used</span> =&gt; <span class="s">'de-CH'</span>);
+<span class="nb">say</span> <span class="s">'a composed warning : '</span>, <span class="nv">$w</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="s">'  ~~ CX::Warn::Intl : '</span>, <span class="nv">$w</span> ~~ <span class="n">CX::Warn::Intl</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the sibling role is CX::Warn::Intl, in its own unit:
+  use X::Intl does NOT give it to you on Rakudo — `use` it separately.
+
+a composed warning : no data for gsw-CH; fell back to de-CH
+  ~~ CX::Warn::Intl : True</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>role X::Intl is Exception</code> is the whole distribution, and under Raku++ that <code>is Exception</code> does not reach the classes that compose the role — so you get something that type-checks as an <code>Exception</code> and does not behave like one.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/x-intl/03-parents.raku" title="This example as a file: 03-parents.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">X::Intl</span>;
+
+<span class="k">class</span> <span class="n">Boom</span> <span class="k">does</span> <span class="n">X::Intl</span> { <span class="k">method</span> <span class="n">message</span> { <span class="s">'parametros invalidos'</span> } }
+
+<span class="nb">say</span> <span class="s">'Boom ~~ Exception : '</span>, <span class="n">Boom</span> ~~ <span class="nb">Exception</span>;
+<span class="nb">say</span> <span class="s">'Boom.^parents     : engine-dependent — see below'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Rakudo reports (&quot;Exception&quot;,) there; Raku++ reports (&quot;Any&quot;,).'</span>;
+<span class="nb">say</span> <span class="s">'The smart-match is True on both, which is why this hides — but on'</span>;
+<span class="nb">say</span> <span class="s">'Raku++ the class does not inherit Exception`s behaviour, so .gist'</span>;
+<span class="nb">say</span> <span class="s">'falls back to Mu`s object dump instead of showing the message, and'</span>;
+<span class="nb">say</span> <span class="s">'an uncaught one prints &quot;parametros invalidos\n  (Boom)&quot; rather than'</span>;
+<span class="nb">say</span> <span class="s">'a backtrace line.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'test with ~~, never with ^parents, and never rely on .gist:'</span>;
+<span class="k">my</span> <span class="nv">$e</span> = <span class="n">Boom</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="s">'  the portable way to show it : '</span>, <span class="nv">$e</span>.<span class="n">message</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Boom ~~ Exception : True
+Boom.^parents     : engine-dependent — see below
+
+Rakudo reports ("Exception",) there; Raku++ reports ("Any",).
+The smart-match is True on both, which is why this hides — but on
+Raku++ the class does not inherit Exception`s behaviour, so .gist
+falls back to Mu`s object dump instead of showing the message, and
+an uncaught one prints "parametros invalidos\n  (Boom)" rather than
+a backtrace line.
+
+test with ~~, never with ^parents, and never rely on .gist:
+  the portable way to show it : parametros invalidos</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Exactly the gap above, and it is the whole point of the distribution — a role whose only content is <code>is Exception</code>. Rakudo is right here.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/x-intl/04-sibling.raku" title="This example as a file: 04-sibling.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">X::Intl</span>;
+<span class="k">use</span> <span class="n">CX::Warn::Intl</span>;
+
+<span class="nb">say</span> <span class="s">'both roles, both explicitly used:'</span>;
+<span class="nb">say</span> <span class="s">'  X::Intl        : '</span>, <span class="n">X::Intl</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  CX::Warn::Intl : '</span>, <span class="n">CX::Warn::Intl</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Raku++ additionally makes CX::Warn::Intl visible after `use X::Intl`'</span>;
+<span class="nb">say</span> <span class="s">'alone, because a `use` of one unit there resolves a sibling unit of'</span>;
+<span class="nb">say</span> <span class="s">'the same distribution. Rakudo does not. Write both `use` lines.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'introspecting the role groups is not portable either —'</span>;
+<span class="nb">say</span> <span class="s">'X::Intl.^parents is (&quot;Exception&quot;,) on Raku++ and empty on Rakudo.'</span>;
+<span class="nb">say</span> <span class="s">'Check with ~~ instead.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>both roles, both explicitly used:
+  X::Intl        : X::Intl
+  CX::Warn::Intl : CX::Warn::Intl
+
+Raku++ additionally makes CX::Warn::Intl visible after `use X::Intl`
+alone, because a `use` of one unit there resolves a sibling unit of
+the same distribution. Rakudo does not. Write both `use` lines.
+
+introspecting the role groups is not portable either —
+X::Intl.^parents is ("Exception",) on Raku++ and empty on Rakudo.
+Check with ~~ instead.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

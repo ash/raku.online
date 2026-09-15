@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::Genetic — The Raku Ecosystem, Working</title>
+<meta name="description" content="A skeleton for a genetic search you fill in — where the population is not sorted when `evolve` returns, so `.tail` is usually not the best.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-genetic/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::Genetic — The Raku Ecosystem, Working">
+<meta property="og:description" content="A skeleton for a genetic search you fill in — where the population is not sorted when `evolve` returns, so `.tail` is usually not the best.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-genetic/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::Genetic","description":"A skeleton for a genetic search you fill in — where the population is not sorted when `evolve` returns, so `.tail` is usually not the best.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/algorithm-genetic/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/samgwise/p6-algorithm-genetic.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>Algorithm::Genetic</h1><span class="status st-div">Divergent</span></div><p class="summary">A skeleton for a genetic search you fill in — where the population is not sorted when <code>evolve</code> returns, so <code>.tail</code> is usually not the best.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">github:samgwise</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:samgwise/Algorithm::Genetic">raku.land</a> · <a href="git://github.com/samgwise/p6-algorithm-genetic.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::Genetic</code></pre></div><p class="fact-sub"><code>zef install Algorithm::Genetic</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A genetic algorithm is four decisions — how a candidate is represented, how it is scored, how two are crossed, how one is mutated — plus a lot of scaffolding around them. This distribution is the scaffolding: five roles you compose, supplying only the four decisions.</p>
+<h2 id="composing-it">Composing it <a class="anchor" href="#composing-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-genetic/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Genetic</span>;
+<span class="k">use</span> <span class="n">Algorithm::Genetic::Genotype</span>;   <span class="c1"># for the `is mutable` trait</span>
+
+<span class="k">class</span> <span class="n">Eq</span> <span class="k">does</span> <span class="n">Algorithm::Genetic::Genotype</span> {
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.a</span> <span class="k">is</span> <span class="n">rw</span> <span class="k">is</span> <span class="n">mutable</span>({ (^<span class="mi">20</span>).<span class="nb">pick</span> });
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.b</span> <span class="k">is</span> <span class="n">rw</span> <span class="k">is</span> <span class="n">mutable</span>({ (^<span class="mi">20</span>).<span class="nb">pick</span> });
+    <span class="k">method</span> !<span class="n">calc-score</span> { -((<span class="nv">$!a</span> + <span class="nv">$!b</span> - <span class="mi">17</span>).<span class="nb">abs</span>) }
+    <span class="k">method</span> <span class="n">new-random</span> { <span class="nb">self</span>.<span class="nb">new</span>(<span class="n">a</span> =&gt; (^<span class="mi">20</span>).<span class="nb">pick</span>, <span class="n">b</span> =&gt; (^<span class="mi">20</span>).<span class="nb">pick</span>) }
+}
+
+<span class="k">class</span> <span class="n">Search</span> <span class="k">does</span> <span class="n">Algorithm::Genetic</span> {
+    <span class="k">method</span> <span class="n">is-finished</span> { <span class="nb">self</span>.<span class="n">population</span>.<span class="nb">max</span>(*.<span class="n">score</span>).<span class="n">score</span> &gt;= <span class="mi">0</span> }
+    <span class="k">method</span> <span class="n">selection-strategy</span>(<span class="nb">Int</span> <span class="nv">$selection</span> = <span class="mi">2</span>) {
+        <span class="nb">self</span>.<span class="n">population</span>.<span class="nb">sort</span>(*.<span class="n">score</span>).<span class="nb">tail</span>(<span class="nv">$selection</span>)
+    }
+}
+
+<span class="k">my</span> <span class="nv">$ga</span> = <span class="n">Search</span>.<span class="nb">new</span>(
+    <span class="n">population-size</span>       =&gt; <span class="mi">40</span>,
+    <span class="n">crossover-probability</span> =&gt; <span class="mi">7</span>/<span class="mi">10</span>,
+    <span class="n">mutation-probability</span>  =&gt; <span class="mi">8</span>/<span class="mi">10</span>,
+    <span class="n">genotype</span>              =&gt; <span class="n">Eq</span>.<span class="nb">new</span>(<span class="n">a</span> =&gt; <span class="mi">0</span>, <span class="n">b</span> =&gt; <span class="mi">0</span>),
+);
+<span class="nb">say</span> <span class="s">'generation before : '</span>, <span class="nv">$ga</span>.<span class="n">generation</span>;
+<span class="nb">say</span> <span class="s">'population before : '</span>, <span class="nv">$ga</span>.<span class="n">population</span>.<span class="nb">elems</span>;
+<span class="nv">$ga</span>.<span class="n">evolve</span>(<span class="n">generations</span> =&gt; <span class="mi">200</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'after evolve:'</span>;
+<span class="nb">say</span> <span class="s">'  generation        : '</span>, <span class="mi">0</span> &lt; <span class="nv">$ga</span>.<span class="n">generation</span> &lt;= <span class="mi">200</span>;
+<span class="nb">say</span> <span class="s">'  population size   : '</span>, <span class="nv">$ga</span>.<span class="n">population</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  every member is Eq: '</span>, <span class="k">so</span> <span class="nv">$ga</span>.<span class="n">population</span>.<span class="n">all</span> ~~ <span class="n">Eq</span>;
+<span class="nb">say</span> <span class="s">'  best score &lt;= 0   : '</span>, <span class="nv">$ga</span>.<span class="n">population</span>.<span class="nb">max</span>(*.<span class="n">score</span>).<span class="n">score</span> &lt;= <span class="mi">0</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>generation before : 0
+population before : 0
+
+after evolve:
+  generation        : True
+  population size   : 40
+  every member is Eq: True
+  best score &lt;= 0   : True</code></pre></div>
+<p>The search is random, so every assertion is a property.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>evolve</code> sorts the population at the <strong>top</strong> of each generation and appends the new children <strong>unsorted at the end</strong> — so when it returns, the population is not sorted and <code>.tail</code> is usually not your best individual.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-genetic/02-tail.raku" title="This example as a file: 02-tail.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Genetic</span>;
+<span class="k">use</span> <span class="n">Algorithm::Genetic::Genotype</span>;
+
+<span class="k">class</span> <span class="n">Eq</span> <span class="k">does</span> <span class="n">Algorithm::Genetic::Genotype</span> {
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.a</span> <span class="k">is</span> <span class="n">rw</span> <span class="k">is</span> <span class="n">mutable</span>({ (^<span class="mi">20</span>).<span class="nb">pick</span> });
+    <span class="k">method</span> !<span class="n">calc-score</span> { -((<span class="nv">$!a</span> - <span class="mi">9</span>).<span class="nb">abs</span>) }
+    <span class="k">method</span> <span class="n">new-random</span> { <span class="nb">self</span>.<span class="nb">new</span>(<span class="n">a</span> =&gt; (^<span class="mi">20</span>).<span class="nb">pick</span>) }
+}
+<span class="k">class</span> <span class="n">Search</span> <span class="k">does</span> <span class="n">Algorithm::Genetic</span> {
+    <span class="k">method</span> <span class="n">is-finished</span> { <span class="n">False</span> }
+    <span class="k">method</span> <span class="n">selection-strategy</span>(<span class="nb">Int</span> <span class="nv">$selection</span> = <span class="mi">2</span>) {
+        <span class="nb">self</span>.<span class="n">population</span>.<span class="nb">sort</span>(*.<span class="n">score</span>).<span class="nb">tail</span>(<span class="nv">$selection</span>)
+    }
+}
+
+<span class="k">my</span> (<span class="nv">$sorted</span>, <span class="nv">$tail-best</span>) = <span class="mi">0</span>, <span class="mi">0</span>;
+<span class="k">for</span> ^<span class="mi">30</span> {
+    <span class="k">my</span> <span class="nv">$ga</span> = <span class="n">Search</span>.<span class="nb">new</span>(<span class="n">population-size</span> =&gt; <span class="mi">20</span>, <span class="n">crossover-probability</span> =&gt; <span class="mi">7</span>/<span class="mi">10</span>,
+                        <span class="n">mutation-probability</span> =&gt; <span class="mi">1</span>/<span class="mi">10</span>, <span class="n">genotype</span> =&gt; <span class="n">Eq</span>.<span class="nb">new</span>(<span class="n">a</span> =&gt; <span class="mi">0</span>));
+    <span class="nv">$ga</span>.<span class="n">evolve</span>(<span class="n">generations</span> =&gt; <span class="mi">5</span>);
+    <span class="k">my</span> <span class="nv">@p</span> = <span class="nv">$ga</span>.<span class="n">population</span>;
+    <span class="nv">$sorted</span>++    <span class="k">if</span> <span class="nv">@p</span>».<span class="n">score</span> <span class="n">eqv</span> <span class="nv">@p</span>».<span class="n">score</span>.<span class="nb">sort</span>;
+    <span class="nv">$tail-best</span>++ <span class="k">if</span> <span class="nv">@p</span>.<span class="nb">tail</span>.<span class="n">score</span> == <span class="nv">@p</span>.<span class="nb">max</span>(*.<span class="n">score</span>).<span class="n">score</span>;
+}
+<span class="nb">say</span> <span class="s">'over 30 runs of 5 generations each:'</span>;
+<span class="nb">say</span> <span class="s">'  population sorted afterwards : '</span>, <span class="nv">$sorted</span>, <span class="s">' of 30'</span>;
+<span class="nb">say</span> <span class="s">'  .tail is the best-scoring    : sometimes, by luck — never rely on it'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'read the answer with .population.max(*.score), never with .tail.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>over 30 runs of 5 generations each:
+  population sorted afterwards : 0 of 30
+  .tail is the best-scoring    : sometimes, by luck — never rely on it
+
+read the answer with .population.max(*.score), never with .tail.</code></pre></div>
+<h2 id="three-more-shapes">Three more shapes <a class="anchor" href="#three-more-shapes" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-genetic/03-shapes.raku" title="This example as a file: 03-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Genetic</span>;
+
+<span class="nb">say</span> <span class="s">'two things the examples above do deliberately.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'first, `use Algorithm::Genetic::Genotype` as well — the `is mutable`'</span>;
+<span class="nb">say</span> <span class="s">'trait is exported from THAT unit, and Rakudo will not compile an'</span>;
+<span class="nb">say</span> <span class="s">'attribute carrying it without the second use line.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'second, they supply selection-strategy directly rather than composing'</span>;
+<span class="nb">say</span> <span class="s">'Selection::Roulette. Composing both roles trips'</span>;
+<span class="nb">say</span> <span class="s">'Algorithm::Genetic`s own required-method check before Roulette has'</span>;
+<span class="nb">say</span> <span class="s">'supplied the method, whichever order you write them in.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Algorithm::Genetic and friends are ROLES, not classes — punning is'</span>;
+<span class="nb">say</span> <span class="s">'not usable, and only Rakudo tells you why (&quot;Method is-finished must'</span>;
+<span class="nb">say</span> <span class="s">'be implemented&quot;).'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'`is mutable` requires a Callable — `is mutable(42)` dies with the'</span>;
+<span class="nb">say</span> <span class="s">'module`s own message, spelling and all.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'.score CACHES on first call, so a mutated genotype keeps a stale'</span>;
+<span class="nb">say</span> <span class="s">'score until you call .re-score. crossover calls .?re-score on the'</span>;
+<span class="nb">say</span> <span class="s">'children; mutate does not.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'!sort-population sorts ASCENDING and Roulette selects from the top of'</span>;
+<span class="nb">say</span> <span class="s">'that order — so HIGHER score means fitter. The distribution`s own'</span>;
+<span class="nb">say</span> <span class="s">'example scores with a squared error, where lower is better, which'</span>;
+<span class="nb">say</span> <span class="s">'inverts the search. Negate your error.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and evolve only re-initialises when the population is EMPTY, so'</span>;
+<span class="nb">say</span> <span class="s">'calling it twice continues rather than restarts.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>two things the examples above do deliberately.
+
+first, `use Algorithm::Genetic::Genotype` as well — the `is mutable`
+trait is exported from THAT unit, and Rakudo will not compile an
+attribute carrying it without the second use line.
+
+second, they supply selection-strategy directly rather than composing
+Selection::Roulette. Composing both roles trips
+Algorithm::Genetic`s own required-method check before Roulette has
+supplied the method, whichever order you write them in.
+
+Algorithm::Genetic and friends are ROLES, not classes — punning is
+not usable, and only Rakudo tells you why ("Method is-finished must
+be implemented").
+
+`is mutable` requires a Callable — `is mutable(42)` dies with the
+module`s own message, spelling and all.
+
+.score CACHES on first call, so a mutated genotype keeps a stale
+score until you call .re-score. crossover calls .?re-score on the
+children; mutate does not.
+
+!sort-population sorts ASCENDING and Roulette selects from the top of
+that order — so HIGHER score means fitter. The distribution`s own
+example scores with a squared error, where lower is better, which
+inverts the search. Negate your error.
+
+and evolve only re-initialises when the population is EMPTY, so
+calling it twice continues rather than restarts.</code></pre></div>
+<h2 id="two-pieces-of-dead-code">Two pieces of dead code <a class="anchor" href="#two-pieces-of-dead-code" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-genetic/04-dead.raku" title="This example as a file: 04-dead.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Genetic</span>;
+
+<span class="nb">say</span> <span class="s">'the Array-gene path is unreachable. crossover claims to handle'</span>;
+<span class="nb">say</span> <span class="s">'Array-typed attributes recursively and calls self!crossover-nested,'</span>;
+<span class="nb">say</span> <span class="s">'but the method that exists is named !crossover-array — so any'</span>;
+<span class="nb">say</span> <span class="s">'genotype with an Array attribute dies on its first crossover.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'(and !crossover-array is itself broken even if it were reached:'</span>;
+<span class="nb">say</span> <span class="s">'$a[$i], $b[$i] = $b[$i], $a[$i] does not swap.)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'keep your genes scalar.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the second one is scoping rather than dead code: `my @mutators`'</span>;
+<span class="nb">say</span> <span class="s">'lives once per compunit of Genotype.rakumod, and the exported'</span>;
+<span class="nb">say</span> <span class="s">'`is mutable` trait pushes into it — so EVERY genotype class in the'</span>;
+<span class="nb">say</span> <span class="s">'program shares one mutator list, and mutate runs other classes`'</span>;
+<span class="nb">say</span> <span class="s">'mutators against your object. Two genotype classes in one program is'</span>;
+<span class="nb">say</span> <span class="s">'fatal on Rakudo and silent on Raku++.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one genotype class per program.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the Array-gene path is unreachable. crossover claims to handle
+Array-typed attributes recursively and calls self!crossover-nested,
+but the method that exists is named !crossover-array — so any
+genotype with an Array attribute dies on its first crossover.
+
+(and !crossover-array is itself broken even if it were reached:
+$a[$i], $b[$i] = $b[$i], $a[$i] does not swap.)
+
+keep your genes scalar.
+
+the second one is scoping rather than dead code: `my @mutators`
+lives once per compunit of Genotype.rakumod, and the exported
+`is mutable` trait pushes into it — so EVERY genotype class in the
+program shares one mutator list, and mutate runs other classes`
+mutators against your object. Two genotype classes in one program is
+fatal on Rakudo and silent on Raku++.
+
+one genotype class per program.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The mutator-list collision above is the substantive one: Rakudo raises <code>P6opaque: no such attribute</code> and Raku++ silently returns <code>Any</code> for the foreign attribute and discards the write. Two smaller ones follow from Raku++ being more permissive: an unimplemented role stub puns without complaint there, and <code>succeed ()</code> inside <code>given</code>/<code>when</code> yields <code>Any</code> rather than <code>()</code> — which is why <code>population-size =&gt; 0</code> dies inside the module on Raku++ and completes on Rakudo.</p>
+<p>Keep to one genotype class, a non-zero population and scalar genes, and the two engines agree on everything this page shows.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

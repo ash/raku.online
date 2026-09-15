@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Syslog::Parse — The Raku Ecosystem, Working</title>
+<meta name="description" content="An RFC 3164 syslog grammar and a Supply that follows a growing file — with two months of the year missing from the grammar.">
+<link rel="canonical" href="https://raku.online/modules/syslog-parse/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Syslog::Parse — The Raku Ecosystem, Working">
+<meta property="og:description" content="An RFC 3164 syslog grammar and a Supply that follows a growing file — with two months of the year missing from the grammar.">
+<meta property="og:url" content="https://raku.online/modules/syslog-parse/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Syslog::Parse","description":"An RFC 3164 syslog grammar and a Supply that follows a growing file — with two months of the year missing from the grammar.","programmingLanguage":"Raku","version":"0.0.3","url":"https://raku.online/modules/syslog-parse/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/JJ/raku-syslog-parse.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · log parsing</div><h1>Syslog::Parse</h1><span class="status st-div">Divergent</span></div><p class="summary">An RFC 3164 syslog grammar and a Supply that follows a growing file — with two months of the year missing from the grammar.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.3</code> <span class="fact-sub">zef:jjmerelo</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>4 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jjmerelo/Syslog::Parse">raku.land</a> · <a href="https://github.com/JJ/raku-syslog-parse.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Syslog::Parse</code></pre></div><p class="fact-sub"><code>zef install Syslog::Parse</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A syslog line is <code>Mon  3 04:05:06 host actor[pid]: message</code>. Turning that into fields is the first step of any log analysis, and this distribution does it with a grammar plus actions, handing back a plain <code>Hash</code>.</p>
+<p>It also wraps that in a class that watches a file and emits parsed entries on a <code>Supply</code> as the file grows.</p>
+<h2 id="parsing-a-line">Parsing a line <a class="anchor" href="#parsing-a-line" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/syslog-parse/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Syslog::Parse</span>;
+
+<span class="k">my</span> <span class="nv">$line</span> = <span class="s">&quot;Jan  3 04:05:06 boxname cron: a job ran\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="nv">$line</span>, <span class="n">actions</span> =&gt; <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>);
+<span class="k">my</span> <span class="nv">%e</span> = <span class="nv">$m</span>.<span class="n">made</span>;
+<span class="k">for</span> <span class="nv">%e</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> { <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s %s'</span>, <span class="nv">$k</span>, <span class="nv">%e</span>{<span class="nv">$k</span>}.<span class="nb">raku</span>) }
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'day comes back as an Int, hour as a Str, and `user` is the literal'</span>;
+<span class="nb">say</span> <span class="s">'&quot;∅&quot; when the message carries no (name) prefix.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  actor      "cron"
+  day        3
+  hostname   "boxname"
+  hour       "04:05:06"
+  message    "a job ran\n"
+  month      "Jan"
+  pid        Any
+  user       "∅"
+  who        Any
+
+day comes back as an Int, hour as a Str, and `user` is the literal
+"∅" when the message carries no (name) prefix.</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/syslog-parse/02-user.raku" title="This example as a file: 02-user.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Syslog::Parse</span>;
+
+<span class="k">for</span> <span class="s">&quot;Feb 14 10:11:12 boxname sshd: (pam_unix) session opened\n&quot;</span>,
+    <span class="s">&quot;Apr  9 23:59:59 boxname systemd: (deploy:1000) started unit\n&quot;</span>,
+    <span class="s">&quot;May 31 12:00:00 boxname su: nothing special\n&quot;</span> -&gt; <span class="nv">$line</span> {
+    <span class="k">my</span> <span class="nv">%e</span> = <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="nv">$line</span>, <span class="n">actions</span> =&gt; <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>).<span class="n">made</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  actor=%-8s user=%-10s message=%s'</span>,
+                <span class="nv">%e</span><span class="s">&lt;actor&gt;</span>.<span class="nb">raku</span>, <span class="nv">%e</span><span class="s">&lt;user&gt;</span>.<span class="nb">raku</span>, <span class="nv">%e</span><span class="s">&lt;message&gt;</span>.<span class="nb">raku</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  actor="sshd"   user="pam_unix" message="(pam_unix) session opened\n"
+  actor="systemd" user="deploy"   message="(deploy:1000) started unit\n"
+  actor="su"     user="∅"        message="nothing special\n"</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>June and July log lines never parse. The <code>month</code> token is missing one alternation bar.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/syslog-parse/03-june.raku" title="This example as a file: 03-june.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Syslog::Parse</span>;
+
+<span class="k">sub</span> <span class="n">parses</span>(<span class="nv">$mon</span>) {
+    <span class="k">my</span> <span class="nv">$line</span> = <span class="s">&quot;$mon  3 04:05:06 boxname cron: a job ran\n&quot;</span>;
+    <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="nv">$line</span>, <span class="n">actions</span> =&gt; <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>).<span class="nb">defined</span>
+}
+
+<span class="k">for</span> &lt;<span class="n">Jan</span> <span class="n">Feb</span> <span class="n">Mar</span> <span class="n">Apr</span> <span class="n">May</span> <span class="n">Jun</span> <span class="n">Jul</span> <span class="n">Aug</span> <span class="n">Sep</span> <span class="n">Oct</span> <span class="n">Nov</span> <span class="n">Dec</span>&gt; -&gt; <span class="nv">$m</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %s : %s'</span>, <span class="nv">$m</span>, <span class="n">parses</span>(<span class="nv">$m</span>) ?? <span class="s">'parses'</span> !! <span class="s">'NO PARSE'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the string the grammar DOES accept in their place:'</span>;
+<span class="nb">say</span> <span class="s">'  JunJul : '</span>, <span class="n">parses</span>(<span class="s">'JunJul'</span>) ?? <span class="s">'parses'</span> !! <span class="s">'no parse'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the token reads'</span>;
+<span class="nb">say</span> <span class="s">'  [ &quot;Jan&quot;| &quot;Feb&quot; | … | &quot;May&quot; | &quot;Jun&quot;'</span>;
+<span class="nb">say</span> <span class="s">'   &quot;Jul&quot; | &quot;Aug&quot; | … ]'</span>;
+<span class="nb">say</span> <span class="s">'so &quot;Jun&quot; &quot;Jul&quot; is a CONCATENATION. Two months of every year are'</span>;
+<span class="nb">say</span> <span class="s">'invisible, and a .parse that returns Nil is easy to mistake for'</span>;
+<span class="nb">say</span> <span class="s">'&quot;nothing new in the log&quot;.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  Jan : parses
+  Feb : parses
+  Mar : parses
+  Apr : parses
+  May : parses
+  Jun : NO PARSE
+  Jul : NO PARSE
+  Aug : parses
+  Sep : parses
+  Oct : parses
+  Nov : parses
+  Dec : parses
+
+and the string the grammar DOES accept in their place:
+  JunJul : parses
+
+the token reads
+  [ "Jan"| "Feb" | … | "May" | "Jun"
+   "Jul" | "Aug" | … ]
+so "Jun" "Jul" is a CONCATENATION. Two months of every year are
+invisible, and a .parse that returns Nil is easy to mistake for
+"nothing new in the log".</code></pre></div>
+<h2 id="two-fields-that-are-always-undefined">Two fields that are always undefined <a class="anchor" href="#two-fields-that-are-always-undefined" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/syslog-parse/04-pid.raku" title="This example as a file: 04-pid.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Syslog::Parse</span>;
+
+<span class="k">my</span> <span class="nv">$line</span> = <span class="s">&quot;Jan  3 04:05:06 boxname cron[1234]: a job ran\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="nv">$line</span>, <span class="n">actions</span> =&gt; <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>);
+<span class="k">my</span> <span class="nv">%e</span> = <span class="nv">$m</span>.<span class="n">made</span>;
+<span class="nb">say</span> <span class="s">'the delivered hash:'</span>;
+<span class="nb">say</span> <span class="s">'  pid   : '</span>, <span class="nv">%e</span><span class="s">&lt;pid&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  who   : '</span>, <span class="nv">%e</span><span class="s">&lt;who&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'but the pid IS in the match — it is thrown away on the way out:'</span>;
+<span class="nb">say</span> <span class="s">'  raw $&lt;actor&gt;&lt;pid&gt; : '</span>, <span class="nv">$m</span><span class="s">&lt;actor&gt;</span><span class="s">&lt;pid&gt;</span>.<span class="nb">Str</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the TOP action copies %entry{$key} = $/{$key}.made for pid and who,'</span>;
+<span class="nb">say</span> <span class="s">'and both are captured INSIDE &lt;actor&gt;, not at the top level. Read them'</span>;
+<span class="nb">say</span> <span class="s">'from the Match if you need them.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'there is no range checking either:'</span>;
+<span class="k">my</span> <span class="nv">$wild</span> = <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="s">&quot;Jan 99 77:88:99 h a: m\n&quot;</span>,
+                                 <span class="n">actions</span> =&gt; <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>);
+<span class="nb">say</span> <span class="s">'  &quot;Jan 99 77:88:99&quot; parses : '</span>, <span class="nv">$wild</span>.<span class="nb">defined</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the delivered hash:
+  pid   : Any
+  who   : Any
+
+but the pid IS in the match — it is thrown away on the way out:
+  raw $&lt;actor&gt;&lt;pid&gt; : "1234"
+
+the TOP action copies %entry{$key} = $/{$key}.made for pid and who,
+and both are captured INSIDE &lt;actor&gt;, not at the top level. Read them
+from the Match if you need them.
+
+there is no range checking either:
+  "Jan 99 77:88:99" parses : True</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The <code>Syslog::Parse</code> class itself cannot be constructed under Raku++: <code>IO::Notification</code> is an empty stub there, with no <code>watch-path</code>. The grammar and actions — which is where the value is — work identically on both, and that is why the four-file suite is green on Raku++.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/syslog-parse/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Syslog::Parse</span>;
+
+<span class="nb">say</span> <span class="s">'the portable half is the grammar. Drive it yourself over .lines and'</span>;
+<span class="nb">say</span> <span class="s">'you get the same result on both engines:'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$fixture</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;syslog-{$*PID}.log&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$fixture</span>.<span class="nb">unlink</span>;
+<span class="nv">$fixture</span>.<span class="nb">spurt</span>(<span class="s">qq:to/END/</span>);
+<span class="s">Jan  3 04:05:06 boxname app: first
+Jan  3 04:05:07 boxname app: second
+END
+</span>
+<span class="k">my</span> <span class="nv">$actions</span> = <span class="n">Syslog::Grammar::Actions</span>.<span class="nb">new</span>;
+<span class="k">for</span> <span class="nv">$fixture</span>.<span class="nb">lines</span> -&gt; <span class="nv">$line</span> {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Syslog::Grammar</span>.<span class="n">parse</span>(<span class="s">&quot;$line\n&quot;</span>, :<span class="nv">$actions</span>);
+    <span class="k">next</span> <span class="k">unless</span> <span class="nv">$m</span>;
+    <span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$m</span>.<span class="n">made</span><span class="s">&lt;message&gt;</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two further reasons to do it this way, both engine-independent: the'</span>;
+<span class="nb">say</span> <span class="s">'class default path is /var/log/syslog, which does not exist on macOS,'</span>;
+<span class="nb">say</span> <span class="s">'and its multi-line append handling keeps only the newest line —'</span>;
+<span class="nb">say</span> <span class="s">'@all-lines is assigned before the count is computed, so the range is'</span>;
+<span class="nb">say</span> <span class="s">'always 0 … 0. Under real syslog load it drops most of the traffic.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the portable half is the grammar. Drive it yourself over .lines and
+you get the same result on both engines:
+
+  first
+
+  second
+
+
+two further reasons to do it this way, both engine-independent: the
+class default path is /var/log/syslog, which does not exist on macOS,
+and its multi-line append handling keeps only the newest line —
+@all-lines is assigned before the count is computed, so the range is
+always 0 … 0. Under real syslog load it drops most of the traffic.</code></pre></div>
+<p>One more, worth a thought before you point this at CRLF input: a line-ending difference changes which grammar branch wins under Raku++, and RFC 5424 mandates CRLF. Normalise to <code>\n</code> first.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

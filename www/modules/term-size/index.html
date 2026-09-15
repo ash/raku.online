@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Term::Size — The Raku Ecosystem, Working</title>
+<meta name="description" content="Terminal width and height in cells and pixels, from a bundled C helper — where only `populate` ever reports failure.">
+<link rel="canonical" href="https://raku.online/modules/term-size/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Term::Size — The Raku Ecosystem, Working">
+<meta property="og:description" content="Terminal width and height in cells and pixels, from a bundled C helper — where only `populate` ever reports failure.">
+<meta property="og:url" content="https://raku.online/modules/term-size/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Term::Size","description":"Terminal width and height in cells and pixels, from a bundled C helper — where only `populate` ever reports failure.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/term-size/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/m-doughty/Term-Size.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · terminal</div><h1>Term::Size</h1><span class="status st-div">Divergent</span></div><p class="summary">Terminal width and height in cells and pixels, from a bundled C helper — where only <code>populate</code> ever reports failure.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">zef:apogee</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:apogee/Term::Size">raku.land</a> · <a href="https://github.com/m-doughty/Term-Size.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Term::Size</code></pre></div><p class="fact-sub"><code>zef install Term::Size</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Wrapping output to the terminal, drawing a progress bar, or laying out a table needs the window size. This distribution asks the kernel with a <code>TIOCGWINSZ</code>-style ioctl, and additionally tries the kitty protocol, which reports pixel dimensions and cell size as well as rows and columns.</p>
+<h2 id="asking">Asking <a class="anchor" href="#asking" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/term-size/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Term::Size</span>;
+
+<span class="k">my</span> <span class="nv">$ts</span> = <span class="n">Term::Size</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$ok</span> = <span class="nv">$ts</span>.<span class="n">populate</span>;
+
+<span class="nb">say</span> <span class="s">'STDOUT is a tty : '</span>, <span class="nv">$*OUT</span>.<span class="n">t</span>;
+<span class="nb">say</span> <span class="s">'populate failed : '</span>, (<span class="nv">$ok</span> ~~ <span class="nb">Failure</span>).<span class="nb">so</span>;
+<span class="nb">say</span> <span class="s">'  message       : '</span>, (<span class="nv">$ok</span> ~~ <span class="nb">Failure</span>) ?? <span class="nv">$ok</span>.<span class="n">exception</span>.<span class="n">message</span> !! <span class="s">'(none)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">term-width-cells</span> <span class="n">term-height-cells</span> <span class="n">term-width-px</span> <span class="n">term-height-px</span>
+     <span class="n">cell-width-px</span> <span class="n">cell-height-px</span>&gt; -&gt; <span class="nv">$m</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s %s'</span>, <span class="nv">$m</span>, <span class="nv">$ts</span>.<span class="s">&quot;$m&quot;</span>());
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'this page is built with no controlling terminal, so every value is 0'</span>;
+<span class="nb">say</span> <span class="s">'and populate returns a Failure. On a real terminal the same six'</span>;
+<span class="nb">say</span> <span class="s">'accessors answer the window size.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>STDOUT is a tty : False
+populate failed : True
+  message       : Failed to get term size
+
+  term-width-cells   0
+  term-height-cells  0
+  term-width-px      0
+  term-height-px     0
+  cell-width-px      0
+  cell-height-px     0
+
+this page is built with no controlling terminal, so every value is 0
+and populate returns a Failure. On a real terminal the same six
+accessors answer the window size.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The six accessors <strong>never</strong> fail — they return plain <code>Int</code> <code>0</code>. Only <code>populate</code> reports the error, and it does so as a <code>Failure</code> you can drop on the floor.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/term-size/02-zero.raku" title="This example as a file: 02-zero.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Term::Size</span>;
+
+<span class="k">my</span> <span class="nv">$ts</span> = <span class="n">Term::Size</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$ts</span>.<span class="n">populate</span>;               <span class="c1"># a Failure here, if there is no terminal</span>
+<span class="nv">$r</span>.<span class="nb">so</span> <span class="k">if</span> <span class="nv">$r</span> ~~ <span class="nb">Failure</span>;             <span class="c1"># mark it handled so it cannot detonate</span>
+
+<span class="k">my</span> <span class="nv">$w</span> = <span class="nv">$ts</span>.<span class="n">term-width-cells</span>;
+<span class="nb">say</span> <span class="s">'term-width-cells : '</span>, <span class="nv">$w</span>;
+<span class="nb">say</span> <span class="s">'  type           : '</span>, <span class="nv">$w</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  ~~ Failure     : '</span>, (<span class="nv">$w</span> ~~ <span class="nb">Failure</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the natural code —'</span>;
+<span class="nb">say</span> <span class="s">'  my $t = Term::Size.new; $t.populate; say $t.term-width-cells;'</span>;
+<span class="nb">say</span> <span class="s">'— prints 0, with no warning anywhere.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the usual defensive idiom hides it:'</span>;
+<span class="nb">say</span> <span class="s">'  width || 80  = '</span>, (<span class="nv">$w</span> || <span class="mi">80</span>), <span class="s">'   &lt;- 80 in BOTH the &quot;no terminal&quot;'</span>;
+<span class="nb">say</span> <span class="s">'                        case and a hypothetical real 0-column one'</span>;
+<span class="nb">say</span> <span class="s">'  width - 2    = '</span>, (<span class="nv">$w</span> - <span class="mi">2</span>), <span class="s">'  &lt;- a negative layout'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'check populate`s return value; nothing downstream will tell you:'</span>;
+<span class="k">sub</span> <span class="n">terminal-width</span>(<span class="nb">Int</span> <span class="nv">$fallback</span> = <span class="mi">80</span>) {
+    <span class="k">my</span> <span class="nv">$t</span> = <span class="n">Term::Size</span>.<span class="nb">new</span>;
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$t</span>.<span class="n">populate</span>;
+    <span class="k">return</span> <span class="nv">$fallback</span> <span class="k">if</span> <span class="nv">$r</span> ~~ <span class="nb">Failure</span>;
+    <span class="nv">$t</span>.<span class="n">term-width-cells</span> || <span class="nv">$fallback</span>
+}
+<span class="nb">say</span> <span class="s">'  terminal-width() = '</span>, <span class="n">terminal-width</span>();</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>term-width-cells : 0
+  type           : Int
+  ~~ Failure     : False
+
+so the natural code —
+  my $t = Term::Size.new; $t.populate; say $t.term-width-cells;
+— prints 0, with no warning anywhere.
+
+and the usual defensive idiom hides it:
+  width || 80  = 80   &lt;- 80 in BOTH the "no terminal"
+                        case and a hypothetical real 0-column one
+  width - 2    = -2  &lt;- a negative layout
+
+check populate`s return value; nothing downstream will tell you:
+  terminal-width() = 80</code></pre></div>
+<h2 id="the-native-layer">The native layer <a class="anchor" href="#the-native-layer" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/term-size/03-native.raku" title="This example as a file: 03-native.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Term::Size</span>;
+
+<span class="nb">say</span> <span class="s">'the class is a thin wrapper over two C helpers and two CStructs:'</span>;
+<span class="nb">say</span> <span class="s">'  get_termsize(TermSize)            — the ioctl'</span>;
+<span class="nb">say</span> <span class="s">'  get_kitty_termsize(TermSize, CellSize) — the kitty query'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'both return -1 with no terminal, and every struct field stays 0.'</span>;
+<span class="nb">say</span> <span class="s">'the native library itself loads fine — the failure is the ioctl, not'</span>;
+<span class="nb">say</span> <span class="s">'the %?RESOURCES lookup.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two shapes worth knowing:'</span>;
+<span class="nb">say</span> <span class="s">'  TermSize.cell_width / cell_height divide by ws_col / ws_row and'</span>;
+<span class="nb">say</span> <span class="s">'  return 0 rather than dividing by zero — another zero meaning'</span>;
+<span class="nb">say</span> <span class="s">'  &quot;unknown&quot;.'</span>;
+<span class="nb">say</span> <span class="s">'  CellSize.ws_cwidth and ws_cheight are `is rw`, so a caller can'</span>;
+<span class="nb">say</span> <span class="s">'  overwrite the measured cell size. TermSize`s fields are read-only.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the class is a thin wrapper over two C helpers and two CStructs:
+  get_termsize(TermSize)            — the ioctl
+  get_kitty_termsize(TermSize, CellSize) — the kitty query
+
+both return -1 with no terminal, and every struct field stays 0.
+the native library itself loads fine — the failure is the ioctl, not
+the %?RESOURCES lookup.
+
+two shapes worth knowing:
+  TermSize.cell_width / cell_height divide by ws_col / ws_row and
+  return 0 rather than dividing by zero — another zero meaning
+  "unknown".
+  CellSize.ws_cwidth and ws_cheight are `is rw`, so a caller can
+  overwrite the measured cell size. TermSize`s fields are read-only.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two, and one of them will surprise you in a log file. <code>.raku</code> is overridden to return a human report rather than an evaluable representation — and under Rakudo that also changes <code>.gist</code>, so <code>say $ts</code> prints a six-line block there and the ordinary structural gist under Raku++.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/term-size/04-gist.raku" title="This example as a file: 04-gist.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Term::Size</span>;
+
+<span class="k">my</span> <span class="nv">$ts</span> = <span class="n">Term::Size</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$ts</span>.<span class="n">populate</span>;
+<span class="nv">$r</span>.<span class="nb">so</span> <span class="k">if</span> <span class="nv">$r</span> ~~ <span class="nb">Failure</span>;
+
+<span class="nb">say</span> <span class="s">'the overridden .raku is a REPORT, identical on both engines:'</span>;
+<span class="nb">print</span> <span class="nv">$ts</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'but `say $ts` is not. Rakudo falls back to the overridden .raku for'</span>;
+<span class="nb">say</span> <span class="s">'.gist and prints the same six lines; Raku++ prints the structural'</span>;
+<span class="nb">say</span> <span class="s">'gist. Anything logging $ts, or using dd, differs.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'print the accessors, not the object.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the other difference: after `use Term::Size` alone, Raku++ leaks'</span>;
+<span class="nb">say</span> <span class="s">'Term::Size::Native`s exports into your scope, so `my TermSize $x .= new`'</span>;
+<span class="nb">say</span> <span class="s">'compiles there and is &quot;Type TermSize is not declared&quot; on Rakudo.'</span>;
+<span class="nb">say</span> <span class="s">'Use the qualified name, or `use Term::Size::Native` explicitly.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the overridden .raku is a REPORT, identical on both engines:
+Terminal width (px):     Not Detected
+Terminal height (px):    Not Detected
+Terminal width (cells):  Not Detected
+Terminal height (cells): Not Detected
+Cell width (px):         Not Detected
+Cell height (px):        Not Detected
+but `say $ts` is not. Rakudo falls back to the overridden .raku for
+.gist and prints the same six lines; Raku++ prints the structural
+gist. Anything logging $ts, or using dd, differs.
+
+print the accessors, not the object.
+
+the other difference: after `use Term::Size` alone, Raku++ leaks
+Term::Size::Native`s exports into your scope, so `my TermSize $x .= new`
+compiles there and is "Type TermSize is not declared" on Rakudo.
+Use the qualified name, or `use Term::Size::Native` explicitly.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

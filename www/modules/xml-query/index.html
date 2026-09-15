@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XML::Query — The Raku Ecosystem, Working</title>
+<meta name="description" content="CSS-shaped selectors over an XML::Document — where `.class` is an exact attribute match, so a multi-class element never matches.">
+<link rel="canonical" href="https://raku.online/modules/xml-query/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="XML::Query — The Raku Ecosystem, Working">
+<meta property="og:description" content="CSS-shaped selectors over an XML::Document — where `.class` is an exact attribute match, so a multi-class element never matches.">
+<meta property="og:url" content="https://raku.online/modules/xml-query/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"XML::Query","description":"CSS-shaped selectors over an XML::Document — where `.class` is an exact attribute match, so a multi-class element never matches.","programmingLanguage":"Raku","version":"1.1","url":"https://raku.online/modules/xml-query/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/XML-Query.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · XML</div><h1>XML::Query</h1><span class="status st-div">Divergent</span></div><p class="summary">CSS-shaped selectors over an XML::Document — where <code>.class</code> is an exact attribute match, so a multi-class element never matches.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>XML</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/XML::Query">raku.land</a> · <a href="https://github.com/raku-community-modules/XML-Query.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install XML::Query</code></pre></div><p class="fact-sub"><code>zef install XML::Query</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Walking an <code>XML::Document</code> by hand is tedious; a selector language is not. This distribution wraps a document in a callable object so that <code>$xq('div p')</code> returns the matching elements — tag name, <code>#id</code>, <code>.class</code>, <code>[attr="value"]</code>, descendant, direct child and union.</p>
+<h2 id="selecting">Selecting <a class="anchor" href="#selecting" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-query/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML</span>;
+<span class="k">use</span> <span class="n">XML::Query</span>;
+
+<span class="k">my</span> <span class="nv">$doc</span> = <span class="n">from-xml</span>(<span class="s">q:to/END/</span>);
+<span class="s">&lt;html&gt;
+  &lt;body id=&quot;top&quot;&gt;
+    &lt;div id=&quot;header&quot;&gt;&lt;a href=&quot;one.html&quot;&gt;one&lt;/a&gt;&lt;a href=&quot;two.html&quot;&gt;two&lt;/a&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;p class=&quot;decr&quot;&gt;A&lt;/p&gt;&lt;p&gt;B&lt;/p&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;input type=&quot;radio&quot;/&gt;&lt;input type=&quot;radio&quot;/&gt;&lt;input type=&quot;text&quot;/&gt;&lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+END
+</span>
+<span class="k">my</span> <span class="nv">$xq</span> = <span class="n">XML::Query</span>.<span class="nb">new</span>(<span class="nv">$doc</span>);
+<span class="k">for</span> <span class="s">'a'</span>, <span class="s">'.decr'</span>, <span class="s">'#header'</span>, <span class="s">'input[type=radio]'</span>, <span class="s">'a,p'</span>, <span class="s">'div p'</span>, <span class="s">'body &gt; div'</span> -&gt; <span class="nv">$sel</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-20s -&gt; %d'</span>, <span class="nv">$sel</span>.<span class="nb">raku</span>, <span class="nv">$xq</span>(<span class="nv">$sel</span>).<span class="n">elements</span>.<span class="nb">elems</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'reading a node is two hops — .first, .last and [$i] all return a'</span>;
+<span class="nb">say</span> <span class="s">'Results, not an element:'</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;a&quot;).first.element : '</span>, <span class="nv">$xq</span>(<span class="s">'a'</span>).<span class="nb">first</span>.<span class="n">element</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;a&quot;)[1]            : '</span>, <span class="nv">$xq</span>(<span class="s">'a'</span>)[<span class="mi">1</span>].<span class="n">element</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;a&quot;).element       : '</span>, <span class="nv">$xq</span>(<span class="s">'a'</span>).<span class="n">element</span>.<span class="nb">Str</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "a"                  -&gt; 2
+  ".decr"              -&gt; 1
+  "#header"            -&gt; 1
+  "input[type=radio]"  -&gt; 2
+  "a,p"                -&gt; 4
+  "div p"              -&gt; 2
+  "body &gt; div"         -&gt; 3
+
+reading a node is two hops — .first, .last and [$i] all return a
+Results, not an element:
+  $xq("a").first.element : &lt;a href="one.html"&gt;one&lt;/a&gt;
+  $xq("a")[1]            : &lt;a href="two.html"&gt;two&lt;/a&gt;
+  $xq("a").element       : &lt;a href="one.html"&gt;one&lt;/a&gt;</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>.class</code> is an exact attribute match, so it does not match an element with more than one class — and there is no selector that will.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-query/02-multiclass.raku" title="This example as a file: 02-multiclass.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML</span>;
+<span class="k">use</span> <span class="n">XML::Query</span>;
+
+<span class="k">my</span> <span class="nv">$doc</span> = <span class="n">from-xml</span>(
+    <span class="s">'&lt;html&gt;&lt;body&gt;&lt;p class=&quot;decr&quot;&gt;A&lt;/p&gt;&lt;p class=&quot;decr big&quot;&gt;B&lt;/p&gt;'</span> ~
+    <span class="s">'&lt;p class=&quot;big decr&quot;&gt;C&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;'</span>);
+<span class="k">my</span> <span class="nv">$xq</span> = <span class="n">XML::Query</span>.<span class="nb">new</span>(<span class="nv">$doc</span>);
+
+<span class="k">for</span> <span class="s">'.decr'</span>, <span class="s">'.big'</span>, <span class="s">'[class=&quot;decr big&quot;]'</span> -&gt; <span class="nv">$sel</span> {
+    <span class="k">my</span> <span class="nv">@e</span> = <span class="nv">$xq</span>(<span class="nv">$sel</span>).<span class="n">elements</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-22s -&gt; %d  %s'</span>, <span class="nv">$sel</span>.<span class="nb">raku</span>, <span class="nv">@e</span>.<span class="nb">elems</span>,
+                <span class="nv">@e</span>.<span class="nb">map</span>({ .<span class="n">nodes</span>[<span class="mi">0</span>].<span class="nb">Str</span> }).<span class="nb">join</span>(<span class="s">' '</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two failures compound. `.decr` becomes elements(class =&gt; &quot;decr&quot;),'</span>;
+<span class="nb">say</span> <span class="s">'which compares the whole attribute string. And the escape hatch is'</span>;
+<span class="nb">say</span> <span class="s">'closed too: the statement is split on whitespace BEFORE anything is'</span>;
+<span class="nb">say</span> <span class="s">'interpreted, so [class=&quot;decr big&quot;] is torn into two fragments and'</span>;
+<span class="nb">say</span> <span class="s">'matches nothing.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'no attribute value containing a space is reachable through this'</span>;
+<span class="nb">say</span> <span class="s">'selector language. On real HTML, where multi-class elements are the'</span>;
+<span class="nb">say</span> <span class="s">'norm, .class quietly returns the wrong subset.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'select by tag and filter yourself:'</span>;
+<span class="k">my</span> <span class="nv">@big</span> = <span class="nv">$xq</span>(<span class="s">'p'</span>).<span class="n">elements</span>.<span class="nb">grep</span>({ (.<span class="n">attribs</span><span class="s">&lt;class&gt;</span> // <span class="s">''</span>).<span class="nb">words</span>.<span class="nb">grep</span>(<span class="s">'big'</span>) });
+<span class="nb">say</span> <span class="s">'  p elements whose class list contains &quot;big&quot; : '</span>, <span class="nv">@big</span>.<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  ".decr"                -&gt; 1  A
+  ".big"                 -&gt; 0  
+  "[class=\"decr big\"]" -&gt; 0  
+
+two failures compound. `.decr` becomes elements(class =&gt; "decr"),
+which compares the whole attribute string. And the escape hatch is
+closed too: the statement is split on whitespace BEFORE anything is
+interpreted, so [class="decr big"] is torn into two fragments and
+matches nothing.
+
+no attribute value containing a space is reachable through this
+selector language. On real HTML, where multi-class elements are the
+norm, .class quietly returns the wrong subset.
+
+select by tag and filter yourself:
+  p elements whose class list contains "big" : 2</code></pre></div>
+<h2 id="elems-does-not-return-a-count"><code>.elems</code> does not return a count <a class="anchor" href="#elems-does-not-return-a-count" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-query/03-elems.raku" title="This example as a file: 03-elems.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML</span>;
+<span class="k">use</span> <span class="n">XML::Query</span>;
+
+<span class="k">my</span> <span class="nv">$doc</span> = <span class="n">from-xml</span>(<span class="s">'&lt;html&gt;&lt;body&gt;&lt;a href=&quot;one.html&quot;&gt;one&lt;/a&gt;&lt;a href=&quot;two.html&quot;&gt;two&lt;/a&gt;&lt;/body&gt;&lt;/html&gt;'</span>);
+<span class="k">my</span> <span class="nv">$xq</span> = <span class="n">XML::Query</span>.<span class="nb">new</span>(<span class="nv">$doc</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$xq</span>(<span class="s">'a'</span>);
+
+<span class="nb">say</span> <span class="s">'.elements : '</span>, <span class="nv">$r</span>.<span class="n">elements</span>.<span class="n">WHAT</span>.^<span class="n">name</span>, <span class="s">' of '</span>, <span class="nv">$r</span>.<span class="n">elements</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'.elems    : '</span>, <span class="nv">$r</span>.<span class="nb">elems</span>.<span class="n">WHAT</span>.^<span class="n">name</span>, <span class="s">'   &lt;- the DEPRECATED alias for .elements'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it happens to look right when you write $r.elems.elems, but'</span>;
+<span class="nb">say</span> <span class="s">'`say $r.elems` prints the markup. Likewise .elem is .element.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Rakudo prints a deprecation report at exit; Raku++ prints nothing,'</span>;
+<span class="nb">say</span> <span class="s">'so on Raku++ there is no signal at all.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'count with .elements.elems.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>.elements : Array of 2
+.elems    : Array   &lt;- the DEPRECATED alias for .elements
+
+it happens to look right when you write $r.elems.elems, but
+`say $r.elems` prints the markup. Likewise .elem is .element.
+
+Rakudo prints a deprecation report at exit; Raku++ prints nothing,
+so on Raku++ there is no signal at all.
+
+count with .elements.elems.</code></pre></div>
+<h2 id="two-more-shapes">Two more shapes <a class="anchor" href="#two-more-shapes" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-query/04-shapes.raku" title="This example as a file: 04-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML</span>;
+<span class="k">use</span> <span class="n">XML::Query</span>;
+
+<span class="k">my</span> <span class="nv">$doc</span> = <span class="n">from-xml</span>(<span class="s">'&lt;html&gt;&lt;body&gt;&lt;div&gt;&lt;p&gt;A&lt;/p&gt;&lt;/div&gt;&lt;p&gt;B&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;'</span>);
+<span class="k">my</span> <span class="nv">$xq</span> = <span class="n">XML::Query</span>.<span class="nb">new</span>(<span class="nv">$doc</span>);
+
+<span class="nb">say</span> <span class="s">'CALL-ME joins with &quot;,&quot; (union); AT-KEY joins with &quot; &quot; (descendant):'</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;div&quot;, &quot;p&quot;)  is a union   — but see below'</span>;
+<span class="nb">say</span> <span class="s">'  $xq&lt;div p&gt;       is a hash SLICE and returns a List of two Results'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so use one selector string per call:'</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;div, p&quot;).elements.elems : '</span>, <span class="nv">$xq</span>(<span class="s">'div, p'</span>).<span class="n">elements</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;div p&quot;).elements.elems  : '</span>, <span class="nv">$xq</span>(<span class="s">'div p'</span>).<span class="n">elements</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Results has NO jQuery-style filter methods — no filter, children,'</span>;
+<span class="nb">say</span> <span class="s">'attr, text, next or add. .find re-queries from the current set:'</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;div&quot;).find(&quot;p&quot;).elements.elems : '</span>, <span class="nv">$xq</span>(<span class="s">'div'</span>).<span class="n">find</span>(<span class="s">'p'</span>).<span class="n">elements</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and never call .raku or .gist on anything from this module —'</span>;
+<span class="nb">say</span> <span class="s">'XML::Element carries a parent back-reference and .raku recurses.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>CALL-ME joins with "," (union); AT-KEY joins with " " (descendant):
+  $xq("div", "p")  is a union   — but see below
+  $xq&lt;div p&gt;       is a hash SLICE and returns a List of two Results
+
+so use one selector string per call:
+  $xq("div, p").elements.elems : 3
+  $xq("div p").elements.elems  : 1
+
+Results has NO jQuery-style filter methods — no filter, children,
+attr, text, next or add. .find re-queries from the current set:
+  $xq("div").find("p").elements.elems : 1
+
+and never call .raku or .gist on anything from this module —
+XML::Element carries a parent back-reference and .raku recurses.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Extra selector arguments are silently dropped under Raku++: <code>$xq('a', 'p')</code> throws <code>Too many positionals passed</code> on Rakudo and returns just the <code>a</code> matches on Raku++. Everything else — the selectors, the results, the <code>.class</code> limitation — is identical.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-query/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML</span>;
+<span class="k">use</span> <span class="n">XML::Query</span>;
+
+<span class="k">my</span> <span class="nv">$doc</span> = <span class="n">from-xml</span>(<span class="s">'&lt;html&gt;&lt;body&gt;&lt;a href=&quot;one.html&quot;&gt;one&lt;/a&gt;&lt;p&gt;two&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;'</span>);
+<span class="k">my</span> <span class="nv">$xq</span> = <span class="n">XML::Query</span>.<span class="nb">new</span>(<span class="nv">$doc</span>);
+
+<span class="nb">say</span> <span class="s">'one string per call, always:'</span>;
+<span class="nb">say</span> <span class="s">'  $xq(&quot;a, p&quot;).elements.elems : '</span>, <span class="nv">$xq</span>(<span class="s">'a, p'</span>).<span class="n">elements</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the statement parser has a dead branch worth knowing about: the'</span>;
+<span class="nb">say</span> <span class="s">'two-element case reads $spec[2], which is always out of range. It is'</span>;
+<span class="nb">say</span> <span class="s">'never reached by the shapes above.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a small helper that gives you elements directly:'</span>;
+<span class="k">sub</span> <span class="n">sel</span>(<span class="nv">$xq</span>, <span class="nb">Str</span> <span class="nv">$s</span>) { <span class="nv">$xq</span>(<span class="nv">$s</span>).<span class="n">elements</span> }
+<span class="nb">say</span> <span class="s">'  sel($xq, &quot;a&quot;).map(*.attribs&lt;href&gt;) : '</span>,
+    <span class="n">sel</span>(<span class="nv">$xq</span>, <span class="s">'a'</span>).<span class="nb">map</span>({ .<span class="n">attribs</span><span class="s">&lt;href&gt;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>one string per call, always:
+  $xq("a, p").elements.elems : 2
+
+and the statement parser has a dead branch worth knowing about: the
+two-element case reads $spec[2], which is always out of range. It is
+never reached by the shapes above.
+
+a small helper that gives you elements directly:
+  sel($xq, "a").map(*.attribs&lt;href&gt;) : one.html</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

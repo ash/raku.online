@@ -1,6 +1,6 @@
 ---
 name: Mortgage
-version: "*"
+version: *
 auth: github:teodozjan
 kind: Distribution · finance
 summary: The standard annuity formulas plus a month-by-month amortisation —

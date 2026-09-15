@@ -36,3 +36,13 @@ say '  ', system-collapse(42).raku;
 
 # Output:
 #     by-env      : "chose blue"
+#     by-env-exists, set   : "present"
+#     by-env-exists, unset : "absent"
+#     
+#     a branch with no matching key is a hard die, so give every
+#     by-env a catch-all or be sure of the value:
+#       no branch for "blue" -> refused
+#     
+#     a non-Hash, non-Array value is returned unchanged:
+#       "a bare string"
+#       42

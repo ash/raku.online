@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt::Gruff — The Raku Ecosystem, Working</title>
+<meta name="description" content="Ask a question and get an answer — with re-prompting, verification and a regex constraint, and a built-in harness so you can test it.">
+<link rel="canonical" href="https://raku.online/modules/prompt-gruff/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prompt::Gruff — The Raku Ecosystem, Working">
+<meta property="og:description" content="Ask a question and get an answer — with re-prompting, verification and a regex constraint, and a built-in harness so you can test it.">
+<meta property="og:url" content="https://raku.online/modules/prompt-gruff/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Prompt::Gruff","description":"Ask a question and get an answer — with re-prompting, verification and a regex constraint, and a built-in harness so you can test it.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/prompt-gruff/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/adaptiveoptics/P6-Prompt-Gruff.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · command line</div><h1>Prompt::Gruff</h1><span class="status st-full">Works</span></div><p class="summary">Ask a question and get an answer — with re-prompting, verification and a regex constraint, and a built-in harness so you can test it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">github:adaptiveoptics</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:adaptiveoptics/Prompt::Gruff">raku.land</a> · <a href="git://github.com/adaptiveoptics/P6-Prompt-Gruff.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Prompt::Gruff</code></pre></div><p class="fact-sub"><code>zef install Prompt::Gruff</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Core <code>prompt</code> asks once and accepts whatever comes back, including nothing. An installer or a CLI usually wants more: re-ask until the answer is non-empty, ask twice for a passphrase, constrain the answer to a pattern, offer a default, or take a yes/no.</p>
+<h2 id="driving-it-without-a-terminal">Driving it without a terminal <a class="anchor" href="#driving-it-without-a-terminal" aria-label="link">#</a></h2>
+<p>Every example here uses the module's own test harness, which swaps the prompter for one that reads from an array — because that is the only safe way to exercise it, and because the harness is a documented part of the API.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'Ada'</span>];
+<span class="nb">say</span> <span class="s">'answer  : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Name: '</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'prompts : '</span>, <span class="nv">$p</span>.<span class="n">_test-output</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'blue'</span>];
+<span class="nb">say</span> <span class="s">'with a default:'</span>;
+<span class="nb">say</span> <span class="s">'  answer  : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Colour: '</span>, <span class="k">default</span> =&gt; <span class="s">'blue'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  prompts : '</span>, <span class="nv">$p</span>.<span class="n">_test-output</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  (the default is shown in the prompt)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>answer  : "Ada"
+prompts : ("Name: ",)
+
+with a default:
+  answer  : "blue"
+  prompts : ("Colour: [blue] ",)
+  (the default is shown in the prompt)</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/02-verify.raku" title="This example as a file: 02-verify.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'secret'</span>, <span class="s">'secret'</span>, <span class="s">'secret'</span>];
+<span class="nb">say</span> <span class="s">'with :verify(3):'</span>;
+<span class="nb">say</span> <span class="s">'  answer  : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Passphrase: '</span>, <span class="n">verify</span> =&gt; <span class="mi">3</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  prompts : '</span>, <span class="nv">$p</span>.<span class="n">_test-output</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'99'</span>];
+<span class="nb">say</span> <span class="s">'with a :regex constraint:'</span>;
+<span class="nb">say</span> <span class="s">'  digits  : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Port: '</span>, <span class="k">regex</span> =&gt; <span class="s">'^\d+$'</span>).<span class="nb">raku</span>;
+<span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'abc'</span>];
+<span class="nb">say</span> <span class="s">'  letters : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Port: '</span>, <span class="k">regex</span> =&gt; <span class="s">'^\d+$'</span>, <span class="n">no-escape</span> =&gt; <span class="n">False</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  output  : '</span>, <span class="nv">$p</span>.<span class="n">_test-output</span>.<span class="nb">List</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>with :verify(3):
+  answer  : "secret"
+  prompts : ("Passphrase: ", "(verify) Passphrase: ", "(verify) Passphrase: ")
+
+with a :regex constraint:
+  digits  : "99"
+  letters : Bool::False
+  output  : ("Port: ", "Input does not match valid pattern")</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>With the default <code>required =&gt; True</code>, end of input is an infinite loop: the prompt is re-emitted forever.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/03-eof.raku" title="This example as a file: 03-eof.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="nb">say</span> <span class="s">'the body is'</span>;
+<span class="nb">say</span> <span class="s">'  while !($response = $prompter($!_prompt) || $!default) { }'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'at EOF core prompt returns Nil on every call, so nothing ever'</span>;
+<span class="nb">say</span> <span class="s">'becomes true. Fed /dev/null, a required prompt writes the prompt'</span>;
+<span class="nb">say</span> <span class="s">'string until you kill it — tens of megabytes in a few seconds.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">':required(False) returns the empty string cleanly instead:'</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [];                <span class="c1"># an exhausted input array stands in for EOF</span>
+<span class="nb">say</span> <span class="s">'  required =&gt; False -&gt; '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Name: '</span>, <span class="n">required</span> =&gt; <span class="n">False</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the multi-line path does the same thing, so guard both. If your'</span>;
+<span class="nb">say</span> <span class="s">'program can run non-interactively, check $*IN.t before you ask:'</span>;
+<span class="nb">say</span> <span class="s">'  $*IN.t : '</span>, <span class="nv">$*IN</span>.<span class="n">t</span>;
+<span class="nb">say</span> <span class="s">'  (and fall back to a default, an argument, or an exit)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the body is
+  while !($response = $prompter($!_prompt) || $!default) { }
+
+at EOF core prompt returns Nil on every call, so nothing ever
+becomes true. Fed /dev/null, a required prompt writes the prompt
+string until you kill it — tens of megabytes in a few seconds.
+
+:required(False) returns the empty string cleanly instead:
+  required =&gt; False -&gt; ""
+
+the multi-line path does the same thing, so guard both. If your
+program can run non-interactively, check $*IN.t before you ask:
+  $*IN.t : False
+  (and fall back to a default, an argument, or an exit)</code></pre></div>
+<h2 id="every-option-resets-the-object">Every option resets the object <a class="anchor" href="#every-option-resets-the-object" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/04-options.raku" title="This example as a file: 04-options.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>, <span class="n">verify</span> =&gt; <span class="mi">3</span>, <span class="k">default</span> =&gt; <span class="s">'blue'</span>, <span class="n">required</span> =&gt; <span class="n">False</span>);
+<span class="nb">say</span> <span class="s">'attributes before : verify='</span>, <span class="nv">$p</span>.<span class="n">verify</span>, <span class="s">' default='</span>, <span class="nv">$p</span>.<span class="n">default</span>.<span class="nb">raku</span>,
+    <span class="s">' required='</span>, <span class="nv">$p</span>.<span class="n">required</span>;
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'first'</span>];
+<span class="nb">say</span> <span class="s">'answer            : '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Colour: '</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'prompts           : '</span>, <span class="nv">$p</span>.<span class="n">_test-output</span>.<span class="nb">elems</span>, <span class="s">' — not 3'</span>;
+<span class="nb">say</span> <span class="s">'attributes after  : verify='</span>, <span class="nv">$p</span>.<span class="n">verify</span>, <span class="s">' default='</span>, <span class="nv">$p</span>.<span class="n">default</span>.<span class="nb">raku</span>,
+    <span class="s">' required='</span>, <span class="nv">$p</span>.<span class="n">required</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'every named option is bound straight to an attribute WITH A DEFAULT,'</span>;
+<span class="nb">say</span> <span class="s">'so omitting one silently resets it. Setting attributes on the object'</span>;
+<span class="nb">say</span> <span class="s">'and then calling prompt-for($prompt) throws those settings away.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'pass everything at the call site, every time.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'verify is destructive too — it counts down to 0 on the object and'</span>;
+<span class="nb">say</span> <span class="s">'stays there, so a second call asks once.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>attributes before : verify=3 default="blue" required=False
+answer            : "first"
+prompts           : 1 — not 3
+attributes after  : verify=0 default="" required=True
+
+every named option is bound straight to an attribute WITH A DEFAULT,
+so omitting one silently resets it. Setting attributes on the object
+and then calling prompt-for($prompt) throws those settings away.
+
+pass everything at the call site, every time.
+
+verify is destructive too — it counts down to 0 on the object and
+stays there, so a second call asks once.</code></pre></div>
+<h2 id="yn-accepts-more-than-y-and-n"><code>:yn</code> accepts more than y and n <a class="anchor" href="#yn-accepts-more-than-y-and-n" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/05-yn.raku" title="This example as a file: 05-yn.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="k">for</span> &lt;<span class="n">y</span> <span class="n">n</span> <span class="n">yes</span> <span class="k">no</span> <span class="n">nay</span> <span class="n">nope</span> <span class="n">maybe</span> <span class="n">xyzzy</span>&gt; -&gt; <span class="nv">$answer</span> {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+    <span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="nv">$answer</span>];
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Continue? '</span>, <span class="n">yn</span> =&gt; <span class="n">True</span>, <span class="n">no-escape</span> =&gt; <span class="n">False</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-8s -&gt; %s'</span>, <span class="nv">$answer</span>.<span class="nb">raku</span>, <span class="nv">$r</span>.<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the generated regex is `:i y || n`, matched ANYWHERE in the answer,'</span>;
+<span class="nb">say</span> <span class="s">'and the verdict is then `$response ~~ /:i y/`.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so &quot;nay&quot;, &quot;maybe&quot; and even &quot;xyzzy&quot; are read as YES, while an answer'</span>;
+<span class="nb">say</span> <span class="s">'with neither letter in it — &quot;sure&quot; — is rejected as invalid and'</span>;
+<span class="nb">say</span> <span class="s">'RE-ASKED, which on an exhausted input is an infinite loop.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'constrain it yourself instead:'</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>(:<span class="n">testing</span>);
+<span class="nv">$p</span>.<span class="n">_test-input</span> = [<span class="s">'y'</span>];
+<span class="nb">say</span> <span class="s">'  with :regex -&gt; '</span>, <span class="nv">$p</span>.<span class="n">prompt-for</span>(<span class="s">'Continue? '</span>, <span class="k">regex</span> =&gt; <span class="s">'^&lt;[yYnN]&gt;$'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "y"      -&gt; Bool::True
+  "n"      -&gt; Bool::False
+  "yes"    -&gt; Bool::True
+  "no"     -&gt; Bool::False
+  "nay"    -&gt; Bool::True
+  "nope"   -&gt; Bool::False
+  "maybe"  -&gt; Bool::True
+  "xyzzy"  -&gt; Bool::True
+
+the generated regex is `:i y || n`, matched ANYWHERE in the answer,
+and the verdict is then `$response ~~ /:i y/`.
+
+so "nay", "maybe" and even "xyzzy" are read as YES, while an answer
+with neither letter in it — "sure" — is rejected as invalid and
+RE-ASKED, which on an exhausted input is an infinite loop.
+
+constrain it yourself instead:
+  with :regex -&gt; "y"</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing behavioural — the harness, the options, the <code>:yn</code> table and the EOF loop are identical. Only the <code>.raku</code> rendering of the typed <code>@._test-output</code> array differs between the engines, which is why the examples above print <code>.elems</code> or compare rather than dumping it raw in the later sections.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/prompt-gruff/06-portable.raku" title="This example as a file: 06-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Prompt::Gruff</span>;
+
+<span class="nb">say</span> <span class="s">'the functional interface is in a SEPARATE unit:'</span>;
+<span class="nb">say</span> <span class="s">'  use Prompt::Gruff::Export;   # gives you prompt-for($prompt, |%opts)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and one more thing to plan around on both engines: :no-escape'</span>;
+<span class="nb">say</span> <span class="s">'defaults to True, which makes a regex failure or a verification'</span>;
+<span class="nb">say</span> <span class="s">'mismatch RECURSE into another prompt-for. With a non-interactive'</span>;
+<span class="nb">say</span> <span class="s">'stdin that is unbounded recursion on top of the unbounded loop.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the safe shape:'</span>;
+<span class="k">sub</span> <span class="n">ask</span>(<span class="nb">Str</span> <span class="nv">$prompt</span>, *<span class="nv">%opts</span>) {
+    <span class="k">return</span> <span class="nb">Nil</span> <span class="k">unless</span> <span class="nv">$*IN</span>.<span class="n">t</span>;
+    <span class="n">Prompt::Gruff</span>.<span class="nb">new</span>.<span class="n">prompt-for</span>(<span class="nv">$prompt</span>, |<span class="nv">%opts</span>, <span class="n">no-escape</span> =&gt; <span class="n">False</span>)
+}
+<span class="nb">say</span> <span class="s">'  ask() returns Nil when stdin is not a terminal : '</span>, <span class="n">ask</span>(<span class="s">'Name: '</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the functional interface is in a SEPARATE unit:
+  use Prompt::Gruff::Export;   # gives you prompt-for($prompt, |%opts)
+
+and one more thing to plan around on both engines: :no-escape
+defaults to True, which makes a regex failure or a verification
+mismatch RECURSE into another prompt-for. With a non-interactive
+stdin that is unbounded recursion on top of the unbounded loop.
+
+the safe shape:
+  ask() returns Nil when stdin is not a terminal : Nil</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

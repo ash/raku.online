@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parameterizable — The Raku Ecosystem, Working</title>
+<meta name="description" content="Gives a class the `Foo[Bar]` subscript syntax by supplying a `^parameterize` metamethod that mixes in a role you choose.">
+<link rel="canonical" href="https://raku.online/modules/parameterizable/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Parameterizable — The Raku Ecosystem, Working">
+<meta property="og:description" content="Gives a class the `Foo[Bar]` subscript syntax by supplying a `^parameterize` metamethod that mixes in a role you choose.">
+<meta property="og:url" content="https://raku.online/modules/parameterizable/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Parameterizable","description":"Gives a class the `Foo[Bar]` subscript syntax by supplying a `^parameterize` metamethod that mixes in a role you choose.","programmingLanguage":"Raku","version":"0.0.3","url":"https://raku.online/modules/parameterizable/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/dumarchie/raku-parameterizable.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · metaprogramming</div><h1>Parameterizable</h1><span class="status st-div">Divergent</span></div><p class="summary">Gives a class the <code>Foo[Bar]</code> subscript syntax by supplying a <code>^parameterize</code> metamethod that mixes in a role you choose.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.3</code> <span class="fact-sub">zef:dumarchie</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:dumarchie/Parameterizable">raku.land</a> · <a href="git://github.com/dumarchie/raku-parameterizable.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Parameterizable</code></pre></div><p class="fact-sub"><code>zef install Parameterizable</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>Array[Int]</code> and <code>Hash[Str]</code> read well, and the syntax is not reserved for the core: any type can answer <code>[…]</code> if its metaclass defines <code>^parameterize</code>. Writing that metamethod by hand means knowing the metamodel; this distribution writes it for you.</p>
+<p>You inherit from <code>Parameterizable</code> and supply a <code>MIXIN</code> method that returns a role for the given arguments.</p>
+<h2 id="using-it">Using it <a class="anchor" href="#using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/parameterizable/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Parameterizable</span>;
+
+<span class="k">role</span> <span class="n">Typed</span>[::<span class="n">T</span>] {
+    <span class="k">method</span> <span class="n">of</span> { <span class="n">T</span> }
+    <span class="k">method</span> <span class="n">tag</span> { <span class="s">'TYPED'</span> }
+}
+<span class="k">class</span> <span class="n">Box</span> <span class="k">is</span> <span class="n">Parameterizable</span> {
+    <span class="k">has</span> <span class="nv">$.value</span>;
+    <span class="k">method</span> <span class="n">MIXIN</span>(::<span class="n">T</span>) { <span class="n">Typed</span>[<span class="n">T</span>] }
+}
+
+<span class="nb">say</span> <span class="s">'Box[Int].^name        : '</span>, <span class="n">Box</span>[<span class="nb">Int</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'Box[Int] ~~ Box       : '</span>, (<span class="n">Box</span>[<span class="nb">Int</span>] ~~ <span class="n">Box</span>);
+<span class="nb">say</span> <span class="s">'Box[Int] === Box[Int] : '</span>, (<span class="n">Box</span>[<span class="nb">Int</span>] === <span class="n">Box</span>[<span class="nb">Int</span>]);
+<span class="nb">say</span> <span class="s">'Box[Int] is Box ?     : '</span>, (<span class="n">Box</span>[<span class="nb">Int</span>] === <span class="n">Box</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a value parameter works too:'</span>;
+<span class="k">role</span> <span class="n">Tag</span>[<span class="nv">$t</span>] { <span class="k">method</span> <span class="n">tag</span> { <span class="s">&quot;TAGGED-$t&quot;</span> } }
+<span class="k">class</span> <span class="n">C</span> <span class="k">is</span> <span class="n">Parameterizable</span> {
+    <span class="k">method</span> <span class="n">MIXIN</span>(<span class="nv">$t</span>) { <span class="n">Tag</span>[<span class="nv">$t</span>] }
+}
+<span class="nb">say</span> <span class="s">'  C[5].tag   : '</span>, <span class="n">C</span>[<span class="mi">5</span>].<span class="n">tag</span>;
+<span class="nb">say</span> <span class="s">'  C[&quot;s&quot;].tag : '</span>, <span class="n">C</span>[<span class="s">'s'</span>].<span class="n">tag</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Box[Int].^name        : Box[Int]
+Box[Int] ~~ Box       : True
+Box[Int] === Box[Int] : True
+Box[Int] is Box ?     : False
+
+a value parameter works too:
+  C[5].tag   : TAGGED-5
+  C["s"].tag : TAGGED-s</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Failures are resolved at <strong>compile time</strong>, so <code>try</code> cannot catch them.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/parameterizable/02-compile-time.raku" title="This example as a file: 02-compile-time.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Parameterizable</span>;
+
+<span class="nb">say</span> <span class="s">'Foo[Bar] in source is resolved during compilation, so the module`s'</span>;
+<span class="nb">say</span> <span class="s">'friendly die surfaces as ===SORRY!=== and no `try` helps:'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  class NoMixin is Parameterizable { }'</span>;
+<span class="nb">say</span> <span class="s">'  try NoMixin[Int];        # still a compile error'</span>;
+<span class="nb">say</span> <span class="s">'  -&gt; &quot;Can not parameterize NoMixin with Int&quot;'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'called by hand at run time, the same failure IS catchable, and the'</span>;
+<span class="nb">say</span> <span class="s">'message is identical on both engines:'</span>;
+<span class="k">role</span> <span class="n">Typed</span>[::<span class="n">T</span>] { <span class="k">method</span> <span class="n">of</span> { <span class="n">T</span> } }
+<span class="k">class</span> <span class="n">Box</span> <span class="k">is</span> <span class="n">Parameterizable</span> { <span class="k">method</span> <span class="n">MIXIN</span>(::<span class="n">T</span>) { <span class="n">Typed</span>[<span class="n">T</span>] } }
+<span class="k">class</span> <span class="n">NoMixin</span> <span class="k">is</span> <span class="n">Parameterizable</span> { }
+
+<span class="k">for</span> <span class="n">Box</span>, <span class="n">NoMixin</span> -&gt; <span class="nv">$cls</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$cls</span>.^<span class="n">parameterize</span>(<span class="nb">Int</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-8s.^parameterize(Int) -&gt; %s'</span>, <span class="nv">$cls</span>.^<span class="n">name</span>,
+                <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.^<span class="n">name</span>);
+}
+<span class="k">my</span> <span class="nv">$v</span> = <span class="k">try</span> <span class="n">Box</span>.^<span class="n">parameterize</span>(<span class="mi">5</span>);
+<span class="nb">say</span> <span class="s">'  Box.^parameterize(5)      -&gt; '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$v</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so build your parameterised types through ^parameterize when you'</span>;
+<span class="nb">say</span> <span class="s">'need to handle failure, and reserve the [ ] syntax for types you'</span>;
+<span class="nb">say</span> <span class="s">'know are valid.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Foo[Bar] in source is resolved during compilation, so the module`s
+friendly die surfaces as ===SORRY!=== and no `try` helps:
+
+  class NoMixin is Parameterizable { }
+  try NoMixin[Int];        # still a compile error
+  -&gt; "Can not parameterize NoMixin with Int"
+
+called by hand at run time, the same failure IS catchable, and the
+message is identical on both engines:
+  Box     .^parameterize(Int) -&gt; Box[Int]
+  NoMixin .^parameterize(Int) -&gt; Can not parameterize NoMixin with Int
+  Box.^parameterize(5)      -&gt; Box[Int]
+
+so build your parameterised types through ^parameterize when you
+need to handle failure, and reserve the [ ] syntax for types you
+know are valid.</code></pre></div>
+<h2 id="the-generated-name-loses-value-parameters">The generated name loses value parameters <a class="anchor" href="#the-generated-name-loses-value-parameters" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/parameterizable/03-names.raku" title="This example as a file: 03-names.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Parameterizable</span>;
+
+<span class="k">role</span> <span class="n">Cap</span>[<span class="nv">$n</span>] { <span class="k">method</span> <span class="n">limit</span> { <span class="nv">$n</span> } }
+<span class="k">class</span> <span class="n">Capped</span> <span class="k">is</span> <span class="n">Parameterizable</span> { <span class="k">method</span> <span class="n">MIXIN</span>(<span class="nv">$n</span>) { <span class="n">Cap</span>[<span class="nv">$n</span>] } }
+
+<span class="nb">say</span> <span class="s">'Capped[5].^name  : '</span>, <span class="n">Capped</span>[<span class="mi">5</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'Capped[7].^name  : '</span>, <span class="n">Capped</span>[<span class="mi">7</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'same name ?      : '</span>, <span class="n">Capped</span>[<span class="mi">5</span>].^<span class="n">name</span> <span class="n">eq</span> <span class="n">Capped</span>[<span class="mi">7</span>].^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'same type ?      : '</span>, (<span class="n">Capped</span>[<span class="mi">5</span>] === <span class="n">Capped</span>[<span class="mi">7</span>]);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the name is built from @pos.map(*.^name), so every VALUE parameter'</span>;
+<span class="nb">say</span> <span class="s">'collapses to its type`s name. Two genuinely different types both'</span>;
+<span class="nb">say</span> <span class="s">'print as Capped[Int] — debug output, .gist and error messages cannot'</span>;
+<span class="nb">say</span> <span class="s">'tell them apart.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'they are still distinct types, and their methods still answer:'</span>;
+<span class="nb">say</span> <span class="s">'  Capped[5].limit : '</span>, <span class="n">Capped</span>[<span class="mi">5</span>].<span class="n">limit</span>;
+<span class="nb">say</span> <span class="s">'  Capped[7].limit : '</span>, <span class="n">Capped</span>[<span class="mi">7</span>].<span class="n">limit</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Capped[5].^name  : Capped[Int]
+Capped[7].^name  : Capped[Int]
+same name ?      : True
+same type ?      : False
+
+the name is built from @pos.map(*.^name), so every VALUE parameter
+collapses to its type`s name. Two genuinely different types both
+print as Capped[Int] — debug output, .gist and error messages cannot
+tell them apart.
+
+they are still distinct types, and their methods still answer:
+  Capped[5].limit : 5
+  Capped[7].limit : 7</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Under Raku++, <code>Foo[SomeType]</code> never reaches your <code>^parameterize</code> — a built-in parameterisation path handles it, renaming the type and composing nothing. So the module's headline use case is a silent no-op there: you get a type named <code>Box[Int]</code> with none of the role's methods, and no error anywhere.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/parameterizable/04-portable.raku" title="This example as a file: 04-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Parameterizable</span>;
+
+<span class="k">role</span> <span class="n">Typed</span>[::<span class="n">T</span>] { <span class="k">method</span> <span class="n">of</span> { <span class="n">T</span> }; <span class="k">method</span> <span class="n">tag</span> { <span class="s">'TYPED'</span> } }
+<span class="k">class</span> <span class="n">Box</span> <span class="k">is</span> <span class="n">Parameterizable</span> { <span class="k">method</span> <span class="n">MIXIN</span>(::<span class="n">T</span>) { <span class="n">Typed</span>[<span class="n">T</span>] } }
+
+<span class="nb">say</span> <span class="s">'the portable spelling is the metamethod, which routes correctly on'</span>;
+<span class="nb">say</span> <span class="s">'both engines:'</span>;
+<span class="k">my</span> <span class="nv">$typed</span> = <span class="n">Box</span>.^<span class="n">parameterize</span>(<span class="nb">Int</span>);
+<span class="nb">say</span> <span class="s">'  Box.^parameterize(Int).^name : '</span>, <span class="nv">$typed</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  .tag                          : '</span>, <span class="nv">$typed</span>.<span class="n">tag</span>;
+<span class="nb">say</span> <span class="s">'  .of resolves the parameter    : engine-dependent — see below'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the subscript form Box[Int] composes the role on Rakudo and does not'</span>;
+<span class="nb">say</span> <span class="s">'on Raku++. A VALUE parameter — Box[5] — routes correctly on both,'</span>;
+<span class="nb">say</span> <span class="s">'which is why the earlier examples use one.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so: if you are writing a library that must work on both engines,'</span>;
+<span class="nb">say</span> <span class="s">'expose a constructor rather than the subscript:'</span>;
+<span class="nb">say</span> <span class="s">'  method of(::T) { self.^parameterize(T) }'</span>;
+<span class="k">class</span> <span class="n">Typed-Box</span> <span class="k">is</span> <span class="n">Parameterizable</span> {
+    <span class="k">method</span> <span class="n">MIXIN</span>(::<span class="n">T</span>) { <span class="n">Typed</span>[<span class="n">T</span>] }
+    <span class="k">method</span> <span class="n">of-type</span>(::<span class="n">T</span>) { <span class="nb">self</span>.^<span class="n">parameterize</span>(<span class="n">T</span>) }
+}
+<span class="nb">say</span> <span class="s">'  Typed-Box.of-type(Str).tag : '</span>, <span class="n">Typed-Box</span>.<span class="n">of-type</span>(<span class="nb">Str</span>).<span class="n">tag</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the portable spelling is the metamethod, which routes correctly on
+both engines:
+  Box.^parameterize(Int).^name : Box[Int]
+  .tag                          : TYPED
+  .of resolves the parameter    : engine-dependent — see below
+
+the subscript form Box[Int] composes the role on Rakudo and does not
+on Raku++. A VALUE parameter — Box[5] — routes correctly on both,
+which is why the earlier examples use one.
+
+so: if you are writing a library that must work on both engines,
+expose a constructor rather than the subscript:
+  method of(::T) { self.^parameterize(T) }
+  Typed-Box.of-type(Str).tag : TYPED</code></pre></div>
+<p>Two more differences to know about. An instance keeps the mixin under Rakudo (<code>.^name</code> reports <code>Box[Int]</code>, and <code>.of</code> works on the instance) and does not under Raku++. And a role's type capture read back through a method — the <code>method of { T }</code> above — answers the bound type under Rakudo and the capture name under Raku++, so store the parameter in an attribute if you need to read it later.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

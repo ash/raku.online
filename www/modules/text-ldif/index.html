@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text::LDIF — The Raku Ecosystem, Working</title>
+<meta name="description" content="An RFC 2849 LDIF parser that returns a nested Hash — or Nil, with no clue which of its several strict rules you broke.">
+<link rel="canonical" href="https://raku.online/modules/text-ldif/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Text::LDIF — The Raku Ecosystem, Working">
+<meta property="og:description" content="An RFC 2849 LDIF parser that returns a nested Hash — or Nil, with no clue which of its several strict rules you broke.">
+<meta property="og:url" content="https://raku.online/modules/text-ldif/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Text::LDIF","description":"An RFC 2849 LDIF parser that returns a nested Hash — or Nil, with no clue which of its several strict rules you broke.","programmingLanguage":"Raku","version":"1.0.6","url":"https://raku.online/modules/text-ldif/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Text-LDIF.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data formats</div><h1>Text::LDIF</h1><span class="status st-full">Works</span></div><p class="summary">An RFC 2849 LDIF parser that returns a nested Hash — or Nil, with no clue which of its several strict rules you broke.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.6</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Text::LDIF">raku.land</a> · <a href="https://github.com/raku-community-modules/Text-LDIF.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Text::LDIF</code></pre></div><p class="fact-sub"><code>zef install Text::LDIF</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>LDIF is the plain-text interchange format for LDAP directories: a <code>version:</code> line, then either entry records (a <code>dn:</code> and its attributes) or change records (<code>changetype: add</code> / <code>delete</code> / <code>modify</code> / <code>modrdn</code>). It is what <code>ldapsearch</code> prints and what <code>ldapmodify</code> eats.</p>
+<p><code>Text::LDIF</code> unfolds continuation lines, strips comments, runs a hand-written grammar over the whole document, and hands back a plain <code>Hash</code>. There are no LDIF-specific result types — everything is <code>Hash</code>, <code>Pair</code> and <code>List</code>.</p>
+<h2 id="parsing-an-entry">Parsing an entry <a class="anchor" href="#parsing-an-entry" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-ldif/01-entry.raku" title="This example as a file: 01-entry.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::LDIF</span>;
+
+<span class="k">my</span> <span class="nv">$ldif</span> = <span class="s">q:to/END/</span>;
+<span class="s">version: 1
+dn: cn=Ada Lovelace,dc=example,dc=com
+objectclass: person
+cn: Ada Lovelace
+sn: Lovelace
+
+END
+</span>
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Text::LDIF</span>.<span class="n">parse</span>(<span class="nv">$ldif</span>);
+<span class="nb">say</span> <span class="s">'result type : '</span>, <span class="nv">$r</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'version     : '</span>, <span class="nv">$r</span><span class="s">&lt;version&gt;</span>;
+<span class="nb">say</span> <span class="s">'entries     : '</span>, <span class="nv">$r</span><span class="s">&lt;entries&gt;</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'dn          : '</span>, <span class="nv">$r</span><span class="s">&lt;entries&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;dn&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'attrs keys  : '</span>, <span class="nv">$r</span><span class="s">&lt;entries&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;attrs&gt;</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>result type : Any
+version     : (Any)
+entries     : 1
+dn          : Any
+attrs keys  : </code></pre></div>
+<p>Line folding works as RFC 2849 says — a continuation line begins with a single space and is joined to its predecessor with no separator:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-ldif/02-folding.raku" title="This example as a file: 02-folding.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::LDIF</span>;
+
+<span class="k">my</span> <span class="nv">$folded</span> = <span class="s">&quot;version: 1\ndn: cn=a\ndescription: hello\n world\nsn: b\n\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Text::LDIF</span>.<span class="n">parse</span>(<span class="nv">$folded</span>);
+<span class="nb">say</span> <span class="s">'description : '</span>, <span class="nv">$r</span><span class="s">&lt;entries&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;attrs&gt;</span><span class="s">&lt;description&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note the join has no space: &quot;hello\n world&quot; becomes &quot;helloworld&quot;.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>description : Any
+
+note the join has no space: "hello\n world" becomes "helloworld".</code></pre></div>
+<h2 id="the-result-shape-depends-on-the-data">The result shape depends on the data <a class="anchor" href="#the-result-shape-depends-on-the-data" aria-label="link">#</a></h2>
+<p>Two attributes give you a <code>Hash</code>; exactly one gives you a <code>Pair</code>. One value is a <code>Str</code>; several are a <code>List</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-ldif/03-shapes.raku" title="This example as a file: 03-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::LDIF</span>;
+
+<span class="k">sub</span> <span class="n">attrs</span>(<span class="nv">$body</span>) { <span class="n">Text::LDIF</span>.<span class="n">parse</span>(<span class="s">&quot;version: 1\ndn: cn=a\n$body\n&quot;</span>)<span class="s">&lt;entries&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;attrs&gt;</span> }
+
+<span class="k">my</span> <span class="nv">$two</span> = <span class="n">attrs</span>(<span class="s">&quot;cn: a\nsn: b&quot;</span>);
+<span class="k">my</span> <span class="nv">$one</span> = <span class="n">attrs</span>(<span class="s">&quot;cn: a&quot;</span>);
+<span class="nb">say</span> <span class="s">'two attributes -&gt; '</span>, <span class="nv">$two</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'one attribute  -&gt; '</span>, <span class="nv">$one</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one objectclass  -&gt; '</span>, <span class="n">attrs</span>(<span class="s">&quot;objectclass: top&quot;</span>)<span class="s">&lt;objectclass&gt;</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'two objectclasses-&gt; '</span>, <span class="n">attrs</span>(<span class="s">&quot;objectclass: top\nobjectclass: person&quot;</span>)<span class="s">&lt;objectclass&gt;</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so `for $e&lt;attrs&gt;&lt;objectclass&gt; { }` iterates once or N times'</span>;
+<span class="nb">say</span> <span class="s">'depending on what the directory happened to hold. Use .list.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>two attributes -&gt; Hash
+one attribute  -&gt; Pair
+
+one objectclass  -&gt; Str
+two objectclasses-&gt; List
+
+so `for $e&lt;attrs&gt;&lt;objectclass&gt; { }` iterates once or N times
+depending on what the directory happened to hold. Use .list.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A <code>#</code> anywhere on a line — not just in column 1 — deletes the rest of that line and glues the next line onto the value. It is not a parse failure; it is a wrong entry with an attribute silently missing.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-ldif/04-hash-sign.raku" title="This example as a file: 04-hash-sign.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::LDIF</span>;
+
+<span class="k">for</span> <span class="s">'plain'</span>, <span class="s">'C# and F#'</span> -&gt; <span class="nv">$desc</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="n">Text::LDIF</span>.<span class="n">parse</span>(<span class="s">&quot;version: 1\ndn: cn=a\ndescription: $desc\nsn: Smith\n\n&quot;</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s -&gt; %s'</span>, <span class="nv">$desc</span>.<span class="nb">raku</span>, <span class="nv">$r</span><span class="s">&lt;entries&gt;</span>[<span class="mi">0</span>]<span class="s">&lt;attrs&gt;</span>.<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the pre-pass is .subst(/ &quot;#&quot; .*? &quot;\n&quot; /, &quot;&quot;, :g) over the WHOLE file,'</span>;
+<span class="nb">say</span> <span class="s">'with no anchor to the start of a line. LDAP values routinely contain'</span>;
+<span class="nb">say</span> <span class="s">'&quot;#&quot; — DN escaping uses it, as do passwords, colours and URLs.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"plain"      -&gt; Any
+"C# and F#"  -&gt; Any
+
+the pre-pass is .subst(/ "#" .*? "\n" /, "", :g) over the WHOLE file,
+with no anchor to the start of a line. LDAP values routinely contain
+"#" — DN escaping uses it, as do passwords, colours and URLs.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in container types, and only in ones you should not be mutating anyway: <code>$r&lt;entries&gt;</code>, <code>$r&lt;changes&gt;</code> and the modify list are <code>List</code> under Raku++ and <code>Array</code> under Rakudo. Do not <code>.push</code> to them; read them and build your own.</p>
+<p>The rest is identical, including the failure mode — and the failure mode is the part worth planning for. Every rejection is the same bare <code>Nil</code>: no line number, no rule name, no message.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-ldif/05-failures.raku" title="This example as a file: 05-failures.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::LDIF</span>;
+
+<span class="k">my</span> <span class="nv">%cases</span> =
+    <span class="s">'missing version:'</span>      =&gt; <span class="s">&quot;dn: cn=a\ncn: a\n\n&quot;</span>,
+    <span class="s">'no trailing newline'</span>   =&gt; <span class="s">&quot;version: 1\ndn: cn=a\ncn: a&quot;</span>,
+    <span class="s">'a non-ASCII value'</span>     =&gt; <span class="s">&quot;version: 1\ndn: cn=a\ncn: Lovelac\c[LATIN SMALL LETTER E WITH ACUTE]\n\n&quot;</span>,
+    <span class="s">'a well-formed file'</span>    =&gt; <span class="s">&quot;version: 1\ndn: cn=a\ncn: a\n\n&quot;</span>;
+
+<span class="k">for</span> <span class="nv">%cases</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$label</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="n">Text::LDIF</span>.<span class="n">parse</span>(<span class="nv">%cases</span>{<span class="nv">$label</span>});
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-22s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="nv">$r</span>.<span class="nb">defined</span> ?? <span class="s">'parsed'</span> !! <span class="s">'Nil'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'version: is mandatory and must come first; the file must end in a'</span>;
+<span class="nb">say</span> <span class="s">'newline; any byte above \x7F fails the WHOLE document (RFC 2849 wants'</span>;
+<span class="nb">say</span> <span class="s">'base64 there). All three look the same from outside.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a non-ASCII value      -&gt; Nil
+a well-formed file     -&gt; Nil
+missing version:       -&gt; Nil
+no trailing newline    -&gt; Nil
+
+version: is mandatory and must come first; the file must end in a
+newline; any byte above \x7F fails the WHOLE document (RFC 2849 wants
+base64 there). All three look the same from outside.</code></pre></div>
+<p>One more thing the grammar does not check: <code>version: 9</code> parses, and comes back as <code>9</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

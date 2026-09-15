@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shareable — The Raku Ecosystem, Working</title>
+<meta name="description" content="Inherit from it to get save-yourself-to-a-file — where the store file is `.raku` text that gets `EVAL`ed back.">
+<link rel="canonical" href="https://raku.online/modules/shareable/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shareable — The Raku Ecosystem, Working">
+<meta property="og:description" content="Inherit from it to get save-yourself-to-a-file — where the store file is `.raku` text that gets `EVAL`ed back.">
+<meta property="og:url" content="https://raku.online/modules/shareable/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Shareable","description":"Inherit from it to get save-yourself-to-a-file — where the store file is `.raku` text that gets `EVAL`ed back.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/shareable/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/tbrowder/Shareable.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · serialisation</div><h1>Shareable</h1><span class="status st-div">Divergent</span></div><p class="summary">Inherit from it to get save-yourself-to-a-file — where the store file is <code>.raku</code> text that gets <code>EVAL</code>ed back.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">zef:tbrowder</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Storable::Lite</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tbrowder/Shareable">raku.land</a> · <a href="https://github.com/tbrowder/Shareable.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Shareable</code></pre></div><p class="fact-sub"><code>zef install Shareable</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Persisting a small object between runs without reaching for JSON or a database. Inherit from <code>Shareable</code>, call <code>.save</code>, and the object's <code>.raku</code> goes to a file; <code>.from-store</code> reads it back with <code>EVAL</code>.</p>
+<h2 id="saving-and-loading">Saving and loading <a class="anchor" href="#saving-and-loading" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shareable/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shareable</span>;
+
+<span class="k">class</span> <span class="n">Note</span> <span class="k">is</span> <span class="n">Shareable</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.title</span>; <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.n</span> }
+
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;shareable-{$*PID}.store&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$f</span>.<span class="nb">unlink</span>;
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">Note</span>.<span class="nb">new</span>(<span class="n">title</span> =&gt; <span class="s">'hello'</span>, <span class="n">n</span> =&gt; <span class="mi">3</span>);
+<span class="nv">$a</span>.<span class="n">to-file</span>(<span class="nv">$f</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'file contents : '</span>, <span class="nv">$f</span>.<span class="nb">slurp</span>.<span class="nb">trim</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nv">$a</span>.<span class="n">from-file</span>(<span class="nv">$f</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'round-tripped : '</span>, <span class="nv">$b</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  same class  : '</span>, <span class="nv">$b</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  equal       : '</span>, <span class="nv">$b</span>.<span class="n">title</span> <span class="n">eq</span> <span class="nv">$a</span>.<span class="n">title</span> &amp;&amp; <span class="nv">$b</span>.<span class="n">n</span> == <span class="nv">$a</span>.<span class="n">n</span>;
+<span class="nb">say</span> <span class="s">'  identical   : '</span>, <span class="nv">$b</span> === <span class="nv">$a</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'from-file returns a NEW object and leaves self untouched — it is not'</span>;
+<span class="nb">say</span> <span class="s">'an in-place load.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>file contents : Note.new(title =&gt; "hello", n =&gt; 3)
+
+round-tripped : Note.new(title =&gt; "hello", n =&gt; 3)
+  same class  : Note
+  equal       : True
+  identical   : False
+
+from-file returns a NEW object and leaves self untouched — it is not
+an in-place load.</code></pre></div>
+<h2 id="the-store-file">The store file <a class="anchor" href="#the-store-file" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shareable/02-store.raku" title="This example as a file: 02-store.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shareable</span>;
+
+<span class="k">class</span> <span class="n">Note</span> <span class="k">is</span> <span class="n">Shareable</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.title</span> }
+
+<span class="nb">say</span> <span class="s">'the module keeps ONE module-level store path, shared by every'</span>;
+<span class="nb">say</span> <span class="s">'instance and subclass, defaulting to $HOME/.Shareable-store-file.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  .show-store  reads it'</span>;
+<span class="nb">say</span> <span class="s">'  .save        writes self to it'</span>;
+<span class="nb">say</span> <span class="s">'  .store       is the same method under another name'</span>;
+<span class="nb">say</span> <span class="s">'  .from-store  reads it back'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and .new(:store-file(...)) does NOTHING. The `multi new(:$store-file)`'</span>;
+<span class="nb">say</span> <span class="s">'in the class body has no `method` keyword, so it is a lexical SUB,'</span>;
+<span class="nb">say</span> <span class="s">'not a constructor candidate — .new falls through to Mu.new and the'</span>;
+<span class="nb">say</span> <span class="s">'named argument is dropped:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">Note</span>.<span class="nb">new</span>(<span class="n">store-file</span> =&gt; <span class="s">'/tmp/mine'</span>).<span class="n">show-store</span>.<span class="nb">IO</span>.<span class="n">basename</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the module keeps ONE module-level store path, shared by every
+instance and subclass, defaulting to $HOME/.Shareable-store-file.
+
+  .show-store  reads it
+  .save        writes self to it
+  .store       is the same method under another name
+  .from-store  reads it back
+
+and .new(:store-file(...)) does NOTHING. The `multi new(:$store-file)`
+in the class body has no `method` keyword, so it is a lexical SUB,
+not a constructor candidate — .new falls through to Mu.new and the
+named argument is dropped:
+  .Shareable-store-file</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>set-store-file($path)</code> <strong>deletes your existing store file</strong> before adopting the new one.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shareable/03-unlink.raku" title="This example as a file: 03-unlink.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shareable</span>;
+
+<span class="k">class</span> <span class="n">Note</span> <span class="k">is</span> <span class="n">Shareable</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.title</span> }
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;shareable2-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'a.store'</span>).<span class="nb">unlink</span>; <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'b.store'</span>).<span class="nb">unlink</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">my</span> <span class="nv">$a</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'a.store'</span>);
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'b.store'</span>);
+
+<span class="k">my</span> <span class="nv">$n</span> = <span class="n">Note</span>.<span class="nb">new</span>(<span class="n">title</span> =&gt; <span class="s">'kept'</span>);
+<span class="nv">$n</span>.<span class="n">to-file</span>(<span class="nv">$a</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'file A written : '</span>, <span class="nv">$a</span>.<span class="n">e</span>;
+<span class="nv">$n</span>.<span class="n">set-store-file</span>(<span class="nv">$b</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'after set-store-file(B):'</span>;
+<span class="nb">say</span> <span class="s">'  store is now : '</span>, <span class="nv">$n</span>.<span class="n">show-store</span>.<span class="nb">IO</span>.<span class="n">basename</span>;
+<span class="nb">say</span> <span class="s">'  file A       : '</span>, <span class="nv">$a</span>.<span class="n">e</span> ?? <span class="s">'still there'</span> !! <span class="s">'GONE'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the source is  method set-store-file($path) { unlink $storefile;'</span>;
+<span class="nb">say</span> <span class="s">'$storefile = $path }. Nothing in the name suggests a deletion.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the FIRST call in a fresh program unlinks whatever is at'</span>;
+<span class="nb">say</span> <span class="s">'$HOME/.Shareable-store-file, because that is the default. &quot;Point this'</span>;
+<span class="nb">say</span> <span class="s">'object at my own file&quot; is spelled &quot;delete the shared default store,'</span>;
+<span class="nb">say</span> <span class="s">'then point at my own file&quot;.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>file A written : True
+after set-store-file(B):
+  store is now : b.store
+  file A       : still there
+
+the source is  method set-store-file($path) { unlink $storefile;
+$storefile = $path }. Nothing in the name suggests a deletion.
+
+and the FIRST call in a fresh program unlinks whatever is at
+$HOME/.Shareable-store-file, because that is the default. "Point this
+object at my own file" is spelled "delete the shared default store,
+then point at my own file".</code></pre></div>
+<h2 id="a-store-file-is-executable-code">A store file is executable code <a class="anchor" href="#a-store-file-is-executable-code" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shareable/04-eval.raku" title="This example as a file: 04-eval.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shareable</span>;
+
+<span class="k">class</span> <span class="n">Note</span> <span class="k">is</span> <span class="n">Shareable</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.title</span> }
+
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;shareable3-{$*PID}.store&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$f</span>.<span class="nb">unlink</span>;
+<span class="nv">$f</span>.<span class="nb">spurt</span>(<span class="s">'do { say &quot;  &gt;&gt;&gt; code in the store file just ran &lt;&lt;&lt;&quot;; 42 }'</span>);
+
+<span class="nb">say</span> <span class="s">'loading a store file that contains an expression:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Note</span>.<span class="n">from-file</span>(<span class="nv">$f</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'  result = '</span>, <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Storable::Lite deserialises with EVAL under MONKEY-SEE-NO-EVAL.'</span>;
+<span class="nb">say</span> <span class="s">'Never point from-file or from-store at a file you did not write.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a missing file returns Bool::False after a warning — not Nil, not a'</span>;
+<span class="nb">say</span> <span class="s">'Failure — so `my $obj = $s.from-store;` silently yields False and'</span>;
+<span class="nb">say</span> <span class="s">'blows up somewhere else later:'</span>;
+<span class="nb">say</span> <span class="s">'  from-file(missing) : '</span>, <span class="n">Note</span>.<span class="n">from-file</span>(<span class="s">'/no/such/store'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>loading a store file that contains an expression:
+  &gt;&gt;&gt; code in the store file just ran &lt;&lt;&lt;
+  result = 42
+
+Storable::Lite deserialises with EVAL under MONKEY-SEE-NO-EVAL.
+Never point from-file or from-store at a file you did not write.
+
+a missing file returns Bool::False after a warning — not Nil, not a
+Failure — so `my $obj = $s.from-store;` silently yields False and
+blows up somewhere else later:
+  from-file(missing) : Bool::False</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Closure attributes come back as empty stubs on both — <code>.raku</code> renders a <code>Sub</code> as <code>sub { ... }</code>, which <code>EVAL</code>s into a live <code>Sub</code> whose body is the yada stub. Calling it then diverges: Raku++ throws <code>X::StubCode</code>, Rakudo returns a <code>Failure</code> that is easy to swallow. Keep code out of anything you store.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/shareable/05-leak.raku" title="This example as a file: 05-leak.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Shareable</span>;
+
+<span class="nb">say</span> <span class="s">'the other divergence is scoping: `use Shareable` re-exports its'</span>;
+<span class="nb">say</span> <span class="s">'dependency`s exports under Raku++ and not under Rakudo.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  after `use Shareable` alone:'</span>;
+<span class="nb">say</span> <span class="s">'    FileStore, to-file and from-file as SUBS are visible on Raku++'</span>;
+<span class="nb">say</span> <span class="s">'    and &quot;Undeclared name&quot; on Rakudo'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so code written against Raku++ that calls to-file($path, $obj) as a'</span>;
+<span class="nb">say</span> <span class="s">'sub does not compile on Rakudo. Use the METHODS the class gives you,'</span>;
+<span class="nb">say</span> <span class="s">'which are the same on both:'</span>;
+<span class="k">class</span> <span class="n">Note</span> <span class="k">is</span> <span class="n">Shareable</span> { <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.title</span> }
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;shareable4-{$*PID}.store&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$f</span>.<span class="nb">unlink</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="n">Note</span>.<span class="nb">new</span>(<span class="n">title</span> =&gt; <span class="s">'portable'</span>);
+<span class="nv">$n</span>.<span class="n">to-file</span>(<span class="nv">$f</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'  .to-file / .from-file : '</span>, <span class="n">Note</span>.<span class="n">from-file</span>(<span class="nv">$f</span>.<span class="nb">Str</span>).<span class="n">title</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the other divergence is scoping: `use Shareable` re-exports its
+dependency`s exports under Raku++ and not under Rakudo.
+
+  after `use Shareable` alone:
+    FileStore, to-file and from-file as SUBS are visible on Raku++
+    and "Undeclared name" on Rakudo
+
+so code written against Raku++ that calls to-file($path, $obj) as a
+sub does not compile on Rakudo. Use the METHODS the class gives you,
+which are the same on both:
+  .to-file / .from-file : portable</code></pre></div>
+<p>One last shape: <code>Shareable</code> itself declares no attributes, so <code>Shareable.new.raku</code> is just <code>Shareable.new</code>. All the state is yours.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

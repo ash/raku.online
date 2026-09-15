@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NativeLibs — The Raku Ecosystem, Working</title>
+<meta name="description" content="Open a shared library by name, resolve symbols out of it, and probe which ABI version exists at run time — with two distributions of this name installed.">
+<link rel="canonical" href="https://raku.online/modules/nativelibs/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NativeLibs — The Raku Ecosystem, Working">
+<meta property="og:description" content="Open a shared library by name, resolve symbols out of it, and probe which ABI version exists at run time — with two distributions of this name installed.">
+<meta property="og:url" content="https://raku.online/modules/nativelibs/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"NativeLibs","description":"Open a shared library by name, resolve symbols out of it, and probe which ABI version exists at run time — with two distributions of this name installed.","programmingLanguage":"Raku","version":"0.0.9","url":"https://raku.online/modules/nativelibs/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/NativeLibs.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · native interface</div><h1>NativeLibs</h1><span class="status st-div">Divergent</span></div><p class="summary">Open a shared library by name, resolve symbols out of it, and probe which ABI version exists at run time — with two distributions of this name installed.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.9</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>4 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/NativeLibs">raku.land</a> · <a href="https://github.com/raku-community-modules/NativeLibs.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install NativeLibs</code></pre></div><p class="fact-sub"><code>zef install NativeLibs</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>is native('foo')</code> needs a library name at compile time, and the name is version-dependent: <code>libfoo.so.5</code> on one machine, <code>libfoo.so.6</code> on another. This distribution lets you probe at run time — open candidates in turn until one resolves a symbol you know — and gives you the library-name conventions for each platform.</p>
+<h2 id="naming-a-library">Naming a library <a class="anchor" href="#naming-a-library" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativelibs/01-cannon.raku" title="This example as a file: 01-cannon.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeLibs</span>;
+
+<span class="nb">say</span> <span class="s">'is-win : '</span>, <span class="n">NativeLibs::is-win</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="s">'m'</span>, <span class="s">'ssl'</span>, <span class="s">'foo.so'</span> -&gt; <span class="nv">$lib</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  cannon-name(%-8s)          = %s'</span>, <span class="nv">$lib</span>.<span class="nb">raku</span>,
+                <span class="n">NativeLibs::cannon-name</span>(<span class="nv">$lib</span>));
+}
+<span class="nb">say</span> <span class="s">'  cannon-name(&quot;m&quot;, v6)           = '</span>, <span class="n">NativeLibs::cannon-name</span>(<span class="s">'m'</span>, <span class="n">v6</span>);
+<span class="nb">say</span> <span class="s">'  cannon-name(&quot;m&quot;, &quot;6&quot;)          = '</span>, <span class="n">NativeLibs::cannon-name</span>(<span class="s">'m'</span>, <span class="s">'6'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a name that already carries an extension is passed through untouched,'</span>;
+<span class="nb">say</span> <span class="s">'so cannon-name will not version a path you resolved yourself.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>is-win : False
+
+  cannon-name("m"     )          = libm.dylib
+  cannon-name("ssl"   )          = libssl.dylib
+  cannon-name("foo.so")          = foo.so
+  cannon-name("m", v6)           = libm.6.dylib
+  cannon-name("m", "6")          = libm.6.dylib
+
+a name that already carries an extension is passed through untouched,
+so cannon-name will not version a path you resolved yourself.</code></pre></div>
+<h2 id="opening-and-resolving">Opening and resolving <a class="anchor" href="#opening-and-resolving" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativelibs/02-loader.raku" title="This example as a file: 02-loader.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeLibs</span>;
+
+<span class="k">my</span> <span class="nv">$lib</span> = <span class="n">NativeLibs::Loader</span>.<span class="n">load</span>(<span class="n">NativeLibs::cannon-name</span>(<span class="s">'m'</span>));
+<span class="nb">say</span> <span class="s">'loaded : '</span>, <span class="nv">$lib</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'  name : '</span>, <span class="nv">$lib</span>.<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$cos</span> = <span class="nv">$lib</span>.<span class="n">symbol</span>(<span class="s">'cos'</span>);
+<span class="nb">say</span> <span class="s">'symbol(&quot;cos&quot;) : a Pointer, non-null : '</span>, (+<span class="nv">$cos</span> != <span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'disposing closes it:'</span>;
+<span class="nb">say</span> <span class="s">'  dispose      : '</span>, <span class="nv">$lib</span>.<span class="n">dispose</span>.<span class="nb">so</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$missing</span> = <span class="n">NativeLibs::Loader</span>.<span class="n">load</span>(<span class="s">'libdefinitely-not-here'</span>);
+<span class="nb">say</span> <span class="s">'a library that does not exist : '</span>,
+    <span class="nv">$missing</span> ~~ <span class="nb">Failure</span> ?? <span class="s">'a Failure'</span> !! <span class="nv">$missing</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>loaded : True
+  name : libm.dylib
+
+symbol("cos") : a Pointer, non-null : True
+
+disposing closes it:
+  dispose      : True
+
+a library that does not exist : a Failure</code></pre></div>
+<h2 id="probing-for-the-right-abi-version">Probing for the right ABI version <a class="anchor" href="#probing-for-the-right-abi-version" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativelibs/03-searcher.raku" title="This example as a file: 03-searcher.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeLibs</span>;
+
+<span class="nb">say</span> <span class="s">'try-versions opens each candidate in turn and returns the first whose'</span>;
+<span class="nb">say</span> <span class="s">'name resolves the well-known symbol you name:'</span>;
+<span class="nb">say</span> <span class="s">'  try-versions(&quot;m&quot;, &quot;cos&quot;)       = '</span>,
+    <span class="n">NativeLibs::Searcher</span>.<span class="n">try-versions</span>(<span class="s">'m'</span>, <span class="s">'cos'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  try-versions(&quot;m&quot;, &quot;cos&quot;, 6, 5) = '</span>,
+    <span class="n">NativeLibs::Searcher</span>.<span class="n">try-versions</span>(<span class="s">'m'</span>, <span class="s">'cos'</span>, <span class="mi">6</span>, <span class="mi">5</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  try-versions(&quot;zzznope&quot;, &quot;cos&quot;) = '</span>,
+    <span class="n">NativeLibs::Searcher</span>.<span class="n">try-versions</span>(<span class="s">'zzznope'</span>, <span class="s">'cos'</span>).<span class="nb">defined</span>
+        ?? <span class="s">'a name'</span> !! <span class="s">'undefined'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'at-runtime wraps that in a Block you can hand to `is native`:'</span>;
+<span class="k">my</span> <span class="nv">&amp;name</span> = <span class="n">NativeLibs::Searcher</span>.<span class="n">at-runtime</span>(<span class="s">'m'</span>, <span class="s">'cos'</span>);
+<span class="nb">say</span> <span class="s">'  at-runtime(&quot;m&quot;, &quot;cos&quot;).()      = '</span>, <span class="n">name</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note what happens when nothing is found: at-runtime returns the BARE'</span>;
+<span class="nb">say</span> <span class="s">'library name rather than failing, deliberately, so that NativeCall'</span>;
+<span class="nb">say</span> <span class="s">'dies later with its own message:'</span>;
+<span class="k">my</span> <span class="nv">&amp;nope</span> = <span class="n">NativeLibs::Searcher</span>.<span class="n">at-runtime</span>(<span class="s">'zzznope'</span>, <span class="s">'cos'</span>);
+<span class="nb">say</span> <span class="s">'  at-runtime(&quot;zzznope&quot;, &quot;cos&quot;).() = '</span>, <span class="n">nope</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so your `is native(…)` will fail at the first CALL, not at load, and'</span>;
+<span class="nb">say</span> <span class="s">'the message will be NativeCall`s rather than &quot;cannot locate library&quot;.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>try-versions opens each candidate in turn and returns the first whose
+name resolves the well-known symbol you name:
+  try-versions("m", "cos")       = "libm.dylib"
+  try-versions("m", "cos", 6, 5) = Any
+  try-versions("zzznope", "cos") = undefined
+
+at-runtime wraps that in a Block you can hand to `is native`:
+  at-runtime("m", "cos").()      = "libm.dylib"
+
+note what happens when nothing is found: at-runtime returns the BARE
+library name rather than failing, deliberately, so that NativeCall
+dies later with its own message:
+  at-runtime("zzznope", "cos").() = "zzznope"
+
+so your `is native(…)` will fail at the first CALL, not at load, and
+the message will be NativeCall`s rather than "cannot locate library".</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Two distributions are called <code>NativeLibs</code>, both version 0.0.9, and <code>use NativeLibs</code> resolves to a different one on each engine.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativelibs/04-which.raku" title="This example as a file: 04-which.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeLibs</span>;
+
+<span class="nb">say</span> <span class="s">'the tie between two same-version distributions is broken differently:'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  Raku++ loads zef:raku-community-modules (lib/NativeLibs.rakumod)'</span>;
+<span class="nb">say</span> <span class="s">'  Rakudo loads github:salortiz            (lib/NativeLibs.pm6)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two sources are near-identical, mostly reformatting. The one real'</span>;
+<span class="nb">say</span> <span class="s">'code difference is a signature:'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  community-modules : multi cannon-name(Str:D $libname, Version $version?)'</span>;
+<span class="nb">say</span> <span class="s">'  salortiz          : multi cannon-name(Str $libname, Version $version = Version)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the first undefined library name you pass behaves differently.'</span>;
+<span class="nb">say</span> <span class="s">'Pin the auth in your `use` if you care which one you get:'</span>;
+<span class="nb">say</span> <span class="s">'  use NativeLibs:auth&lt;zef:raku-community-modules&gt;;'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and note the module re-exports the whole of NativeCall, so'</span>;
+<span class="nb">say</span> <span class="s">'`use NativeLibs` alone gives you is native, Pointer, CArray and'</span>;
+<span class="nb">say</span> <span class="s">'nativecast.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the tie between two same-version distributions is broken differently:
+
+  Raku++ loads zef:raku-community-modules (lib/NativeLibs.rakumod)
+  Rakudo loads github:salortiz            (lib/NativeLibs.pm6)
+
+the two sources are near-identical, mostly reformatting. The one real
+code difference is a signature:
+
+  community-modules : multi cannon-name(Str:D $libname, Version $version?)
+  salortiz          : multi cannon-name(Str $libname, Version $version = Version)
+
+so the first undefined library name you pass behaves differently.
+Pin the auth in your `use` if you care which one you get:
+  use NativeLibs:auth&lt;zef:raku-community-modules&gt;;
+
+and note the module re-exports the whole of NativeCall, so
+`use NativeLibs` alone gives you is native, Pointer, CArray and
+nativecast.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Beyond which distribution loads: <code>Loader.symbol</code> never reports "not found" under Raku++ — it hands back a <em>defined</em> <code>Pointer</code> whose value is 0, where Rakudo returns a <code>Failure</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/nativelibs/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">NativeLibs</span>;
+
+<span class="k">my</span> <span class="nv">$lib</span> = <span class="n">NativeLibs::Loader</span>.<span class="n">load</span>(<span class="n">NativeLibs::cannon-name</span>(<span class="s">'m'</span>));
+<span class="nb">say</span> <span class="s">'check the pointer, not the Failure:'</span>;
+<span class="k">for</span> <span class="s">'cos'</span>, <span class="s">'no_such_symbol_xyz'</span> -&gt; <span class="nv">$sym</span> {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="nv">$lib</span>.<span class="n">symbol</span>(<span class="nv">$sym</span>);
+    <span class="k">my</span> <span class="nv">$ok</span> = <span class="nv">$p</span>.<span class="nb">defined</span> &amp;&amp; +<span class="nv">$p</span> != <span class="mi">0</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  symbol(%-20s) usable ? %s'</span>, <span class="nv">$sym</span>.<span class="nb">raku</span>, <span class="nv">$ok</span>);
+}
+<span class="nv">$lib</span>.<span class="n">dispose</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'that `$p.defined &amp;&amp; +$p != 0` test is the portable one — on Rakudo'</span>;
+<span class="nb">say</span> <span class="s">'the second row is a Failure and on Raku++ it is a null Pointer, and'</span>;
+<span class="nb">say</span> <span class="s">'both fail the test.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two more engine notes. $*VM.config&lt;nativecall_backend&gt; is ABSENT under'</span>;
+<span class="nb">say</span> <span class="s">'Raku++, so the module`s dyncall check compares an undefined value and'</span>;
+<span class="nb">say</span> <span class="s">'silently takes the libffi branch — which is the right branch here.'</span>;
+<span class="nb">say</span> <span class="s">'And Compile.compile-all links with $*VM.config&lt;ldlibs&gt;, which names'</span>;
+<span class="nb">say</span> <span class="s">'MoarVM`s own build-time libraries under Rakudo and is empty under'</span>;
+<span class="nb">say</span> <span class="s">'Raku++ — so the same build succeeds on one engine and fails on the'</span>;
+<span class="nb">say</span> <span class="s">'other for reasons that have nothing to do with your C.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>check the pointer, not the Failure:
+  symbol("cos"               ) usable ? True
+  symbol("no_such_symbol_xyz") usable ? False
+
+that `$p.defined &amp;&amp; +$p != 0` test is the portable one — on Rakudo
+the second row is a Failure and on Raku++ it is a null Pointer, and
+both fail the test.
+
+two more engine notes. $*VM.config&lt;nativecall_backend&gt; is ABSENT under
+Raku++, so the module`s dyncall check compares an undefined value and
+silently takes the libffi branch — which is the right branch here.
+And Compile.compile-all links with $*VM.config&lt;ldlibs&gt;, which names
+MoarVM`s own build-time libraries under Rakudo and is empty under
+Raku++ — so the same build succeeds on one engine and fails on the
+other for reasons that have nothing to do with your C.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scientist — The Raku Ecosystem, Working</title>
+<meta name="description" content="Run new code beside old code and record whether they disagreed — with an `eqv` comparison that calls 42 and 42.0 a mismatch.">
+<link rel="canonical" href="https://raku.online/modules/scientist/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Scientist — The Raku Ecosystem, Working">
+<meta property="og:description" content="Run new code beside old code and record whether they disagreed — with an `eqv` comparison that calls 42 and 42.0 a mismatch.">
+<meta property="og:url" content="https://raku.online/modules/scientist/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Scientist","description":"Run new code beside old code and record whether they disagreed — with an `eqv` comparison that calls 42 and 42.0 a mismatch.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/scientist/","license":"https://spdx.org/licenses/MIT","codeRepository":"git://github.com/lancew/ScientistP6.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · testing</div><h1>Scientist</h1><span class="status st-full">Works</span></div><p class="summary">Run new code beside old code and record whether they disagreed — with an <code>eqv</code> comparison that calls 42 and 42.0 a mismatch.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:lancew</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lancew/Scientist">raku.land</a> · <a href="git://github.com/lancew/ScientistP6.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Scientist</code></pre></div><p class="fact-sub"><code>zef install Scientist</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Refactoring something you cannot afford to break: run the old implementation and the new one on every real call, return the old one's answer, and record whether the two agreed. GitHub's <code>scientist</code> made the pattern well known and this is the Raku version of it.</p>
+<h2 id="running-an-experiment">Running an experiment <a class="anchor" href="#running-an-experiment" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/scientist/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Scientist</span>;
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(
+    <span class="n">experiment</span> =&gt; <span class="s">'sum'</span>,
+    <span class="k">use</span>        =&gt; <span class="k">sub</span> { (<span class="mi">1</span>.<span class="mf">.10</span>).<span class="nb">sum</span> },
+    <span class="k">try</span>        =&gt; <span class="k">sub</span> { <span class="mi">10</span> * <span class="mi">11</span> <span class="n">div</span> <span class="mi">2</span> },
+    <span class="n">context</span>    =&gt; %( <span class="n">owner</span> =&gt; <span class="s">'spike'</span> ),
+);
+<span class="nb">say</span> <span class="s">'run returned : '</span>, <span class="nv">$s</span>.<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%r</span> = <span class="nv">$s</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="s">'result keys  : '</span>, <span class="nv">%r</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'  experiment : '</span>, <span class="nv">%r</span><span class="s">&lt;experiment&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  mismatched : '</span>, <span class="nv">%r</span><span class="s">&lt;mismatched&gt;</span>;
+<span class="nb">say</span> <span class="s">'  context    : '</span>, <span class="nv">%r</span><span class="s">&lt;context&gt;</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ .<span class="n">value</span> }).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'  durations are Durations : '</span>,
+    <span class="k">so</span> (<span class="nv">%r</span><span class="s">&lt;control&gt;</span><span class="s">&lt;duration&gt;</span>, <span class="nv">%r</span><span class="s">&lt;candidate&gt;</span><span class="s">&lt;duration&gt;</span>).<span class="n">all</span> ~~ <span class="nb">Duration</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the value your program gets is always the CONTROL`s.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>run returned : 55
+
+result keys  : candidate, context, control, experiment, mismatched
+  experiment : "sum"
+  mismatched : False
+  context    : owner=spike
+  durations are Durations : True
+
+the value your program gets is always the CONTROL`s.</code></pre></div>
+<h2 id="when-they-disagree">When they disagree <a class="anchor" href="#when-they-disagree" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/scientist/02-mismatch.raku" title="This example as a file: 02-mismatch.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Scientist</span>;
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(
+    <span class="n">experiment</span> =&gt; <span class="s">'disagree'</span>,
+    <span class="k">use</span>        =&gt; <span class="k">sub</span> { <span class="s">'old'</span> },
+    <span class="k">try</span>        =&gt; <span class="k">sub</span> { <span class="s">'new'</span> },
+);
+<span class="nb">say</span> <span class="s">'run returned : '</span>, <span class="nv">$s</span>.<span class="nb">run</span>.<span class="nb">raku</span>, <span class="s">'   &lt;- the control`s value'</span>;
+<span class="nb">say</span> <span class="s">'mismatched   : '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;mismatched&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and note what is NOT recorded — neither value:'</span>;
+<span class="nb">say</span> <span class="s">'  result keys : '</span>, <span class="nv">$s</span>.<span class="n">result</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(
+    <span class="n">experiment</span> =&gt; <span class="s">'candidate throws'</span>,
+    <span class="k">use</span>        =&gt; <span class="k">sub</span> { <span class="s">'old'</span> },
+    <span class="k">try</span>        =&gt; <span class="k">sub</span> { <span class="nb">die</span> <span class="s">'boom'</span> },
+);
+<span class="nb">say</span> <span class="s">'a candidate that THROWS:'</span>;
+<span class="nb">say</span> <span class="s">'  run survived : '</span>, (<span class="nv">$t</span>.<span class="nb">run</span>.<span class="nb">defined</span> ?? <span class="s">'yes'</span> !! <span class="s">'no'</span>);
+<span class="nb">say</span> <span class="s">'  returned     : '</span>, <span class="nv">$t</span>.<span class="nb">run</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  mismatched   : '</span>, <span class="nv">$t</span>.<span class="n">result</span><span class="s">&lt;mismatched&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the exception is swallowed by an inner try, $candidate stays'</span>;
+<span class="nb">say</span> <span class="s">'undefined, mismatched becomes True, and nothing anywhere records'</span>;
+<span class="nb">say</span> <span class="s">'that an exception happened. A candidate that always throws is'</span>;
+<span class="nb">say</span> <span class="s">'indistinguishable from one that always returns the wrong answer.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the CONTROL`s exceptions propagate to your caller, which is right.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>run returned : "old"   &lt;- the control`s value
+mismatched   : True
+
+and note what is NOT recorded — neither value:
+  result keys : candidate, context, control, experiment, mismatched
+
+a candidate that THROWS:
+  run survived : yes
+  returned     : "old"
+  mismatched   : True
+
+the exception is swallowed by an inner try, $candidate stays
+undefined, mismatched becomes True, and nothing anywhere records
+that an exception happened. A candidate that always throws is
+indistinguishable from one that always returns the wrong answer.
+
+the CONTROL`s exceptions propagate to your caller, which is right.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The comparison is <code>!eqv</code>, and <code>eqv</code> is type-strict — so a refactor that changes only the numeric type or the container is reported as a mismatch.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/scientist/03-eqv.raku" title="This example as a file: 03-eqv.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Scientist</span>;
+
+<span class="k">sub</span> <span class="n">compare</span>(<span class="nv">$label</span>, <span class="nv">&amp;a</span>, <span class="nv">&amp;b</span>) {
+    <span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(<span class="n">experiment</span> =&gt; <span class="nv">$label</span>, <span class="k">use</span> =&gt; <span class="nv">&amp;a</span>, <span class="k">try</span> =&gt; <span class="nv">&amp;b</span>);
+    <span class="nv">$s</span>.<span class="nb">run</span>;
+    <span class="nb">sprintf</span>(<span class="s">'  %-28s mismatched = %s'</span>, <span class="nv">$label</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;mismatched&gt;</span>)
+}
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'Int 42 vs Rat 42.0'</span>,  { <span class="mi">42</span> },        { <span class="mf">42.0</span> });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'Int 42 vs Num 42e0'</span>,  { <span class="mi">42</span> },        { <span class="mf">42e0</span> });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'Int 42 vs Str &quot;42&quot;'</span>,  { <span class="mi">42</span> },        { <span class="s">'42'</span> });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'List vs Array'</span>,       { (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>) }, { [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>] });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'List vs Seq'</span>,         { (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>) }, { (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>).<span class="nb">Seq</span> });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'Hash vs Map'</span>,         { %( <span class="n">a</span> =&gt; <span class="mi">1</span> ) }, { <span class="nb">Map</span>.<span class="nb">new</span>((<span class="s">'a'</span>, <span class="mi">1</span>)) });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'identical Ints'</span>,      { <span class="mi">42</span> },        { <span class="mi">42</span> });
+<span class="nb">say</span> <span class="n">compare</span>(<span class="s">'both return Nil'</span>,     { <span class="nb">Nil</span> },       { <span class="nb">Nil</span> });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'42 versus 42.0 is a mismatch; (1,2,3) versus [1,2,3] is a mismatch.'</span>;
+<span class="nb">say</span> <span class="s">'In a real refactor those are the COMMON cases, and there is no hook'</span>;
+<span class="nb">say</span> <span class="s">'to supply your own comparator.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'normalise inside the two callables:'</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(<span class="n">experiment</span> =&gt; <span class="s">'normalised'</span>,
+                      <span class="k">use</span> =&gt; <span class="k">sub</span> { (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>).<span class="nb">List</span> },
+                      <span class="k">try</span> =&gt; <span class="k">sub</span> { [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>].<span class="nb">List</span> });
+<span class="nv">$s</span>.<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">'  both .List-ed -&gt; mismatched = '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;mismatched&gt;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  Int 42 vs Rat 42.0           mismatched = True
+  Int 42 vs Num 42e0           mismatched = True
+  Int 42 vs Str "42"           mismatched = True
+  List vs Array                mismatched = True
+  List vs Seq                  mismatched = True
+  Hash vs Map                  mismatched = True
+  identical Ints               mismatched = False
+  both return Nil              mismatched = False
+
+42 versus 42.0 is a mismatch; (1,2,3) versus [1,2,3] is a mismatch.
+In a real refactor those are the COMMON cases, and there is no hook
+to supply your own comparator.
+
+normalise inside the two callables:
+  both .List-ed -&gt; mismatched = False</code></pre></div>
+<h2 id="two-shapes-to-plan-around">Two shapes to plan around <a class="anchor" href="#two-shapes-to-plan-around" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/scientist/04-shapes.raku" title="This example as a file: 04-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Scientist</span>;
+
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(<span class="n">experiment</span> =&gt; <span class="s">'first'</span>, <span class="k">use</span> =&gt; <span class="k">sub</span> { <span class="mi">1</span> }, <span class="k">try</span> =&gt; <span class="k">sub</span> { <span class="mi">2</span> });
+<span class="nv">$s</span>.<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">'after a run, result&lt;experiment&gt; : '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;experiment&gt;</span>.<span class="nb">raku</span>;
+<span class="nv">$s</span>.<span class="n">enabled</span> = <span class="n">False</span>;
+<span class="nb">say</span> <span class="s">'run with enabled = False        : '</span>, <span class="nv">$s</span>.<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">'result&lt;experiment&gt; is STILL     : '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;experiment&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'result&lt;mismatched&gt; is STILL     : '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;mismatched&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'enabled = False short-circuits before %!result is touched, so result'</span>;
+<span class="nb">say</span> <span class="s">'keeps reporting the PREVIOUS run`s verdict, name and all.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the order of the two calls is RANDOMISED per run — Bool.pick —'</span>;
+<span class="nb">say</span> <span class="s">'so a candidate with side effects, shared state or a warm cache will'</span>;
+<span class="nb">say</span> <span class="s">'produce unstable timings and results.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'publish() is an empty method; the &quot;publish your results&quot; story needs'</span>;
+<span class="nb">say</span> <span class="s">'a subclass:'</span>;
+<span class="k">class</span> <span class="n">Loud</span> <span class="k">is</span> <span class="n">Scientist</span> {
+    <span class="k">method</span> <span class="n">publish</span> { <span class="nb">note</span> <span class="s">&quot;  {$.experiment}: mismatched={$.result&lt;mismatched&gt;}&quot;</span> }
+}
+<span class="n">Loud</span>.<span class="nb">new</span>(<span class="n">experiment</span> =&gt; <span class="s">'loud'</span>, <span class="k">use</span> =&gt; <span class="k">sub</span> { <span class="mi">1</span> }, <span class="k">try</span> =&gt; <span class="k">sub</span> { <span class="mi">2</span> }).<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">'  (publish writes to stderr above; it is called on agreement too)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>after a run, result&lt;experiment&gt; : "first"
+run with enabled = False        : 1
+result&lt;experiment&gt; is STILL     : "first"
+result&lt;mismatched&gt; is STILL     : True
+
+enabled = False short-circuits before %!result is touched, so result
+keeps reporting the PREVIOUS run`s verdict, name and all.
+
+and the order of the two calls is RANDOMISED per run — Bool.pick —
+so a candidate with side effects, shared state or a warm cache will
+produce unstable timings and results.
+
+publish() is an empty method; the "publish your results" story needs
+a subclass:
+  (publish writes to stderr above; it is called on agreement too)</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing behavioural. One thing to be careful of on both, and sharper on Raku++: <code>result&lt;context&gt;</code> <strong>is</strong> the scientist's own <code>%.context</code> hash, so writing into it mutates the object — and under Raku++ it also mutates the hash you passed to <code>.new</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/scientist/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Scientist</span>;
+
+<span class="k">my</span> <span class="nv">%ctx</span> = <span class="n">owner</span> =&gt; <span class="s">'spike'</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Scientist</span>.<span class="nb">new</span>(<span class="n">experiment</span> =&gt; <span class="s">'ctx'</span>, <span class="k">use</span> =&gt; <span class="k">sub</span> { <span class="mi">1</span> }, <span class="k">try</span> =&gt; <span class="k">sub</span> { <span class="mi">1</span> },
+                      <span class="n">context</span> =&gt; <span class="nv">%ctx</span>);
+<span class="nv">$s</span>.<span class="nb">run</span>;
+<span class="nb">say</span> <span class="s">'copy the context before you touch it:'</span>;
+<span class="k">my</span> <span class="nv">%mine</span> = <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;context&gt;</span>;
+<span class="nv">%mine</span><span class="s">&lt;owner&gt;</span> = <span class="s">'someone else'</span>;
+<span class="nb">say</span> <span class="s">'  my copy      : '</span>, <span class="nv">%mine</span><span class="s">&lt;owner&gt;</span>;
+<span class="nb">say</span> <span class="s">'  the object   : '</span>, <span class="nv">$s</span>.<span class="n">result</span><span class="s">&lt;context&gt;</span><span class="s">&lt;owner&gt;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the result Map is shallow, so its nested values are shared. Treat'</span>;
+<span class="nb">say</span> <span class="s">'everything that comes out of .result as read-only.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and `use` is required while `try` is not — leaving try unset is not'</span>;
+<span class="nb">say</span> <span class="s">'an error, it is a permanent mismatched =&gt; True.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>copy the context before you touch it:
+  my copy      : someone else
+  the object   : spike
+
+the result Map is shallow, so its nested values are shared. Treat
+everything that comes out of .result as read-only.
+
+and `use` is required while `try` is not — leaving try unset is not
+an error, it is a permanent mismatched =&gt; True.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

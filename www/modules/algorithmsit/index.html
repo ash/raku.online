@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlgorithmsIT — The Raku Ecosystem, Working</title>
+<meta name="description" content="Knuth-Morris-Pratt transcribed from the textbook, with a one-based array class so the code reads like the pseudocode.">
+<link rel="canonical" href="https://raku.online/modules/algorithmsit/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AlgorithmsIT — The Raku Ecosystem, Working">
+<meta property="og:description" content="Knuth-Morris-Pratt transcribed from the textbook, with a one-based array class so the code reads like the pseudocode.">
+<meta property="og:url" content="https://raku.online/modules/algorithmsit/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"AlgorithmsIT","description":"Knuth-Morris-Pratt transcribed from the textbook, with a one-based array class so the code reads like the pseudocode.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/algorithmsit/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/tbrowder/AlgorithmsIT.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>AlgorithmsIT</h1><span class="status st-div">Divergent</span></div><p class="summary">Knuth-Morris-Pratt transcribed from the textbook, with a one-based array class so the code reads like the pseudocode.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:tbrowder</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>6 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tbrowder/AlgorithmsIT">raku.land</a> · <a href="https://github.com/tbrowder/AlgorithmsIT.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install AlgorithmsIT</code></pre></div><p class="fact-sub"><code>zef install AlgorithmsIT</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><em>Introduction to Algorithms</em> indexes its arrays from 1. Transcribing its pseudocode into a 0-based language means re-deriving every index, and that is where transcription bugs come from. This distribution supplies a one-based array class so the code can be copied as written — and, as its first worked example, the Knuth-Morris-Pratt string matcher from chapter 32.</p>
+<h2 id="matching">Matching <a class="anchor" href="#matching" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithmsit/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">AlgorithmsIT</span> :<span class="n">p1005</span>, :<span class="n">p1006</span>;
+<span class="k">use</span> <span class="n">AlgorithmsIT::Classes</span>;
+
+<span class="k">sub</span> <span class="n">matches</span>(<span class="nb">Str</span> <span class="nv">$text</span>, <span class="nb">Str</span> <span class="nv">$pattern</span>) {
+    <span class="n">KMP-Matcher</span>(<span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="nv">$text</span>), <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="nv">$pattern</span>))
+}
+
+<span class="k">for</span> &lt;<span class="n">abababacaba</span> <span class="n">ababaca</span>&gt;, <span class="s">&lt;aaaaa aa&gt;</span>, <span class="s">&lt;abcabcabc abc&gt;</span>,
+    <span class="s">&lt;abc zzz&gt;</span>, <span class="s">&lt;aaa aaa&gt;</span> -&gt; (<span class="nv">$t</span>, <span class="nv">$p</span>) {
+    <span class="k">my</span> <span class="nv">@brute</span> = (<span class="mi">0</span> .. <span class="nv">$t</span>.<span class="nb">chars</span> - <span class="nv">$p</span>.<span class="nb">chars</span>).<span class="nb">grep</span>({ <span class="nv">$t</span>.<span class="nb">substr</span>(<span class="nv">$_</span>, <span class="nv">$p</span>.<span class="nb">chars</span>) <span class="n">eq</span> <span class="nv">$p</span> });
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  T=%-12s P=%-8s shifts %-14s brute %-14s %s'</span>,
+                <span class="nv">$t</span>, <span class="nv">$p</span>, <span class="n">matches</span>(<span class="nv">$t</span>, <span class="nv">$p</span>).<span class="nb">raku</span>, <span class="nv">@brute</span>.<span class="nb">raku</span>,
+                <span class="n">matches</span>(<span class="nv">$t</span>, <span class="nv">$p</span>).<span class="nb">List</span> <span class="n">eqv</span> <span class="nv">@brute</span>.<span class="nb">List</span> ?? <span class="s">'agree'</span> !! <span class="s">'DIFFER'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the shifts are zero-based offsets into the text.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  T=abababacaba  P=ababaca  shifts [2]            brute [2]            agree
+  T=aaaaa        P=aa       shifts [0, 1, 2, 3]   brute [0, 1, 2, 3]   agree
+  T=abcabcabc    P=abc      shifts [0, 3, 6]      brute [0, 3, 6]      agree
+  T=abc          P=zzz      shifts []             brute []             agree
+  T=aaa          P=aaa      shifts [0]            brute [0]            agree
+
+the shifts are zero-based offsets into the text.</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithmsit/02-prefix.raku" title="This example as a file: 02-prefix.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">AlgorithmsIT</span> :<span class="n">p1005</span>, :<span class="n">p1006</span>;
+<span class="k">use</span> <span class="n">AlgorithmsIT::Classes</span>;
+
+<span class="k">my</span> <span class="nv">$pi</span> = <span class="n">Compute-Prefix-Function</span>(<span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="s">'ababaca'</span>));
+<span class="nb">say</span> <span class="s">'Compute-Prefix-Function(&quot;ababaca&quot;) : '</span>, <span class="nv">$pi</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'the textbook pi for ababaca        : [ 0, 0, 1, 2, 3, 0, 1 ]'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two import tags are the book`s PAGE NUMBERS:'</span>;
+<span class="nb">say</span> <span class="s">'  :p1005 gives KMP-Matcher'</span>;
+<span class="nb">say</span> <span class="s">'  :p1006 gives Compute-Prefix-Function'</span>;
+<span class="nb">say</span> <span class="s">'a plain `use AlgorithmsIT` imports NEITHER.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Compute-Prefix-Function("ababaca") : [ 0, 0, 1, 2, 3, 0, 1 ]
+the textbook pi for ababaca        : [ 0, 0, 1, 2, 3, 0, 1 ]
+
+the two import tags are the book`s PAGE NUMBERS:
+  :p1005 gives KMP-Matcher
+  :p1006 gives Compute-Prefix-Function
+a plain `use AlgorithmsIT` imports NEITHER.</code></pre></div>
+<h2 id="arrayonebased"><code>ArrayOneBased</code> <a class="anchor" href="#arrayonebased" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithmsit/03-onebased.raku" title="This example as a file: 03-onebased.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">AlgorithmsIT::Classes</span>;
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'new(&quot;abc&quot;)      : '</span>, <span class="nv">$a</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'  .elems        : '</span>, <span class="nv">$a</span>.<span class="nb">elems</span>, <span class="s">'   .length : '</span>, <span class="nv">$a</span>.<span class="n">length</span>;
+<span class="nb">say</span> <span class="s">'  [1]           : '</span>, <span class="nv">$a</span>[<span class="mi">1</span>].<span class="nb">raku</span>, <span class="s">'   &lt;- ONE-based'</span>;
+<span class="nb">say</span> <span class="s">'  [0]           : '</span>, <span class="nv">$a</span>[<span class="mi">0</span>].<span class="nb">raku</span>, <span class="s">'   &lt;- the sentinel'</span>;
+<span class="nb">say</span> <span class="s">'  [4]           : '</span>, <span class="nv">$a</span>[<span class="mi">4</span>].<span class="nb">raku</span>, <span class="s">'   &lt;- past the end, does not grow'</span>;
+<span class="nb">say</span> <span class="s">'  .arr          : '</span>, <span class="nv">$a</span>.<span class="n">arr</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'three constructors:'</span>;
+<span class="nb">say</span> <span class="s">'  new(5)        : '</span>, <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="mi">5</span>).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'  new(3, 7)     : '</span>, <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="mi">3</span>, <span class="mi">7</span>).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'  new((10,20))  : '</span>, <span class="n">ArrayOneBased</span>.<span class="nb">new</span>((<span class="mi">10</span>, <span class="mi">20</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'  new(1)        : '</span>, <span class="nv">$!</span> ?? <span class="s">'refused — end must exceed start'</span> !! <span class="nv">$r</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'  use new((1,)) for a one-element array.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'A1B is the same type : '</span>, (<span class="n">A1B</span> === <span class="n">ArrayOneBased</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>new("abc")      : [ a, b, c ]
+  .elems        : 3   .length : 3
+  [1]           : "a"   &lt;- ONE-based
+  [0]           : -1   &lt;- the sentinel
+  [4]           : Any   &lt;- past the end, does not grow
+  .arr          : [-1, "a", "b", "c"]
+
+three constructors:
+  new(5)        : [ 1, 2, 3, 4, 5 ]
+  new(3, 7)     : [ 3, 4, 5, 6, 7 ]
+  new((10,20))  : [ 10, 20 ]
+
+  new(1)        : refused — end must exceed start
+  use new((1,)) for a one-element array.
+
+A1B is the same type : True</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>ArrayOneBased</code> composes <code>Iterable</code> but never defines <code>iterator</code>, so every list operation on it silently produces nothing.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithmsit/04-iterable.raku" title="This example as a file: 04-iterable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">AlgorithmsIT::Classes</span>;
+
+<span class="k">my</span> <span class="nv">$a</span> = <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'it claims to do Iterable : '</span>, (<span class="nv">$a</span> ~~ <span class="nb">Iterable</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so a guard that checks for iterability passes — and then'</span>;
+<span class="nb">say</span> <span class="s">'`for $a { … }` quietly does nothing at all on Rakudo: no exception,'</span>;
+<span class="nb">say</span> <span class="s">'no warning, no elements. On Raku++ it runs once with $_ bound to the'</span>;
+<span class="nb">say</span> <span class="s">'object itself. Neither is what you meant.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two working idioms:'</span>;
+<span class="nb">say</span> <span class="s">'  positional slice : '</span>, <span class="nv">$a</span>[<span class="mi">1</span> .. <span class="nv">$a</span>.<span class="nb">elems</span>].<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  the public .arr  : '</span>, <span class="nv">$a</span>.<span class="n">arr</span>[<span class="mi">1</span> .. *].<span class="nb">raku</span>, <span class="s">'   (index 0 is the -1 sentinel)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'.list gives you an undefined List type object on both engines,'</span>;
+<span class="nb">say</span> <span class="s">'and .map dies on Rakudo. Do not reach for either.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>it claims to do Iterable : True
+
+so a guard that checks for iterability passes — and then
+`for $a { … }` quietly does nothing at all on Rakudo: no exception,
+no warning, no elements. On Raku++ it runs once with $_ bound to the
+object itself. Neither is what you meant.
+
+the two working idioms:
+  positional slice : ("a", "b", "c")
+  the public .arr  : ("a", "b", "c")   (index 0 is the -1 sentinel)
+
+.list gives you an undefined List type object on both engines,
+and .map dies on Rakudo. Do not reach for either.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Exactly that <code>for</code> behaviour, plus one diagnostic timing: <code>KMP-Matcher('abc', 'b')</code> with the wrong argument types is a compile-time refusal on Rakudo and a run-time <code>X::Method::NotFound</code> on Raku++.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithmsit/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">AlgorithmsIT</span> :<span class="n">p1005</span>, :<span class="n">p1006</span>;
+<span class="k">use</span> <span class="n">AlgorithmsIT::Classes</span>;
+
+<span class="c1"># always wrap the arguments, and always read the result as a slice</span>
+<span class="k">sub</span> <span class="n">kmp</span>(<span class="nb">Str</span> <span class="nv">$text</span>, <span class="nb">Str</span> <span class="nv">$pattern</span>) {
+    <span class="n">KMP-Matcher</span>(<span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="nv">$text</span>), <span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="nv">$pattern</span>)).<span class="nb">List</span>
+}
+<span class="nb">say</span> <span class="s">'kmp(&quot;abababacaba&quot;, &quot;ababaca&quot;) = '</span>, <span class="n">kmp</span>(<span class="s">'abababacaba'</span>, <span class="s">'ababaca'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two edges to guard against, identical on both engines:'</span>;
+<span class="nb">say</span> <span class="s">'  an EMPTY pattern returns the spurious shift [1]:'</span>;
+<span class="nb">say</span> <span class="s">'    '</span>, <span class="n">kmp</span>(<span class="s">'abc'</span>, <span class="s">''</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  and Compute-Prefix-Function on an empty pattern returns [0]:'</span>;
+<span class="nb">say</span> <span class="s">'    '</span>, <span class="n">Compute-Prefix-Function</span>(<span class="n">ArrayOneBased</span>.<span class="nb">new</span>(<span class="s">''</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the matcher compares with eq/ne, so elements compare as STRINGS —'</span>;
+<span class="nb">say</span> <span class="s">'2.0 matches 2 and &quot;01&quot; does not match 1. For text that is exactly'</span>;
+<span class="nb">say</span> <span class="s">'what you want; for numeric data it is not.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>kmp("abababacaba", "ababaca") = (2,)
+
+two edges to guard against, identical on both engines:
+  an EMPTY pattern returns the spurious shift [1]:
+    (1,)
+  and Compute-Prefix-Function on an empty pattern returns [0]:
+    [ 0 ]
+
+the matcher compares with eq/ne, so elements compare as STRINGS —
+2.0 matches 2 and "01" does not match 1. For text that is exactly
+what you want; for numeric data it is not.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encoding::Huffman::PP6 — The Raku Ecosystem, Working</title>
+<meta name="description" content="Bit-packed Huffman coding with the HPACK table built in — and a decoder that destroys every digit and every space.">
+<link rel="canonical" href="https://raku.online/modules/encoding-huffman-pp6/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Encoding::Huffman::PP6 — The Raku Ecosystem, Working">
+<meta property="og:description" content="Bit-packed Huffman coding with the HPACK table built in — and a decoder that destroys every digit and every space.">
+<meta property="og:url" content="https://raku.online/modules/encoding-huffman-pp6/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Encoding::Huffman::PP6","description":"Bit-packed Huffman coding with the HPACK table built in — and a decoder that destroys every digit and every space.","programmingLanguage":"Raku","version":"0.0.3","url":"https://raku.online/modules/encoding-huffman-pp6/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/tony-o/perl6-encoding-huffman-pp6.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Encoding::Huffman::PP6</h1><span class="status st-div">Divergent</span></div><p class="summary">Bit-packed Huffman coding with the HPACK table built in — and a decoder that destroys every digit and every space.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.3</code> <span class="fact-sub">zef:tony-o</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tony-o/Encoding::Huffman::PP6">raku.land</a> · <a href="git://github.com/tony-o/perl6-encoding-huffman-pp6.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Encoding::Huffman::PP6</code></pre></div><p class="fact-sub"><code>zef install Encoding::Huffman::PP6</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Huffman coding assigns short bit patterns to common symbols. HTTP/2's HPACK carries a fixed table for header text, and this distribution ships that table along with an encoder and a decoder — or you can supply your own code table.</p>
+<h2 id="encoding">Encoding <a class="anchor" href="#encoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="k">for</span> <span class="s">'www.example.com'</span>, <span class="s">'a'</span>, <span class="s">''</span>, <span class="s">'no-cache'</span> -&gt; <span class="nv">$s</span> {
+    <span class="k">my</span> <span class="nv">$b</span> = <span class="n">huffman-encode</span>(<span class="nv">$s</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s %2d bytes  %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="nv">$b</span>.<span class="nb">bytes</span>,
+                <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the encoder always terminates with the table`s 30-bit EOS symbol and'</span>;
+<span class="nb">say</span> <span class="s">'zero-pads to a byte boundary, so even the empty string is 4 bytes.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "www.example.com"  15 bytes  f1e3c2e5f23a6ba0ab90f4fffffffe
+  "a"                 5 bytes  1fffffffe0
+  ""                  4 bytes  fffffffc
+  "no-cache"         10 bytes  a8eb10649cbfffffff80
+
+the encoder always terminates with the table`s 30-bit EOS symbol and
+zero-pads to a byte boundary, so even the empty string is 4 bytes.</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/02-custom.raku" title="This example as a file: 02-custom.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="k">my</span> <span class="nv">%codes</span> = <span class="n">a</span> =&gt; <span class="s">'0'</span>, <span class="n">b</span> =&gt; <span class="s">'10'</span>, <span class="n">c</span> =&gt; <span class="s">'110'</span>, <span class="n">_eos</span> =&gt; <span class="s">'1110'</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">huffman-encode</span>(<span class="s">'abcabc'</span>, <span class="nv">%codes</span>);
+<span class="nb">say</span> <span class="s">'with a three-symbol table:'</span>;
+<span class="nb">say</span> <span class="s">'  encoded : '</span>, <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%08b'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  decoded : '</span>, <span class="n">huffman-decode</span>(<span class="nv">$b</span>, <span class="nv">%codes</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the table maps a single-character string to a string of binary'</span>;
+<span class="nb">say</span> <span class="s">'digits, and needs an _eos entry.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>with a three-symbol table:
+  encoded : 01011001 01101110 00000000
+  decoded : "abcabc"
+
+the table maps a single-character string to a string of binary
+digits, and needs an _eos entry.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The decoder silently destroys every digit and every ASCII whitespace character.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/03-digits.raku" title="This example as a file: 03-digits.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="k">for</span> <span class="s">'0'</span>, <span class="s">'4'</span>, <span class="s">'9'</span>, <span class="s">' '</span>, <span class="s">'a'</span>, <span class="s">'HTTP 404 gone'</span> -&gt; <span class="nv">$s</span> {
+    <span class="k">my</span> <span class="nv">$back</span> = <span class="n">huffman-decode</span>(<span class="n">huffman-encode</span>(<span class="nv">$s</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-16s -&gt; %-24s %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="nv">$back</span>.<span class="nb">raku</span>,
+                <span class="nv">$back</span> <span class="n">eq</span> <span class="nv">$s</span> ?? <span class="s">'OK'</span> !! <span class="s">'WRONG'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the reverse lookup gives back a one-character Str, and the line'</span>;
+<span class="nb">say</span> <span class="s">'  $r ~= try {%a{$a}.chr} // %a{$a}'</span>;
+<span class="nb">say</span> <span class="s">'calls .chr on it. Str.chr numifies first, so &quot;4&quot;.chr is 4.chr — a'</span>;
+<span class="nb">say</span> <span class="s">'control character — and the `try` never fires because nothing failed.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'encoding a header value, a date, a status code or anything with a'</span>;
+<span class="nb">say</span> <span class="s">'space through this module is lossy. Sixteen characters are affected:'</span>;
+<span class="nb">say</span> <span class="s">'  tab, newline, VT, FF, CR, space, and the ten digits.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "0"              -&gt; "\0"                     WRONG
+  "4"              -&gt; "\x[4]"                  WRONG
+  "9"              -&gt; "\t"                     WRONG
+  " "              -&gt; "\0"                     WRONG
+  "a"              -&gt; "a"                      OK
+  "HTTP 404 gone"  -&gt; "HTTP\0\x[4]\0\x[4]\0gone" WRONG
+
+the reverse lookup gives back a one-character Str, and the line
+  $r ~= try {%a{$a}.chr} // %a{$a}
+calls .chr on it. Str.chr numifies first, so "4".chr is 4.chr — a
+control character — and the `try` never fires because nothing failed.
+
+encoding a header value, a date, a status code or anything with a
+space through this module is lossy. Sixteen characters are affected:
+  tab, newline, VT, FF, CR, space, and the ten digits.</code></pre></div>
+<h2 id="any-byte-sequence-is-valid-input">Any byte sequence is "valid input" <a class="anchor" href="#any-byte-sequence-is-valid-input" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/04-garbage.raku" title="This example as a file: 04-garbage.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="k">for</span> <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(), <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mi">0</span>, <span class="mi">0</span>, <span class="mi">0</span>), <span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0x12</span>, <span class="mh">0x34</span>, <span class="mh">0x56</span>) -&gt; <span class="nv">$b</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">huffman-decode</span>(<span class="nv">$b</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-28s -&gt; %s'</span>, <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>.<span class="nb">raku</span>,
+                <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'never an exception, never an undefined value — always a Str. There'</span>;
+<span class="nb">say</span> <span class="s">'is no checksum, no trailing-padding validation, and no way to tell a'</span>;
+<span class="nb">say</span> <span class="s">'corrupt buffer from a good one.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and encoding a character ABSENT from the table is silent too:'</span>;
+<span class="k">my</span> <span class="nv">$euro</span> = <span class="n">huffman-encode</span>(<span class="s">&quot;\c[EURO SIGN]&quot;</span>);
+<span class="nb">say</span> <span class="s">'  huffman-encode(&quot;€&quot;) = '</span>, <span class="nv">$euro</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02x'</span>) }).<span class="nb">join</span>,
+    <span class="s">'   &lt;- the EOS alone'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  ""                           -&gt; ""
+  "000000"                     -&gt; "\0\0\0\0"
+  "123456"                     -&gt; "\x[2]sMp"
+
+never an exception, never an undefined value — always a Str. There
+is no checksum, no trailing-padding validation, and no way to tell a
+corrupt buffer from a good one.
+
+and encoding a character ABSENT from the table is silent too:
+  huffman-encode("€") = fffffffc   &lt;- the EOS alone</code></pre></div>
+<h2 id="it-is-not-hpack-compatible">It is not HPACK-compatible <a class="anchor" href="#it-is-not-hpack-compatible" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/05-hpack.raku" title="This example as a file: 05-hpack.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="nb">say</span> <span class="s">'despite using the HPACK table, the OUTPUT is not HPACK:'</span>;
+<span class="nb">say</span> <span class="s">'  HPACK pads with the EOS PREFIX to the next byte boundary;'</span>;
+<span class="nb">say</span> <span class="s">'  this module emits the whole 30-bit EOS symbol.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  huffman-encode(&quot;&quot;)                 : '</span>, <span class="n">huffman-encode</span>(<span class="s">''</span>).<span class="nb">bytes</span>, <span class="s">' bytes (HPACK: 0)'</span>;
+<span class="nb">say</span> <span class="s">'  huffman-encode(&quot;www.example.com&quot;)  : '</span>,
+    <span class="n">huffman-encode</span>(<span class="s">'www.example.com'</span>).<span class="nb">bytes</span>, <span class="s">' bytes (HPACK: 12)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the DECODER is tolerant enough to read HPACK-style input:'</span>;
+<span class="nb">say</span> <span class="s">'  huffman-decode(Buf[uint8].new(0x1f)) = '</span>,
+    <span class="n">huffman-decode</span>(<span class="nb">Buf</span>[<span class="nb">uint8</span>].<span class="nb">new</span>(<span class="mh">0x1f</span>)).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the asymmetry only bites on encode. Do not put this on a wire'</span>;
+<span class="nb">say</span> <span class="s">'that expects HPACK.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>despite using the HPACK table, the OUTPUT is not HPACK:
+  HPACK pads with the EOS PREFIX to the next byte boundary;
+  this module emits the whole 30-bit EOS symbol.
+
+  huffman-encode("")                 : 4 bytes (HPACK: 0)
+  huffman-encode("www.example.com")  : 15 bytes (HPACK: 12)
+
+the DECODER is tolerant enough to read HPACK-style input:
+  huffman-decode(Buf[uint8].new(0x1f)) = "a"
+
+so the asymmetry only bites on encode. Do not put this on a wire
+that expects HPACK.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two, and both concern which characters get destroyed. Raku++ does not enforce the <code>Buf[uint8]</code> constraint, so a <code>Buf[uint16]</code> or a <code>Blob[uint8]</code> is accepted and mis-decoded; and <code>Str.Numeric</code> rejects non-ASCII numerics there, so five more characters — NEL, NBSP and the vulgar fractions — survive on Raku++ and are destroyed on Rakudo.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/encoding-huffman-pp6/06-portable.raku" title="This example as a file: 06-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Encoding::Huffman::PP6</span>;
+
+<span class="nb">say</span> <span class="s">'the portable rule: only round-trip characters the decoder cannot'</span>;
+<span class="nb">say</span> <span class="s">'numify. Check before you rely on it:'</span>;
+<span class="k">sub</span> <span class="n">safe</span>(<span class="nb">Str</span> <span class="nv">$s</span>) {
+    <span class="n">huffman-decode</span>(<span class="n">huffman-encode</span>(<span class="nv">$s</span>)) <span class="n">eq</span> <span class="nv">$s</span>
+}
+<span class="k">for</span> <span class="s">'abcdef'</span>, <span class="s">'a1b'</span>, <span class="s">'no space'</span>, <span class="s">'nospace'</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s round-trips ? %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="n">safe</span>(<span class="nv">$s</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and always pass a real Buf[uint8] to the decoder:'</span>;
+<span class="k">my</span> <span class="nb">Buf</span>[<span class="nb">uint8</span>] <span class="nv">$b</span> = <span class="n">huffman-encode</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'  typed buffer decodes : '</span>, <span class="n">huffman-decode</span>(<span class="nv">$b</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one performance note: the reverse lookup table is rebuilt from'</span>;
+<span class="nb">say</span> <span class="s">'%codes on EVERY huffman-decode call.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the portable rule: only round-trip characters the decoder cannot
+numify. Check before you rely on it:
+  "abcdef"       round-trips ? True
+  "a1b"          round-trips ? False
+  "no space"     round-trips ? False
+  "nospace"      round-trips ? True
+
+and always pass a real Buf[uint8] to the decoder:
+  typed buffer decodes : "abc"
+
+one performance note: the reverse lookup table is rebuilt from
+%codes on EVERY huffman-decode call.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

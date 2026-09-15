@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML::ROCFunctions — The Raku Ecosystem, Working</title>
+<meta name="description" content="The confusion-matrix rate family plus a trapezoidal AUROC — with an MCC computed from rates rather than counts.">
+<link rel="canonical" href="https://raku.online/modules/ml-rocfunctions/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ML::ROCFunctions — The Raku Ecosystem, Working">
+<meta property="og:description" content="The confusion-matrix rate family plus a trapezoidal AUROC — with an MCC computed from rates rather than counts.">
+<meta property="og:url" content="https://raku.online/modules/ml-rocfunctions/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"ML::ROCFunctions","description":"The confusion-matrix rate family plus a trapezoidal AUROC — with an MCC computed from rates rather than counts.","programmingLanguage":"Raku","version":"0.1.4","url":"https://raku.online/modules/ml-rocfunctions/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/antononcube/Raku-ML-ROCFunctions.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · statistics</div><h1>ML::ROCFunctions</h1><span class="status st-full">Works</span></div><p class="summary">The confusion-matrix rate family plus a trapezoidal AUROC — with an MCC computed from rates rather than counts.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.4</code> <span class="fact-sub">zef:antononcube</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:antononcube/ML::ROCFunctions">raku.land</a> · <a href="https://github.com/antononcube/Raku-ML-ROCFunctions.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install ML::ROCFunctions</code></pre></div><p class="fact-sub"><code>zef install ML::ROCFunctions</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A binary classifier's performance is a four-number confusion matrix, and every metric anyone quotes is a ratio of those four. This distribution builds the hash from two label lists and computes the whole family from it, plus the area under the ROC curve for a list of such hashes.</p>
+<h2 id="from-labels-to-rates">From labels to rates <a class="anchor" href="#from-labels-to-rates" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-rocfunctions/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::ROCFunctions</span>;
+
+<span class="k">my</span> <span class="nv">@actual</span>    = <span class="s">&lt;T T T T T T F F F F F F F F&gt;</span>;
+<span class="k">my</span> <span class="nv">@predicted</span> = <span class="s">&lt;T T T T F F T T F F F F F F&gt;</span>;
+<span class="k">my</span> <span class="nv">%roc</span> = <span class="n">to-roc-hash</span>(<span class="s">'T'</span>, <span class="s">'F'</span>, <span class="nv">@actual</span>, <span class="nv">@predicted</span>);
+<span class="nb">say</span> <span class="s">'confusion : '</span>, <span class="nv">%roc</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%roc{$_}}&quot;</span> }).<span class="nb">join</span>(<span class="s">'  '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">TPR</span> <span class="n">SPC</span> <span class="n">PPV</span> <span class="n">NPV</span> <span class="n">FPR</span> <span class="n">FDR</span> <span class="n">FNR</span> <span class="n">ACC</span> <span class="n">FOR</span> <span class="n">F1</span> <span class="n">MCC</span>&gt; -&gt; <span class="nv">$f</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-4s %s'</span>, <span class="nv">$f</span>, ::(<span class="s">&quot;&amp;$f&quot;</span>)(<span class="nv">%roc</span>).<span class="nb">round</span>(<span class="mf">0.0001</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>confusion : FalseNegative=2  FalsePositive=2  TrueNegative=6  TruePositive=4
+
+  TPR  0.6667
+  SPC  0.75
+  PPV  0.6667
+  NPV  0.75
+  FPR  0.25
+  FDR  0.3333
+  FNR  0.3333
+  ACC  0.7143
+  FOR  0.25
+  F1   0.6667
+  MCC  0.4181</code></pre></div>
+<p>Every one of those is checked against brute-force counts in the distribution's own suite, and they agree exactly.</p>
+<h2 id="auroc">AUROC <a class="anchor" href="#auroc" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-rocfunctions/02-auroc.raku" title="This example as a file: 02-auroc.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::ROCFunctions</span>;
+
+<span class="c1"># one confusion hash per threshold, ordered from strict to permissive</span>
+<span class="k">my</span> <span class="nv">@rocs</span> =
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">0</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">0</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">8</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">6</span> ),
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">3</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">1</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">7</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">3</span> ),
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">5</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">3</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">5</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">1</span> ),
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">6</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">8</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">0</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">0</span> );
+
+<span class="nb">say</span> <span class="s">'AUROC(@rocs)     : '</span>, <span class="n">AUROC</span>(<span class="nv">@rocs</span>).<span class="nb">round</span>(<span class="mf">0.0001</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a perfect classifier and a coin flip:'</span>;
+<span class="nb">say</span> <span class="s">'  perfect : '</span>, <span class="n">AUROC</span>([
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">0</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">0</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">8</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">6</span> ),
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">6</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">0</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">8</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">0</span> ),
+    %( <span class="n">TruePositive</span> =&gt; <span class="mi">6</span>, <span class="n">FalsePositive</span> =&gt; <span class="mi">8</span>, <span class="n">TrueNegative</span> =&gt; <span class="mi">0</span>, <span class="n">FalseNegative</span> =&gt; <span class="mi">0</span> )]);
+<span class="nb">say</span> <span class="s">'  empty   : '</span>, <span class="n">AUROC</span>([]), <span class="s">'   &lt;- returned, not refused'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">AUROC</span>(<span class="nv">@rocs</span>[<span class="mi">0</span>]);
+<span class="nb">say</span> <span class="s">'  a single hash rather than a list -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'accepted'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>AUROC(@rocs)     : 0.7708
+
+a perfect classifier and a coin flip:
+  perfect : 1
+  empty   : 0.5   &lt;- returned, not refused
+
+  a single hash rather than a list -&gt; refused</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>MCC</code> is computed from the four <strong>rates</strong>, not the four counts — so it is not the Matthews correlation coefficient, and it disagrees badly on imbalanced data.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-rocfunctions/03-mcc.raku" title="This example as a file: 03-mcc.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::ROCFunctions</span>;
+
+<span class="k">sub</span> <span class="n">textbook</span>(<span class="nv">%r</span>) {
+    <span class="k">my</span> (<span class="nv">$tp</span>, <span class="nv">$fp</span>, <span class="nv">$tn</span>, <span class="nv">$fn</span>) =
+        <span class="nv">%r</span>&lt;<span class="n">TruePositive</span> <span class="n">FalsePositive</span> <span class="n">TrueNegative</span> <span class="n">FalseNegative</span>&gt;;
+    <span class="k">my</span> <span class="nv">$d</span> = <span class="nb">sqrt</span>((<span class="nv">$tp</span> + <span class="nv">$fp</span>) * (<span class="nv">$tp</span> + <span class="nv">$fn</span>) * (<span class="nv">$tn</span> + <span class="nv">$fp</span>) * (<span class="nv">$tn</span> + <span class="nv">$fn</span>));
+    <span class="nv">$d</span> == <span class="mi">0</span> ?? <span class="mi">0</span> !! (<span class="nv">$tp</span> * <span class="nv">$tn</span> - <span class="nv">$fp</span> * <span class="nv">$fn</span>) / <span class="nv">$d</span>
+}
+
+<span class="k">for</span> (<span class="mi">4</span>, <span class="mi">2</span>, <span class="mi">6</span>, <span class="mi">2</span>), (<span class="mi">90</span>, <span class="mi">1</span>, <span class="mi">1</span>, <span class="mi">8</span>), (<span class="mi">5</span>, <span class="mi">5</span>, <span class="mi">5</span>, <span class="mi">5</span>), (<span class="mi">10</span>, <span class="mi">0</span>, <span class="mi">10</span>, <span class="mi">0</span>) -&gt; (<span class="nv">$tp</span>, <span class="nv">$fp</span>, <span class="nv">$tn</span>, <span class="nv">$fn</span>) {
+    <span class="k">my</span> <span class="nv">%r</span> = <span class="n">TruePositive</span> =&gt; <span class="nv">$tp</span>, <span class="n">FalsePositive</span> =&gt; <span class="nv">$fp</span>,
+            <span class="n">TrueNegative</span> =&gt; <span class="nv">$tn</span>, <span class="n">FalseNegative</span> =&gt; <span class="nv">$fn</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  TP=%-3d FP=%-3d TN=%-3d FN=%-3d  module %+.6f  textbook %+.6f  %s'</span>,
+                <span class="nv">$tp</span>, <span class="nv">$fp</span>, <span class="nv">$tn</span>, <span class="nv">$fn</span>, <span class="n">MCC</span>(<span class="nv">%r</span>), <span class="n">textbook</span>(<span class="nv">%r</span>),
+                (<span class="n">MCC</span>(<span class="nv">%r</span>) - <span class="n">textbook</span>(<span class="nv">%r</span>)).<span class="nb">abs</span> &lt; <span class="mf">1e-9</span> ?? <span class="s">'same'</span> !! <span class="s">'DIFFERENT'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the implementation feeds (TPR, SPC, FPR, FNR) into the COUNT formula,'</span>;
+<span class="nb">say</span> <span class="s">'so the result is prevalence-independent by construction. On a'</span>;
+<span class="nb">say</span> <span class="s">'90/1/1/8 matrix it reports +0.46 where the textbook MCC is +0.20.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it still agrees at the fixed points — 0 and plus or minus 1 — which'</span>;
+<span class="nb">say</span> <span class="s">'is exactly what makes it easy to miss. Compute MCC yourself.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  TP=4   FP=2   TN=6   FN=2    module +0.418121  textbook +0.416667  DIFFERENT
+  TP=90  FP=1   TN=1   FN=8    module +0.460616  textbook +0.204665  DIFFERENT
+  TP=5   FP=5   TN=5   FN=5    module +0.000000  textbook +0.000000  same
+  TP=10  FP=0   TN=10  FN=0    module +1.000000  textbook +1.000000  same
+
+the implementation feeds (TPR, SPC, FPR, FNR) into the COUNT formula,
+so the result is prevalence-independent by construction. On a
+90/1/1/8 matrix it reports +0.46 where the textbook MCC is +0.20.
+
+it still agrees at the fixed points — 0 and plus or minus 1 — which
+is exactly what makes it easy to miss. Compute MCC yourself.</code></pre></div>
+<h2 id="the-separator-matters">The separator matters <a class="anchor" href="#the-separator-matters" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-rocfunctions/04-separator.raku" title="This example as a file: 04-separator.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::ROCFunctions</span>;
+
+<span class="nb">say</span> <span class="s">'to-roc-hash joins the label pair with :sep (default &quot;-&quot;) and buckets'</span>;
+<span class="nb">say</span> <span class="s">'by the joined string, so labels that collide under the separator'</span>;
+<span class="nb">say</span> <span class="s">'silently double-count:'</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="s">&lt;a a a-a a-a&gt;</span>;
+<span class="k">my</span> <span class="nv">@p</span> = <span class="s">&lt;a a-a a a-a&gt;</span>;
+<span class="nb">say</span> <span class="s">'  default :sep(&quot;-&quot;) : '</span>,
+    <span class="n">to-roc-hash</span>(<span class="s">'a'</span>, <span class="s">'a-a'</span>, <span class="nv">@a</span>, <span class="nv">@p</span>).<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={to-roc-hash('a','a-a',@a,@p){$_}}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  with    :sep(&quot;|&quot;) : '</span>,
+    <span class="n">to-roc-hash</span>(<span class="s">'a'</span>, <span class="s">'a-a'</span>, <span class="nv">@a</span>, <span class="nv">@p</span>, <span class="n">sep</span> =&gt; <span class="s">'|'</span>).<span class="nb">keys</span>.<span class="nb">sort</span>
+        .<span class="nb">map</span>({ <span class="s">&quot;$_={to-roc-hash('a','a-a',@a,@p,sep=&gt;'|'){$_}}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and a label that never appears in the data silently drops rows:'</span>;
+<span class="k">my</span> <span class="nv">%z</span> = <span class="n">to-roc-hash</span>(<span class="s">'zzz'</span>, <span class="s">'F'</span>, <span class="s">&lt;T T F F&gt;</span>, <span class="s">&lt;T F T F&gt;</span>);
+<span class="nb">say</span> <span class="s">'  to-roc-hash(&quot;zzz&quot;, &quot;F&quot;, …) : '</span>, <span class="nv">%z</span>.<span class="nb">values</span>.<span class="nb">sum</span>, <span class="s">' of 4 rows counted'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-roc-hash joins the label pair with :sep (default "-") and buckets
+by the joined string, so labels that collide under the separator
+silently double-count:
+  default :sep("-") : FalseNegative=2 FalsePositive=2 TrueNegative=1 TruePositive=1
+  with    :sep("|") : FalseNegative=1 FalsePositive=1 TrueNegative=1 TruePositive=1
+
+and a label that never appears in the data silently drops rows:
+  to-roc-hash("zzz", "F", …) : 1 of 4 rows counted</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing in the numbers — every rate, every AUROC and the name registry are identical on both engines. Only the dispatch-failure message: Raku++ says <code>Cannot resolve caller to-roc-hash(); no matching multi candidate</code> where Rakudo prints the argument types and all three signatures.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-rocfunctions/05-registry.raku" title="This example as a file: 05-registry.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::ROCFunctions</span>;
+
+<span class="nb">say</span> <span class="s">'the name registry lets you look a function up by acronym or by name:'</span>;
+<span class="nb">say</span> <span class="s">'  listed names   : '</span>, <span class="n">roc-functions</span>(<span class="s">'FunctionNames'</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  lookup table   : '</span>, <span class="n">roc-acronyms-hash</span>.<span class="nb">elems</span>, <span class="s">' accepted spellings'</span>;
+<span class="nb">say</span> <span class="s">'  distinct funcs : '</span>, <span class="n">roc-functions</span>().<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'TNR and SPC compute the same quantity, so the registry hands back'</span>;
+<span class="nb">say</span> <span class="s">'one of them for both:'</span>;
+<span class="nb">say</span> <span class="s">'  roc-functions(&quot;TNR&quot;).name = '</span>, <span class="n">roc-functions</span>(<span class="s">'TNR'</span>).<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and an unrecognised spec returns an undefined value, silently:'</span>;
+<span class="nb">say</span> <span class="s">'  roc-functions(&quot;NoSuchThing&quot;).defined = '</span>,
+    <span class="n">roc-functions</span>(<span class="s">'NoSuchThing'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the listed set is smaller than the accepted set — Specificity,'</span>;
+<span class="nb">say</span> <span class="s">'F1Score, TruePositiveRate and MatthewsCorrelationCoefficient all'</span>;
+<span class="nb">say</span> <span class="s">'work and are not in FunctionNames.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the name registry lets you look a function up by acronym or by name:
+  listed names   : 17
+  lookup table   : 17 accepted spellings
+  distinct funcs : 12
+
+TNR and SPC compute the same quantity, so the registry hands back
+one of them for both:
+  roc-functions("TNR").name = SPC
+
+and an unrecognised spec returns an undefined value, silently:
+  roc-functions("NoSuchThing").defined = False
+
+the listed set is smaller than the accepted set — Specificity,
+F1Score, TruePositiveRate and MatthewsCorrelationCoefficient all
+work and are not in FunctionNames.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

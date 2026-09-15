@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML::Clustering — The Raku Ecosystem, Working</title>
+<meta name="description" content="k-means over numeric vectors with eleven distance functions — and by default the reported centres are not the clusters' centroids.">
+<link rel="canonical" href="https://raku.online/modules/ml-clustering/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ML::Clustering — The Raku Ecosystem, Working">
+<meta property="og:description" content="k-means over numeric vectors with eleven distance functions — and by default the reported centres are not the clusters' centroids.">
+<meta property="og:url" content="https://raku.online/modules/ml-clustering/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"ML::Clustering","description":"k-means over numeric vectors with eleven distance functions — and by default the reported centres are not the clusters' centroids.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/ml-clustering/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/antononcube/Raku-ML-Clustering.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · machine learning</div><h1>ML::Clustering</h1><span class="status st-div">Divergent</span></div><p class="summary">k-means over numeric vectors with eleven distance functions — and by default the reported centres are not the clusters' centroids.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code> <span class="fact-sub">zef:antononcube</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Math::DistanceFunctions</code>, <code>Data::TypeSystem</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:antononcube/ML::Clustering">raku.land</a> · <a href="https://github.com/antononcube/Raku-ML-Clustering.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install ML::Clustering</code></pre></div><p class="fact-sub"><code>zef install ML::Clustering</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Grouping points that are near each other, without being told the groups. k-means is the default answer: pick k centres, assign each point to its nearest, move the centres, repeat.</p>
+<p>This distribution does that for lists of equal-length numeric vectors, with a choice of eleven distance functions or your own callable.</p>
+<h2 id="clustering">Clustering <a class="anchor" href="#clustering" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-clustering/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::Clustering</span>;
+
+<span class="c1"># three well-separated blobs</span>
+<span class="k">my</span> <span class="nv">@points</span>;
+<span class="k">for</span> (<span class="mi">0</span>, <span class="mi">0</span>), (<span class="mi">20</span>, <span class="mi">0</span>), (<span class="mi">10</span>, <span class="mi">20</span>) -&gt; (<span class="nv">$ox</span>, <span class="nv">$oy</span>) {
+    <span class="nv">@points</span>.<span class="nb">push</span>([<span class="nv">$ox</span> + <span class="nv">$_</span> % <span class="mi">3</span>, <span class="nv">$oy</span> + (<span class="nv">$_</span> <span class="n">div</span> <span class="mi">3</span>) % <span class="mi">3</span>]) <span class="k">for</span> ^<span class="mi">12</span>;
+}
+
+<span class="k">my</span> <span class="nv">@labels</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">3</span>, <span class="n">prop</span> =&gt; <span class="s">'ClusterLabels'</span>).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="s">'points : '</span>, <span class="nv">@points</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'labels : '</span>, <span class="nv">@labels</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  every label in 0..^3 : '</span>, <span class="k">so</span> <span class="nv">@labels</span>.<span class="n">all</span>.<span class="nb">map</span>({ .<span class="nb">Int</span> ~~ <span class="mi">0</span>..^<span class="mi">3</span> });
+<span class="nb">say</span> <span class="s">'  distinct labels used : '</span>, <span class="nv">@labels</span>.<span class="nb">unique</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%group</span>;
+<span class="k">for</span> <span class="nv">@points</span>.<span class="nb">kv</span> -&gt; <span class="nv">$i</span>, <span class="nv">$p</span> { <span class="nv">%group</span>{<span class="nv">@labels</span>[<span class="nv">$i</span>]}.<span class="nb">push</span>(<span class="nv">$p</span>[<span class="mi">0</span>] <span class="n">div</span> <span class="mi">10</span>) }
+<span class="nb">say</span> <span class="s">'  each label maps to one blob : '</span>,
+    <span class="k">so</span> <span class="nv">%group</span>.<span class="nb">values</span>.<span class="n">all</span>.<span class="nb">map</span>({ .<span class="nb">unique</span>.<span class="nb">elems</span> == <span class="mi">1</span> });</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>points : 36
+labels : 36
+  every label in 0..^3 : True
+  distinct labels used : 3
+
+  each label maps to one blob : True</code></pre></div>
+<p>Nothing above asserts a value — the seeding is random, and these are the properties that hold every run.</p>
+<h2 id="the-properties-you-can-ask-for">The properties you can ask for <a class="anchor" href="#the-properties-you-can-ask-for" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-clustering/02-props.raku" title="This example as a file: 02-props.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::Clustering</span>;
+
+<span class="k">my</span> <span class="nv">@points</span> = (^<span class="mi">24</span>).<span class="nb">map</span>({ [ (<span class="nv">$_</span> % <span class="mi">2</span>) * <span class="mi">20</span> + <span class="nv">$_</span> % <span class="mi">3</span>, (<span class="nv">$_</span> <span class="n">div</span> <span class="mi">2</span>) % <span class="mi">4</span> ] });
+<span class="nb">say</span> <span class="s">'available : '</span>, <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'Properties'</span>).<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%all</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'All'</span>);
+<span class="nb">say</span> <span class="s">'prop =&gt; &quot;All&quot; gives : '</span>, <span class="nv">%all</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the names are CASE-SENSITIVE:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'clusters'</span>);
+<span class="nb">say</span> <span class="s">'  prop =&gt; &quot;clusters&quot; -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'accepted'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'options: :distance-function (default Euclidean), :max-steps (1000),'</span>;
+<span class="nb">say</span> <span class="s">':precision-goal (6), :learning-parameter (0.01),'</span>;
+<span class="nb">say</span> <span class="s">':min-reassignment-fraction (0.005).'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and a custom distance function is just a Callable:'</span>;
+<span class="k">my</span> <span class="nv">@l</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'ClusterLabels'</span>,
+                      <span class="n">distance-function</span> =&gt; -&gt; <span class="nv">@a</span>, <span class="nv">@b</span> { (<span class="nv">@a</span> <span class="n">Z</span>- <span class="nv">@b</span>)&gt;&gt;.<span class="nb">abs</span>.<span class="nb">sum</span> }).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="s">'  with a Manhattan distance : '</span>, <span class="nv">@l</span>.<span class="nb">elems</span>, <span class="s">' labels'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>available : All ClusterLabels Clusters IndexClusters MeanPoints Properties
+
+prop =&gt; "All" gives : ClusterLabels, Clusters, IndexClusters, MeanPoints
+
+the names are CASE-SENSITIVE:
+  prop =&gt; "clusters" -&gt; refused
+
+options: :distance-function (default Euclidean), :max-steps (1000),
+:precision-goal (6), :learning-parameter (0.01),
+:min-reassignment-fraction (0.005).
+
+and a custom distance function is just a Callable:
+  with a Manhattan distance : 24 labels</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>With the default <code>learning-parameter</code> the returned <code>MeanPoints</code> are <strong>not</strong> the centroids of the clusters they label.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-clustering/03-means.raku" title="This example as a file: 03-means.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::Clustering</span>;
+
+<span class="k">my</span> <span class="nv">@points</span>;
+<span class="k">for</span> (<span class="mi">0</span>, <span class="mi">0</span>), (<span class="mi">20</span>, <span class="mi">20</span>) -&gt; (<span class="nv">$ox</span>, <span class="nv">$oy</span>) {
+    <span class="nv">@points</span>.<span class="nb">push</span>([<span class="nv">$ox</span> + <span class="nv">$_</span> % <span class="mi">3</span>, <span class="nv">$oy</span> + (<span class="nv">$_</span> <span class="n">div</span> <span class="mi">3</span>) % <span class="mi">3</span>]) <span class="k">for</span> ^<span class="mi">12</span>;
+}
+
+<span class="c1"># 20 runs each, because the seeding is random</span>
+<span class="k">for</span> <span class="mf">0.01</span>, <span class="mi">0</span> -&gt; <span class="nv">$eta</span> {
+    <span class="k">my</span> <span class="nv">$exact</span> = <span class="mi">0</span>;
+    <span class="k">for</span> ^<span class="mi">20</span> {
+        <span class="k">my</span> <span class="nv">%r</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'All'</span>, <span class="n">learning-parameter</span> =&gt; <span class="nv">$eta</span>);
+        <span class="k">my</span> <span class="nv">@labels</span> = <span class="nv">%r</span><span class="s">&lt;ClusterLabels&gt;</span>.<span class="nb">list</span>;
+        <span class="k">my</span> <span class="nv">@means</span>  = <span class="nv">%r</span><span class="s">&lt;MeanPoints&gt;</span>.<span class="nb">list</span>;
+
+        <span class="k">my</span> <span class="nv">$worst</span> = <span class="mi">0</span>;
+        <span class="k">for</span> <span class="nv">@means</span>.<span class="nb">kv</span> -&gt; <span class="nv">$c</span>, <span class="nv">$m</span> {
+            <span class="k">my</span> <span class="nv">@own</span> = <span class="nv">@points</span>.<span class="nb">kv</span>.<span class="nb">map</span>(-&gt; <span class="nv">$i</span>, <span class="nv">$p</span> { <span class="nv">$p</span> <span class="k">if</span> <span class="nv">@labels</span>[<span class="nv">$i</span>].<span class="nb">Int</span> == <span class="nv">$c</span> }).<span class="nb">grep</span>(*.<span class="nb">defined</span>);
+            <span class="k">next</span> <span class="k">unless</span> <span class="nv">@own</span>;
+            <span class="k">my</span> <span class="nv">@centroid</span> = (^<span class="mi">2</span>).<span class="nb">map</span>(-&gt; <span class="nv">$d</span> { <span class="nv">@own</span>.<span class="nb">map</span>(*.[<span class="nv">$d</span>]).<span class="nb">sum</span> / <span class="nv">@own</span>.<span class="nb">elems</span> });
+            <span class="nv">$worst</span> <span class="nb">max</span>= (<span class="nv">@centroid</span> <span class="n">Z</span>- <span class="nv">$m</span>.<span class="nb">list</span>)&gt;&gt;.<span class="nb">abs</span>.<span class="nb">max</span>;
+        }
+        <span class="nv">$exact</span>++ <span class="k">if</span> <span class="nv">$worst</span> &lt; <span class="mf">1e-6</span>;
+    }
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  learning-parameter %-5s : centres are the centroids in %s of 20 runs'</span>,
+                <span class="nv">$eta</span>, <span class="nv">$eta</span> == <span class="mi">0</span> ?? <span class="s">'most'</span> !! (<span class="nv">$exact</span> == <span class="mi">0</span> ?? <span class="s">'NONE'</span> !! <span class="nv">$exact</span>.<span class="nb">Str</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the default update rule is ONLINE — each point nudges its nearest'</span>;
+<span class="nb">say</span> <span class="s">'centre a fraction of the way towards itself — and the loop stops as'</span>;
+<span class="nb">say</span> <span class="s">'soon as the LABELS stabilise, long before the centres converge.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the cluster ASSIGNMENT is fine. Only the reported centres are junk.'</span>;
+<span class="nb">say</span> <span class="s">'Pass :learning-parameter(0) for the textbook batch update, or'</span>;
+<span class="nb">say</span> <span class="s">'compute the centroids yourself from ClusterLabels.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  learning-parameter 0.01  : centres are the centroids in NONE of 20 runs
+  learning-parameter 0     : centres are the centroids in most of 20 runs
+
+the default update rule is ONLINE — each point nudges its nearest
+centre a fraction of the way towards itself — and the loop stops as
+soon as the LABELS stabilise, long before the centres converge.
+
+the cluster ASSIGNMENT is fine. Only the reported centres are junk.
+Pass :learning-parameter(0) for the textbook batch update, or
+compute the centroids yourself from ClusterLabels.</code></pre></div>
+<h2 id="only-clusterlabels-is-a-reliable-correspondence">Only <code>ClusterLabels</code> is a reliable correspondence <a class="anchor" href="#only-clusterlabels-is-a-reliable-correspondence" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-clustering/04-order.raku" title="This example as a file: 04-order.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::Clustering</span>;
+
+<span class="k">my</span> <span class="nv">@points</span> = (^<span class="mi">16</span>).<span class="nb">map</span>({ [ (<span class="nv">$_</span> % <span class="mi">2</span>) * <span class="mi">20</span>, <span class="nv">$_</span> <span class="n">div</span> <span class="mi">2</span> ] });
+<span class="k">my</span> <span class="nv">%r</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">2</span>, <span class="n">prop</span> =&gt; <span class="s">'All'</span>);
+<span class="nb">say</span> <span class="s">'the four returned keys : '</span>, <span class="nv">%r</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Clusters, IndexClusters and MeanPoints are built by .categorize(…)'</span>;
+<span class="nb">say</span> <span class="s">'over a HASH, so their positional order is hash order and bears no'</span>;
+<span class="nb">say</span> <span class="s">'relation to the numbers in ClusterLabels.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  IndexClusters[c] is only rarely the set of indices whose'</span>;
+<span class="nb">say</span> <span class="s">'  ClusterLabels value is c — one run in twenty or so.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'work from ClusterLabels and index into your own data.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the four returned keys : ClusterLabels, Clusters, IndexClusters, MeanPoints
+
+Clusters, IndexClusters and MeanPoints are built by .categorize(…)
+over a HASH, so their positional order is hash order and bears no
+relation to the numbers in ClusterLabels.
+
+  IndexClusters[c] is only rarely the set of indices whose
+  ClusterLabels value is c — one run in twenty or so.
+
+work from ClusterLabels and index into your own data.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two, and both are about the shape of the answer rather than the clustering. <code>find-clusters</code> returns an <strong>itemized</strong> <code>Array</code>, so <code>my @labels = find-clusters(…)</code> gets one element under Rakudo and all of them under Raku++ — call <code>.list</code>. And the labels come back as <code>Str</code> under Raku++ and <code>Int</code> under Rakudo, because <code>.minpairs</code> stringifies its keys there.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/ml-clustering/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">ML::Clustering</span>;
+
+<span class="k">my</span> <span class="nv">@points</span> = (^<span class="mi">18</span>).<span class="nb">map</span>({ [ (<span class="nv">$_</span> % <span class="mi">3</span>) * <span class="mi">10</span>, <span class="nv">$_</span> <span class="n">div</span> <span class="mi">3</span> ] });
+<span class="k">my</span> <span class="nv">@labels</span> = <span class="n">find-clusters</span>(<span class="nv">@points</span>, <span class="mi">3</span>, <span class="n">prop</span> =&gt; <span class="s">'ClusterLabels'</span>).<span class="nb">list</span>.<span class="nb">map</span>(*.<span class="nb">Int</span>);
+
+<span class="nb">say</span> <span class="s">'labels, .list-ed and .Int-ed : '</span>, <span class="nv">@labels</span>.<span class="nb">elems</span>, <span class="s">' of them'</span>;
+<span class="nb">say</span> <span class="s">'  all Int   : '</span>, <span class="k">so</span> <span class="nv">@labels</span>.<span class="n">all</span> ~~ <span class="nb">Int</span>;
+<span class="nb">say</span> <span class="s">'  all in range : '</span>, <span class="k">so</span> <span class="nv">@labels</span>.<span class="n">all</span> ~~ <span class="mi">0</span>..^<span class="mi">3</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'that .list.map(*.Int) is the whole portability fix.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'three more things that behave the same on both engines and are worth'</span>;
+<span class="nb">say</span> <span class="s">'knowing: asking for k clusters can silently return FEWER;'</span>;
+<span class="nb">say</span> <span class="s">'method =&gt; &quot;k-medoids&quot; dies with &quot;Only method K-means is implemented.'</span>;
+<span class="nb">say</span> <span class="s">'Continuing with K-means.&quot; and does NOT continue; and k = 0 produces'</span>;
+<span class="nb">say</span> <span class="s">'an internal hyperop error rather than a message.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>labels, .list-ed and .Int-ed : 18 of them
+  all Int   : True
+  all in range : True
+
+that .list.map(*.Int) is the whole portability fix.
+
+three more things that behave the same on both engines and are worth
+knowing: asking for k clusters can silently return FEWER;
+method =&gt; "k-medoids" dies with "Only method K-means is implemented.
+Continuing with K-means." and does NOT continue; and k = 0 produces
+an internal hyperop error rather than a message.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

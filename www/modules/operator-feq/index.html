@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operator::feq — The Raku Ecosystem, Working</title>
+<meta name="description" content="An infix `feq` for fuzzy equality — on edit distance over the stringified operands, which is not what &quot;fuzzy equals&quot; suggests.">
+<link rel="canonical" href="https://raku.online/modules/operator-feq/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Operator::feq — The Raku Ecosystem, Working">
+<meta property="og:description" content="An infix `feq` for fuzzy equality — on edit distance over the stringified operands, which is not what &quot;fuzzy equals&quot; suggests.">
+<meta property="og:url" content="https://raku.online/modules/operator-feq/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Operator::feq","description":"An infix `feq` for fuzzy equality — on edit distance over the stringified operands, which is not what \"fuzzy equals\" suggests.","programmingLanguage":"Raku","version":"0.1.2","url":"https://raku.online/modules/operator-feq/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/tony-o/perl6-operator-feq.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · operators</div><h1>Operator::feq</h1><span class="status st-div">Divergent</span></div><p class="summary">An infix <code>feq</code> for fuzzy equality — on edit distance over the stringified operands, which is not what "fuzzy equals" suggests.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.2</code> <span class="fact-sub">zef:tony-o</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Text::Levenshtein::Damerau</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tony-o/Operator::feq">raku.land</a> · <a href="git://github.com/tony-o/perl6-operator-feq.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Operator::feq</code></pre></div><p class="fact-sub"><code>zef install Operator::feq</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Close enough" comparison, spelled as an operator so it reads like <code>==</code>. The rule is a <strong>relative edit distance</strong>: two operands are <code>feq</code> when their Damerau-Levenshtein distance, divided by the longer one's length, is at or under a threshold that defaults to 0.1.</p>
+<h2 id="the-rule">The rule <a class="anchor" href="#the-rule" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/operator-feq/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Operator::feq</span>;
+
+<span class="k">for</span> &lt;<span class="n">abcdefghij</span> <span class="n">abcdefghij</span>&gt;, <span class="s">&lt;abcdefghij abcdefghik&gt;</span>,
+    <span class="s">&lt;abcdefghi abcdefghz&gt;</span>, <span class="s">&lt;cat cat&gt;</span>, <span class="s">&lt;cat cot&gt;</span>,
+    <span class="s">&lt;abcdefghij abcdefghji&gt;</span> -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s feq %-12s = %s'</span>, <span class="nv">$a</span>.<span class="nb">raku</span>, <span class="nv">$b</span>.<span class="nb">raku</span>, (<span class="nv">$a</span> <span class="n">feq</span> <span class="nv">$b</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one typo in ten is 0.1, which is at the threshold, so it passes.'</span>;
+<span class="nb">say</span> <span class="s">'one typo in nine is over it, so it fails. A transposition scores 2,'</span>;
+<span class="nb">say</span> <span class="s">'not 1.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the consequence: for any string shorter than ten characters,'</span>;
+<span class="nb">say</span> <span class="s">'feq is exactly eq.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "abcdefghij" feq "abcdefghij" = True
+  "abcdefghij" feq "abcdefghik" = True
+  "abcdefghi"  feq "abcdefghz"  = False
+  "cat"        feq "cat"        = True
+  "cat"        feq "cot"        = False
+  "abcdefghij" feq "abcdefghji" = False
+
+one typo in ten is 0.1, which is at the threshold, so it passes.
+one typo in nine is over it, so it fails. A transposition scores 2,
+not 1.
+
+the consequence: for any string shorter than ten characters,
+feq is exactly eq.</code></pre></div>
+<h2 id="the-threshold">The threshold <a class="anchor" href="#the-threshold" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/operator-feq/02-threshold.raku" title="This example as a file: 02-threshold.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Operator::feq</span>;
+
+<span class="k">for</span> <span class="mi">0</span>, <span class="mf">0.1</span>, <span class="mf">0.5</span>, <span class="mi">1</span> -&gt; <span class="nv">$t</span> {
+    <span class="k">my</span> <span class="nv">$*FEQTHRESHOLD</span> = <span class="nv">$t</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  threshold %-4s : &quot;cat&quot; feq &quot;cot&quot; = %-6s   &quot;cat&quot; feq &quot;cat&quot; = %s'</span>,
+                <span class="nv">$t</span>, (<span class="s">'cat'</span> <span class="n">feq</span> <span class="s">'cot'</span>), (<span class="s">'cat'</span> <span class="n">feq</span> <span class="s">'cat'</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'threshold 0 makes EVERYTHING unequal, including a string and itself —'</span>;
+<span class="nb">say</span> <span class="s">'the guard clause returns False before comparing. The intuitive'</span>;
+<span class="nb">say</span> <span class="s">'&quot;exact match only&quot; setting does the opposite of what it looks like.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  threshold 0    : "cat" feq "cot" = False    "cat" feq "cat" = False
+  threshold 0.1  : "cat" feq "cot" = False    "cat" feq "cat" = True
+  threshold 0.5  : "cat" feq "cot" = True     "cat" feq "cat" = True
+  threshold 1    : "cat" feq "cot" = True     "cat" feq "cat" = True
+
+threshold 0 makes EVERYTHING unequal, including a string and itself —
+the guard clause returns False before comparing. The intuitive
+"exact match only" setting does the opposite of what it looks like.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Despite the name, this is not a numeric tolerance. It is monotone in <em>spelling</em>, not in magnitude — so the canonical float-comparison case fails and two integers a full unit apart pass.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/operator-feq/03-numbers.raku" title="This example as a file: 03-numbers.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Operator::feq</span>;
+
+<span class="k">my</span> <span class="nv">$eps</span> = <span class="mf">0.1e0</span> + <span class="mf">0.2e0</span>;
+<span class="nb">say</span> <span class="s">'0.1e0 + 0.2e0     = '</span>, <span class="nv">$eps</span>;
+<span class="nb">say</span> <span class="s">'differs from 0.3e0 by '</span>, (<span class="nv">$eps</span> - <span class="mf">0.3e0</span>);
+<span class="nb">say</span> <span class="s">'  $eps feq 0.3e0  = '</span>, (<span class="nv">$eps</span> <span class="n">feq</span> <span class="mf">0.3e0</span>), <span class="s">'   &lt;- 5.5e-17 apart, and False'</span>;
+<span class="nb">say</span> <span class="s">'  $eps == 0.3e0   = '</span>, (<span class="nv">$eps</span> == <span class="mf">0.3e0</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'1000000000 feq 1000000001 = '</span>, (<span class="mi">1000000000</span> <span class="n">feq</span> <span class="mi">1000000001</span>),
+    <span class="s">'   &lt;- a full unit apart, and True'</span>;
+<span class="nb">say</span> <span class="s">'1.0e0 feq 2.0e0           = '</span>, (<span class="mf">1.0e0</span> <span class="n">feq</span> <span class="mf">2.0e0</span>);
+<span class="nb">say</span> <span class="s">'3.14159e0 feq 3.14158e0   = '</span>, (<span class="mf">3.14159e0</span> <span class="n">feq</span> <span class="mf">3.14158e0</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'&quot;0.30000000000000004&quot; and &quot;0.3&quot; are sixteen edits apart out of'</span>;
+<span class="nb">say</span> <span class="s">'nineteen characters; &quot;1000000000&quot; and &quot;1000000001&quot; are one out of'</span>;
+<span class="nb">say</span> <span class="s">'ten. For numbers, use `=~=` or an explicit epsilon.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>0.1e0 + 0.2e0     = 0.30000000000000004
+differs from 0.3e0 by 5.551115123125783e-17
+  $eps feq 0.3e0  = False   &lt;- 5.5e-17 apart, and False
+  $eps == 0.3e0   = False
+
+1000000000 feq 1000000001 = True   &lt;- a full unit apart, and True
+1.0e0 feq 2.0e0           = False
+3.14159e0 feq 3.14158e0   = False
+
+"0.30000000000000004" and "0.3" are sixteen edits apart out of
+nineteen characters; "1000000000" and "1000000001" are one out of
+ten. For numbers, use `=~=` or an explicit epsilon.</code></pre></div>
+<h2 id="precedence-and-chaining">Precedence and chaining <a class="anchor" href="#precedence-and-chaining" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/operator-feq/04-precedence.raku" title="This example as a file: 04-precedence.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Operator::feq</span>;
+
+<span class="nb">say</span> <span class="s">'the operator carries no precedence trait, so it takes the DEFAULT for'</span>;
+<span class="nb">say</span> <span class="s">'a new infix — additive, the same as `+`:'</span>;
+<span class="nb">say</span> <span class="s">'  &quot;abcdefghi&quot; ~ &quot;j&quot; feq &quot;abcdefghik&quot;'</span>;
+<span class="nb">say</span> <span class="s">'  parses as   &quot;abcdefghi&quot; ~ (&quot;j&quot; feq &quot;abcdefghik&quot;)'</span>;
+<span class="nb">say</span> <span class="s">'  and yields  '</span>, (<span class="s">'abcdefghi'</span> ~ (<span class="s">'j'</span> <span class="n">feq</span> <span class="s">'abcdefghik'</span>)).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so parenthesise when you mix it with anything:'</span>;
+<span class="nb">say</span> <span class="s">'  (&quot;abcdefghi&quot; ~ &quot;j&quot;) feq &quot;abcdefghik&quot; = '</span>,
+    ((<span class="s">'abcdefghi'</span> ~ <span class="s">'j'</span>) <span class="n">feq</span> <span class="s">'abcdefghik'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and despite `is assoc&lt;none&gt;`, chaining is not rejected — it compiles'</span>;
+<span class="nb">say</span> <span class="s">'and silently compares a Bool against a string. Compare two things.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the operator carries no precedence trait, so it takes the DEFAULT for
+a new infix — additive, the same as `+`:
+  "abcdefghi" ~ "j" feq "abcdefghik"
+  parses as   "abcdefghi" ~ ("j" feq "abcdefghik")
+  and yields  "abcdefghiFalse"
+
+so parenthesise when you mix it with anything:
+  ("abcdefghi" ~ "j") feq "abcdefghik" = True
+
+and despite `is assoc&lt;none&gt;`, chaining is not rejected — it compiles
+and silently compares a Bool against a string. Compare two things.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two, and both are about corners you should stay out of. <code>$*FEQLIB</code> lets you swap the backend, and Rakudo requires the replacement class to be nested under a package the module has already made visible while Raku++ accepts a top-level name. And <code>is assoc&lt;none&gt;</code> chains left under Raku++ and right under Rakudo — neither engine diagnoses the chain the spec says is an error.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/operator-feq/05-edges.raku" title="This example as a file: 05-edges.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Operator::feq</span>;
+
+<span class="nb">say</span> <span class="s">'the empty string is a hard failure on both engines:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> (<span class="s">''</span> <span class="n">feq</span> <span class="s">''</span>);
+<span class="nb">say</span> <span class="s">'  &quot;&quot; feq &quot;&quot; -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  the message says &quot;Cannot coerce \'\' to Str&quot;, which is misleading —'</span>;
+<span class="nb">say</span> <span class="s">'  the coercion succeeded, the code just tests the result for truth.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'an undefined operand likewise:'</span>;
+<span class="k">my</span> <span class="nv">$u</span> = <span class="k">try</span> (<span class="nb">Str</span> <span class="n">feq</span> <span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'  Str feq &quot;abc&quot; -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="nv">$u</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'guard both ends:'</span>;
+<span class="k">sub</span> <span class="n">fuzzy</span>(<span class="nb">Str</span>:<span class="n">D</span> <span class="nv">$a</span>, <span class="nb">Str</span>:<span class="n">D</span> <span class="nv">$b</span>, :<span class="nv">$threshold</span> = <span class="mf">0.1</span>) {
+    <span class="k">return</span> <span class="nv">$a</span> <span class="n">eq</span> <span class="nv">$b</span> <span class="k">unless</span> <span class="nv">$a</span>.<span class="nb">chars</span> &amp;&amp; <span class="nv">$b</span>.<span class="nb">chars</span>;
+    <span class="k">my</span> <span class="nv">$*FEQTHRESHOLD</span> = <span class="nv">$threshold</span>;
+    <span class="nv">$a</span> <span class="n">feq</span> <span class="nv">$b</span>
+}
+<span class="k">for</span> (<span class="s">''</span>, <span class="s">''</span>), (<span class="s">'cat'</span>, <span class="s">'cot'</span>), (<span class="s">'abcdefghij'</span>, <span class="s">'abcdefghik'</span>) -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  fuzzy(%-12s, %-12s) = %s'</span>, <span class="nv">$a</span>.<span class="nb">raku</span>, <span class="nv">$b</span>.<span class="nb">raku</span>, <span class="n">fuzzy</span>(<span class="nv">$a</span>, <span class="nv">$b</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the empty string is a hard failure on both engines:
+  "" feq "" -&gt; threw
+  the message says "Cannot coerce '' to Str", which is misleading —
+  the coercion succeeded, the code just tests the result for truth.
+
+an undefined operand likewise:
+  Str feq "abc" -&gt; threw
+
+guard both ends:
+  fuzzy(""          , ""          ) = True
+  fuzzy("cat"       , "cot"       ) = False
+  fuzzy("abcdefghij", "abcdefghik") = True</code></pre></div>
+<p>One more note for the future: the distribution declares <code>role Operator::feq</code> inside a module of the same name, which Rakudo warns about — that pattern silently replaces the module in the outer stash in 6.d and installs a nested package in 6.e. Raku++ prints nothing.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

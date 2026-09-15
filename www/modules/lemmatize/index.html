@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lemmatize — The Raku Ecosystem, Working</title>
+<meta name="description" content="Dictionary-driven lemmatisation with 24 bundled language tables — and its English table folds the plural pronouns onto the singular ones.">
+<link rel="canonical" href="https://raku.online/modules/lemmatize/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="lemmatize — The Raku Ecosystem, Working">
+<meta property="og:description" content="Dictionary-driven lemmatisation with 24 bundled language tables — and its English table folds the plural pronouns onto the singular ones.">
+<meta property="og:url" content="https://raku.online/modules/lemmatize/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"lemmatize","description":"Dictionary-driven lemmatisation with 24 bundled language tables — and its English table folds the plural pronouns onto the singular ones.","programmingLanguage":"Raku","version":"0.0.3","url":"https://raku.online/modules/lemmatize/","license":"https://spdx.org/licenses/none stated","codeRepository":"https://github.com/ian-nai/raku_lemmatize/"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · linguistics</div><h1>lemmatize</h1><span class="status st-div">Divergent</span></div><p class="summary">Dictionary-driven lemmatisation with 24 bundled language tables — and its English table folds the plural pronouns onto the singular ones.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.3</code> <span class="fact-sub">zef:ian-nai</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:ian-nai/lemmatize">raku.land</a> · <a href="https://github.com/ian-nai/raku_lemmatize/">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install lemmatize</code></pre></div><p class="fact-sub"><code>zef install lemmatize</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Where a stemmer chops suffixes, a lemmatiser looks the word up: <em>ran</em> becomes <em>run</em>, <em>better</em> becomes <em>good</em>, <em>was</em> becomes <em>be</em>. It needs a table, and this distribution ships 24 of them, one per language, as CSV resources.</p>
+<p>You load a table, then replace every word in a string or array with its lemma.</p>
+<h2 id="loading-a-table-and-using-it">Loading a table and using it <a class="anchor" href="#loading-a-table-and-using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lemmatize/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">lemmatize</span>;
+
+<span class="k">my</span> <span class="nv">$csv</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;lemma-{$*PID}.csv&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$csv</span>.<span class="nb">unlink</span>;
+<span class="nv">$csv</span>.<span class="nb">spurt</span>(<span class="s">qq{run,&quot;ran, runs, running&quot;\nbe,&quot;was, were, is, am&quot;\ngood,&quot;better, best&quot;\n}</span>);
+
+<span class="k">my</span> <span class="nv">%h</span> = <span class="n">construct_hash</span>(<span class="nv">$csv</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'table keys  : '</span>, <span class="nv">%h</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'words_to_array   : '</span>, <span class="n">words_to_array</span>(<span class="s">&quot;The dogs ran and it wasn't good&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'lemmatize_string : '</span>, <span class="n">lemmatize_string</span>(<span class="s">'She ran and it was good'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'lemmatize_array  : '</span>, <span class="n">lemmatize_array</span>([<span class="s">'ran'</span>, <span class="s">'was'</span>, <span class="s">'better'</span>, <span class="s">'cat'</span>]).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>table keys  : be good run
+
+words_to_array   : ["the", "dogs", "ran", "and", "it", "wasn", "t", "good"]
+lemmatize_string : ["she", "run", "and", "it", "be", "good"]
+lemmatize_array  : ["run", "be", "good", "cat"]</code></pre></div>
+<p>Note <code>wasn't</code> becoming two tokens: the tokenizer lower-cases, splits on whitespace <strong>and on apostrophes</strong>, and deletes punctuation. The orphaned <code>t</code> will never lemmatise.</p>
+<p>Nothing works until <code>construct_hash</code> has been called — on a fresh process <code>lemmatize_string('She ran')</code> returns the words unchanged.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>With the bundled English dataset, <code>lemmatize</code> collapses the plural pronouns onto the singular ones.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lemmatize/02-pronouns.raku" title="This example as a file: 02-pronouns.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">lemmatize</span>;
+
+<span class="k">my</span> <span class="nv">$csv</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;lemma-en-{$*PID}.csv&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$csv</span>.<span class="nb">unlink</span>;
+<span class="c1"># these three rows are copied verbatim from the shipped en.csv</span>
+<span class="nv">$csv</span>.<span class="nb">spurt</span>(<span class="s">qq{it,&quot;its, they&quot;\ni,&quot;my, me, we, is&quot;\nbe,&quot;was, were, am, are&quot;\n}</span>);
+<span class="n">construct_hash</span>(<span class="nv">$csv</span>.<span class="nb">Str</span>);
+
+<span class="nb">say</span> <span class="s">'lemmatize_string(&quot;They ran and he was better than we were&quot;):'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">lemmatize_string</span>(<span class="s">'They ran and he was better than we were'</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">they</span> <span class="n">we</span> <span class="k">is</span> <span class="n">his</span> <span class="n">her</span>&gt; -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-6s -&gt; %s'</span>, <span class="nv">$w</span>, <span class="n">lemmatize_array</span>([<span class="nv">$w</span>]).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'en.csv has  it,&quot;its, they&quot;  and  i,&quot;my, me, we, is&quot;  — so *they*'</span>;
+<span class="nb">say</span> <span class="s">'becomes *it* and *we* becomes *i*. Any downstream count of pronouns,'</span>;
+<span class="nb">say</span> <span class="s">'any coreference heuristic, any &quot;who is this text about&quot; measure is'</span>;
+<span class="nb">say</span> <span class="s">'now wrong, and nothing in the API signals it.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>lemmatize_string("They ran and he was better than we were"):
+  it ran and he be better than i be
+
+  they   -&gt; ["it"]
+  we     -&gt; ["i"]
+  is     -&gt; ["i"]
+  his    -&gt; ["his"]
+  her    -&gt; ["her"]
+
+en.csv has  it,"its, they"  and  i,"my, me, we, is"  — so *they*
+becomes *it* and *we* becomes *i*. Any downstream count of pronouns,
+any coreference heuristic, any "who is this text about" measure is
+now wrong, and nothing in the API signals it.</code></pre></div>
+<h2 id="two-shapes-to-plan-around">Two shapes to plan around <a class="anchor" href="#two-shapes-to-plan-around" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lemmatize/03-shapes.raku" title="This example as a file: 03-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">lemmatize</span>;
+
+<span class="k">my</span> <span class="nv">$csv</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;lemma-m-{$*PID}.csv&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$csv</span>.<span class="nb">unlink</span>;
+<span class="nv">$csv</span>.<span class="nb">spurt</span>(<span class="s">qq{run,&quot;ran, runs&quot;\n}</span>);
+<span class="n">construct_hash</span>(<span class="nv">$csv</span>.<span class="nb">Str</span>);
+
+<span class="k">my</span> <span class="nv">@in</span> = <span class="s">&lt;ran cats&gt;</span>;
+<span class="n">lemmatize_array</span>(<span class="nv">@in</span>);
+<span class="nb">say</span> <span class="s">'lemmatize_array MUTATES its caller`s array:'</span>;
+<span class="nb">say</span> <span class="s">'  @in is now '</span>, <span class="nv">@in</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and construct_hash never CLEARS the table — calling it twice merges'</span>;
+<span class="nb">say</span> <span class="s">'both files into one module-level hash. There is no reset; start a'</span>;
+<span class="nb">say</span> <span class="s">'fresh process, or keep your own copy of what you loaded.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'words_to_array writes into a module-level array and returns it, so'</span>;
+<span class="nb">say</span> <span class="s">'consecutive calls overwrite the same storage. Assigning copies:'</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="n">words_to_array</span>(<span class="s">'one two'</span>);
+<span class="k">my</span> <span class="nv">@b</span> = <span class="n">words_to_array</span>(<span class="s">'three four'</span>);
+<span class="nb">say</span> <span class="s">'  @a = '</span>, <span class="nv">@a</span>.<span class="nb">raku</span>, <span class="s">'   @b = '</span>, <span class="nv">@b</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  (binding with := would NOT be safe here)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>lemmatize_array MUTATES its caller`s array:
+  @in is now ["run", "cats"]
+
+and construct_hash never CLEARS the table — calling it twice merges
+both files into one module-level hash. There is no reset; start a
+fresh process, or keep your own copy of what you loaded.
+
+words_to_array writes into a module-level array and returns it, so
+consecutive calls overwrite the same storage. Assigning copies:
+  @a = ["one", "two"]   @b = ["three", "four"]
+  (binding with := would NOT be safe here)</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The shipped <code>en.csv</code> has 84 486 rows but only 84 384 distinct keys — 71 lemmas are duplicated (<code>do</code>, <code>come</code>, <code>box</code>, <code>chute</code> and others). A duplicated key is accumulated with <code>Hash.push</code>, and that is where the engines part: pushing a <code>List</code> onto a fresh key coerces it to an <code>Array</code> under Raku++ and leaves it a <code>List</code> under Rakudo, so the second push appends on one engine and nests on the other. The flat form still matches; the nested one stops matching.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lemmatize/04-duplicates.raku" title="This example as a file: 04-duplicates.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">lemmatize</span>;
+
+<span class="k">my</span> <span class="nv">$csv</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;lemma-dup-{$*PID}.csv&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$csv</span>.<span class="nb">unlink</span>;
+<span class="c1"># `do` appears twice in the shipped en.csv, exactly like this</span>
+<span class="nv">$csv</span>.<span class="nb">spurt</span>(<span class="s">qq{do,&quot;did, does&quot;\ndo,&quot;doing, done&quot;\ncome,&quot;came&quot;\n}</span>);
+<span class="n">construct_hash</span>(<span class="nv">$csv</span>.<span class="nb">Str</span>);
+
+<span class="nb">say</span> <span class="s">'a table with ONE row per lemma is safe on both engines.'</span>;
+<span class="nb">say</span> <span class="s">'a DUPLICATED lemma is not — under Rakudo the second row nests and'</span>;
+<span class="nb">say</span> <span class="s">'stops matching, so &quot;does&quot; can come back as &quot;doe&quot; instead of &quot;do&quot;.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the fix is to deduplicate the CSV before you load it:'</span>;
+<span class="k">my</span> <span class="nv">%seen</span>;
+<span class="k">for</span> <span class="nv">$csv</span>.<span class="nb">Str</span>.<span class="nb">IO</span>.<span class="nb">lines</span> -&gt; <span class="nv">$line</span> {
+    <span class="k">my</span> (<span class="nv">$lemma</span>, <span class="nv">$rest</span>) = <span class="nv">$line</span>.<span class="nb">split</span>(<span class="s">','</span>, <span class="mi">2</span>);
+    <span class="nv">%seen</span>{<span class="nv">$lemma</span>}.<span class="nb">push</span>(<span class="nv">$rest</span>.<span class="n">subst</span>(<span class="s">'&quot;'</span>, <span class="s">''</span>, :<span class="n">g</span>).<span class="nb">split</span>(<span class="sr">/\s* ',' \s*/</span>).<span class="nb">Slip</span>);
+}
+<span class="nb">say</span> <span class="s">'  merged table : '</span>, <span class="nv">%seen</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_=&gt;&quot;</span> ~ <span class="nv">%seen</span>{<span class="nv">$_</span>}.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">'|'</span>) }).<span class="nb">join</span>(<span class="s">'  '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a table with ONE row per lemma is safe on both engines.
+a DUPLICATED lemma is not — under Rakudo the second row nests and
+stops matching, so "does" can come back as "doe" instead of "do".
+
+the fix is to deduplicate the CSV before you load it:
+  merged table : come=&gt;came  do=&gt;did|does|doing|done</code></pre></div>
+<p>One further cost, identical on both: the implementation scans the whole table once per lemma, so a single call is <code>O(lemmas × words)</code> regardless of input size. Loading the full <code>en.csv</code> and lemmatising one word takes seconds.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

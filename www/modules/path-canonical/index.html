@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path::Canonical — The Raku Ecosystem, Working</title>
+<meta name="description" content="Collapses `.`, `//` and `..` in a path string — textually, never touching the filesystem, and always returning an absolute path.">
+<link rel="canonical" href="https://raku.online/modules/path-canonical/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Path::Canonical — The Raku Ecosystem, Working">
+<meta property="og:description" content="Collapses `.`, `//` and `..` in a path string — textually, never touching the filesystem, and always returning an absolute path.">
+<meta property="og:url" content="https://raku.online/modules/path-canonical/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Path::Canonical","description":"Collapses `.`, `//` and `..` in a path string — textually, never touching the filesystem, and always returning an absolute path.","programmingLanguage":"Raku","version":"*","url":"https://raku.online/modules/path-canonical/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/mattn/p6-Path-Canonical.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · paths</div><h1>Path::Canonical</h1><span class="status st-full">Works</span></div><p class="summary">Collapses <code>.</code>, <code>//</code> and <code>..</code> in a path string — textually, never touching the filesystem, and always returning an absolute path.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>*</code> <span class="fact-sub">github:mattn</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:mattn/Path::Canonical">raku.land</a> · <a href="git://github.com/mattn/p6-Path-Canonical.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Path::Canonical</code></pre></div><p class="fact-sub"><code>zef install Path::Canonical</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Two path strings can name the same place and not compare equal: <code>/a/b/../c</code> and <code>/a/c</code>, <code>/a//b</code> and <code>/a/b</code>. Tidying them into one spelling is what this distribution does — as pure string surgery, with no <code>stat</code> and no symlink resolution.</p>
+<h2 id="tidying">Tidying <a class="anchor" href="#tidying" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-canonical/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Canonical</span>;
+
+<span class="k">for</span> <span class="s">'/a/b/c'</span>, <span class="s">'/a/./b'</span>, <span class="s">'/a/b/../c'</span>, <span class="s">'/a//b'</span>, <span class="s">'///a/b'</span>,
+    <span class="s">'/a/b/'</span>, <span class="s">'/a/b/.'</span>, <span class="s">'/a/b/..'</span>, <span class="s">'/..'</span>, <span class="s">'/'</span> -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$p</span>.<span class="nb">raku</span>, <span class="n">canon-path</span>(<span class="nv">$p</span>).<span class="nb">raku</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "/a/b/c"     -&gt; "/a/b/c"
+  "/a/./b"     -&gt; "/a/b"
+  "/a/b/../c"  -&gt; "/a/c"
+  "/a//b"      -&gt; "/a/b"
+  "///a/b"     -&gt; "/a/b"
+  "/a/b/"      -&gt; "/a/b/"
+  "/a/b/."     -&gt; "/a/b/"
+  "/a/b/.."    -&gt; "/a/"
+  "/.."        -&gt; "/"
+  "/"          -&gt; "/"</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>canon-path</code> always returns an <strong>absolute</strong> path, and it silently discards any <code>..</code> that would climb above the start of the string.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-canonical/02-absolute.raku" title="This example as a file: 02-absolute.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Canonical</span>;
+
+<span class="k">for</span> <span class="s">'a/b'</span>, <span class="s">'./a/b'</span>, <span class="s">'../a/b'</span>, <span class="s">'a/../../b'</span>, <span class="s">''</span>, <span class="s">'.'</span>, <span class="s">'..'</span> -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$p</span>.<span class="nb">raku</span>, <span class="n">canon-path</span>(<span class="nv">$p</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a relative path goes in and an absolute one comes out, rooted at /.'</span>;
+<span class="nb">say</span> <span class="s">'A programmer reaching for a &quot;canonicalise&quot; helper will feed it a'</span>;
+<span class="nb">say</span> <span class="s">'relative path and get back something pointing somewhere else'</span>;
+<span class="nb">say</span> <span class="s">'entirely.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and it is not idempotent-looking across shapes — /a/b/.. keeps a'</span>;
+<span class="nb">say</span> <span class="s">'trailing slash while /a/b does not, so string comparison of two'</span>;
+<span class="nb">say</span> <span class="s">'&quot;canonical&quot; paths can disagree.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  "a/b"        -&gt; "/a/b"
+  "./a/b"      -&gt; "/a/b"
+  "../a/b"     -&gt; "/a/b"
+  "a/../../b"  -&gt; "/b"
+  ""           -&gt; "/"
+  "."          -&gt; "/"
+  ".."         -&gt; "/"
+
+a relative path goes in and an absolute one comes out, rooted at /.
+A programmer reaching for a "canonicalise" helper will feed it a
+relative path and get back something pointing somewhere else
+entirely.
+
+and it is not idempotent-looking across shapes — /a/b/.. keeps a
+trailing slash while /a/b does not, so string comparison of two
+"canonical" paths can disagree.</code></pre></div>
+<h2 id="it-is-not-resolve">It is not <code>.resolve</code> <a class="anchor" href="#it-is-not-resolve" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-canonical/03-symlink.raku" title="This example as a file: 03-symlink.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Canonical</span>;
+
+<span class="k">my</span> <span class="nv">$base</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;canon-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'sibling/target.txt'</span>).<span class="nb">unlink</span>; <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'sibling'</span>).<span class="n">rmdir</span>;
+        <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'real/deep'</span>).<span class="n">rmdir</span>; <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'real'</span>).<span class="n">rmdir</span>;
+        <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'link'</span>).<span class="nb">unlink</span>; <span class="nv">$base</span>.<span class="n">rmdir</span> }
+<span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'real/deep'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'sibling'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'sibling/target.txt'</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>);
+<span class="nb">run</span> <span class="s">'ln'</span>, <span class="s">'-s'</span>, <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'real/deep'</span>).<span class="nb">Str</span>, <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'link'</span>).<span class="nb">Str</span>;
+
+<span class="k">my</span> <span class="nv">$input</span> = <span class="nv">$base</span>.<span class="n">add</span>(<span class="s">'link/../sibling/target.txt'</span>).<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'input           : '</span>, <span class="nv">$input</span>.<span class="n">subst</span>(<span class="nv">$base</span>.<span class="nb">Str</span>, <span class="s">'&lt;FIX&gt;'</span>);
+<span class="nb">say</span> <span class="s">'canon-path      : '</span>, <span class="n">canon-path</span>(<span class="nv">$input</span>).<span class="n">subst</span>(<span class="nv">$base</span>.<span class="nb">Str</span>, <span class="s">'&lt;FIX&gt;'</span>);
+<span class="nb">say</span> <span class="s">'  exists?       : '</span>, <span class="n">canon-path</span>(<span class="nv">$input</span>).<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'core .resolve   : '</span>, <span class="nv">$input</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$base</span>.<span class="nb">Str</span>, <span class="s">'&lt;FIX&gt;'</span>);
+<span class="nb">say</span> <span class="s">'  exists?       : '</span>, <span class="nv">$input</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the module collapses .. textually, so it names a file that exists —'</span>;
+<span class="nb">say</span> <span class="s">'and is NOT the file the kernel would open. Core .resolve follows the'</span>;
+<span class="nb">say</span> <span class="s">'symlink first and gives the other answer. Use .resolve when the'</span>;
+<span class="nb">say</span> <span class="s">'filesystem is what you mean.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and on a path that does not exist, .cleanup and .resolve leave the'</span>;
+<span class="nb">say</span> <span class="s">'.. in place while this module removes it:'</span>;
+<span class="nb">say</span> <span class="s">'  canon-path : '</span>, <span class="n">canon-path</span>(<span class="s">'/no/such/dir/../file'</span>);
+<span class="nb">say</span> <span class="s">'  .cleanup   : '</span>, <span class="s">'/no/such/dir/../file'</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input           : &lt;FIX&gt;/link/../sibling/target.txt
+canon-path      : &lt;FIX&gt;/sibling/target.txt
+  exists?       : True
+core .resolve   : /private&lt;FIX&gt;/real/sibling/target.txt
+  exists?       : False
+
+the module collapses .. textually, so it names a file that exists —
+and is NOT the file the kernel would open. Core .resolve follows the
+symlink first and gives the other answer. Use .resolve when the
+filesystem is what you mean.
+
+and on a path that does not exist, .cleanup and .resolve leave the
+.. in place while this module removes it:
+  canon-path : /no/such/file
+  .cleanup   : "/no/such/dir/../file".IO</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>One argument shape: <code>canon-path(Str)</code> — the type object — returns <code>'/'</code> under Raku++ and raises <code>X::Multi::NoMatch</code> under Rakudo. <code>canon-filepath(Str)</code> returns <code>'/'</code> on both, because of its <code>$path || ''</code> guard. Pass a defined string and the two agree everywhere.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-canonical/04-filepath.raku" title="This example as a file: 04-filepath.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Path::Canonical</span>;
+
+<span class="nb">say</span> <span class="s">'the distribution exports a second sub with a Windows branch:'</span>;
+<span class="k">for</span> <span class="s">'/a/b/../c'</span>, <span class="s">'C:\\tmp\\x'</span>, <span class="s">'a\\b'</span> -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s canon-path=%-14s canon-filepath=%s'</span>,
+                <span class="nv">$p</span>.<span class="nb">raku</span>, <span class="n">canon-path</span>(<span class="nv">$p</span>).<span class="nb">raku</span>, <span class="n">canon-filepath</span>(<span class="nv">$p</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'off Windows that branch is unreachable, so canon-filepath is a'</span>;
+<span class="nb">say</span> <span class="s">'slower alias for canon-path — including for the backslash cases,'</span>;
+<span class="nb">say</span> <span class="s">'which it makes no attempt to handle.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the unit also declares an empty `class Path::Canonical` with no'</span>;
+<span class="nb">say</span> <span class="s">'members; the two subs are the whole distribution.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the distribution exports a second sub with a Windows branch:
+  "/a/b/../c"    canon-path="/a/c"         canon-filepath="/a/c"
+  "C:\\tmp\\x"   canon-path="/C:\\tmp\\x"  canon-filepath="/C:\\tmp\\x"
+  "a\\b"         canon-path="/a\\b"        canon-filepath="/a\\b"
+
+off Windows that branch is unreachable, so canon-filepath is a
+slower alias for canon-path — including for the backslash cases,
+which it makes no attempt to handle.
+
+the unit also declares an empty `class Path::Canonical` with no
+members; the two subs are the whole distribution.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

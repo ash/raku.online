@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moonphase — The Raku Ecosystem, Working</title>
+<meta name="description" content="The classic low-precision lunar series, accurate to about a thirtieth of a degree — returning an angle that is not normalised.">
+<link rel="canonical" href="https://raku.online/modules/moonphase/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Moonphase — The Raku Ecosystem, Working">
+<meta property="og:description" content="The classic low-precision lunar series, accurate to about a thirtieth of a degree — returning an angle that is not normalised.">
+<meta property="og:url" content="https://raku.online/modules/moonphase/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Moonphase","description":"The classic low-precision lunar series, accurate to about a thirtieth of a degree — returning an angle that is not normalised.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/moonphase/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/librasteve/Moonphase.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · astronomy</div><h1>Moonphase</h1><span class="status st-div">Divergent</span></div><p class="summary">The classic low-precision lunar series, accurate to about a thirtieth of a degree — returning an angle that is not normalised.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:librasteve</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:librasteve/Moonphase">raku.land</a> · <a href="https://github.com/librasteve/Moonphase.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Moonphase</code></pre></div><p class="fact-sub"><code>zef install Moonphase</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The moon's age — how far it is past new — is the input to a phase icon, a tide estimate, a calendar glyph or a folklore lookup. Computing it properly means an ephemeris; computing it well enough for those uses means a short trigonometric series, which is what this distribution implements.</p>
+<p>From a Unix timestamp it derives the Julian day, solves Kepler's equation for the Sun, applies the standard evection, annual-equation and variation corrections to the Moon's mean longitude, and returns the elongation of Moon from Sun <strong>in radians</strong>: 0 at new moon, π at full.</p>
+<h2 id="using-it">Using it <a class="anchor" href="#using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/moonphase/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Moonphase</span>;
+
+<span class="c1"># a solar eclipse can only happen at new moon; a lunar one only at full</span>
+<span class="k">my</span> <span class="nv">%events</span> =
+    <span class="s">'total solar 1999-08-11 11:03 UTC'</span> =&gt; <span class="mi">934369380</span>,
+    <span class="s">'total solar 2017-08-21 18:26 UTC'</span> =&gt; <span class="mi">1503354360</span>,
+    <span class="s">'total lunar 2000-01-21 04:44 UTC'</span> =&gt; <span class="mi">948429840</span>,
+    <span class="s">'total lunar 2018-01-31 13:30 UTC'</span> =&gt; <span class="mi">1517405400</span>;
+
+<span class="k">for</span> <span class="nv">%events</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$label</span> {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="n">moonphase</span>(<span class="nv">%events</span>{<span class="nv">$label</span>});
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-34s %9.5f rad  %8.3f deg  illum %.4f'</span>,
+                <span class="nv">$label</span>, <span class="nv">$p</span>, <span class="nv">$p</span> * <span class="mi">180</span> / <span class="n">pi</span>, (<span class="mi">1</span> - <span class="nb">cos</span>(<span class="nv">$p</span>)) / <span class="mi">2</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'eclipse instants are exact phase anchors, so those four lines are'</span>;
+<span class="nb">say</span> <span class="s">'the accuracy claim: about 0.03 degrees, which is what this class'</span>;
+<span class="nb">say</span> <span class="s">'of series promises.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>total lunar 2000-01-21 04:44 UTC     3.14207 rad   180.027 deg  illum 1.0000
+total lunar 2018-01-31 13:30 UTC     3.14182 rad   180.013 deg  illum 1.0000
+total solar 1999-08-11 11:03 UTC    -0.00048 rad    -0.027 deg  illum 0.0000
+total solar 2017-08-21 18:26 UTC     0.03817 rad     2.187 deg  illum 0.0004
+
+eclipse instants are exact phase anchors, so those four lines are
+the accuracy claim: about 0.03 degrees, which is what this class
+of series promises.</code></pre></div>
+<h2 id="the-argument-is-unix-seconds">The argument is Unix seconds <a class="anchor" href="#the-argument-is-unix-seconds" aria-label="link">#</a></h2>
+<p><code>$ud</code> is untyped, so every date-shaped object is accepted without a word — and a <code>Date</code> numifies to its day count, which is not a timestamp.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/moonphase/02-argument.raku" title="This example as a file: 02-argument.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Moonphase</span>;
+
+<span class="k">my</span> <span class="nv">$ts</span> = <span class="mi">1503354360</span>;
+<span class="nb">say</span> <span class="s">'Int seconds        : '</span>, <span class="n">moonphase</span>(<span class="nv">$ts</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>);
+<span class="nb">say</span> <span class="s">'the same as a Str  : '</span>, <span class="n">moonphase</span>(<span class="s">&quot;$ts&quot;</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a Date numifies to its MJD daycount, not to seconds:'</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">Date</span>.<span class="nb">new</span>(<span class="mi">2017</span>, <span class="mi">8</span>, <span class="mi">21</span>);
+<span class="nb">say</span> <span class="s">'  Date.new(2017,8,21) numifies to '</span>, +<span class="nv">$d</span>;
+<span class="nb">say</span> <span class="s">'  moonphase(that)     = '</span>, <span class="n">moonphase</span>(<span class="nv">$d</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>), <span class="s">'  &lt;- meaningless'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'milliseconds are accepted too, and equally meaningless.'</span>;
+<span class="nb">say</span> <span class="s">'convert to seconds yourself: $dt.posix.Int'</span>;
+<span class="nb">say</span> <span class="s">'  moonphase($dt.posix.Int) = '</span>,
+    <span class="n">moonphase</span>(<span class="nb">DateTime</span>.<span class="nb">new</span>(<span class="mi">2017</span>, <span class="mi">8</span>, <span class="mi">21</span>, <span class="mi">18</span>, <span class="mi">26</span>, <span class="mi">0</span>).<span class="n">posix</span>.<span class="nb">Int</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Int seconds        : 0.038169
+the same as a Str  : 0.038169
+
+a Date numifies to its MJD daycount, not to seconds:
+  Date.new(2017,8,21) numifies to 57986
+  moonphase(that)     = 4.861886  &lt;- meaningless
+
+milliseconds are accepted too, and equally meaningless.
+convert to seconds yourself: $dt.posix.Int
+  moonphase($dt.posix.Int) = -0.000162</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The returned angle is <strong>not normalised</strong>. Around new moon it goes negative, so both <code>$p &lt; 0.1</code> and <code>$p &gt; 6.2</code> miss the new moon.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/moonphase/03-negative.raku" title="This example as a file: 03-negative.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Moonphase</span>;
+
+<span class="k">my</span> <span class="nv">$new</span> = <span class="mi">1503354360</span>;    <span class="c1"># the 2017-08-21 new moon</span>
+<span class="nb">say</span> <span class="s">'hourly sweep across it:'</span>;
+<span class="k">for</span> -<span class="mi">2</span>, -<span class="mi">1</span>, <span class="mi">0</span>, <span class="mi">1</span>, <span class="mi">2</span> -&gt; <span class="nv">$h</span> {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="n">moonphase</span>(<span class="nv">$new</span> + <span class="nv">$h</span> * <span class="mi">3600</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %+3d h  %14.8f rad   in 0..2pi? %s'</span>, <span class="nv">$h</span>, <span class="nv">$p</span>, (<span class="mi">0</span> &lt;= <span class="nv">$p</span> &lt; <span class="mi">2</span> * <span class="n">pi</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the cause is fixangle($a) { $a mod 360 }. Raku`s infix:&lt;mod&gt; is NOT %'</span>;
+<span class="nb">say</span> <span class="s">'for Reals — for a non-integral negative value it is the identity:'</span>;
+<span class="k">for</span> -<span class="mi">1</span>, -<span class="mf">0.5</span>, -<span class="mf">0.027</span> -&gt; <span class="nv">$v</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-8s mod 360 = %-10s   %% 360 = %s'</span>, <span class="nv">$v</span>, <span class="nv">$v</span> <span class="n">mod</span> <span class="mi">360</span>, <span class="nv">$v</span> % <span class="mi">360</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so normalise it yourself: $p % (2 * pi)'</span>;
+<span class="nb">say</span> <span class="s">'  normalised at the new moon: '</span>, (<span class="n">moonphase</span>(<span class="nv">$new</span>) % (<span class="mi">2</span> * <span class="n">pi</span>)).<span class="nb">round</span>(<span class="mf">0.000001</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>hourly sweep across it:
+   -2 h      0.01902130 rad   in 0..2pi? True
+   -1 h      0.02859970 rad   in 0..2pi? True
+   +0 h      0.03816906 rad   in 0..2pi? True
+   +1 h      0.04772927 rad   in 0..2pi? True
+   +2 h      0.05728022 rad   in 0..2pi? True
+
+the cause is fixangle($a) { $a mod 360 }. Raku`s infix:&lt;mod&gt; is NOT %
+for Reals — for a non-integral negative value it is the identity:
+  -1       mod 360 = 359          % 360 = 359
+  -0.5     mod 360 = -0.5         % 360 = 359.5
+  -0.027   mod 360 = -0.027       % 360 = 359.973
+
+so normalise it yourself: $p % (2 * pi)
+  normalised at the new moon: 0.038169</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Anything that reaches <code>moonphase</code> through an <code>Instant</code> — including <code>+$datetime</code> — differs by up to 27 seconds, because Raku++'s leap-second table is flat at 10 seconds for all time while Rakudo carries the published TAI−UTC series.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/moonphase/04-leap.raku" title="This example as a file: 04-leap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Moonphase</span>;
+
+<span class="k">my</span> <span class="nv">$dt</span> = <span class="nb">DateTime</span>.<span class="nb">new</span>(<span class="mi">2017</span>, <span class="mi">8</span>, <span class="mi">21</span>, <span class="mi">18</span>, <span class="mi">26</span>, <span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'DateTime.posix.Int is leap-second free on both engines:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$dt</span>.<span class="n">posix</span>.<span class="nb">Int</span>, <span class="s">' -&gt; '</span>, <span class="n">moonphase</span>(<span class="nv">$dt</span>.<span class="n">posix</span>.<span class="nb">Int</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Instant arithmetic is not. `+$dt` and `now` route through the'</span>;
+<span class="nb">say</span> <span class="s">'leap-second table, which Raku++ pins at 10 seconds for every date'</span>;
+<span class="nb">say</span> <span class="s">'and Rakudo tracks properly (32 s in 1999, 37 s since 2017).'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Always feed this module .posix.Int, never an Instant.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>DateTime.posix.Int is leap-second free on both engines:
+  1503339960 -&gt; -0.000162
+
+Instant arithmetic is not. `+$dt` and `now` route through the
+leap-second table, which Raku++ pins at 10 seconds for every date
+and Rakudo tracks properly (32 s in 1999, 37 s since 2017).
+
+Always feed this module .posix.Int, never an Instant.</code></pre></div>
+<p>A smaller divergence, introspection only: <code>&amp;infix:&lt;mod&gt;.candidates</code> reports one empty-signature candidate under Raku++ where Rakudo lists <code>(Real:D $a, Real:D $b)</code> and <code>($a, $b)</code>, and an <code>Instant</code> stringifies as a bare number under Raku++ and as <code>Instant:N</code> under Rakudo. Keep both out of any example.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

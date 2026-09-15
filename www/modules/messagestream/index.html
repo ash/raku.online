@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MessageStream — The Raku Ecosystem, Working</title>
+<meta name="description" content="A role giving your class a one-to-many message bus — where subscribing twice leaks a tap you cannot see or remove.">
+<link rel="canonical" href="https://raku.online/modules/messagestream/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MessageStream — The Raku Ecosystem, Working">
+<meta property="og:description" content="A role giving your class a one-to-many message bus — where subscribing twice leaks a tap you cannot see or remove.">
+<meta property="og:url" content="https://raku.online/modules/messagestream/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"MessageStream","description":"A role giving your class a one-to-many message bus — where subscribing twice leaks a tap you cannot see or remove.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/messagestream/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/markldevine/raku-MessageStream.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · messaging</div><h1>MessageStream</h1><span class="status st-div">Divergent</span></div><p class="summary">A role giving your class a one-to-many message bus — where subscribing twice leaks a tap you cannot see or remove.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code> <span class="fact-sub">zef:markldevine</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>JSON::Marshal</code>, <code>JSON::Unmarshal</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:markldevine/MessageStream">raku.land</a> · <a href="https://github.com/markldevine/raku-MessageStream.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install MessageStream</code></pre></div><p class="fact-sub"><code>zef install MessageStream</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>One object, several interested parties. Compose this role into your class and it gains a <code>Supplier</code>; <code>post</code> marshals a payload plus arbitrary named options to JSON and emits them, and <code>subscribe(:destination&lt;log&gt;)</code> routes every message to <em>your</em> method named <code>log-receive</code>.</p>
+<p>Destinations are named, so one object can fan out to several handlers it implements itself.</p>
+<h2 id="publishing-and-subscribing">Publishing and subscribing <a class="anchor" href="#publishing-and-subscribing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">has</span> <span class="nv">@.seen</span>;
+    <span class="k">method</span> <span class="n">log-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) {
+        <span class="nv">@!seen</span>.<span class="nb">push</span>(<span class="s">&quot;{$m.payload} &quot;</span> ~ <span class="nv">$m</span>.<span class="n">options</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ .<span class="n">value</span> }).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>));
+    }
+}
+
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="s">'taps before subscribe : '</span>, <span class="nv">$b</span>.<span class="n">taps</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">raku</span>;
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+<span class="nb">say</span> <span class="s">'taps after subscribe  : '</span>, <span class="nv">$b</span>.<span class="n">taps</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">raku</span>;
+
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'hello'</span>, <span class="n">level</span> =&gt; <span class="s">'info'</span>, <span class="n">n</span> =&gt; <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'delivered             : '</span>, <span class="nv">$b</span>.<span class="n">seen</span>.<span class="nb">raku</span>;
+
+<span class="nv">$b</span>.<span class="n">unsubscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'after unsubscribe'</span>);
+<span class="nb">say</span> <span class="s">'after unsubscribe     : '</span>, <span class="nv">$b</span>.<span class="n">seen</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>taps before subscribe : ().Seq
+taps after subscribe  : ("log",).Seq
+delivered             : ["hello level=info,n=3"]
+after unsubscribe     : ["hello level=info,n=3"]</code></pre></div>
+<p><code>subscribe</code> checks that the method exists and refuses otherwise:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/02-missing.raku" title="This example as a file: 02-missing.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">method</span> <span class="n">log-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) { }
+}
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'nope'</span>);
+<span class="nb">say</span> <span class="s">'subscribe to an unimplemented destination -&gt; '</span>,
+    <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'accepted'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the supply is LIVE, so anything posted before subscribe is gone:'</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">post</span>(<span class="s">'too early'</span>);
+<span class="nv">$c</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+<span class="nb">say</span> <span class="s">'  the early message arrived ? no'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>subscribe to an unimplemented destination -&gt; Unable to subscribe: First implement method nope-receive (MessageStream::Message:D $message) in your code
+
+the supply is LIVE, so anything posted before subscribe is gone:
+  the early message arrived ? no</code></pre></div>
+<h2 id="the-payload-rules-are-not-the-option-rules">The payload rules are not the option rules <a class="anchor" href="#the-payload-rules-are-not-the-option-rules" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/03-payload.raku" title="This example as a file: 03-payload.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">has</span> <span class="nv">$.last</span> <span class="k">is</span> <span class="n">rw</span>;
+    <span class="k">method</span> <span class="n">log-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) {
+        <span class="nv">$!last</span> = (<span class="nv">$m</span>.<span class="n">payload</span>, <span class="nv">$m</span>.<span class="n">options</span>);
+    }
+}
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+
+<span class="k">for</span> <span class="s">'hi'</span>, <span class="mi">42</span>, <span class="mi">0</span>, <span class="n">False</span>, <span class="s">''</span>, [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], [], (<span class="mi">1</span>, <span class="mi">2</span>) -&gt; <span class="nv">$p</span> {
+    <span class="nv">$b</span>.<span class="n">post</span>(<span class="nv">$p</span>);
+    <span class="k">my</span> <span class="nv">$got</span> = <span class="nv">$b</span>.<span class="n">last</span>[<span class="mi">0</span>];
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  post(%-12s) -&gt; %-22s %s'</span>, <span class="nv">$p</span>.<span class="nb">raku</span>,
+                (<span class="nv">$got</span> ~~ <span class="nb">Positional</span> ?? <span class="s">'('</span> ~ <span class="nv">$got</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">', '</span>) ~ <span class="s">')'</span>
+                                    !! <span class="nv">$got</span>.<span class="nb">raku</span>),
+                <span class="nv">$got</span>.<span class="n">WHAT</span>.^<span class="n">name</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'every FALSY payload becomes the empty string — the guard is a bare'</span>;
+<span class="nb">say</span> <span class="s">'`if $payload`. Posting a zero count or an empty batch is data loss.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and a LIST payload has every element stringified while a scalar one'</span>;
+<span class="nb">say</span> <span class="s">'does not. Named options are untouched:'</span>;
+<span class="nv">$b</span>.<span class="n">post</span>([<span class="mi">1</span>, <span class="mi">2</span>], <span class="n">l</span> =&gt; [<span class="mi">1</span>, <span class="mi">2</span>]);
+<span class="nb">say</span> <span class="s">'  payload [1,2] -&gt; '</span>, <span class="nv">$b</span>.<span class="n">last</span>[<span class="mi">0</span>].<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'  option  [1,2] -&gt; '</span>, <span class="nv">$b</span>.<span class="n">last</span>[<span class="mi">1</span>]<span class="s">&lt;l&gt;</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">', '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  post("hi"        ) -&gt; "hi"                   Str
+  post(42          ) -&gt; 42                     Int
+  post(0           ) -&gt; ""                     Str
+  post(Bool::False ) -&gt; ""                     Str
+  post(""          ) -&gt; ""                     Str
+  post($[1, 2, 3]  ) -&gt; ("1", "2", "3")        Array
+  post($[]         ) -&gt; ""                     Str
+  post($(1, 2)     ) -&gt; ("1", "2")             Array
+
+every FALSY payload becomes the empty string — the guard is a bare
+`if $payload`. Posting a zero count or an empty batch is data loss.
+
+and a LIST payload has every element stringified while a scalar one
+does not. Named options are untouched:
+  payload [1,2] -&gt; "1", "2"
+  option  [1,2] -&gt; 1, 2</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>subscribe</code> is not idempotent. Subscribing the same destination twice leaks a second, permanently-live tap that you cannot see and cannot remove.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/04-leak.raku" title="This example as a file: 04-leak.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">has</span> <span class="nv">@.seen</span>;
+    <span class="k">method</span> <span class="n">a-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) { <span class="nv">@!seen</span>.<span class="nb">push</span>(<span class="s">'a:'</span> ~ <span class="nv">$m</span>.<span class="n">payload</span>) }
+}
+
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'a'</span>);
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'a'</span>);        <span class="c1"># again</span>
+<span class="nb">say</span> <span class="s">'taps reports : '</span>, <span class="nv">$b</span>.<span class="n">taps</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">raku</span>, <span class="s">'   &lt;- exactly one'</span>;
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'one'</span>);
+<span class="nb">say</span> <span class="s">'deliveries   : '</span>, <span class="nv">$b</span>.<span class="n">seen</span>.<span class="nb">raku</span>,   <span class="s">'   &lt;- twice'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$b</span>.<span class="n">seen</span> = [];
+<span class="nv">$b</span>.<span class="n">unsubscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'a'</span>);
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'two'</span>);
+<span class="nb">say</span> <span class="s">'after unsubscribe : '</span>, <span class="nv">$b</span>.<span class="n">seen</span>.<span class="nb">raku</span>, <span class="s">'   &lt;- still receiving'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'subscribe does  %!taps{$destination} = $!supply.tap: {…}  — it'</span>;
+<span class="nb">say</span> <span class="s">'overwrites the stored HANDLE without closing the previous tap, which'</span>;
+<span class="nb">say</span> <span class="s">'stays attached to the supply forever. There is no API that reaches it.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a reconnect loop, or a re-subscribe after a config reload, doubles'</span>;
+<span class="nb">say</span> <span class="s">'your side effects permanently and the object reports nothing wrong.'</span>;
+<span class="nb">say</span> <span class="s">'Unsubscribe before you subscribe again.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>taps reports : ("a",).Seq   &lt;- exactly one
+deliveries   : ["a:one", "a:one"]   &lt;- twice
+
+after unsubscribe : ["a:two"]   &lt;- still receiving
+
+subscribe does  %!taps{$destination} = $!supply.tap: {…}  — it
+overwrites the stored HANDLE without closing the previous tap, which
+stays attached to the supply forever. There is no API that reaches it.
+
+a reconnect loop, or a re-subscribe after a config reload, doubles
+your side effects permanently and the object reports nothing wrong.
+Unsubscribe before you subscribe again.</code></pre></div>
+<h2 id="delivery-is-synchronous">Delivery is synchronous <a class="anchor" href="#delivery-is-synchronous" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/05-synchronous.raku" title="This example as a file: 05-synchronous.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">has</span> <span class="nv">@.trace</span>;
+    <span class="k">method</span> <span class="n">log-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) { <span class="nv">@!trace</span>.<span class="nb">push</span>(<span class="s">'receive:'</span> ~ <span class="nv">$m</span>.<span class="n">payload</span>) }
+}
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+
+<span class="nv">$b</span>.<span class="n">trace</span>.<span class="nb">push</span>(<span class="s">'before post'</span>);
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'one'</span>);
+<span class="nv">$b</span>.<span class="n">trace</span>.<span class="nb">push</span>(<span class="s">'after post'</span>);
+<span class="nb">say</span> <span class="s">'trace : '</span>, <span class="nv">$b</span>.<span class="n">trace</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the receiver runs INSIDE post, on the posting thread, inside'</span>;
+<span class="nb">say</span> <span class="s">'$!lock.protect. A slow subscriber blocks the publisher and every'</span>;
+<span class="nb">say</span> <span class="s">'other publisher on that instance.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'each INSTANCE has its own Supplier, so two objects of the same class'</span>;
+<span class="nb">say</span> <span class="s">'do not see each other`s messages.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>trace : ["before post", "receive:one", "after post"]
+
+the receiver runs INSIDE post, on the posting thread, inside
+$!lock.protect. A slow subscriber blocks the publisher and every
+other publisher on that instance.
+
+each INSTANCE has its own Supplier, so two objects of the same class
+do not see each other`s messages.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two Raku++ lenities that hide real bugs in this module. An exception thrown inside a <code>Supply</code> tap handler is swallowed there and propagates out of <code>emit</code> on Rakudo; and <code>Lock::Async.protect</code> is reentrant on Raku++ and correctly blocks on Rakudo, so a subscriber that posts again deadlocks on one engine and returns on the other.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/messagestream/06-portable.raku" title="This example as a file: 06-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MessageStream</span>;
+
+<span class="nb">say</span> <span class="s">'so on Raku++ a subscriber`s crash vanishes and a re-entrant post'</span>;
+<span class="nb">say</span> <span class="s">'succeeds; on Rakudo the crash reaches your post() call and the'</span>;
+<span class="nb">say</span> <span class="s">'re-entrant post deadlocks.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'write subscribers that cannot throw and do not post:'</span>;
+<span class="k">class</span> <span class="n">Bus</span> <span class="k">does</span> <span class="n">MessageStream</span> {
+    <span class="k">has</span> <span class="nv">@.seen</span>;
+    <span class="k">method</span> <span class="n">log-receive</span>(<span class="n">MessageStream::Message</span>:<span class="n">D</span> <span class="nv">$m</span>) {
+        <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> { <span class="nv">@!seen</span>.<span class="nb">push</span>(<span class="nv">$m</span>.<span class="n">payload</span>); <span class="n">True</span> };
+        <span class="c1"># swallow deliberately, and never post from in here</span>
+    }
+}
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Bus</span>.<span class="nb">new</span>;
+<span class="nv">$b</span>.<span class="n">subscribe</span>(<span class="n">destination</span> =&gt; <span class="s">'log'</span>);
+<span class="nv">$b</span>.<span class="n">post</span>(<span class="s">'safe'</span>);
+<span class="nb">say</span> <span class="s">'  delivered : '</span>, <span class="nv">$b</span>.<span class="n">seen</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and note .taps is declared --&gt; Tap and in fact returns a Hash[Tap] —'</span>;
+<span class="nb">say</span> <span class="s">'read its keys, not the object.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>so on Raku++ a subscriber`s crash vanishes and a re-entrant post
+succeeds; on Rakudo the crash reaches your post() call and the
+re-entrant post deadlocks.
+
+write subscribers that cannot throw and do not post:
+  delivered : ["safe"]
+
+and note .taps is declared --&gt; Tap and in fact returns a Hash[Tap] —
+read its keys, not the object.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

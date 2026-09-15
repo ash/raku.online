@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math::FourierTransform — The Raku Ecosystem, Working</title>
+<meta name="description" content="A naive O(N²) discrete Fourier transform over `Complex` — exact conventions, and a signature that demands a typed array.">
+<link rel="canonical" href="https://raku.online/modules/math-fouriertransform/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Math::FourierTransform — The Raku Ecosystem, Working">
+<meta property="og:description" content="A naive O(N²) discrete Fourier transform over `Complex` — exact conventions, and a signature that demands a typed array.">
+<meta property="og:url" content="https://raku.online/modules/math-fouriertransform/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Math::FourierTransform","description":"A naive O(N²) discrete Fourier transform over `Complex` — exact conventions, and a signature that demands a typed array.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/math-fouriertransform/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/MattOates/Math--FourierTransform.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · numbers</div><h1>Math::FourierTransform</h1><span class="status st-div">Divergent</span></div><p class="summary">A naive O(N²) discrete Fourier transform over <code>Complex</code> — exact conventions, and a signature that demands a typed array.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">github:MattOates</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:MattOates/Math::FourierTransform">raku.land</a> · <a href="git://github.com/MattOates/Math--FourierTransform.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Math::FourierTransform</code></pre></div><p class="fact-sub"><code>zef install Math::FourierTransform</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The DFT turns a sampled signal into its frequency components. This distribution implements the textbook double sum directly: <code>e^{-2πikn/N}</code>, no 1/N scaling, no decimation, no caching — one exported sub and nothing else.</p>
+<h2 id="transforming">Transforming <a class="anchor" href="#transforming" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-fouriertransform/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::FourierTransform</span>;
+
+<span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@x</span> = (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>).<span class="nb">map</span>(*.<span class="nb">Complex</span>);
+<span class="k">my</span> <span class="nv">@X</span> = <span class="n">discrete-fourier-transform</span>(<span class="nv">@x</span>);
+<span class="nb">say</span> <span class="s">'input  : '</span>, <span class="nv">@x</span>.<span class="nb">map</span>(*.<span class="n">re</span>.<span class="nb">Int</span>).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'output :'</span>;
+<span class="k">for</span> <span class="nv">@X</span>.<span class="nb">kv</span> -&gt; <span class="nv">$k</span>, <span class="nv">$v</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  X[%d] = %8.4f %+8.4fi'</span>, <span class="nv">$k</span>, <span class="nv">$v</span>.<span class="n">re</span>, <span class="nv">$v</span>.<span class="n">im</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'10, -2+2i, -2, -2-2i is the published result for the forward'</span>;
+<span class="nb">say</span> <span class="s">'unnormalised DFT of (1,2,3,4), which pins the sign convention and'</span>;
+<span class="nb">say</span> <span class="s">'the absence of a 1/N factor.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input  : 1, 2, 3, 4
+output :
+  X[0] =  10.0000  +0.0000i
+  X[1] =  -2.0000  +2.0000i
+  X[2] =  -2.0000  -0.0000i
+  X[3] =  -2.0000  -2.0000i
+
+10, -2+2i, -2, -2-2i is the published result for the forward
+unnormalised DFT of (1,2,3,4), which pins the sign convention and
+the absence of a 1/N factor.</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-fouriertransform/02-impulse.raku" title="This example as a file: 02-impulse.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::FourierTransform</span>;
+
+<span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@delta</span> = (<span class="mi">1</span>, <span class="mi">0</span>, <span class="mi">0</span>, <span class="mi">0</span>).<span class="nb">map</span>(*.<span class="nb">Complex</span>);
+<span class="nb">say</span> <span class="s">'the impulse transforms to a flat spectrum:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">discrete-fourier-transform</span>(<span class="nv">@delta</span>).<span class="nb">map</span>({ .<span class="n">re</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>) }).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@empty</span>;
+<span class="nb">say</span> <span class="s">'an empty array is safe — the loop body never runs:'</span>;
+<span class="nb">say</span> <span class="s">'  elems = '</span>, <span class="n">discrete-fourier-transform</span>(<span class="nv">@empty</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the cost is N**2 transcendental calls — exp is invoked once per'</span>;
+<span class="nb">say</span> <span class="s">'(k, n) pair, nothing is cached, and nothing here is an FFT.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the impulse transforms to a flat spectrum:
+  1, 1, 1, 1
+
+an empty array is safe — the loop body never runs:
+  elems = 0
+
+the cost is N**2 transcendental calls — exp is invoked once per
+(k, n) pair, nothing is cached, and nothing here is an FFT.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>Complex @input</code> constrains the array's <strong>declared element type</strong>, not what it happens to hold. An ordinary array full of <code>Complex</code> values is not enough.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-fouriertransform/03-typed.raku" title="This example as a file: 03-typed.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::FourierTransform</span>;
+
+<span class="nb">say</span> <span class="s">'the shape that works everywhere:'</span>;
+<span class="nb">say</span> <span class="s">'  my Complex @x = (1, 2, 3, 4).map(*.Complex);'</span>;
+<span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@x</span> = (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>).<span class="nb">map</span>(*.<span class="nb">Complex</span>);
+<span class="nb">say</span> <span class="s">'  -&gt; '</span>, <span class="n">discrete-fourier-transform</span>(<span class="nv">@x</span>).<span class="nb">elems</span>, <span class="s">' components'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the shapes Rakudo refuses:'</span>;
+<span class="nb">say</span> <span class="s">'  my @a = 1, 2, 3, 4;                 # untyped, holding Ints'</span>;
+<span class="nb">say</span> <span class="s">'  my @a = (1+0i, 2+0i);               # untyped, holding Complex'</span>;
+<span class="nb">say</span> <span class="s">'  discrete-fourier-transform((1+0i, 2+0i));   # a bare list'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'all three raise &quot;expected Positional[Complex]&quot; there. Raku++ does'</span>;
+<span class="nb">say</span> <span class="s">'not check the element type at all and quietly transforms whatever'</span>;
+<span class="nb">say</span> <span class="s">'you gave it — including an array declared `my Num @nums`, which'</span>;
+<span class="nb">say</span> <span class="s">'Rakudo rejects at COMPILE time.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so declare the array, and coerce into it:'</span>;
+<span class="k">sub</span> <span class="n">dft</span>(*<span class="nv">@values</span>) {
+    <span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@c</span> = <span class="nv">@values</span>.<span class="nb">map</span>(*.<span class="nb">Complex</span>);
+    <span class="n">discrete-fourier-transform</span>(<span class="nv">@c</span>)
+}
+<span class="nb">say</span> <span class="s">'  dft(1, 2, 3, 4) : '</span>, <span class="n">dft</span>(<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>).<span class="nb">map</span>({ .<span class="n">re</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>) }).<span class="nb">join</span>(<span class="s">', '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the shape that works everywhere:
+  my Complex @x = (1, 2, 3, 4).map(*.Complex);
+  -&gt; 4 components
+
+the shapes Rakudo refuses:
+  my @a = 1, 2, 3, 4;                 # untyped, holding Ints
+  my @a = (1+0i, 2+0i);               # untyped, holding Complex
+  discrete-fourier-transform((1+0i, 2+0i));   # a bare list
+
+all three raise "expected Positional[Complex]" there. Raku++ does
+not check the element type at all and quietly transforms whatever
+you gave it — including an array declared `my Num @nums`, which
+Rakudo rejects at COMPILE time.
+
+so declare the array, and coerce into it:
+  dft(1, 2, 3, 4) : 10, -2, -2, -2</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Exactly that missing element-type enforcement, and this module is the purest test case for it, because its whole signature is that one constraint. Code written on Raku++ against an untyped array does not compile on Rakudo.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-fouriertransform/04-portable.raku" title="This example as a file: 04-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::FourierTransform</span>;
+
+<span class="c1"># round trip through a hand-written inverse, to show the convention</span>
+<span class="k">sub</span> <span class="n">idft</span>(<span class="nv">@X</span>) {
+    <span class="k">my</span> <span class="nv">$N</span> = <span class="nv">@X</span>.<span class="nb">elems</span>;
+    (^<span class="nv">$N</span>).<span class="nb">map</span>(-&gt; <span class="nv">$n</span> {
+        ([+] (^<span class="nv">$N</span>).<span class="nb">map</span>(-&gt; <span class="nv">$k</span> { <span class="nv">@X</span>[<span class="nv">$k</span>] * <span class="nb">exp</span>(<span class="mi">2</span><span class="n">i</span> * <span class="n">pi</span> * <span class="nv">$k</span> * <span class="nv">$n</span> / <span class="nv">$N</span>) })) / <span class="nv">$N</span>
+    })
+}
+
+<span class="k">my</span> <span class="nb">Complex</span> <span class="nv">@x</span> = (<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>).<span class="nb">map</span>(*.<span class="nb">Complex</span>);
+<span class="k">my</span> <span class="nv">@back</span> = <span class="n">idft</span>(<span class="n">discrete-fourier-transform</span>(<span class="nv">@x</span>));
+<span class="nb">say</span> <span class="s">'round trip : '</span>, <span class="nv">@back</span>.<span class="nb">map</span>({ .<span class="n">re</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>) }).<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'recovered  : '</span>, <span class="k">so</span> (<span class="nv">@back</span> <span class="n">Z</span> <span class="nv">@x</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="nb">abs</span>(.[<span class="mi">0</span>] - .[<span class="mi">1</span>]) &lt; <span class="mf">1e-9</span> });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'one thing to keep out of any example: .raku of the result renders as'</span>;
+<span class="nb">say</span> <span class="s">'$[…] on Raku++ and Array[Complex].new(…) on Rakudo. Print the'</span>;
+<span class="nb">say</span> <span class="s">'components, not the container.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>round trip : 1, 2, 3, 4
+recovered  : True
+
+one thing to keep out of any example: .raku of the result renders as
+$[…] on Raku++ and Array[Complex].new(…) on Rakudo. Print the
+components, not the container.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

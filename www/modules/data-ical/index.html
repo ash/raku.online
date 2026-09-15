@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data::ICal — The Raku Ecosystem, Working</title>
+<meta name="description" content="Parses an .ics calendar into events with DateTimes — and cannot read back what it writes.">
+<link rel="canonical" href="https://raku.online/modules/data-ical/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Data::ICal — The Raku Ecosystem, Working">
+<meta property="og:description" content="Parses an .ics calendar into events with DateTimes — and cannot read back what it writes.">
+<meta property="og:url" content="https://raku.online/modules/data-ical/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Data::ICal","description":"Parses an .ics calendar into events with DateTimes — and cannot read back what it writes.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/data-ical/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/retupmoca/P6-iCal.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data formats</div><h1>Data::ICal</h1><span class="status st-div">Divergent</span></div><p class="summary">Parses an .ics calendar into events with DateTimes — and cannot read back what it writes.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">github:retupmoca</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:retupmoca/Data::ICal">raku.land</a> · <a href="git://github.com/retupmoca/P6-iCal.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Data::ICal</code></pre></div><p class="fact-sub"><code>zef install Data::ICal</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>An <code>.ics</code> file is what a calendar invitation is. Reading one — to import events, to check a schedule, to extract attendees — means a small grammar over <code>BEGIN:VEVENT</code> blocks and their folded property lines.</p>
+<p>This distribution parses that into a <code>Data::ICal</code> holding version, prodid, events and timezones, and can stringify the object back.</p>
+<h2 id="parsing">Parsing <a class="anchor" href="#parsing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-ical/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::ICal</span>;
+
+<span class="k">my</span> <span class="nv">$ics</span> = <span class="s">q:to/END/</span>;
+<span class="s">BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example//Fixture//EN
+BEGIN:VEVENT
+UID:fixture-0001
+DTSTAMP:20240101T000000Z
+DTSTART:20240115T100000Z
+DTEND:20240115T110000Z
+SUMMARY:A meeting
+STATUS:CONFIRMED
+SEQUENCE:0
+ORGANIZER;CN=Ada Lovelace:mailto:ada@example.invalid
+END:VEVENT
+END:VCALENDAR
+END
+</span>
+<span class="k">my</span> <span class="nv">$cal</span> = <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$ics</span>);
+<span class="nb">say</span> <span class="s">'version   : '</span>, <span class="nv">$cal</span>.<span class="n">version</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'prodid    : '</span>, <span class="nv">$cal</span>.<span class="n">prodid</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'events    : '</span>, <span class="nv">$cal</span>.<span class="n">events</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$e</span> = <span class="nv">$cal</span>.<span class="n">events</span>[<span class="mi">0</span>];
+<span class="nb">say</span> <span class="s">'  uid     : '</span>, <span class="nv">$e</span>.<span class="n">uid</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  summary : '</span>, <span class="nv">$e</span>.<span class="n">summary</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  status  : '</span>, <span class="nv">$e</span>.<span class="n">status</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  dtstart : '</span>, <span class="nv">$e</span>.<span class="n">dtstart</span>;
+<span class="nb">say</span> <span class="s">'  dtend   : '</span>, <span class="nv">$e</span>.<span class="n">dtend</span>;
+<span class="nb">say</span> <span class="s">'  organizer keys : '</span>, <span class="nv">$e</span>.<span class="n">organizer</span>.<span class="nb">list</span>.<span class="nb">map</span>(*.<span class="n">key</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>version   : "2.0"
+prodid    : "-//Example//Fixture//EN"
+events    : 1
+
+  uid     : "fixture-0001"
+  summary : "A meeting"
+  status  : "CONFIRMED"
+  dtstart : 2024-01-15T10:00:00Z
+  dtend   : 2024-01-15T11:00:00Z
+  organizer keys : email, name</code></pre></div>
+<p><code>dtstart</code> and <code>dtend</code> resolve <code>TZID</code> through the calendar's own <code>VTIMEZONE</code> rules and hand you a <code>DateTime</code>; <code>dtstart-raw</code> gives you the pair as parsed.</p>
+<h2 id="malformed-input-throws">Malformed input throws <a class="anchor" href="#malformed-input-throws" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-ical/02-failures.raku" title="This example as a file: 02-failures.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::ICal</span>;
+
+<span class="k">my</span> <span class="nv">%cases</span> =
+    <span class="s">'empty string'</span>      =&gt; <span class="s">''</span>,
+    <span class="s">'not ical'</span>          =&gt; <span class="s">&quot;hello\n&quot;</span>,
+    <span class="s">'VCALENDAR only'</span>    =&gt; <span class="s">&quot;BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR\n&quot;</span>,
+    <span class="s">'no VERSION'</span>        =&gt; <span class="s">&quot;BEGIN:VCALENDAR\nEND:VCALENDAR\n&quot;</span>,
+    <span class="s">'VERSION 1.0'</span>       =&gt; <span class="s">&quot;BEGIN:VCALENDAR\nVERSION:1.0\nEND:VCALENDAR\n&quot;</span>,
+    <span class="s">'unclosed block'</span>    =&gt; <span class="s">&quot;BEGIN:VCALENDAR\nVERSION:2.0\n&quot;</span>;
+
+<span class="k">for</span> <span class="nv">%cases</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">%cases</span>{<span class="nv">$k</span>});
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s -&gt; %s'</span>, <span class="nv">$k</span>,
+                <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'ok, '</span> ~ <span class="nv">$r</span>.<span class="n">events</span>.<span class="nb">elems</span> ~ <span class="s">' event(s)'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'always an exception, never a Failure or an undefined value — which'</span>;
+<span class="nb">say</span> <span class="s">'is a better contract than most parsers here offer. Note the'</span>;
+<span class="nb">say</span> <span class="s">'misleading message for a calendar with no VERSION at all.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and :raw returns the bare parse tree rather than an object:'</span>;
+<span class="nb">say</span> <span class="s">'  keys : '</span>, <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">%cases</span>&lt;<span class="n">VCALENDAR</span> <span class="k">only</span>&gt;, :<span class="n">raw</span>).<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  VCALENDAR only     -&gt; ok, 0 event(s)
+  VERSION 1.0        -&gt; Can only understand VCALENDAR version 2.0
+  empty string       -&gt; Need VCALENDAR item
+  no VERSION         -&gt; Can only understand VCALENDAR version 2.0
+  not ical           -&gt; Need VCALENDAR item
+  unclosed block     -&gt; Need VCALENDAR item
+
+always an exception, never a Failure or an undefined value — which
+is a better contract than most parsers here offer. Note the
+misleading message for a calendar with no VERSION at all.
+
+and :raw returns the bare parse tree rather than an object:
+  keys : </code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>Data::ICal.new($cal.Str)</code> does not work: the module cannot read back what it writes.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-ical/03-roundtrip.raku" title="This example as a file: 03-roundtrip.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::ICal</span>;
+
+<span class="k">my</span> <span class="nv">$with-desc</span> = <span class="s">q:to/END/</span>;
+<span class="s">BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example//Fixture//EN
+BEGIN:VEVENT
+UID:a
+DTSTAMP:20240101T000000Z
+DTSTART:20240115T100000Z
+DTEND:20240115T110000Z
+SUMMARY:A meeting
+DESCRIPTION:Line one\nLine two
+LOCATION:Room 3
+END:VEVENT
+END:VCALENDAR
+END
+</span>
+<span class="k">my</span> <span class="nv">$cal</span> = <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$with-desc</span>);
+<span class="nb">say</span> <span class="s">'parsed      : '</span>, <span class="nv">$cal</span>.<span class="n">events</span>.<span class="nb">elems</span>, <span class="s">' event'</span>;
+<span class="nb">say</span> <span class="s">'description : '</span>, <span class="nv">$cal</span>.<span class="n">events</span>[<span class="mi">0</span>].<span class="n">description</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="nv">$cal</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'LOCATION survives the round trip : '</span>, <span class="nv">$out</span>.<span class="n">contains</span>(<span class="s">'LOCATION'</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$out</span>);
+<span class="nb">say</span> <span class="s">'re-parse                         : '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'ok'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two things go wrong at once. The actions class UNESCAPES \\n into a'</span>;
+<span class="nb">say</span> <span class="s">'real newline on parse, and Event.Str writes the value back raw —'</span>;
+<span class="nb">say</span> <span class="s">'producing a second physical line that does not begin with'</span>;
+<span class="nb">say</span> <span class="s">'whitespace, which the grammar reads as a new property.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and Str only emits the ten properties the Event class models:'</span>;
+<span class="nb">say</span> <span class="s">'LOCATION, CATEGORIES, RRULE, ATTENDEE and everything else are'</span>;
+<span class="nb">say</span> <span class="s">'silently discarded.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'strip the description and the round trip is byte-identical:'</span>;
+<span class="k">my</span> <span class="nv">$plain</span> = <span class="nv">$with-desc</span>.<span class="nb">lines</span>.<span class="nb">grep</span>({ !.<span class="n">starts-with</span>(<span class="s">'DESCRIPTION'</span>) &amp;&amp; !.<span class="n">starts-with</span>(<span class="s">'LOCATION'</span>) }).<span class="nb">join</span>(<span class="s">&quot;\n&quot;</span>) ~ <span class="s">&quot;\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$c2</span> = <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$plain</span>);
+<span class="nb">say</span> <span class="s">'  re-parse ok : '</span>, <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$c2</span>.<span class="nb">Str</span>).<span class="n">events</span>.<span class="nb">elems</span>, <span class="s">' event'</span>;
+<span class="nb">say</span> <span class="s">'  identical   : '</span>, <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$c2</span>.<span class="nb">Str</span>).<span class="nb">Str</span> <span class="n">eq</span> <span class="nv">$c2</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so it appears to work on simple fixtures and fails on anything real.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parsed      : 1 event
+description : "Line one\nLine two"
+
+LOCATION survives the round trip : False
+re-parse                         : Need VCALENDAR item
+
+two things go wrong at once. The actions class UNESCAPES \n into a
+real newline on parse, and Event.Str writes the value back raw —
+producing a second physical line that does not begin with
+whitespace, which the grammar reads as a new property.
+
+and Str only emits the ten properties the Event class models:
+LOCATION, CATEGORIES, RRULE, ATTENDEE and everything else are
+silently discarded.
+
+strip the description and the round trip is byte-identical:
+  re-parse ok : 1 event
+  identical   : True
+
+so it appears to work on simple fixtures and fails on anything real.</code></pre></div>
+<h2 id="four-units-that-are-empty-files">Four units that are empty files <a class="anchor" href="#four-units-that-are-empty-files" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-ical/04-empty-units.raku" title="This example as a file: 04-empty-units.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::ICal</span>;
+
+<span class="nb">say</span> <span class="s">'the distribution declares eight units. Four of them —'</span>;
+<span class="nb">say</span> <span class="s">'Data::ICal::Alarm, ::FreeBusy, ::Journal and ::Todo — are'</span>;
+<span class="nb">say</span> <span class="s">'ZERO-BYTE files.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'`use Data::ICal::Alarm;` succeeds and declares nothing; referring to'</span>;
+<span class="nb">say</span> <span class="s">'the name is an error on both engines (at run time on Raku++, at'</span>;
+<span class="nb">say</span> <span class="s">'compile time on Rakudo).'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'introspection tools that report &quot;class Data::ICal::Alarm with no'</span>;
+<span class="nb">say</span> <span class="s">'methods&quot; are showing you an artefact of a dynamic lookup, not a fact'</span>;
+<span class="nb">say</span> <span class="s">'about the distribution.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and Data::ICal.Str hard-codes VERSION:2.0 regardless of $.version.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the distribution declares eight units. Four of them —
+Data::ICal::Alarm, ::FreeBusy, ::Journal and ::Todo — are
+ZERO-BYTE files.
+
+`use Data::ICal::Alarm;` succeeds and declares nothing; referring to
+the name is an error on both engines (at run time on Raku++, at
+compile time on Rakudo).
+
+introspection tools that report "class Data::ICal::Alarm with no
+methods" are showing you an artefact of a dynamic lookup, not a fact
+about the distribution.
+
+and Data::ICal.Str hard-codes VERSION:2.0 regardless of $.version.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>CRLF input loses every event under Raku++, and RFC 5545 <strong>requires</strong> CRLF.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/data-ical/05-crlf.raku" title="This example as a file: 05-crlf.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Data::ICal</span>;
+
+<span class="k">my</span> <span class="nv">$lf</span> = <span class="s">&quot;BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:a\nSUMMARY:A meeting\n&quot;</span>
+       ~ <span class="s">&quot;END:VEVENT\nEND:VCALENDAR\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$crlf</span> = <span class="nv">$lf</span>.<span class="n">subst</span>(<span class="s">&quot;\n&quot;</span>, <span class="s">&quot;\r\n&quot;</span>, :<span class="n">g</span>);
+
+<span class="nb">say</span> <span class="s">'LF input   : '</span>, <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$lf</span>).<span class="n">events</span>.<span class="nb">elems</span>, <span class="s">' event(s)'</span>;
+<span class="nb">say</span> <span class="s">'CRLF input : engine-dependent — 1 on Rakudo, 0 on Raku++, and no'</span>;
+<span class="nb">say</span> <span class="s">'             exception either way'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Raku++`s longest-token alternation parses BEGIN:VEVENT as a PROPERTY'</span>;
+<span class="nb">say</span> <span class="s">'named BEGIN rather than taking the nested section branch, so the'</span>;
+<span class="nb">say</span> <span class="s">'calendar comes back with zero events and no exception.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'normalise first, on both engines:'</span>;
+<span class="k">sub</span> <span class="n">parse-ics</span>(<span class="nb">Str</span> <span class="nv">$text</span>) { <span class="n">Data::ICal</span>.<span class="nb">new</span>(<span class="nv">$text</span>.<span class="n">subst</span>(<span class="sr">/\r\n/</span>, <span class="s">&quot;\n&quot;</span>, :<span class="n">g</span>)) }
+<span class="nb">say</span> <span class="s">'  parse-ics(CRLF) : '</span>, <span class="n">parse-ics</span>(<span class="nv">$crlf</span>).<span class="n">events</span>.<span class="nb">elems</span>, <span class="s">' event(s)'</span>;
+<span class="nb">say</span> <span class="s">'  summary         : '</span>, <span class="n">parse-ics</span>(<span class="nv">$crlf</span>).<span class="n">events</span>[<span class="mi">0</span>].<span class="n">summary</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>LF input   : 1 event(s)
+CRLF input : engine-dependent — 1 on Rakudo, 0 on Raku++, and no
+             exception either way
+
+Raku++`s longest-token alternation parses BEGIN:VEVENT as a PROPERTY
+named BEGIN rather than taking the nested section branch, so the
+calendar comes back with zero events and no exception.
+
+normalise first, on both engines:
+  parse-ics(CRLF) : 1 event(s)
+  summary         : "A meeting"</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

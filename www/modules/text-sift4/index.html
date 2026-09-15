@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text::Sift4 — The Raku Ecosystem, Working</title>
+<meta name="description" content="A linear-time approximation of edit distance — fast, and not a metric: swapping the two arguments can change the answer.">
+<link rel="canonical" href="https://raku.online/modules/text-sift4/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Text::Sift4 — The Raku Ecosystem, Working">
+<meta property="og:description" content="A linear-time approximation of edit distance — fast, and not a metric: swapping the two arguments can change the answer.">
+<meta property="og:url" content="https://raku.online/modules/text-sift4/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Text::Sift4","description":"A linear-time approximation of edit distance — fast, and not a metric: swapping the two arguments can change the answer.","programmingLanguage":"Raku","version":"0.0.6","url":"https://raku.online/modules/text-sift4/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/titsuki/p6-Text-Sift4.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · string distance</div><h1>Text::Sift4</h1><span class="status st-div">Divergent</span></div><p class="summary">A linear-time approximation of edit distance — fast, and not a metric: swapping the two arguments can change the answer.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.6</code> <span class="fact-sub">cpan:TITSUKI</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/cpan:TITSUKI/Text::Sift4">raku.land</a> · <a href="https://github.com/titsuki/p6-Text-Sift4.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Text::Sift4</code></pre></div><p class="fact-sub"><code>zef install Text::Sift4</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Levenshtein distance costs <code>O(n·m)</code>. When you need to compare one string against thousands, that is the wrong shape. Sift4 walks both strings with a pair of cursors, counts matching runs, and on a mismatch scans forward up to <code>:max-offset</code> positions to resynchronise — linear time, and an approximate answer.</p>
+<h2 id="using-it">Using it <a class="anchor" href="#using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-sift4/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Sift4</span>;
+
+<span class="k">for</span> &lt;<span class="n">abc</span> <span class="n">ab</span>&gt;, <span class="s">&lt;ab abc&gt;</span>, <span class="s">&lt;abc xxx&gt;</span>, <span class="s">&lt;kitten sitting&gt;</span>, <span class="s">&lt;abc abc&gt;</span> -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'sift4(%-8s, %-8s) = %d'</span>, <span class="nv">$a</span>.<span class="nb">raku</span>, <span class="nv">$b</span>.<span class="nb">raku</span>, <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'return type : '</span>, <span class="n">sift4</span>(<span class="s">'a'</span>, <span class="s">'b'</span>).<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'empty pair  : '</span>, <span class="n">sift4</span>(<span class="s">''</span>, <span class="s">''</span>);
+<span class="nb">say</span> <span class="s">'undefined   : '</span>, <span class="n">sift4</span>(<span class="nb">Str</span>, <span class="s">'abc'</span>), <span class="s">'  (the parameters are Str, not Str:D)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sift4("abc"   , "ab"    ) = 1
+sift4("ab"    , "abc"   ) = 1
+sift4("abc"   , "xxx"   ) = 3
+sift4("kitten", "sitting") = 3
+sift4("abc"   , "abc"   ) = 0
+
+return type : Int
+empty pair  : 0
+undefined   : 3  (the parameters are Str, not Str:D)</code></pre></div>
+<p>Like <code>Text::Levenshtein</code> it counts graphemes, since it is built on <code>.chars</code> and <code>.substr</code>.</p>
+<h2 id="what-you-buy-and-what-you-pay">What you buy and what you pay <a class="anchor" href="#what-you-buy-and-what-you-pay" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-sift4/02-speed.raku" title="This example as a file: 02-speed.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Sift4</span>;
+
+<span class="k">sub</span> <span class="n">lev</span>(<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="k">my</span> <span class="nv">@d</span> = [<span class="mi">0</span> .. <span class="nv">$b</span>.<span class="nb">chars</span>],;
+    <span class="k">for</span> <span class="mi">1</span> .. <span class="nv">$a</span>.<span class="nb">chars</span> -&gt; <span class="nv">$i</span> {
+        <span class="nv">@d</span>[<span class="nv">$i</span>][<span class="mi">0</span>] = <span class="nv">$i</span>;
+        <span class="k">for</span> <span class="mi">1</span> .. <span class="nv">$b</span>.<span class="nb">chars</span> -&gt; <span class="nv">$j</span> {
+            <span class="nv">@d</span>[<span class="nv">$i</span>][<span class="nv">$j</span>] = (<span class="nv">$a</span>.<span class="nb">substr</span>(<span class="nv">$i-1</span>,<span class="mi">1</span>) <span class="n">eq</span> <span class="nv">$b</span>.<span class="nb">substr</span>(<span class="nv">$j-1</span>,<span class="mi">1</span>))
+                ?? <span class="nv">@d</span>[<span class="nv">$i-1</span>][<span class="nv">$j-1</span>]
+                !! <span class="mi">1</span> + <span class="nb">min</span>(<span class="nv">@d</span>[<span class="nv">$i-1</span>][<span class="nv">$j</span>], <span class="nv">@d</span>[<span class="nv">$i</span>][<span class="nv">$j-1</span>], <span class="nv">@d</span>[<span class="nv">$i-1</span>][<span class="nv">$j-1</span>]);
+        }
+    }
+    <span class="nv">@d</span>[<span class="nv">$a</span>.<span class="nb">chars</span>][<span class="nv">$b</span>.<span class="nb">chars</span>]
+}
+
+<span class="k">my</span> <span class="nv">$a</span> = (^<span class="mi">300</span>).<span class="nb">map</span>({ <span class="s">&lt;a b c d&gt;</span>[(<span class="nv">$_</span> * <span class="mi">7</span> + <span class="mi">1</span>) % <span class="mi">4</span>] }).<span class="nb">join</span>;
+<span class="k">my</span> <span class="nv">$b</span> = (^<span class="mi">300</span>).<span class="nb">map</span>({ <span class="s">&lt;a b c d&gt;</span>[(<span class="nv">$_</span> * <span class="nv">$_</span> + <span class="mi">3</span>) % <span class="mi">4</span>] }).<span class="nb">join</span>;
+<span class="k">my</span> <span class="nv">$true</span>  = <span class="n">lev</span>(<span class="nv">$a</span>, <span class="nv">$b</span>);
+<span class="k">my</span> <span class="nv">$quick</span> = <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>);
+<span class="nb">say</span> <span class="s">&quot;300-character strings over a 4-letter alphabet&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;  levenshtein : $true&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;  sift4       : $quick&quot;</span>;
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  sift4 reports %d%% of the true distance'</span>, (<span class="mi">100</span> * <span class="nv">$quick</span> / <span class="nv">$true</span>).<span class="nb">round</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>300-character strings over a 4-letter alphabet
+  levenshtein : 150
+  sift4       : 151
+  sift4 reports 101% of the true distance</code></pre></div>
+<p>The name says <em>approximate</em>, and the approximation errs in <strong>both</strong> directions. Across all 14 641 ordered pairs of strings of length 0–4 over <code>{a,b,c}</code>, sift4 under-reports on 31% of them and over-reports on 4%; the 300-character pair above over-reports by roughly half. There is no bound.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>sift4</code> is not symmetric. Swap the two arguments and the answer can change — and the larger of the two is the wrong one.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-sift4/03-asymmetry.raku" title="This example as a file: 03-asymmetry.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Sift4</span>;
+
+<span class="k">for</span> &lt;<span class="n">ab</span> <span class="n">bab</span>&gt;, <span class="s">&lt;ac cac&gt;</span>, <span class="s">&lt;ba aba&gt;</span> -&gt; (<span class="nv">$x</span>, <span class="nv">$y</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'sift4(%-4s,%-4s) = %d   sift4(%-4s,%-4s) = %d   (true distance 1)'</span>,
+                <span class="nv">$x</span>.<span class="nb">raku</span>, <span class="nv">$y</span>.<span class="nb">raku</span>, <span class="n">sift4</span>(<span class="nv">$x</span>, <span class="nv">$y</span>),
+                <span class="nv">$y</span>.<span class="nb">raku</span>, <span class="nv">$x</span>.<span class="nb">raku</span>, <span class="n">sift4</span>(<span class="nv">$y</span>, <span class="nv">$x</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'every mental model of &quot;string distance&quot; assumes d(a,b) == d(b,a).'</span>;
+<span class="nb">say</span> <span class="s">'456 of the 14641 short pairs over {a,b,c} violate it here.'</span>;
+<span class="nb">say</span> <span class="s">'anything that memoises on a sorted key, dedupes a pair, or builds a'</span>;
+<span class="nb">say</span> <span class="s">'symmetric similarity matrix gets a different answer depending on'</span>;
+<span class="nb">say</span> <span class="s">'which cell it happened to compute.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sift4("ab","bab") = 2   sift4("bab","ab") = 1   (true distance 1)
+sift4("ac","cac") = 2   sift4("cac","ac") = 1   (true distance 1)
+sift4("ba","aba") = 2   sift4("aba","ba") = 1   (true distance 1)
+
+every mental model of "string distance" assumes d(a,b) == d(b,a).
+456 of the 14641 short pairs over {a,b,c} violate it here.
+anything that memoises on a sorted key, dedupes a pair, or builds a
+symmetric similarity matrix gets a different answer depending on
+which cell it happened to compute.</code></pre></div>
+<p>The asymmetry comes from the resynchronisation loop, which advances the two cursors under different conditions.</p>
+<p><code>:max-offset</code> is not the bound it looks like either. An operator-precedence slip — <code>while $i &lt; $max-offset &amp;&amp; (lhs in range) || (rhs in range)</code> parses as <code>($i &lt; $max-offset &amp;&amp; lhsInRange) || rhsInRange</code> — applies the guard to only one of the two disjuncts, so for some inputs the forward scan runs arbitrarily far and neither the cost nor the answer is bounded by the parameter.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The same precedence slip lets the loop body run after the left cursor is past the end of <code>$lhs</code>, and the <code>substr</code> that follows is unguarded. Rakudo throws; Raku++'s <code>substr</code> is permissive past the end and returns <code>""</code>, so the crash becomes a silently wrong number.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-sift4/04-oob.raku" title="This example as a file: 04-oob.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Sift4</span>;
+
+<span class="c1"># same-length inputs never reach the unguarded substr</span>
+<span class="k">for</span> &lt;<span class="n">abcd</span> <span class="n">abcd</span>&gt;, <span class="s">&lt;abcd abdc&gt;</span>, <span class="s">&lt;abcd wxyz&gt;</span> -&gt; (<span class="nv">$x</span>, <span class="nv">$y</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'sift4(%-6s, %-6s) = %d'</span>, <span class="nv">$x</span>.<span class="nb">raku</span>, <span class="nv">$y</span>.<span class="nb">raku</span>, <span class="n">sift4</span>(<span class="nv">$x</span>, <span class="nv">$y</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'those are safe on both engines. A pair whose lengths differ can walk'</span>;
+<span class="nb">say</span> <span class="s">'the left cursor past the end of its string, and what happens then is'</span>;
+<span class="nb">say</span> <span class="s">'up to the engine — so wrap every call you cannot length-match.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sift4("abcd", "abcd") = 0
+sift4("abcd", "abdc") = 1
+sift4("abcd", "wxyz") = 4
+
+those are safe on both engines. A pair whose lengths differ can walk
+the left cursor past the end of its string, and what happens then is
+up to the engine — so wrap every call you cannot length-match.</code></pre></div>
+<p><code>Text::Sift4</code> the class is empty — the <code>unit class</code> declaration carries no members, and <code>Text::Sift4.new.sift4(...)</code> does not exist. The exported sub is the whole distribution.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mortgage — The Raku Ecosystem, Working</title>
+<meta name="description" content="The standard annuity formulas plus a month-by-month amortisation — correct arithmetic behind a parameter named `$p` that is not a payment.">
+<link rel="canonical" href="https://raku.online/modules/mortgage/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Mortgage — The Raku Ecosystem, Working">
+<meta property="og:description" content="The standard annuity formulas plus a month-by-month amortisation — correct arithmetic behind a parameter named `$p` that is not a payment.">
+<meta property="og:url" content="https://raku.online/modules/mortgage/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Mortgage","description":"The standard annuity formulas plus a month-by-month amortisation — correct arithmetic behind a parameter named `$p` that is not a payment.","programmingLanguage":"Raku","version":"*","url":"https://raku.online/modules/mortgage/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/teodozjan/mortage6.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · finance</div><h1>Mortgage</h1><span class="status st-div">Divergent</span></div><p class="summary">The standard annuity formulas plus a month-by-month amortisation — correct arithmetic behind a parameter named <code>$p</code> that is not a payment.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>*</code> <span class="fact-sub">github:teodozjan</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:teodozjan/Mortgage">raku.land</a> · <a href="git://github.com/teodozjan/mortage6.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Mortgage</code></pre></div><p class="fact-sub"><code>zef install Mortgage</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A level-payment loan has four closed-form answers: what you pay each month, what you still owe after <em>p</em> payments, what a lump sum grows to, and how the three rate conventions relate. This distribution has all four as free functions, plus a class that runs the amortisation month by month and accumulates recurring annual costs.</p>
+<h2 id="the-formulas">The formulas <a class="anchor" href="#the-formulas" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mortgage/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Mortgage</span>;
+
+<span class="k">my</span> <span class="nv">$L</span> = <span class="mi">300_000</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">rate-monthly</span>(<span class="mf">4.8</span>);       <span class="c1"># the ANNUAL PERCENT, not a fraction</span>
+<span class="k">my</span> <span class="nv">$n</span> = <span class="mi">360</span>;
+
+<span class="nb">say</span> <span class="s">'percent(4.8)       = '</span>, <span class="n">percent</span>(<span class="mf">4.8</span>);
+<span class="nb">say</span> <span class="s">'rate-monthly(4.8)  = '</span>, <span class="nv">$c</span>;
+<span class="nb">say</span> <span class="s">'basis-point(164)   = '</span>, <span class="n">basis-point</span>(<span class="mi">164</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$payment</span> = <span class="n">calculate-payment</span>(<span class="nv">$c</span>, <span class="nv">$n</span>, <span class="nv">$L</span>);
+<span class="nb">say</span> <span class="s">'monthly payment    = '</span>, <span class="nv">$payment</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">'  closed form      = '</span>, (<span class="nv">$L</span> * <span class="nv">$c</span> / (<span class="mi">1</span> - (<span class="mi">1</span> + <span class="nv">$c</span>) ** -<span class="nv">$n</span>)).<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'remaining balance after p payments:'</span>;
+<span class="k">for</span> <span class="mi">0</span>, <span class="mi">1</span>, <span class="mi">180</span>, <span class="mi">359</span>, <span class="mi">360</span> -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  p=%-4d %12.2f'</span>, <span class="nv">$p</span>, <span class="n">calculate-balance</span>(<span class="nv">$c</span>, <span class="nv">$n</span>, <span class="nv">$L</span>, <span class="nv">$p</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'future value : '</span>, <span class="n">calculate-fvalue</span>(<span class="mi">1000</span>, <span class="mf">0.05</span>, <span class="mi">10</span>).<span class="nb">round</span>(<span class="mf">0.0001</span>);
+<span class="nb">say</span> <span class="s">'  1000 * 1.05**10 = '</span>, (<span class="mi">1000</span> * <span class="mf">1.05</span> ** <span class="mi">10</span>).<span class="nb">round</span>(<span class="mf">0.0001</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>percent(4.8)       = 0.048
+rate-monthly(4.8)  = 0.004
+basis-point(164)   = 0.0164
+
+monthly payment    = 1574
+  closed form      = 1574
+
+remaining balance after p payments:
+  p=0       300000.00
+  p=1       299626.00
+  p=180     201687.21
+  p=359       1567.73
+  p=360          0.00
+
+future value : 1628.8946
+  1000 * 1.05**10 = 1628.8946</code></pre></div>
+<p>The numbers are right: the payment matches <code>L·c/(1−(1+c)⁻ⁿ)</code> to thirteen decimal places, and hand-simulating 360 payments of it lands the balance on zero.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>calculate-balance($c, $n, $L, $p)</code>'s fourth argument is a <strong>period number</strong>, not a payment — despite being named <code>$p</code>, described as the payment in the source comments, and sitting exactly where a payment amount belongs in every other amortisation API.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mortgage/02-period.raku" title="This example as a file: 02-period.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Mortgage</span>;
+
+<span class="k">my</span> (<span class="nv">$L</span>, <span class="nv">$c</span>, <span class="nv">$n</span>) = <span class="mi">300_000</span>, <span class="n">rate-monthly</span>(<span class="mf">4.8</span>), <span class="mi">360</span>;
+<span class="k">my</span> <span class="nv">$payment</span> = <span class="n">calculate-payment</span>(<span class="nv">$c</span>, <span class="nv">$n</span>, <span class="nv">$L</span>);
+
+<span class="nb">say</span> <span class="s">'monthly payment                     : '</span>, <span class="nv">$payment</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'calculate-balance(c, n, L, 180)     : '</span>,
+    <span class="n">calculate-balance</span>(<span class="nv">$c</span>, <span class="nv">$n</span>, <span class="nv">$L</span>, <span class="mi">180</span>).<span class="nb">round</span>(<span class="mf">0.01</span>), <span class="s">'   &lt;- p = period number'</span>;
+<span class="nb">say</span> <span class="s">'calculate-balance(c, n, L, $payment): '</span>,
+    <span class="n">calculate-balance</span>(<span class="nv">$c</span>, <span class="nv">$n</span>, <span class="nv">$L</span>, <span class="nv">$payment</span>).<span class="nb">round</span>(<span class="mf">0.01</span>), <span class="s">'   &lt;- p = the payment'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'that second line computes (1+c)**1574 and answers a NEGATIVE balance'</span>;
+<span class="nb">say</span> <span class="s">'over a hundred times the size of the loan, with no exception and no'</span>;
+<span class="nb">say</span> <span class="s">'warning. The proof that p is a period: p=0 returns the full loan and'</span>;
+<span class="nb">say</span> <span class="s">'p=n returns zero.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>monthly payment                     : 1574
+
+calculate-balance(c, n, L, 180)     : 201687.21   &lt;- p = period number
+calculate-balance(c, n, L, $payment): -49686484.24   &lt;- p = the payment
+
+that second line computes (1+c)**1574 and answers a NEGATIVE balance
+over a hundred times the size of the loan, with no exception and no
+warning. The proof that p is a period: p=0 returns the full loan and
+p=n returns zero.</code></pre></div>
+<p>There is a second naming trap in the same family: <code>rate-monthly</code> wants the annual <strong>percent</strong>, so the natural-looking <code>rate-monthly(percent(4.8))</code> is a hundred times too small.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mortgage/03-rate-trap.raku" title="This example as a file: 03-rate-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Mortgage</span>;
+
+<span class="k">my</span> (<span class="nv">$L</span>, <span class="nv">$n</span>) = <span class="mi">300_000</span>, <span class="mi">360</span>;
+<span class="k">for</span> <span class="s">'rate-monthly(4.8)'</span>          =&gt; <span class="n">rate-monthly</span>(<span class="mf">4.8</span>),
+    <span class="s">'rate-monthly(percent(4.8))'</span> =&gt; <span class="n">rate-monthly</span>(<span class="n">percent</span>(<span class="mf">4.8</span>)) -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-28s = %-10s -&gt; payment %s'</span>,
+                <span class="nv">$p</span>.<span class="n">key</span>, <span class="nv">$p</span>.<span class="n">value</span>, <span class="n">calculate-payment</span>(<span class="nv">$p</span>.<span class="n">value</span>, <span class="nv">$n</span>, <span class="nv">$L</span>).<span class="nb">round</span>(<span class="mf">0.01</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'percent and rate-monthly look like a matched pair and must never be'</span>;
+<span class="nb">say</span> <span class="s">'composed. rate-monthly is `annual percent / 1200`, nothing else.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  rate-monthly(4.8)            = 0.004      -&gt; payment 1574
+  rate-monthly(percent(4.8))   = 0.00004    -&gt; payment 839.36
+
+percent and rate-monthly look like a matched pair and must never be
+composed. rate-monthly is `annual percent / 1200`, nothing else.</code></pre></div>
+<h2 id="the-class">The class <a class="anchor" href="#the-class" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mortgage/04-class.raku" title="This example as a file: 04-class.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Mortgage</span>;
+
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">rate-monthly</span>(<span class="mf">4.8</span>);
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Mortgage</span>.<span class="nb">new</span>(
+    <span class="n">currency</span>       =&gt; <span class="s">'EUR'</span>,
+    <span class="n">bank</span>           =&gt; <span class="s">'BANK'</span>,
+    <span class="n">loan-left</span>      =&gt; <span class="mi">300_000</span>,
+    <span class="n">interest_rate</span>  =&gt; <span class="nv">$c</span>,
+    <span class="n">mortages</span>       =&gt; <span class="mi">360</span>,
+    <span class="n">mortage</span>        =&gt; <span class="n">calculate-payment</span>(<span class="nv">$c</span>, <span class="mi">360</span>, <span class="mi">300_000</span>),
+    <span class="n">total_interest</span> =&gt; <span class="mi">0</span>,
+    <span class="n">total_cost</span>     =&gt; <span class="mi">0</span>,
+);
+<span class="nv">$m</span>.<span class="n">add</span>(<span class="n">Mortgage::AnnualCostConst</span>.<span class="nb">new</span>(<span class="n">from</span> =&gt; <span class="mi">1</span>, <span class="n">to</span> =&gt; <span class="mi">360</span>, <span class="n">value</span> =&gt; <span class="mi">10</span>));
+<span class="nv">$m</span>.<span class="n">calc</span>;
+<span class="nb">print</span> <span class="nv">$m</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note the four extra constructor arguments. `calc` reads $!mortage,'</span>;
+<span class="nb">say</span> <span class="s">'$!total_interest and $!total_cost before it ever writes them, and'</span>;
+<span class="nb">say</span> <span class="s">'none of the three has a default — so the documented three-argument'</span>;
+<span class="nb">say</span> <span class="s">'construction leaves them as Numeric type objects and the run is'</span>;
+<span class="nb">say</span> <span class="s">'silently wrong (Raku++) or dies in `gist` (Rakudo). Seed all four.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'calc is DESTRUCTIVE and not idempotent — a second call resumes from'</span>;
+<span class="nb">say</span> <span class="s">'the mutated balance rather than restarting. There is no reset.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the three concrete cost classes are AnnualCostPercentage (balance x'</span>;
+<span class="nb">say</span> <span class="s">'rate), AnnualCostMort (payment x rate) and AnnualCostConst (a fixed'</span>;
+<span class="nb">say</span> <span class="s">'value). The base AnnualCost.get is a `!!!` stub.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>BANK
+Mortgage 1574 EUR
+Balance: 0 EUR
+Basic interests: 266638.58 EUR
+Other costs: 3600 EUR
+Total cost: 270238.58
+Type used for cost (Int)
+Type used for calculation (Num)
+note the four extra constructor arguments. `calc` reads $!mortage,
+$!total_interest and $!total_cost before it ever writes them, and
+none of the three has a default — so the documented three-argument
+construction leaves them as Numeric type objects and the run is
+silently wrong (Raku++) or dies in `gist` (Rakudo). Seed all four.
+
+calc is DESTRUCTIVE and not idempotent — a second call resumes from
+the mutated balance rather than restarting. There is no reset.
+
+the three concrete cost classes are AnnualCostPercentage (balance x
+rate), AnnualCostMort (payment x rate) and AnnualCostConst (a fixed
+value). The base AnnualCost.get is a `!!!` stub.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p><code>gist</code> dies under Rakudo unless at least one cost has been added: <code>total_cost</code> has no default, so on a cost-free mortgage it is still the <code>Numeric</code> type object when <code>gist</code> calls <code>.round(0.01)</code>. Raku++ masks that — <code>Numeric.round</code> answers <code>0</code> there — and prints <code>Other costs: 0</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mortgage/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Mortgage</span>;
+
+<span class="c1"># the constructor shape that behaves the same on both engines</span>
+<span class="k">sub</span> <span class="n">mortgage</span>(<span class="nv">$principal</span>, <span class="nv">$annual-percent</span>, <span class="nv">$months</span>) {
+    <span class="k">my</span> <span class="nv">$c</span> = <span class="n">rate-monthly</span>(<span class="nv">$annual-percent</span>);
+    <span class="n">Mortgage</span>.<span class="nb">new</span>(
+        <span class="n">currency</span>       =&gt; <span class="s">'EUR'</span>,
+        <span class="n">bank</span>           =&gt; <span class="s">'BANK'</span>,
+        <span class="n">loan-left</span>      =&gt; <span class="nv">$principal</span>,
+        <span class="n">interest_rate</span>  =&gt; <span class="nv">$c</span>,
+        <span class="n">mortages</span>       =&gt; <span class="nv">$months</span>,
+        <span class="n">mortage</span>        =&gt; <span class="n">calculate-payment</span>(<span class="nv">$c</span>, <span class="nv">$months</span>, <span class="nv">$principal</span>),
+        <span class="n">total_interest</span> =&gt; <span class="mi">0</span>,
+        <span class="n">total_cost</span>     =&gt; <span class="mi">0</span>,
+    )
+}
+
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">mortgage</span>(<span class="mi">300_000</span>, <span class="mf">4.8</span>, <span class="mi">360</span>);
+<span class="nv">$m</span>.<span class="n">add</span>(<span class="n">Mortgage::AnnualCostConst</span>.<span class="nb">new</span>(<span class="n">from</span> =&gt; <span class="mi">1</span>, <span class="n">to</span> =&gt; <span class="mi">360</span>, <span class="n">value</span> =&gt; <span class="mi">10</span>));
+<span class="nb">say</span> <span class="s">'monthly : '</span>, <span class="nv">$m</span>.<span class="n">mortage</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nv">$m</span>.<span class="n">calc</span>;
+<span class="nb">say</span> <span class="s">'balance : '</span>, <span class="nv">$m</span>.<span class="n">loan-left</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">'interest: '</span>, <span class="nv">$m</span>.<span class="n">total_interest</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">'cost    : '</span>, <span class="nv">$m</span>.<span class="n">total_cost</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'without the three zero seeds, `say $mortgage` raises &quot;No such method'</span>;
+<span class="nb">say</span> <span class="s">'round for invocant of type Numeric&quot; on Rakudo and prints 0 on Raku++ —'</span>;
+<span class="nb">say</span> <span class="s">'and `say $m` is the first thing anyone does.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>monthly : 1574
+balance : 0
+interest: 266638.58
+cost    : 3600
+
+without the three zero seeds, `say $mortgage` raises "No such method
+round for invocant of type Numeric" on Rakudo and prints 0 on Raku++ —
+and `say $m` is the first thing anyone does.</code></pre></div>
+<p>One numeric note, identical on both engines: <code>rate-monthly(4.8)</code> is an exact <code>Rat</code> (1/250), but <code>(1+$c)**$n</code> returns a <code>Num</code>, so every result is floating point unless you build the inputs as <code>FatRat</code> yourself. <code>gist</code> says so on its last line. And <code>calculate-fvalue-series</code> is declared in the file with no <code>is export</code>, so it is unreachable from a <code>use</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

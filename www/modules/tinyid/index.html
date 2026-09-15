@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TinyID — The Raku Ecosystem, Working</title>
+<meta name="description" content="Positional base-N encoding where the alphabet and its order are the secret — and where many distinct strings decode to the same ID.">
+<link rel="canonical" href="https://raku.online/modules/tinyid/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TinyID — The Raku Ecosystem, Working">
+<meta property="og:description" content="Positional base-N encoding where the alphabet and its order are the secret — and where many distinct strings decode to the same ID.">
+<meta property="og:url" content="https://raku.online/modules/tinyid/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"TinyID","description":"Positional base-N encoding where the alphabet and its order are the secret — and where many distinct strings decode to the same ID.","programmingLanguage":"Raku","version":"1.0.6","url":"https://raku.online/modules/tinyid/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/bbkr/TinyID.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · identifiers</div><h1>TinyID</h1><span class="status st-full">Works</span></div><p class="summary">Positional base-N encoding where the alphabet and its order are the secret — and where many distinct strings decode to the same ID.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.6</code> <span class="fact-sub">zef:bbkr</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:bbkr/TinyID">raku.land</a> · <a href="git://github.com/bbkr/TinyID.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install TinyID</code></pre></div><p class="fact-sub"><code>zef install TinyID</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Turning a database row id into a short URL slug, without leaking how many rows you have. The encoding is plain base-N; the obfuscation is entirely in the alphabet you supply and the order you shuffle it into.</p>
+<h2 id="encoding">Encoding <a class="anchor" href="#encoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyid/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyID</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">'cbad'</span>);
+<span class="nb">say</span> <span class="s">'key &quot;cbad&quot; means digits c=0 b=1 a=2 d=3'</span>;
+<span class="k">for</span> <span class="mi">0</span>, <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>, <span class="mi">7</span>, <span class="mi">16</span>, <span class="mi">255</span>, <span class="mi">1000</span> -&gt; <span class="nv">$n</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %4d -&gt; %-6s -&gt; %d'</span>, <span class="nv">$n</span>, <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$n</span>), <span class="nv">$t</span>.<span class="n">decode</span>(<span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$n</span>)));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a longer, shuffled alphabet is what you would actually use:'</span>;
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">'qWeRtYuIoPaSdFgHjKlZxCvBnM1234567890'</span>);
+<span class="nb">say</span> <span class="s">'  encode(12345) = '</span>, <span class="nv">$u</span>.<span class="n">encode</span>(<span class="mi">12345</span>);
+<span class="nb">say</span> <span class="s">'  decode back   = '</span>, <span class="nv">$u</span>.<span class="n">decode</span>(<span class="nv">$u</span>.<span class="n">encode</span>(<span class="mi">12345</span>));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Unicode keys work too:'</span>;
+<span class="k">my</span> <span class="nv">$g</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">&quot;\c[GREEK SMALL LETTER ALPHA]\c[GREEK SMALL LETTER BETA]\c[GREEK SMALL LETTER GAMMA]\c[GREEK SMALL LETTER DELTA]\c[GREEK SMALL LETTER EPSILON]&quot;</span>);
+<span class="nb">say</span> <span class="s">'  encode(31)    = '</span>, <span class="nv">$g</span>.<span class="n">encode</span>(<span class="mi">31</span>), <span class="s">'   decode = '</span>, <span class="nv">$g</span>.<span class="n">decode</span>(<span class="nv">$g</span>.<span class="n">encode</span>(<span class="mi">31</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>key "cbad" means digits c=0 b=1 a=2 d=3
+     0 -&gt; c      -&gt; 0
+     1 -&gt; b      -&gt; 1
+     2 -&gt; a      -&gt; 2
+     3 -&gt; d      -&gt; 3
+     4 -&gt; bc     -&gt; 4
+     7 -&gt; bd     -&gt; 7
+    16 -&gt; bcc    -&gt; 16
+   255 -&gt; dddd   -&gt; 255
+  1000 -&gt; ddaac  -&gt; 1000
+
+a longer, shuffled alphabet is what you would actually use:
+  encode(12345) = Pl8
+  decode back   = 12345
+
+Unicode keys work too:
+  encode(31)    = βββ   decode = 31</code></pre></div>
+<h2 id="the-properties-that-hold">The properties that hold <a class="anchor" href="#the-properties-that-hold" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyid/02-properties.raku" title="This example as a file: 02-properties.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyID</span>;
+
+<span class="k">my</span> <span class="nv">@alphabet</span> = (<span class="s">'a'</span> .. <span class="s">'z'</span>, <span class="s">'A'</span> .. <span class="s">'Z'</span>, <span class="s">'0'</span> .. <span class="s">'9'</span>).<span class="nb">flat</span>;
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="nv">@alphabet</span>.<span class="nb">pick</span>(*).<span class="nb">join</span>);
+
+<span class="nb">say</span> <span class="s">'over a randomly shuffled 62-character key, for 0 .. 3000:'</span>;
+<span class="nb">say</span> <span class="s">'  decode(encode(n)) == n : '</span>,
+    <span class="k">so</span> (<span class="mi">0</span> .. <span class="mi">3000</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">decode</span>(<span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$_</span>)) == <span class="nv">$_</span> });
+<span class="nb">say</span> <span class="s">'  encode is injective    : '</span>,
+    (<span class="mi">0</span> .. <span class="mi">3000</span>).<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$_</span>) }).<span class="nb">unique</span>.<span class="nb">elems</span> == <span class="mi">3001</span>;
+<span class="nb">say</span> <span class="s">'  output uses only the key`s characters : '</span>,
+    <span class="k">so</span> (<span class="mi">0</span> .. <span class="mi">3000</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$_</span>).<span class="nb">comb</span> ⊆ <span class="nv">@alphabet</span> });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the length boundaries are exactly base-62:'</span>;
+<span class="nb">say</span> <span class="s">'  n &lt; 62      all 1 char  : '</span>, <span class="k">so</span> (^<span class="mi">62</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$_</span>).<span class="nb">chars</span> == <span class="mi">1</span> });
+<span class="nb">say</span> <span class="s">'  62 &lt;= n &lt; 3844 all 2    : '</span>, <span class="k">so</span> (<span class="mi">62</span> ..^ <span class="mi">3844</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$_</span>).<span class="nb">chars</span> == <span class="mi">2</span> });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the module contains no randomness — encode and decode are pure'</span>;
+<span class="nb">say</span> <span class="s">'functions of (key, input). Only your CHOICE of key is usually random.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>over a randomly shuffled 62-character key, for 0 .. 3000:
+  decode(encode(n)) == n : True
+  encode is injective    : True
+  output uses only the key`s characters : True
+
+and the length boundaries are exactly base-62:
+  n &lt; 62      all 1 char  : True
+  62 &lt;= n &lt; 3844 all 2    : True
+
+the module contains no randomness — encode and decode are pure
+functions of (key, input). Only your CHOICE of key is usually random.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>decode ∘ encode</code> is the identity, but <code>encode ∘ decode</code> is not — there is a "zero digit", leading zero digits are accepted and discarded, and the empty string decodes to 0.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyid/03-canonical.raku" title="This example as a file: 03-canonical.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyID</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">'cbad'</span>);
+<span class="nb">say</span> <span class="s">'encode(0) = '</span>, <span class="nv">$t</span>.<span class="n">encode</span>(<span class="mi">0</span>).<span class="nb">raku</span>;
+<span class="k">for</span> <span class="s">''</span>, <span class="s">'c'</span>, <span class="s">'cc'</span>, <span class="s">'cccb'</span>, <span class="s">'b'</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  decode(%-8s) = %d'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="nv">$t</span>.<span class="n">decode</span>(<span class="nv">$s</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so &quot;&quot;, &quot;c&quot;, &quot;cc&quot; and &quot;ccc…&quot; are all ID 0, and &quot;cccb&quot; and &quot;b&quot; are'</span>;
+<span class="nb">say</span> <span class="s">'both ID 1.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'if you use these as URL slugs or database keys, they are NOT'</span>;
+<span class="nb">say</span> <span class="s">'canonical: an attacker, or a careless cache, can mint unlimited'</span>;
+<span class="nb">say</span> <span class="s">'distinct strings for the same record.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the empty string is particularly easy to hit, because .comb of &quot;&quot;'</span>;
+<span class="nb">say</span> <span class="s">'is the empty set, which trivially satisfies the argument constraint.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'check for canonicity yourself:'</span>;
+<span class="k">sub</span> <span class="n">canonical</span>(<span class="nv">$t</span>, <span class="nb">Str</span> <span class="nv">$s</span>) { <span class="nv">$s</span>.<span class="nb">chars</span> &amp;&amp; <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$t</span>.<span class="n">decode</span>(<span class="nv">$s</span>)) <span class="n">eq</span> <span class="nv">$s</span> }
+<span class="k">for</span> <span class="s">''</span>, <span class="s">'c'</span>, <span class="s">'cccb'</span>, <span class="s">'b'</span>, <span class="s">'bd'</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  canonical(%-8s) = %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="n">canonical</span>(<span class="nv">$t</span>, <span class="nv">$s</span>).<span class="nb">so</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>encode(0) = "c"
+  decode(""      ) = 0
+  decode("c"     ) = 0
+  decode("cc"    ) = 0
+  decode("cccb"  ) = 1
+  decode("b"     ) = 1
+
+so "", "c", "cc" and "ccc…" are all ID 0, and "cccb" and "b" are
+both ID 1.
+
+if you use these as URL slugs or database keys, they are NOT
+canonical: an attacker, or a careless cache, can mint unlimited
+distinct strings for the same record.
+
+the empty string is particularly easy to hit, because .comb of ""
+is the empty set, which trivially satisfies the argument constraint.
+
+check for canonicity yourself:
+  canonical(""      ) = False
+  canonical("c"     ) = True
+  canonical("cccb"  ) = False
+  canonical("b"     ) = True
+  canonical("bd"    ) = True</code></pre></div>
+<h2 id="what-it-refuses">What it refuses <a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyid/04-refusals.raku" title="This example as a file: 04-refusals.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyID</span>;
+
+<span class="k">for</span> <span class="s">'aba'</span>, <span class="s">'a'</span>, <span class="s">''</span> -&gt; <span class="nv">$key</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">TinyID</span>.<span class="nb">new</span>(:<span class="nv">$key</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  new(key =&gt; %-8s) -&gt; %s'</span>, <span class="nv">$key</span>.<span class="nb">raku</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'built'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the key must have at least two DISTINCT characters — the constraint'</span>;
+<span class="nb">say</span> <span class="s">'is  .chars &gt;= 2 and not /(.).*$0/'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">TinyID</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">'cbad'</span>);
+<span class="k">for</span> -<span class="mi">1</span>, <span class="s">'z'</span> -&gt; <span class="nv">$bad</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$bad</span> ~~ <span class="nb">Int</span> ?? <span class="nv">$t</span>.<span class="n">encode</span>(<span class="nv">$bad</span>) !! <span class="nv">$t</span>.<span class="n">decode</span>(<span class="nv">$bad</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>,
+                <span class="nv">$bad</span> ~~ <span class="nb">Int</span> ?? <span class="s">&quot;encode($bad)&quot;</span> !! <span class="s">&quot;decode({$bad.raku})&quot;</span>,
+                <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="nv">$r</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a character outside the key, and a negative id, are both binding'</span>;
+<span class="nb">say</span> <span class="s">'failures rather than wrong answers.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  new(key =&gt; "aba"   ) -&gt; refused
+  new(key =&gt; "a"     ) -&gt; refused
+  new(key =&gt; ""      ) -&gt; refused
+
+the key must have at least two DISTINCT characters — the constraint
+is  .chars &gt;= 2 and not /(.).*$0/
+
+  encode(-1)   -&gt; refused
+  decode("z")  -&gt; refused
+
+a character outside the key, and a negative id, are both binding
+failures rather than wrong answers.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing in the encoding. Only the wording of the refusals: Raku++'s constraint messages omit Rakudo's trailing <code>expected … but got …</code> clause, and a missing <code>:key</code> raises a different exception class on each engine. Catch, do not match.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyid/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyID</span>;
+
+<span class="c1"># a slug helper with the canonicity check the module does not do</span>
+<span class="k">class</span> <span class="n">Slugs</span> {
+    <span class="k">has</span> <span class="n">TinyID</span> <span class="nv">$.codec</span>;
+    <span class="k">method</span> <span class="n">new</span>(<span class="nb">Str</span> :<span class="nv">$key</span>) { <span class="nb">self</span>.<span class="nb">bless</span>(<span class="n">codec</span> =&gt; <span class="n">TinyID</span>.<span class="nb">new</span>(:<span class="nv">$key</span>)) }
+    <span class="k">method</span> <span class="n">encode</span>(<span class="nb">UInt</span> <span class="nv">$n</span>) { <span class="nv">$!codec</span>.<span class="n">encode</span>(<span class="nv">$n</span>) }
+    <span class="k">method</span> <span class="n">decode</span>(<span class="nb">Str</span> <span class="nv">$s</span>) {
+        <span class="k">my</span> <span class="nv">$n</span> = <span class="nv">$!codec</span>.<span class="n">decode</span>(<span class="nv">$s</span>);
+        <span class="nb">die</span> <span class="s">&quot;non-canonical slug: {$s.raku}&quot;</span> <span class="k">unless</span> <span class="nv">$!codec</span>.<span class="n">encode</span>(<span class="nv">$n</span>) <span class="n">eq</span> <span class="nv">$s</span>;
+        <span class="nv">$n</span>
+    }
+}
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">Slugs</span>.<span class="nb">new</span>(<span class="n">key</span> =&gt; <span class="s">'cbad'</span>);
+<span class="nb">say</span> <span class="s">'encode(1000)     : '</span>, <span class="nv">$s</span>.<span class="n">encode</span>(<span class="mi">1000</span>);
+<span class="nb">say</span> <span class="s">'decode it back   : '</span>, <span class="nv">$s</span>.<span class="n">decode</span>(<span class="nv">$s</span>.<span class="n">encode</span>(<span class="mi">1000</span>));
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$s</span>.<span class="n">decode</span>(<span class="s">'cccb'</span>);
+<span class="nb">say</span> <span class="s">'decode(&quot;cccb&quot;)   : '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>encode(1000)     : ddaac
+decode it back   : 1000
+decode("cccb")   : non-canonical slug: "cccb"</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

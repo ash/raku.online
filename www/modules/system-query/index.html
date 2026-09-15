@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System::Query — The Raku Ecosystem, Working</title>
+<meta name="description" content="Collapses a nested config by environment, distro, kernel or backend — and `by-kernel` reads `$*DISTRO`.">
+<link rel="canonical" href="https://raku.online/modules/system-query/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="System::Query — The Raku Ecosystem, Working">
+<meta property="og:description" content="Collapses a nested config by environment, distro, kernel or backend — and `by-kernel` reads `$*DISTRO`.">
+<meta property="og:url" content="https://raku.online/modules/system-query/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"System::Query","description":"Collapses a nested config by environment, distro, kernel or backend — and `by-kernel` reads `$*DISTRO`.","programmingLanguage":"Raku","version":"0.1.6","url":"https://raku.online/modules/system-query/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/tony-o/p6-warthog.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · configuration</div><h1>System::Query</h1><span class="status st-div">Divergent</span></div><p class="summary">Collapses a nested config by environment, distro, kernel or backend — and <code>by-kernel</code> reads <code>$*DISTRO</code>.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.6</code> <span class="fact-sub">zef:tony-o</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tony-o/System::Query">raku.land</a> · <a href="git://github.com/tony-o/p6-warthog.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install System::Query</code></pre></div><p class="fact-sub"><code>zef install System::Query</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>One configuration file, several machines. This distribution lets the file carry its own branches — <code>by-env.DEPLOY_MODE</code>, <code>by-distro.name</code>, <code>by-kernel.name</code> — and collapses them against the running system, leaving a plain structure behind.</p>
+<h2 id="collapsing">Collapsing <a class="anchor" href="#collapsing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/system-query/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">System::Query</span>;
+
+<span class="k">my</span> <span class="nv">%*ENV-SPIKE</span>;   <span class="c1"># not used; the module reads the real %*ENV</span>
+{
+    <span class="k">my</span> <span class="nv">%*ENV</span> = <span class="n">SPIKE_MODE</span> =&gt; <span class="s">'blue'</span>;
+    <span class="k">my</span> <span class="nv">%config</span> = %(
+        <span class="s">'by-env.SPIKE_MODE'</span> =&gt; %( <span class="n">blue</span> =&gt; <span class="s">'chose blue'</span>, <span class="n">green</span> =&gt; <span class="s">'chose green'</span> ),
+    );
+    <span class="nb">say</span> <span class="s">'by-env      : '</span>, <span class="n">system-collapse</span>(<span class="nv">%config</span>).<span class="nb">raku</span>;
+
+    <span class="nb">say</span> <span class="s">'by-env-exists, set   : '</span>, <span class="n">system-collapse</span>(%(
+        <span class="s">'by-env-exists.SPIKE_MODE'</span> =&gt; %( <span class="n">yes</span> =&gt; <span class="s">'present'</span>, <span class="k">no</span> =&gt; <span class="s">'absent'</span> ))).<span class="nb">raku</span>;
+    <span class="nb">say</span> <span class="s">'by-env-exists, unset : '</span>, <span class="n">system-collapse</span>(%(
+        <span class="s">'by-env-exists.NO_SUCH'</span> =&gt; %( <span class="n">yes</span> =&gt; <span class="s">'present'</span>, <span class="k">no</span> =&gt; <span class="s">'absent'</span> ))).<span class="nb">raku</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="nb">say</span> <span class="s">'a branch with no matching key is a hard die, so give every'</span>;
+    <span class="nb">say</span> <span class="s">'by-env a catch-all or be sure of the value:'</span>;
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">system-collapse</span>(%( <span class="s">'by-env.SPIKE_MODE'</span> =&gt; %( <span class="n">green</span> =&gt; <span class="s">'only green'</span> ) ));
+    <span class="nb">say</span> <span class="s">'  no branch for &quot;blue&quot; -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a non-Hash, non-Array value is returned unchanged:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">system-collapse</span>(<span class="s">'a bare string'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">system-collapse</span>(<span class="mi">42</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>by-env      : "chose blue"
+by-env-exists, set   : "present"
+by-env-exists, unset : "absent"
+
+a branch with no matching key is a hard die, so give every
+by-env a catch-all or be sure of the value:
+  no branch for "blue" -&gt; refused
+
+a non-Hash, non-Array value is returned unchanged:
+  "a bare string"
+  42</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/system-query/02-distro.raku" title="This example as a file: 02-distro.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">System::Query</span>;
+
+<span class="nb">say</span> <span class="s">'the reference points on this machine:'</span>;
+<span class="nb">say</span> <span class="s">'  $*DISTRO.name = '</span>, <span class="nv">$*DISTRO</span>.<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  $*KERNEL.name = '</span>, <span class="nv">$*KERNEL</span>.<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%config</span> = %( <span class="s">&quot;by-distro.name&quot;</span> =&gt; %( <span class="nv">$*DISTRO</span>.<span class="n">name</span> =&gt; <span class="s">'the distro branch'</span>,
+                                       <span class="s">''</span>           =&gt; <span class="s">'fallback'</span> ) );
+<span class="nb">say</span> <span class="s">'by-distro.name : '</span>, <span class="n">system-collapse</span>(<span class="nv">%config</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">&quot;the '' key is a catch-all, and version keys take a + or - suffix:&quot;</span>;
+<span class="k">my</span> <span class="nv">%ver</span> = %( <span class="s">'by-distro.version'</span> =&gt; %( <span class="s">'0.0.1+'</span> =&gt; <span class="s">'at least 0.0.1'</span> ) );
+<span class="nb">say</span> <span class="s">'by-distro.version : '</span>, <span class="n">system-collapse</span>(<span class="nv">%ver</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the reference points on this machine:
+  $*DISTRO.name = macos
+  $*KERNEL.name = darwin
+
+by-distro.name : "the distro branch"
+
+the '' key is a catch-all, and version keys take a + or - suffix:
+by-distro.version : "at least 0.0.1"</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>by-kernel</code> and <code>by-backend</code> both read <code>$*DISTRO</code>. The code selects the right object and then never uses it.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/system-query/03-wrong-object.raku" title="This example as a file: 03-wrong-object.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">System::Query</span>;
+
+<span class="nb">say</span> <span class="s">'the module`s own line is:'</span>;
+<span class="nb">say</span> <span class="s">'  my $PTR   = $/[0] eq &quot;distro&quot; ?? $*DISTRO !! … !! $*BACKEND;'</span>;
+<span class="nb">say</span> <span class="s">'  my $value = follower($path, 1, $*DISTRO);   # $PTR discarded'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%by-kernel-real</span> = %( <span class="s">&quot;by-kernel.name&quot;</span> =&gt; %( <span class="nv">$*KERNEL</span>.<span class="n">name</span> =&gt; <span class="s">'kernel branch'</span> ) );
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">system-collapse</span>(<span class="nv">%by-kernel-real</span>);
+<span class="nb">say</span> <span class="s">'by-kernel keyed on the real kernel name : '</span>,
+    <span class="nv">$!</span> ?? <span class="s">'FAILS — no such value in $*DISTRO'</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%by-kernel-distro</span> = %( <span class="s">&quot;by-kernel.name&quot;</span> =&gt; %( <span class="nv">$*DISTRO</span>.<span class="n">name</span> =&gt; <span class="s">'distro branch'</span> ) );
+<span class="nb">say</span> <span class="s">'by-kernel keyed on the DISTRO name      : '</span>,
+    <span class="n">system-collapse</span>(<span class="nv">%by-kernel-distro</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so a config keyed on the real kernel fails, and one keyed on the'</span>;
+<span class="nb">say</span> <span class="s">'distro silently satisfies a by-kernel query. Where the two names'</span>;
+<span class="nb">say</span> <span class="s">'happen to coincide you get a silently wrong answer, not a crash.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'use by-distro, and say what you mean.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the module`s own line is:
+  my $PTR   = $/[0] eq "distro" ?? $*DISTRO !! … !! $*BACKEND;
+  my $value = follower($path, 1, $*DISTRO);   # $PTR discarded
+
+by-kernel keyed on the real kernel name : FAILS — no such value in $*DISTRO
+
+by-kernel keyed on the DISTRO name      : "distro branch"
+
+so a config keyed on the real kernel fails, and one keyed on the
+distro silently satisfies a by-kernel query. Where the two names
+happen to coincide you get a silently wrong answer, not a crash.
+
+use by-distro, and say what you mean.</code></pre></div>
+<h2 id="a-by--key-hijacks-its-whole-hash">A <code>by-*</code> key hijacks its whole hash <a class="anchor" href="#a-by--key-hijacks-its-whole-hash" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/system-query/04-siblings.raku" title="This example as a file: 04-siblings.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">System::Query</span>;
+
+{
+    <span class="k">my</span> <span class="nv">%*ENV</span> = <span class="n">SPIKE_MODE</span> =&gt; <span class="s">'blue'</span>;
+    <span class="k">my</span> <span class="nv">%config</span> = %(
+        <span class="n">keep</span>                =&gt; <span class="s">'kept?'</span>,
+        <span class="n">also</span>                =&gt; <span class="s">'also kept?'</span>,
+        <span class="s">'by-env.SPIKE_MODE'</span> =&gt; %( <span class="n">blue</span> =&gt; <span class="s">'branch value'</span> ),
+    );
+    <span class="nb">say</span> <span class="s">'input keys  : '</span>, <span class="nv">%config</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+    <span class="nb">say</span> <span class="s">'output      : '</span>, <span class="n">system-collapse</span>(<span class="nv">%config</span>).<span class="nb">raku</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="nb">say</span> <span class="s">'the `when` branches RETURN from system-collapse outright, so'</span>;
+    <span class="nb">say</span> <span class="s">'sibling keys at the same level are silently discarded.'</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="nb">say</span> <span class="s">'and with two by-* siblings, the winner is whichever key .keys'</span>;
+    <span class="nb">say</span> <span class="s">'yields first — which varies BETWEEN PROCESSES on Rakudo and is'</span>;
+    <span class="nb">say</span> <span class="s">'stable on Raku++. A config that looks deterministic in'</span>;
+    <span class="nb">say</span> <span class="s">'development is not.'</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="nb">say</span> <span class="s">'keep a by-* key alone in its own hash.'</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input keys  : also, by-env.SPIKE_MODE, keep
+output      : "branch value"
+
+the `when` branches RETURN from system-collapse outright, so
+sibling keys at the same level are silently discarded.
+
+and with two by-* siblings, the winner is whichever key .keys
+yields first — which varies BETWEEN PROCESSES on Rakudo and is
+stable on Raku++. A config that looks deterministic in
+development is not.
+
+keep a by-* key alone in its own hash.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Three. <code>$*BACKEND</code> exists under Raku++ (with an undefined <code>.name</code>) and not under Rakudo. Hash iteration order is stable under Raku++ and randomised per process under Rakudo. And an unsuffixed exact version key dies under Rakudo, because <code>%( a =&gt; 1, () )</code> is an odd-element hash initialiser there and an empty slip under Raku++.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/system-query/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">System::Query</span>;
+
+<span class="nb">say</span> <span class="s">'the shapes that behave identically on both engines:'</span>;
+<span class="nb">say</span> <span class="s">'  by-env.NAME          with an explicit &quot;&quot; catch-all'</span>;
+<span class="nb">say</span> <span class="s">'  by-distro.name       keyed on $*DISTRO.name'</span>;
+<span class="nb">say</span> <span class="s">'  by-distro.version    with a + or - suffix on every key'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the ones to avoid:'</span>;
+<span class="nb">say</span> <span class="s">'  by-kernel / by-backend  — they read $*DISTRO'</span>;
+<span class="nb">say</span> <span class="s">'  an exact version key with no suffix — dies on Rakudo'</span>;
+<span class="nb">say</span> <span class="s">'  a &quot;&quot; catch-all on a Version-valued path — substr(*-1) on &quot;&quot; throws'</span>;
+<span class="nb">say</span> <span class="s">'  two by-* keys in one hash — order decides, and order varies'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%safe</span> = %( <span class="s">&quot;by-distro.name&quot;</span> =&gt; %( <span class="nv">$*DISTRO</span>.<span class="n">name</span> =&gt; <span class="s">'match'</span>, <span class="s">''</span> =&gt; <span class="s">'fallback'</span> ) );
+<span class="nb">say</span> <span class="s">'a safe config collapses the same way everywhere : '</span>,
+    <span class="n">system-collapse</span>(<span class="nv">%safe</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the shapes that behave identically on both engines:
+  by-env.NAME          with an explicit "" catch-all
+  by-distro.name       keyed on $*DISTRO.name
+  by-distro.version    with a + or - suffix on every key
+
+the ones to avoid:
+  by-kernel / by-backend  — they read $*DISTRO
+  an exact version key with no suffix — dies on Rakudo
+  a "" catch-all on a Version-valued path — substr(*-1) on "" throws
+  two by-* keys in one hash — order decides, and order varies
+
+a safe config collapses the same way everywhere : "match"</code></pre></div>
+<p>One more Raku++ leniency to know about: <code>$*DISTRO</code> and <code>$*KERNEL</code> have a <code>FALLBACK</code> there that answers any method name, so <code>by-distro.&lt;anything&gt;</code> never fails — the module's own guard rail is disabled.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

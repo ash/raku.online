@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DFM::Parser — The Raku Ecosystem, Working</title>
+<meta name="description" content="A grammar for Delphi form files — no actions, no serialiser, and a number list of more than one number never parses.">
+<link rel="canonical" href="https://raku.online/modules/dfm-parser/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DFM::Parser — The Raku Ecosystem, Working">
+<meta property="og:description" content="A grammar for Delphi form files — no actions, no serialiser, and a number list of more than one number never parses.">
+<meta property="og:url" content="https://raku.online/modules/dfm-parser/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"DFM::Parser","description":"A grammar for Delphi form files — no actions, no serialiser, and a number list of more than one number never parses.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/dfm-parser/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/massa/DFM-Parser.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data formats</div><h1>DFM::Parser</h1><span class="status st-div">Divergent</span></div><p class="summary">A grammar for Delphi form files — no actions, no serialiser, and a number list of more than one number never parses.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">zef:massa</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:massa/DFM::Parser">raku.land</a> · <a href="https://github.com/massa/DFM-Parser.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install DFM::Parser</code></pre></div><p class="fact-sub"><code>zef install DFM::Parser</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A <code>.dfm</code> file is the textual form of a Delphi form: nested <code>object … end</code> blocks with <code>Name = Value</code> components. Reading one — to migrate a UI, to audit a legacy application, to extract strings — needs a parser for its small, idiosyncratic syntax.</p>
+<p>This distribution is the grammar. It ships no actions class and no serialiser, so you get a raw <code>Match</code> tree and do your own walking.</p>
+<h2 id="parsing">Parsing <a class="anchor" href="#parsing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dfm-parser/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DFM::Parser</span>;
+
+<span class="k">my</span> <span class="nv">$dfm</span> = <span class="s">q:to/END/</span>;
+<span class="s">object Form1: TForm1
+  Left = 192
+  Caption = 'Hello'
+  Font.Height = -11
+  object Panel1: TPanel
+    Align = alTop
+  end
+end
+END
+</span>
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="nv">$dfm</span>);
+<span class="nb">say</span> <span class="s">'parsed      : '</span>, <span class="nv">$m</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'id          : '</span>, <span class="nv">$m</span><span class="s">&lt;object&gt;</span><span class="s">&lt;id&gt;</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'classname   : '</span>, <span class="nv">$m</span><span class="s">&lt;object&gt;</span><span class="s">&lt;classname&gt;</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="nv">$m</span><span class="s">&lt;object&gt;</span><span class="s">&lt;component&gt;</span>.<span class="nb">list</span> -&gt; <span class="nv">$c</span> {
+    <span class="k">if</span> <span class="nv">$c</span><span class="s">&lt;object&gt;</span> {
+        <span class="nb">say</span> <span class="s">'  nested object: '</span>, <span class="nv">$c</span><span class="s">&lt;object&gt;</span><span class="s">&lt;classname&gt;</span>.<span class="nb">Str</span>;
+    } <span class="k">else</span> {
+        <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-14s = %s'</span>, <span class="nv">$c</span><span class="s">&lt;component-name&gt;</span>.<span class="nb">Str</span>, <span class="nv">$c</span><span class="s">&lt;component-value&gt;</span>.<span class="nb">Str</span>.<span class="nb">trim</span>);
+    }
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parsed      : True
+id          : Form1
+classname   : TForm1
+
+  Left           = 192
+  Caption        = 'Hello'
+  Font.Height    = -11
+  nested object: TPanel</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A number list with more than one number never parses.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dfm-parser/02-number-list.raku" title="This example as a file: 02-number-list.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DFM::Parser</span>;
+
+<span class="k">for</span> <span class="s">'(1 2)'</span>, <span class="s">'(1)'</span>, <span class="s">'()'</span>, <span class="s">&quot;('a' 'b')&quot;</span> -&gt; <span class="nv">$v</span> {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="nv">$v</span>, <span class="k">rule</span> =&gt; <span class="s">'component-value'</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  component-value %-10s -&gt; %s'</span>, <span class="nv">$v</span>.<span class="nb">raku</span>, <span class="nv">$m</span>.<span class="nb">defined</span> ?? <span class="s">'MATCH'</span> !! <span class="s">'no match'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'number-list is a `rule` whose body is &lt;number&gt;*, and `number` is a'</span>;
+<span class="nb">say</span> <span class="s">'`token` — so nothing eats the whitespace BETWEEN repetitions. A'</span>;
+<span class="nb">say</span> <span class="s">'rule`s implicit &lt;.ws&gt; sits after the quantified atom, not inside it.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'string-list survives only because `string` is itself a rule and'</span>;
+<span class="nb">say</span> <span class="s">'swallows its own trailing space.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'any real .dfm containing a Left = (0 0 100 100) fails outright, and'</span>;
+<span class="nb">say</span> <span class="s">'you get Nil, not a diagnostic.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  component-value "(1 2)"    -&gt; no match
+  component-value "(1)"      -&gt; MATCH
+  component-value "()"       -&gt; MATCH
+  component-value "('a' 'b')" -&gt; MATCH
+
+number-list is a `rule` whose body is &lt;number&gt;*, and `number` is a
+`token` — so nothing eats the whitespace BETWEEN repetitions. A
+rule`s implicit &lt;.ws&gt; sits after the quantified atom, not inside it.
+
+string-list survives only because `string` is itself a rule and
+swallows its own trailing space.
+
+any real .dfm containing a Left = (0 0 100 100) fails outright, and
+you get Nil, not a diagnostic.</code></pre></div>
+<h2 id="every-failure-is-nil">Every failure is <code>Nil</code> <a class="anchor" href="#every-failure-is-nil" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dfm-parser/03-failures.raku" title="This example as a file: 03-failures.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DFM::Parser</span>;
+
+<span class="k">my</span> <span class="nv">%cases</span> =
+    <span class="s">'well formed'</span>      =&gt; <span class="s">&quot;object A: TA\n  X = 1\nend\n&quot;</span>,
+    <span class="s">'missing end'</span>      =&gt; <span class="s">&quot;object A: TA\n  X = 1\n&quot;</span>,
+    <span class="s">'total garbage'</span>    =&gt; <span class="s">&quot;not a form at all\n&quot;</span>,
+    <span class="s">'empty string'</span>     =&gt; <span class="s">''</span>,
+    <span class="s">'unterminated str'</span> =&gt; <span class="s">&quot;object A: TA\n  X = 'oops\nend\n&quot;</span>;
+
+<span class="k">for</span> <span class="nv">%cases</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="nv">%cases</span>{<span class="nv">$k</span>});
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-18s -&gt; defined=%-6s isFailure=%s'</span>,
+                <span class="nv">$k</span>, <span class="nv">$m</span>.<span class="nb">defined</span>, (<span class="nv">$m</span> ~~ <span class="nb">Failure</span>).<span class="nb">so</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'never an exception, never a Failure — always Nil. And the failure is'</span>;
+<span class="nb">say</span> <span class="s">'easy to miss, because indexing the result gives silent garbage:'</span>;
+<span class="k">my</span> <span class="nv">$bad</span> = <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="s">'garbage'</span>);
+<span class="nb">say</span> <span class="s">'  $bad&lt;object&gt;          : '</span>, <span class="nv">$bad</span><span class="s">&lt;object&gt;</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  $bad&lt;o&gt;&lt;c&gt;.elems      : '</span>, <span class="nv">$bad</span><span class="s">&lt;o&gt;</span><span class="s">&lt;c&gt;</span>.<span class="nb">elems</span>, <span class="s">'   &lt;- Any.elems is 1'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'test .defined on the result; never trust .elems of a chained subscript.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  empty string       -&gt; defined=False  isFailure=False
+  missing end        -&gt; defined=False  isFailure=False
+  total garbage      -&gt; defined=False  isFailure=False
+  unterminated str   -&gt; defined=False  isFailure=False
+  well formed        -&gt; defined=True   isFailure=False
+
+never an exception, never a Failure — always Nil. And the failure is
+easy to miss, because indexing the result gives silent garbage:
+  $bad&lt;object&gt;          : Any
+  $bad&lt;o&gt;&lt;c&gt;.elems      : 1   &lt;- Any.elems is 1
+
+test .defined on the result; never trust .elems of a chained subscript.</code></pre></div>
+<h2 id="what-the-grammar-does-not-check">What the grammar does not check <a class="anchor" href="#what-the-grammar-does-not-check" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dfm-parser/04-lax.raku" title="This example as a file: 04-lax.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DFM::Parser</span>;
+
+<span class="k">my</span> <span class="nv">%cases</span> =
+    <span class="s">'spaced slashes'</span>     =&gt; <span class="s">&quot;object A / TA\nend\n&quot;</span>,
+    <span class="s">'nine on rank one'</span>   =&gt; <span class="s">&quot;object A: TA\n  X = 1\nend\n&quot;</span>,
+    <span class="s">'seven ranks only'</span>   =&gt; <span class="s">&quot;object A: TA\nend\n&quot;</span>,
+    <span class="s">'dotted name'</span>        =&gt; <span class="s">&quot;object A: TA\n  Font.Height = -11\nend\n&quot;</span>,
+    <span class="s">'hashtag char'</span>       =&gt; <span class="s">&quot;object A: TA\n  S = #65#66\nend\n&quot;</span>;
+<span class="k">for</span> <span class="nv">%cases</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-20s -&gt; %s'</span>, <span class="nv">$k</span>,
+                <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="nv">%cases</span>{<span class="nv">$k</span>}).<span class="nb">defined</span> ?? <span class="s">'parses'</span> !! <span class="s">'no parse'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'TOP accepts exactly ONE object and is not anchored for leading'</span>;
+<span class="nb">say</span> <span class="s">'comments, so a real file with a header or two top-level objects will'</span>;
+<span class="nb">say</span> <span class="s">'not parse either.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  dotted name          -&gt; parses
+  hashtag char         -&gt; parses
+  nine on rank one     -&gt; parses
+  seven ranks only     -&gt; parses
+  spaced slashes       -&gt; no parse
+
+TOP accepts exactly ONE object and is not anchored for leading
+comments, so a real file with a header or two top-level objects will
+not parse either.</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Bracketed identifier sets — <code>BorderIcons = [biSystemMenu, biMinimize]</code>, which almost every real form has — are unreachable through <code>component-value</code> under Raku++, although <code>:rule&lt;dset&gt;</code> matches them directly there.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/dfm-parser/05-dset.raku" title="This example as a file: 05-dset.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">DFM::Parser</span>;
+
+<span class="nb">say</span> <span class="s">'the rule matches on its own:'</span>;
+<span class="nb">say</span> <span class="s">'  :rule&lt;dset&gt; on &quot;[a, b]&quot; -&gt; '</span>,
+    <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="s">'[a, b]'</span>, <span class="k">rule</span> =&gt; <span class="s">'dset'</span>).<span class="nb">defined</span> ?? <span class="s">'MATCH'</span> !! <span class="s">'no match'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'reaching it through component-value is engine-dependent — Raku++`s'</span>;
+<span class="nb">say</span> <span class="s">'longest-token alternation cannot select a branch containing a'</span>;
+<span class="nb">say</span> <span class="s">'%-separated quantifier, so a form with a BorderIcons line parses on'</span>;
+<span class="nb">say</span> <span class="s">'Rakudo and fails on Raku++.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the rule will not accept internal spaces on either engine:'</span>;
+<span class="k">for</span> <span class="s">'[a,b]'</span>, <span class="s">'[a, b]'</span>, <span class="s">'[ a , b ]'</span> -&gt; <span class="nv">$v</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-12s -&gt; %s'</span>, <span class="nv">$v</span>.<span class="nb">raku</span>,
+                <span class="n">DFM::Parser</span>.<span class="n">parse</span>(<span class="nv">$v</span>, <span class="k">rule</span> =&gt; <span class="s">'dset'</span>).<span class="nb">defined</span> ?? <span class="s">'MATCH'</span> !! <span class="s">'no match'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the rule matches on its own:
+  :rule&lt;dset&gt; on "[a, b]" -&gt; MATCH
+
+reaching it through component-value is engine-dependent — Raku++`s
+longest-token alternation cannot select a branch containing a
+%-separated quantifier, so a form with a BorderIcons line parses on
+Rakudo and fails on Raku++.
+
+and the rule will not accept internal spaces on either engine:
+  "[a,b]"      -&gt; MATCH
+  "[a, b]"     -&gt; MATCH
+  "[ a , b ]"  -&gt; no match</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

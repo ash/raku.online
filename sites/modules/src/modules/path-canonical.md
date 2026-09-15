@@ -1,6 +1,6 @@
 ---
 name: Path::Canonical
-version: "*"
+version: *
 auth: github:mattn
 kind: Distribution · paths
 summary: Collapses `.`, `//` and `..` in a path string — textually, never

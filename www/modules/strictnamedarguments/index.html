@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StrictNamedArguments — The Raku Ecosystem, Working</title>
+<meta name="description" content="An `is strict` trait that makes a method reject named arguments it did not declare — and silently breaks `callsame`.">
+<link rel="canonical" href="https://raku.online/modules/strictnamedarguments/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="StrictNamedArguments — The Raku Ecosystem, Working">
+<meta property="og:description" content="An `is strict` trait that makes a method reject named arguments it did not declare — and silently breaks `callsame`.">
+<meta property="og:url" content="https://raku.online/modules/strictnamedarguments/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"StrictNamedArguments","description":"An `is strict` trait that makes a method reject named arguments it did not declare — and silently breaks `callsame`.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/strictnamedarguments/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/nxadm/StrictNamedArguments.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · language</div><h1>StrictNamedArguments</h1><span class="status st-div">Divergent</span></div><p class="summary">An <code>is strict</code> trait that makes a method reject named arguments it did not declare — and silently breaks <code>callsame</code>.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">github:nxadm</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:nxadm/StrictNamedArguments">raku.land</a> · <a href="git://github.com/nxadm/StrictNamedArguments.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install StrictNamedArguments</code></pre></div><p class="fact-sub"><code>zef install StrictNamedArguments</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Raku methods carry an implicit <code>*%_</code>, so an unknown named argument is swallowed rather than refused. <code>$obj.go(:verbsoe)</code> runs happily and does nothing. This distribution adds a trait that closes that hole for one method at a time.</p>
+<h2 id="using-it">Using it <a class="anchor" href="#using-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/strictnamedarguments/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">StrictNamedArguments</span>;
+
+<span class="k">class</span> <span class="n">Plain</span>   { <span class="k">method</span> <span class="n">go</span>(:<span class="nv">$a</span>) { <span class="s">&quot;plain a=&quot;</span> ~ <span class="nv">$a</span>.<span class="nb">raku</span> } }
+<span class="k">class</span> <span class="n">Guarded</span> { <span class="k">method</span> <span class="n">go</span>(:<span class="nv">$a</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="s">&quot;guard a=&quot;</span> ~ <span class="nv">$a</span>.<span class="nb">raku</span> } }
+
+<span class="nb">say</span> <span class="s">'plain,   good named  : '</span>, <span class="n">Plain</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">a</span> =&gt; <span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'plain,   EXTRA named : '</span>, <span class="n">Plain</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">a</span> =&gt; <span class="mi">1</span>, <span class="n">bogus</span> =&gt; <span class="mi">2</span>), <span class="s">'   &lt;- swallowed'</span>;
+<span class="nb">say</span> <span class="s">'guarded, good named  : '</span>, <span class="n">Guarded</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">a</span> =&gt; <span class="mi">1</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Guarded</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">a</span> =&gt; <span class="mi">1</span>, <span class="n">bogus</span> =&gt; <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'guarded, EXTRA named : '</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="nv">$r</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the exception carries the detail:'</span>;
+<span class="k">try</span> <span class="n">Guarded</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">a</span> =&gt; <span class="mi">1</span>, <span class="n">bogus</span> =&gt; <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'  class           : '</span>, <span class="nv">$!</span>.^<span class="n">name</span>.<span class="n">subst</span>(<span class="s">'StrictNamedArguments::'</span>, <span class="s">''</span>);
+<span class="nb">say</span> <span class="s">'  extra-parameters: '</span>, <span class="nv">$!</span>.<span class="n">extra-parameters</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">', '</span>);
+<span class="nb">say</span> <span class="s">'  method-name     : '</span>, <span class="nv">$!</span>.<span class="n">method-name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>plain,   good named  : plain a=1
+plain,   EXTRA named : plain a=1   &lt;- swallowed
+guarded, good named  : guard a=1
+guarded, EXTRA named : refused
+
+the exception carries the detail:
+  class           : X::Parameter::ExtraNamed
+  extra-parameters: bogus
+  method-name     : go</code></pre></div>
+<h2 id="two-holes-in-the-guard">Two holes in the guard <a class="anchor" href="#two-holes-in-the-guard" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/strictnamedarguments/02-holes.raku" title="This example as a file: 02-holes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">StrictNamedArguments</span>;
+
+<span class="k">class</span> <span class="n">Guarded</span> { <span class="k">method</span> <span class="n">go</span>(:<span class="nv">$a</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="s">&quot;a=&quot;</span> ~ <span class="nv">$a</span>.<span class="nb">raku</span> } }
+<span class="nb">say</span> <span class="s">'the implicit *%_ contributes the NAME &quot;_&quot;, so :_ is always accepted:'</span>;
+<span class="nb">say</span> <span class="s">'  .go(:_(9)) -&gt; '</span>, <span class="n">Guarded</span>.<span class="nb">new</span>.<span class="n">go</span>(:<span class="n">_</span>(<span class="mi">9</span>));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">class</span> <span class="n">Slurpy</span> { <span class="k">method</span> <span class="n">go</span>(:<span class="nv">$rest</span>, *<span class="nv">%more</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="s">&quot;rest=&quot;</span> ~ <span class="nv">$rest</span>.<span class="nb">raku</span> } }
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Slurpy</span>.<span class="nb">new</span>.<span class="n">go</span>(<span class="n">rest</span> =&gt; <span class="mi">1</span>, <span class="n">zz</span> =&gt; <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'and an EXPLICIT *%more slurpy is refused everything but :rest:'</span>;
+<span class="nb">say</span> <span class="s">'  .go(rest =&gt; 1, zz =&gt; 2) -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="nv">$r</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the trait makes an explicit slurpy unusable, and leaves one'</span>;
+<span class="nb">say</span> <span class="s">'undeclared named argument permanently open.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the implicit *%_ contributes the NAME "_", so :_ is always accepted:
+  .go(:_(9)) -&gt; a=Any
+
+and an EXPLICIT *%more slurpy is refused everything but :rest:
+  .go(rest =&gt; 1, zz =&gt; 2) -&gt; refused
+
+so the trait makes an explicit slurpy unusable, and leaves one
+undeclared named argument permanently open.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>is strict</code> silently breaks <code>callsame</code> and <code>nextsame</code> — the base-class method is never called.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/strictnamedarguments/03-callsame.raku" title="This example as a file: 03-callsame.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">StrictNamedArguments</span>;
+
+<span class="k">class</span> <span class="n">B</span> { <span class="k">method</span> <span class="n">g</span>(:<span class="nv">$a</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="s">&quot;B a=&quot;</span> ~ <span class="nv">$a</span>.<span class="nb">raku</span> } }
+<span class="k">class</span> <span class="n">D</span> <span class="k">is</span> <span class="n">B</span> { <span class="k">method</span> <span class="n">g</span>(:<span class="nv">$a</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="s">&quot;D(&quot;</span> ~ (<span class="n">callsame</span>() // <span class="s">'Nil'</span>) ~ <span class="s">&quot;)&quot;</span> } }
+<span class="k">class</span> <span class="n">E</span> <span class="k">is</span> <span class="n">B</span> { }
+
+<span class="nb">say</span> <span class="s">'inheritance without an override is fine:'</span>;
+<span class="nb">say</span> <span class="s">'  E.new.g(a =&gt; 2) -&gt; '</span>, <span class="n">E</span>.<span class="nb">new</span>.<span class="n">g</span>(<span class="n">a</span> =&gt; <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'overriding and calling callsame is not:'</span>;
+<span class="nb">say</span> <span class="s">'  D.new.g(a =&gt; 1) -&gt; B.g never runs, on either engine'</span>;
+<span class="nb">say</span> <span class="s">'  (Rakudo returns D(Nil); Raku++ recurses until X::Recursion)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the wrapper`s callwith(self, |args) destroys the dispatch chain.'</span>;
+<span class="nb">say</span> <span class="s">'Rakudo returns Nil from callsame — a silent wrong answer — and'</span>;
+<span class="nb">say</span> <span class="s">'Raku++ loops until X::Recursion. Neither tells you the trait is the'</span>;
+<span class="nb">say</span> <span class="s">'cause. Do not put `is strict` on a method that delegates upward.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>inheritance without an override is fine:
+  E.new.g(a =&gt; 2) -&gt; B a=2
+
+overriding and calling callsame is not:
+  D.new.g(a =&gt; 1) -&gt; B.g never runs, on either engine
+  (Rakudo returns D(Nil); Raku++ recurses until X::Recursion)
+
+the wrapper`s callwith(self, |args) destroys the dispatch chain.
+Rakudo returns Nil from callsame — a silent wrong answer — and
+Raku++ loops until X::Recursion. Neither tells you the trait is the
+cause. Do not put `is strict` on a method that delegates upward.</code></pre></div>
+<h2 id="where-the-trait-can-go-and-what-leaks">Where the trait can go, and what leaks <a class="anchor" href="#where-the-trait-can-go-and-what-leaks" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/strictnamedarguments/04-scope.raku" title="This example as a file: 04-scope.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">StrictNamedArguments</span>;
+
+<span class="nb">say</span> <span class="s">'the trait is constrained to Method, so:'</span>;
+<span class="nb">say</span> <span class="s">'  method         : accepted'</span>;
+<span class="nb">say</span> <span class="s">'  multi method   : accepted'</span>;
+<span class="nb">say</span> <span class="s">'  sub            : refused by Rakudo, accepted by Raku++'</span>;
+<span class="nb">say</span> <span class="s">'  submethod      : refused by Rakudo, accepted by Raku++'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the difference is that Raku++ reports a `submethod` as a Method and'</span>;
+<span class="nb">say</span> <span class="s">'ignores unknown `is` traits entirely, so the constraint that stops'</span>;
+<span class="nb">say</span> <span class="s">'Rakudo never fires there.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the GUARD leaks even where the TRAIT does not: .wrap mutates the'</span>;
+<span class="nb">say</span> <span class="s">'method object itself, so a class guarded in one compilation unit'</span>;
+<span class="nb">say</span> <span class="s">'stays guarded when another unit calls it — while `is strict` in that'</span>;
+<span class="nb">say</span> <span class="s">'other unit is an unknown trait. The exception type lands in GLOBAL as'</span>;
+<span class="nb">say</span> <span class="s">'X::Parameter::ExtraNamed on both engines, so you can catch it'</span>;
+<span class="nb">say</span> <span class="s">'anywhere:'</span>;
+<span class="k">class</span> <span class="n">G</span> { <span class="k">method</span> <span class="n">go</span>(:<span class="nv">$a</span>) <span class="k">is</span> <span class="n">strict</span> { <span class="nv">$a</span> } }
+<span class="k">try</span> <span class="n">G</span>.<span class="nb">new</span>.<span class="n">go</span>(:<span class="n">zz</span>);
+<span class="nb">say</span> <span class="s">'  caught as X::Parameter::ExtraNamed : '</span>, (<span class="nv">$!</span> ~~ <span class="n">X::Parameter::ExtraNamed</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the trait is constrained to Method, so:
+  method         : accepted
+  multi method   : accepted
+  sub            : refused by Rakudo, accepted by Raku++
+  submethod      : refused by Rakudo, accepted by Raku++
+
+the difference is that Raku++ reports a `submethod` as a Method and
+ignores unknown `is` traits entirely, so the constraint that stops
+Rakudo never fires there.
+
+and the GUARD leaks even where the TRAIT does not: .wrap mutates the
+method object itself, so a class guarded in one compilation unit
+stays guarded when another unit calls it — while `is strict` in that
+other unit is an unknown trait. The exception type lands in GLOBAL as
+X::Parameter::ExtraNamed on both engines, so you can catch it
+anywhere:
+  caught as X::Parameter::ExtraNamed : True</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Beyond <code>callsame</code> above: Raku++ silently ignores unknown <code>is</code> traits, so a typo'd trait name is a no-op there and a compile error on Rakudo; the invocant parameter's <code>.type</code> is <code>Mu</code> rather than the class, which is why Raku++'s message says "The method go of Mu"; and extra <strong>positionals</strong> to a method are not rejected at all under Raku++.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/strictnamedarguments/05-positionals.raku" title="This example as a file: 05-positionals.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">StrictNamedArguments</span>;
+
+<span class="k">class</span> <span class="n">P</span> { <span class="k">method</span> <span class="n">g</span>(:<span class="nv">$a</span>) { <span class="s">&quot;a=&quot;</span> ~ <span class="nv">$a</span>.<span class="nb">raku</span> } }
+<span class="nb">say</span> <span class="s">'P.new.g(99) — one extra positional, no trait:'</span>;
+<span class="nb">say</span> <span class="s">'  engine-dependent: refused by Rakudo, accepted by Raku++'</span>;
+<span class="nb">say</span> <span class="s">'  (and where it is accepted, the 99 simply vanishes)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Rakudo raises &quot;Too many positionals passed&quot;; Raku++ accepts it.'</span>;
+<span class="nb">say</span> <span class="s">'`is strict` does not help — it only inspects NAMED arguments. If you'</span>;
+<span class="nb">say</span> <span class="s">'want both checked, give the method an explicit empty positional'</span>;
+<span class="nb">say</span> <span class="s">'signature and let the engine do it:'</span>;
+<span class="k">class</span> <span class="s">Q { method g(:$a) { &quot;a=&quot; ~ $a.raku } }</span>
+<span class="nb">say</span> <span class="s">'  a plain method is as strict about positionals as your engine is.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>P.new.g(99) — one extra positional, no trait:
+  engine-dependent: refused by Rakudo, accepted by Raku++
+  (and where it is accepted, the 99 simply vanishes)
+
+Rakudo raises "Too many positionals passed"; Raku++ accepts it.
+`is strict` does not help — it only inspects NAMED arguments. If you
+want both checked, give the method an explicit empty positional
+signature and let the engine do it:
+  a plain method is as strict about positionals as your engine is.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

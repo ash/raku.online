@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math::Zeckendorf — The Raku Ecosystem, Working</title>
+<meta name="description" content="The unique sum of non-consecutive Fibonacci numbers, and its dual — as digits or as the numbers themselves, except through a list.">
+<link rel="canonical" href="https://raku.online/modules/math-zeckendorf/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Math::Zeckendorf — The Raku Ecosystem, Working">
+<meta property="og:description" content="The unique sum of non-consecutive Fibonacci numbers, and its dual — as digits or as the numbers themselves, except through a list.">
+<meta property="og:url" content="https://raku.online/modules/math-zeckendorf/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Math::Zeckendorf","description":"The unique sum of non-consecutive Fibonacci numbers, and its dual — as digits or as the numbers themselves, except through a list.","programmingLanguage":"Raku","version":"0.0.5","url":"https://raku.online/modules/math-zeckendorf/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/coke/math-zeckendorf.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · numbers</div><h1>Math::Zeckendorf</h1><span class="status st-full">Works</span></div><p class="summary">The unique sum of non-consecutive Fibonacci numbers, and its dual — as digits or as the numbers themselves, except through a list.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.5</code> <span class="fact-sub">zef:coke</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:coke/Math::Zeckendorf">raku.land</a> · <a href="https://github.com/coke/math-zeckendorf.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Math::Zeckendorf</code></pre></div><p class="fact-sub"><code>zef install Math::Zeckendorf</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Zeckendorf's theorem says every positive integer is a sum of non-consecutive Fibonacci numbers, in exactly one way. That gives a positional representation with a curious property — no two adjacent 1s — which shows up in Fibonacci coding, in golden-ratio base conversions and in puzzle problems.</p>
+<p>The dual ("lazy") representation is the other unique form: no two adjacent zeros.</p>
+<h2 id="both-representations">Both representations <a class="anchor" href="#both-representations" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-zeckendorf/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Zeckendorf</span>;
+
+<span class="k">for</span> <span class="mi">1</span>, <span class="mi">4</span>, <span class="mi">12</span>, <span class="mi">20</span>, <span class="mi">100</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">@d</span> = <span class="n">zeckendorf-representation</span>(<span class="nv">$n</span>);
+    <span class="k">my</span> <span class="nv">@f</span> = <span class="n">zeckendorf-representation</span>(<span class="nv">$n</span>, :<span class="n">numbers</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %3d  digits %-14s numbers %-14s sum %d'</span>,
+                <span class="nv">$n</span>, <span class="nv">@d</span>.<span class="nb">join</span>, <span class="nv">@f</span>.<span class="nb">join</span>(<span class="s">','</span>), <span class="nv">@f</span>.<span class="nb">sum</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the defining property, over 1..500:'</span>;
+<span class="nb">say</span> <span class="s">'  every one reconstructs   : '</span>,
+    <span class="k">so</span> (<span class="mi">1</span>.<span class="mf">.500</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="n">zeckendorf-representation</span>(<span class="nv">$_</span>, :<span class="n">numbers</span>).<span class="nb">sum</span> == <span class="nv">$_</span> });
+<span class="nb">say</span> <span class="s">'  no two adjacent 1s       : '</span>,
+    <span class="k">so</span> (<span class="mi">1</span>.<span class="mf">.500</span>).<span class="n">all</span>.<span class="nb">map</span>({ !(<span class="n">zeckendorf-representation</span>(<span class="nv">$_</span>).<span class="nb">join</span> ~~ <span class="sr">/11/</span>) });</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>    1  digits 1              numbers 1              sum 1
+    4  digits 101            numbers 3,1            sum 4
+   12  digits 10101          numbers 8,3,1          sum 12
+   20  digits 101010         numbers 13,5,2         sum 20
+  100  digits 1000010100     numbers 89,8,3         sum 100
+
+the defining property, over 1..500:
+  every one reconstructs   : True
+  no two adjacent 1s       : True</code></pre></div>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-zeckendorf/02-dual.raku" title="This example as a file: 02-dual.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Zeckendorf</span>;
+
+<span class="k">for</span> <span class="mi">11</span>, <span class="mi">19</span>, <span class="mi">20</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">@d</span> = <span class="n">dual-zeckendorf-representation</span>(<span class="nv">$n</span>);
+    <span class="k">my</span> <span class="nv">@f</span> = <span class="n">dual-zeckendorf-representation</span>(<span class="nv">$n</span>, :<span class="n">numbers</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %3d  digits %-12s numbers %-14s sum %d'</span>,
+                <span class="nv">$n</span>, <span class="nv">@d</span>.<span class="nb">join</span>, <span class="nv">@f</span>.<span class="nb">join</span>(<span class="s">','</span>), <span class="nv">@f</span>.<span class="nb">sum</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'  every one reconstructs   : '</span>,
+    <span class="k">so</span> (<span class="mi">1</span>.<span class="mf">.500</span>).<span class="n">all</span>.<span class="nb">map</span>({ <span class="n">dual-zeckendorf-representation</span>(<span class="nv">$_</span>, :<span class="n">numbers</span>).<span class="nb">sum</span> == <span class="nv">$_</span> });
+<span class="nb">say</span> <span class="s">'  no two adjacent 0s inside: '</span>,
+    <span class="k">so</span> (<span class="mi">1</span>.<span class="mf">.500</span>).<span class="n">all</span>.<span class="nb">map</span>({ !(<span class="n">dual-zeckendorf-representation</span>(<span class="nv">$_</span>).<span class="nb">join</span> ~~ <span class="sr">/00/</span>) });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'big inputs are fine:'</span>;
+<span class="k">my</span> <span class="nv">@big</span> = <span class="n">zeckendorf-representation</span>(<span class="mi">10</span>**<span class="mi">30</span>, :<span class="n">numbers</span>);
+<span class="nb">say</span> <span class="s">'  10**30 needs '</span>, <span class="n">zeckendorf-representation</span>(<span class="mi">10</span>**<span class="mi">30</span>).<span class="nb">elems</span>, <span class="s">' digits'</span>;
+<span class="nb">say</span> <span class="s">'  and its numbers sum back exactly : '</span>, <span class="nv">@big</span>.<span class="nb">sum</span> == <span class="mi">10</span>**<span class="mi">30</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>   11  digits 1111         numbers 5,3,2,1        sum 11
+   19  digits 11111        numbers 8,5,3,2,1      sum 19
+   20  digits 101010       numbers 13,5,2         sum 20
+
+  every one reconstructs   : True
+  no two adjacent 0s inside: True
+
+big inputs are fine:
+  10**30 needs 144 digits
+  and its numbers sum back exactly : True</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>:numbers</code> is silently dropped whenever the argument is a list.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-zeckendorf/03-numbers-lost.raku" title="This example as a file: 03-numbers-lost.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Zeckendorf</span>;
+
+<span class="nb">say</span> <span class="s">'a bare Int honours the flag:'</span>;
+<span class="nb">say</span> <span class="s">'  zeckendorf-representation(12, :numbers)   = '</span>,
+    <span class="n">zeckendorf-representation</span>(<span class="mi">12</span>, :<span class="n">numbers</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a ONE-ELEMENT list does not:'</span>;
+<span class="nb">say</span> <span class="s">'  zeckendorf-representation((12,), :numbers) = '</span>,
+    <span class="n">zeckendorf-representation</span>((<span class="mi">12</span>,), :<span class="n">numbers</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'nor does a longer one:'</span>;
+<span class="nb">say</span> <span class="s">'  zeckendorf-representation((4, 12), :numbers) = '</span>,
+    <span class="n">zeckendorf-representation</span>((<span class="mi">4</span>, <span class="mi">12</span>), :<span class="n">numbers</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the list candidate is  @nums&gt;&gt;.&amp;zeckendorf-representation.List  —'</span>;
+<span class="nb">say</span> <span class="s">'it never forwards the named argument. The call succeeds, returns a'</span>;
+<span class="nb">say</span> <span class="s">'plausible nested structure, and gives you DIGITS where you asked for'</span>;
+<span class="nb">say</span> <span class="s">'Fibonacci numbers. Since both are arrays of small integers, a'</span>;
+<span class="nb">say</span> <span class="s">'downstream .sum produces a number rather than an error.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'map it yourself:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, (<span class="mi">4</span>, <span class="mi">12</span>).<span class="nb">map</span>({ <span class="n">zeckendorf-representation</span>(<span class="nv">$_</span>, :<span class="n">numbers</span>) }).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a bare Int honours the flag:
+  zeckendorf-representation(12, :numbers)   = [8, 3, 1]
+
+a ONE-ELEMENT list does not:
+  zeckendorf-representation((12,), :numbers) = ([1, 0, 1, 0, 1],)
+
+nor does a longer one:
+  zeckendorf-representation((4, 12), :numbers) = ([1, 0, 1], [1, 0, 1, 0, 1])
+
+the list candidate is  @nums&gt;&gt;.&amp;zeckendorf-representation.List  —
+it never forwards the named argument. The call succeeds, returns a
+plausible nested structure, and gives you DIGITS where you asked for
+Fibonacci numbers. Since both are arrays of small integers, a
+downstream .sum produces a number rather than an error.
+
+map it yourself:
+  ([3, 1], [8, 3, 1]).Seq</code></pre></div>
+<h2 id="two-shapes-to-know">Two shapes to know <a class="anchor" href="#two-shapes-to-know" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-zeckendorf/04-shapes.raku" title="This example as a file: 04-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Zeckendorf</span>;
+
+<span class="nb">say</span> <span class="s">'the two functions return different ELEMENT types:'</span>;
+<span class="k">my</span> <span class="nv">@z</span> = <span class="n">zeckendorf-representation</span>(<span class="mi">12</span>);
+<span class="k">my</span> <span class="nv">@d</span> = <span class="n">dual-zeckendorf-representation</span>(<span class="mi">12</span>);
+<span class="nb">say</span> <span class="s">'  zeckendorf      : '</span>, <span class="nv">@z</span>.<span class="nb">raku</span>, <span class="s">'  element type '</span>, <span class="nv">@z</span>[<span class="mi">0</span>].<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  dual            : '</span>, <span class="nv">@d</span>.<span class="nb">raku</span>, <span class="s">'  element type '</span>, <span class="nv">@d</span>[<span class="mi">0</span>].<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  @z eqv @d       : '</span>, (<span class="nv">@z</span> <span class="n">eqv</span> <span class="nv">@d</span>), <span class="s">'   &lt;- never true, even for equal digits'</span>;
+<span class="nb">say</span> <span class="s">'  joined          : '</span>, <span class="nv">@z</span>.<span class="nb">join</span>.<span class="nb">raku</span>, <span class="s">' vs '</span>, <span class="nv">@d</span>.<span class="nb">join</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the dual builds a string and .combs it; the primary pushes Ints.'</span>;
+<span class="nb">say</span> <span class="s">'.join hides the difference; eqv, == and any numeric use do not.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and zero and negatives return an empty array, not [0] and not a'</span>;
+<span class="nb">say</span> <span class="s">'failure:'</span>;
+<span class="k">for</span> <span class="mi">0</span>, -<span class="mi">5</span> -&gt; <span class="nv">$n</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %3d -&gt; %s'</span>, <span class="nv">$n</span>, <span class="n">zeckendorf-representation</span>(<span class="nv">$n</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two aliases `zeckendorf` and `dual-zeckendorf` ARE importable,'</span>;
+<span class="nb">say</span> <span class="s">'though introspection tools tend not to list them:'</span>;
+<span class="nb">say</span> <span class="s">'  zeckendorf(12)      = '</span>, <span class="n">zeckendorf</span>(<span class="mi">12</span>).<span class="nb">join</span>;
+<span class="nb">say</span> <span class="s">'  dual-zeckendorf(12) = '</span>, <span class="n">dual-zeckendorf</span>(<span class="mi">12</span>).<span class="nb">join</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the two functions return different ELEMENT types:
+  zeckendorf      : [1, 0, 1, 0, 1]  element type Int
+  dual            : ["1", "0", "1", "0", "1"]  element type Str
+  @z eqv @d       : False   &lt;- never true, even for equal digits
+  joined          : "10101" vs "10101"
+
+the dual builds a string and .combs it; the primary pushes Ints.
+.join hides the difference; eqv, == and any numeric use do not.
+
+and zero and negatives return an empty array, not [0] and not a
+failure:
+    0 -&gt; []
+   -5 -&gt; []
+
+the two aliases `zeckendorf` and `dual-zeckendorf` ARE importable,
+though introspection tools tend not to list them:
+  zeckendorf(12)      = 10101
+  dual-zeckendorf(12) = 10101</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing in the representations — every digit string, every Fibonacci list and every round trip above is identical on both engines. Only <em>when</em> a bad argument type is reported: Raku++ raises <code>X::Multi::NoMatch</code> at run time while Rakudo refuses the whole file at compile time with <code>Calling zeckendorf-representation(Rat) will never work</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/math-zeckendorf/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Math::Zeckendorf</span>;
+
+<span class="c1"># coerce at the call site and the two agree</span>
+<span class="k">sub</span> <span class="n">zeck</span>(<span class="nv">$n</span>) {
+    <span class="k">my</span> <span class="nv">$i</span> = <span class="nv">$n</span>.<span class="nb">Int</span>;
+    <span class="nb">die</span> <span class="s">&quot;zeckendorf needs a positive integer, got $n&quot;</span> <span class="k">unless</span> <span class="nv">$i</span> &gt; <span class="mi">0</span>;
+    <span class="n">zeckendorf-representation</span>(<span class="nv">$i</span>, :<span class="n">numbers</span>)
+}
+<span class="k">for</span> <span class="mi">12</span>, <span class="mf">12.0</span>, <span class="mi">0</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">zeck</span>(<span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  zeck(%-5s) -&gt; %s'</span>, <span class="nv">$n</span>.<span class="nb">raku</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.<span class="nb">join</span>(<span class="s">','</span>));
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the class Math::Zeckendorf itself is an empty shell — the two protos'</span>;
+<span class="nb">say</span> <span class="s">'and their aliases are the whole distribution.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>  zeck(12   ) -&gt; 8,3,1
+  zeck(12.0 ) -&gt; 8,3,1
+  zeck(0    ) -&gt; zeckendorf needs a positive integer, got 0
+
+the class Math::Zeckendorf itself is an empty shell — the two protos
+and their aliases are the whole distribution.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

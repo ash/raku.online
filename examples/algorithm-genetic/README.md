@@ -1,0 +1,23 @@
+# Algorithm::Genetic — the examples
+
+Every example from [the Algorithm::Genetic page](https://raku.online/modules/algorithm-genetic/), one file each. They are
+generated from that page, so they cannot drift from it — and each one is a
+complete program: no scaffolding to add, nothing to uncomment.
+
+```sh
+rakupp install Algorithm::Genetic   # or: zef install Algorithm::Genetic
+rakupp 01-basics.raku
+```
+
+Each file is run under Raku++ 3.28.0 and under Rakudo 2026.08, twice on each,
+whenever the site is built. A file whose output has moved fails that build, so
+the "Output:" comment at the bottom of a file is what it printed, not what it
+was once expected to print. The ones marked *varies* draw random numbers —
+they are run, but their output is not compared.
+
+| File | Section | Output |
+|---|---|---|
+| [`01-basics.raku`](01-basics.raku) | Composing it | checked |
+| [`02-tail.raku`](02-tail.raku) | The one thing to know | checked |
+| [`03-shapes.raku`](03-shapes.raku) | Three more shapes | checked |
+| [`04-dead.raku`](04-dead.raku) | Two pieces of dead code | checked |

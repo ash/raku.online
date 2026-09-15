@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pod::Tangle — The Raku Ecosystem, Working</title>
+<meta name="description" content="Strips the Pod out of a Raku file and keeps the code — and a single abbreviated directive makes it return an empty file.">
+<link rel="canonical" href="https://raku.online/modules/pod-tangle/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pod::Tangle — The Raku Ecosystem, Working">
+<meta property="og:description" content="Strips the Pod out of a Raku file and keeps the code — and a single abbreviated directive makes it return an empty file.">
+<meta property="og:url" content="https://raku.online/modules/pod-tangle/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Pod::Tangle","description":"Strips the Pod out of a Raku file and keeps the code — and a single abbreviated directive makes it return an empty file.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/pod-tangle/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/codesections/pod-tangle.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · Pod</div><h1>Pod::Tangle</h1><span class="status st-div">Divergent</span></div><p class="summary">Strips the Pod out of a Raku file and keeps the code — and a single abbreviated directive makes it return an empty file.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">github:codesections</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Pod::Literate</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:codesections/Pod::Tangle">raku.land</a> · <a href="https://github.com/codesections/pod-tangle.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Pod::Tangle</code></pre></div><p class="fact-sub"><code>zef install Pod::Tangle</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Literate programming has two operations: <em>weave</em> produces the documentation and <em>tangle</em> produces the code. This distribution is the tangle half for Raku — read a file, replace every <code>=begin X … =end X</code> block with a blank line, return what is left.</p>
+<h2 id="tangling">Tangling <a class="anchor" href="#tangling" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-tangle/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Tangle</span>;
+
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;tangle-{$*PID}.raku&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$f</span>.<span class="nb">unlink</span>;
+<span class="nv">$f</span>.<span class="nb">spurt</span>(<span class="s">q:to/END/</span>);
+<span class="s">my $x = 1;
+
+=begin pod
+Some documentation about $x.
+=end pod
+
+say $x + 1;
+
+=begin comment
+A comment block.
+=end comment
+
+say &quot;done&quot;;
+END
+</span>
+<span class="k">my</span> <span class="nv">$code</span> = <span class="n">tangle</span>(<span class="nv">$f</span>);
+<span class="nb">say</span> <span class="s">'tangled:'</span>;
+<span class="nb">say</span> <span class="s">'[['</span>, <span class="nv">$code</span>, <span class="s">']]'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'each removed block leaves TWO blank lines, and =begin comment is'</span>;
+<span class="nb">say</span> <span class="s">'stripped exactly like =begin pod.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>tangled:
+[[my $x = 1;
+
+
+
+
+say $x + 1;
+
+
+
+
+say "done";
+]]
+
+each removed block leaves TWO blank lines, and =begin comment is
+stripped exactly like =begin pod.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>tangle</code> silently destroys your file if it contains a single <strong>abbreviated</strong> Pod directive — and what you get back differs by engine.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-tangle/02-abbreviated.raku" title="This example as a file: 02-abbreviated.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Tangle</span>;
+
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;tangle2-{$*PID}.raku&quot;</span>);
+<span class="k">LEAVE</span> <span class="nv">$f</span>.<span class="nb">unlink</span>;
+<span class="nv">$f</span>.<span class="nb">spurt</span>(<span class="s">&quot;=head1 NAME\n\nmy \$x = 1;\nsay \$x;\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$code</span> = <span class="n">tangle</span>(<span class="nv">$f</span>);
+<span class="nb">say</span> <span class="s">'a file whose only Pod is `=head1 NAME`:'</span>;
+<span class="nb">say</span> <span class="s">'  the code survived   : '</span>, <span class="nv">$code</span>.<span class="n">contains</span>(<span class="s">'say'</span>);
+<span class="nb">say</span> <span class="s">'  anything useful     : '</span>, (<span class="nv">$code</span>.<span class="n">contains</span>(<span class="s">'say'</span>) ?? <span class="s">'yes'</span> !! <span class="s">'no'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Pod::Literate`s grammar only knows &quot;=begin&quot; … &quot;=end&quot;, and its'</span>;
+<span class="nb">say</span> <span class="s">'`token code` is [^^ &lt;![=]&gt; \N* \n]+ — so a line starting with &quot;=&quot; that'</span>;
+<span class="nb">say</span> <span class="s">'is not a =begin block can be matched by neither alternative.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'.parse needs a full match, so parsefile returns Nil, and Pod::Tangle'</span>;
+<span class="nb">say</span> <span class="s">'then does Nil.caps.map({ when … }) with NO default. On Raku++ that'</span>;
+<span class="nb">say</span> <span class="s">'yields nothing and you get &quot;&quot;; on Rakudo it yields one element which'</span>;
+<span class="nb">say</span> <span class="s">'falls out of the when chain, and you get the five-character string'</span>;
+<span class="nb">say</span> <span class="s">'&quot;False&quot;.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'neither throws. And =head1 NAME is the most common Pod idiom in'</span>;
+<span class="nb">say</span> <span class="s">'Raku — so the failure you will actually hit produces an empty file'</span>;
+<span class="nb">say</span> <span class="s">'with exit status 0.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a file whose only Pod is `=head1 NAME`:
+  the code survived   : False
+  anything useful     : no
+
+Pod::Literate`s grammar only knows "=begin" … "=end", and its
+`token code` is [^^ &lt;![=]&gt; \N* \n]+ — so a line starting with "=" that
+is not a =begin block can be matched by neither alternative.
+
+.parse needs a full match, so parsefile returns Nil, and Pod::Tangle
+then does Nil.caps.map({ when … }) with NO default. On Raku++ that
+yields nothing and you get ""; on Rakudo it yields one element which
+falls out of the when chain, and you get the five-character string
+"False".
+
+neither throws. And =head1 NAME is the most common Pod idiom in
+Raku — so the failure you will actually hit produces an empty file
+with exit status 0.</code></pre></div>
+<p>A file whose last line has no trailing newline fails the same way.</p>
+<h2 id="telling-success-from-failure">Telling success from failure <a class="anchor" href="#telling-success-from-failure" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-tangle/03-guard.raku" title="This example as a file: 03-guard.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Tangle</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;tangle3-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'good.raku'</span>).<span class="nb">spurt</span>(<span class="s">&quot;my \$x = 1;\n=begin pod\ndocs\n=end pod\nsay \$x;\n&quot;</span>);
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'abbrev.raku'</span>).<span class="nb">spurt</span>(<span class="s">&quot;=head1 NAME\nsay 1;\n&quot;</span>);
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'podonly.raku'</span>).<span class="nb">spurt</span>(<span class="s">&quot;=begin pod\njust docs\n=end pod\n&quot;</span>);
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'empty.raku'</span>).<span class="nb">spurt</span>(<span class="s">''</span>);
+
+<span class="nb">say</span> <span class="s">'an empty result cannot be distinguished from a legitimate one —'</span>;
+<span class="nb">say</span> <span class="s">'a Pod-only file and an empty file both tangle to &quot;&quot;:'</span>;
+<span class="k">for</span> &lt;<span class="n">good</span> <span class="n">abbrev</span> <span class="n">podonly</span> <span class="n">empty</span>&gt; -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="n">tangle</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">&quot;$n.raku&quot;</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s -&gt; code survived ? %s'</span>, <span class="nv">$n</span>, <span class="nv">$r</span>.<span class="n">contains</span>(<span class="s">'say'</span>).<span class="nb">so</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so check the input yourself before you trust the output:'</span>;
+<span class="k">sub</span> <span class="n">safe-tangle</span>(<span class="n">IO::Path</span> <span class="nv">$f</span>) {
+    <span class="k">my</span> <span class="nv">$src</span> = <span class="nv">$f</span>.<span class="nb">slurp</span>;
+    <span class="nb">die</span> <span class="s">&quot;abbreviated Pod directive in {$f.basename}&quot;</span>
+        <span class="k">if</span> <span class="nv">$src</span> ~~ <span class="sr">/^^ '=' &lt;!before 'begin'&gt; &lt;!before 'end'&gt; /</span>;
+    <span class="nb">die</span> <span class="s">&quot;no trailing newline in {$f.basename}&quot;</span> <span class="k">unless</span> <span class="nv">$src</span>.<span class="n">ends-with</span>(<span class="s">&quot;\n&quot;</span>);
+    <span class="n">tangle</span>(<span class="nv">$f</span>)
+}
+<span class="k">for</span> &lt;<span class="n">good</span> <span class="n">abbrev</span>&gt; -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">safe-tangle</span>(<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">&quot;$n.raku&quot;</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  safe-tangle(%-12s) -&gt; %s'</span>, <span class="s">&quot;$n.raku&quot;</span>,
+                <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'code survived '</span> ~ <span class="nv">$r</span>.<span class="n">contains</span>(<span class="s">'say'</span>).<span class="nb">so</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>an empty result cannot be distinguished from a legitimate one —
+a Pod-only file and an empty file both tangle to "":
+  good       -&gt; code survived ? True
+  abbrev     -&gt; code survived ? False
+  podonly    -&gt; code survived ? False
+  empty      -&gt; code survived ? False
+
+so check the input yourself before you trust the output:
+  safe-tangle(good.raku   ) -&gt; code survived True
+  safe-tangle(abbrev.raku ) -&gt; abbreviated Pod directive in abbrev.raku</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Exactly the garbage above: <code>""</code> on Raku++ and <code>"False"</code> on Rakudo, because <code>Nil.map</code> yields zero elements on one engine and one on the other. Reduced with no module involved, <code>Nil.caps.map({ … }).elems</code> is <code>0</code> and <code>1</code> respectively.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-tangle/04-scope.raku" title="This example as a file: 04-scope.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Tangle</span>;
+
+<span class="nb">say</span> <span class="s">'two more things worth knowing before you run this over a project.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'`=begin code` blocks INSIDE pod are stripped along with the prose, so'</span>;
+<span class="nb">say</span> <span class="s">'tangling a literate file removes its worked examples as well as its'</span>;
+<span class="nb">say</span> <span class="s">'explanation. If your examples are the code you wanted, this is not'</span>;
+<span class="nb">say</span> <span class="s">'the tool.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the unit declares `unit module Pod::Tangle:ver&lt;0.0.1&gt;` while the'</span>;
+<span class="nb">say</span> <span class="s">'distribution META says 0.0.2 — the two disagree.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the API is one exported sub: tangle(IO::Path $file --&gt; Str).'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>two more things worth knowing before you run this over a project.
+
+`=begin code` blocks INSIDE pod are stripped along with the prose, so
+tangling a literate file removes its worked examples as well as its
+explanation. If your examples are the code you wanted, this is not
+the tool.
+
+and the unit declares `unit module Pod::Tangle:ver&lt;0.0.1&gt;` while the
+distribution META says 0.0.2 — the two disagree.
+
+the API is one exported sub: tangle(IO::Path $file --&gt; Str).</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

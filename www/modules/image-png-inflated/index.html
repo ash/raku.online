@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image::PNG::Inflated — The Raku Ecosystem, Working</title>
+<meta name="description" content="Wraps a raw RGBA buffer in a valid PNG container without compressing it — and never checks that the buffer matches the size you declared.">
+<link rel="canonical" href="https://raku.online/modules/image-png-inflated/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Image::PNG::Inflated — The Raku Ecosystem, Working">
+<meta property="og:description" content="Wraps a raw RGBA buffer in a valid PNG container without compressing it — and never checks that the buffer matches the size you declared.">
+<meta property="og:url" content="https://raku.online/modules/image-png-inflated/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Image::PNG::Inflated","description":"Wraps a raw RGBA buffer in a valid PNG container without compressing it — and never checks that the buffer matches the size you declared.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/image-png-inflated/","license":"https://spdx.org/licenses/BSL-1.0","codeRepository":"git://github.com/cygx/p6-image-png-inflated.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · images</div><h1>Image::PNG::Inflated</h1><span class="status st-div">Divergent</span></div><p class="summary">Wraps a raw RGBA buffer in a valid PNG container without compressing it — and never checks that the buffer matches the size you declared.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">github:cygx</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>BSL-1.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:cygx/Image::PNG::Inflated">raku.land</a> · <a href="git://github.com/cygx/p6-image-png-inflated.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Image::PNG::Inflated</code></pre></div><p class="fact-sub"><code>zef install Image::PNG::Inflated</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Sometimes you have pixels and you need a file something else can open, and you do not care about size. This distribution writes a structurally perfect PNG around a raw 8-bit RGBA buffer: a zero filter byte per scanline, zlib <em>stored</em> blocks with a correct Adler-32, and <code>IHDR</code>/<code>IDAT</code>/<code>IEND</code> chunks with correct CRC-32s. No compression, no dependencies, 153 lines.</p>
+<h2 id="writing-one">Writing one <a class="anchor" href="#writing-one" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-png-inflated/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::PNG::Inflated</span>;
+
+<span class="c1"># a 2x2 RGBA image: red, green, blue, half-transparent white</span>
+<span class="k">my</span> <span class="nv">$img</span> = <span class="n">blob8</span>.<span class="nb">new</span>(<span class="mh">0xFF</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,  <span class="mh">0x00</span>,<span class="mh">0xFF</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,
+                    <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,<span class="mh">0xFF</span>,  <span class="mh">0xFF</span>,<span class="mh">0xFF</span>,<span class="mh">0xFF</span>,<span class="mh">0x80</span>);
+<span class="k">my</span> <span class="nv">$png</span> = <span class="n">to-png</span>(<span class="nv">$img</span>, <span class="mi">2</span>, <span class="mi">2</span>);
+
+<span class="nb">say</span> <span class="s">'PNG magic    : '</span>, <span class="nv">$png</span>[<span class="mi">0</span>.<span class="mf">.7</span>].<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="k">my</span> <span class="nv">$i</span> = <span class="mi">8</span>;
+<span class="k">my</span> <span class="nv">@types</span>;
+<span class="k">while</span> <span class="nv">$i</span> &lt; <span class="nv">$png</span>.<span class="nb">bytes</span> {
+    <span class="k">my</span> <span class="nv">$len</span> = (<span class="nv">$png</span>[<span class="nv">$i</span>] +&lt; <span class="mi">24</span>) + (<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">1</span>] +&lt; <span class="mi">16</span>) + (<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">2</span>] +&lt; <span class="mi">8</span>) + <span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">3</span>];
+    <span class="nv">@types</span>.<span class="nb">push</span>(<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">4</span> .. <span class="nv">$i</span>+<span class="mi">7</span>].<span class="nb">map</span>(*.<span class="nb">chr</span>).<span class="nb">join</span>);
+    <span class="nv">$i</span> += <span class="mi">12</span> + <span class="nv">$len</span>;
+}
+<span class="nb">say</span> <span class="s">'first chunk  : '</span>, <span class="nv">@types</span>.<span class="nb">head</span>;
+<span class="nb">say</span> <span class="s">'last chunk   : '</span>, <span class="nv">@types</span>.<span class="nb">tail</span>;
+<span class="nb">say</span> <span class="s">'all IDAT between them : '</span>, <span class="k">so</span> <span class="nv">@types</span>[<span class="mi">1</span> ..^ *-<span class="mi">1</span>].<span class="n">all</span> <span class="n">eq</span> <span class="s">'IDAT'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'IHDR says 2x2, depth 8, colour type 6 (RGBA), no interlace —'</span>;
+<span class="nb">say</span> <span class="s">'all hardcoded. There is no parameter to change them.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>PNG magic    : 89 50 4E 47 0D 0A 1A 0A
+first chunk  : IHDR
+last chunk   : IEND
+all IDAT between them : True
+
+IHDR says 2x2, depth 8, colour type 6 (RGBA), no interlace —
+all hardcoded. There is no parameter to change them.</code></pre></div>
+<h2 id="the-dimensions-are-required">The dimensions are required <a class="anchor" href="#the-dimensions-are-required" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-png-inflated/02-dimensions.raku" title="This example as a file: 02-dimensions.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::PNG::Inflated</span>;
+
+<span class="k">my</span> <span class="nv">$img</span> = <span class="n">blob8</span>.<span class="nb">new</span>(<span class="mh">0xFF</span> <span class="n">xx</span> <span class="mi">16</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">to-png</span>(<span class="nv">$img</span>);
+<span class="nb">say</span> <span class="s">'to-png($blob) with no dimensions -&gt; '</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="s">'worked'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the defaults are $img.width and $img.height, and a blob8 has neither.'</span>;
+<span class="nb">say</span> <span class="s">'the signature gist shows them uselessly as `uint32 $w = Code.new`.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'either pass them, or hand it an object that answers .width, .height'</span>;
+<span class="nb">say</span> <span class="s">'and .blob8:'</span>;
+<span class="k">class</span> <span class="n">Pixels</span> {
+    <span class="k">has</span> <span class="nv">$.width</span>; <span class="k">has</span> <span class="nv">$.height</span>; <span class="k">has</span> <span class="nv">$.blob8</span>;
+}
+<span class="k">my</span> <span class="nv">$obj</span> = <span class="n">Pixels</span>.<span class="nb">new</span>(<span class="n">width</span> =&gt; <span class="mi">2</span>, <span class="n">height</span> =&gt; <span class="mi">2</span>, <span class="n">blob8</span> =&gt; <span class="nv">$img</span>);
+<span class="nb">say</span> <span class="s">'  a duck-typed object works : '</span>, <span class="n">to-png</span>(<span class="nv">$obj</span>).<span class="nb">bytes</span> &gt;= <span class="mi">60</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-png($blob) with no dimensions -&gt; threw
+
+the defaults are $img.width and $img.height, and a blob8 has neither.
+the signature gist shows them uselessly as `uint32 $w = Code.new`.
+
+either pass them, or hand it an object that answers .width, .height
+and .blob8:
+  a duck-typed object works : True</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>to-png</code> never checks that the buffer matches <code>$w × $h × 4</code>. A mismatch produces a structurally perfect PNG whose header lies — correct magic, correct chunk lengths, correct CRCs, a cleanly inflating zlib stream, and a declared size that needs far more data than the file holds.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-png-inflated/03-lying-header.raku" title="This example as a file: 03-lying-header.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::PNG::Inflated</span>;
+
+<span class="k">my</span> <span class="nv">$two-by-two</span> = <span class="n">blob8</span>.<span class="nb">new</span>(<span class="mh">0xFF</span> <span class="n">xx</span> <span class="mi">16</span>);      <span class="c1"># 2x2 RGBA = 16 bytes</span>
+
+<span class="nb">say</span> <span class="s">'the same 16-byte buffer, declared three ways:'</span>;
+<span class="k">for</span> (<span class="mi">2</span>, <span class="mi">2</span>), (<span class="mi">4</span>, <span class="mi">4</span>), (<span class="mi">1</span>, <span class="mi">4</span>) -&gt; (<span class="nv">$w</span>, <span class="nv">$h</span>) {
+    <span class="k">my</span> <span class="nv">$png</span> = <span class="n">to-png</span>(<span class="nv">$two-by-two</span>, <span class="nv">$w</span>, <span class="nv">$h</span>);
+    <span class="k">my</span> <span class="nv">$needed</span> = <span class="nv">$h</span> * (<span class="mi">1</span> + <span class="nv">$w</span> * <span class="mi">4</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %dx%d -&gt; built a %s PNG;  IHDR needs %d filtered bytes, the buffer has %d'</span>,
+                <span class="nv">$w</span>, <span class="nv">$h</span>, (<span class="nv">$png</span>[<span class="mi">0</span>.<span class="mf">.3</span>].<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span> <span class="n">eq</span> <span class="s">'89504E47'</span> ?? <span class="s">'well-formed'</span> !! <span class="s">'broken'</span>),
+                <span class="nv">$needed</span>, <span class="nv">$two-by-two</span>.<span class="nb">bytes</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'nothing raises. Every cheap sanity check passes and real decoders'</span>;
+<span class="nb">say</span> <span class="s">'reject the file.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the same silence covers the far more likely mistake — handing it an'</span>;
+<span class="nb">say</span> <span class="s">'RGB buffer. 3 bytes per pixel is accepted without a word, and the'</span>;
+<span class="nb">say</span> <span class="s">'filter-insertion loop then slices scanlines at the wrong stride, so'</span>;
+<span class="nb">say</span> <span class="s">'the image comes out sheared:'</span>;
+<span class="k">my</span> <span class="nv">$rgb</span> = <span class="n">blob8</span>.<span class="nb">new</span>(<span class="mh">0xFF</span> <span class="n">xx</span> <span class="mi">12</span>);             <span class="c1"># 2x2 RGB = 12 bytes</span>
+<span class="nb">say</span> <span class="s">'  to-png(12 bytes, 2, 2) -&gt; built a PNG, no error'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'check it yourself:'</span>;
+<span class="k">sub</span> <span class="n">png</span>(<span class="n">blob8</span> <span class="nv">$b</span>, <span class="nb">UInt</span> <span class="nv">$w</span>, <span class="nb">UInt</span> <span class="nv">$h</span>) {
+    <span class="nb">die</span> <span class="s">&quot;buffer is {$b.bytes} bytes; {$w}x{$h} RGBA needs {$w * $h * 4}&quot;</span>
+        <span class="k">unless</span> <span class="nv">$b</span>.<span class="nb">bytes</span> == <span class="nv">$w</span> * <span class="nv">$h</span> * <span class="mi">4</span>;
+    <span class="n">to-png</span>(<span class="nv">$b</span>, <span class="nv">$w</span>, <span class="nv">$h</span>)
+}
+<span class="k">my</span> <span class="nv">$e</span> = <span class="k">try</span> <span class="n">png</span>(<span class="nv">$rgb</span>, <span class="mi">2</span>, <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'  guarded : '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'accepted'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the same 16-byte buffer, declared three ways:
+  2x2 -&gt; built a well-formed PNG;  IHDR needs 18 filtered bytes, the buffer has 16
+  4x4 -&gt; built a well-formed PNG;  IHDR needs 68 filtered bytes, the buffer has 16
+  1x4 -&gt; built a well-formed PNG;  IHDR needs 20 filtered bytes, the buffer has 16
+
+nothing raises. Every cheap sanity check passes and real decoders
+reject the file.
+
+the same silence covers the far more likely mistake — handing it an
+RGB buffer. 3 bytes per pixel is accepted without a word, and the
+filter-insertion loop then slices scanlines at the wrong stride, so
+the image comes out sheared:
+  to-png(12 bytes, 2, 2) -&gt; built a PNG, no error
+
+check it yourself:
+  guarded : buffer is 12 bytes; 2x2 RGBA needs 16</code></pre></div>
+<p><code>$w</code> and <code>$h</code> are native <code>uint32</code>, so a negative dimension wraps rather than raising: <code>to-png($img, -1, 2)</code> writes width 4294967295.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>The two engines produce <strong>different bytes</strong> for the same image. Both files are valid, both decode to identical pixels, and their IDAT chunking differs.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/image-png-inflated/04-chunking.raku" title="This example as a file: 04-chunking.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Image::PNG::Inflated</span>;
+
+<span class="k">my</span> <span class="nv">$img</span> = <span class="n">blob8</span>.<span class="nb">new</span>(<span class="mh">0xFF</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,  <span class="mh">0x00</span>,<span class="mh">0xFF</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,
+                    <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xFF</span>,<span class="mh">0xFF</span>,  <span class="mh">0xFF</span>,<span class="mh">0xFF</span>,<span class="mh">0xFF</span>,<span class="mh">0x80</span>);
+<span class="k">my</span> <span class="nv">$png</span> = <span class="n">to-png</span>(<span class="nv">$img</span>, <span class="mi">2</span>, <span class="mi">2</span>);
+
+<span class="k">my</span> <span class="nv">@types</span>;
+<span class="k">my</span> <span class="nv">$i</span> = <span class="mi">8</span>;
+<span class="k">while</span> <span class="nv">$i</span> &lt; <span class="nv">$png</span>.<span class="nb">bytes</span> {
+    <span class="k">my</span> <span class="nv">$len</span> = (<span class="nv">$png</span>[<span class="nv">$i</span>] +&lt; <span class="mi">24</span>) + (<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">1</span>] +&lt; <span class="mi">16</span>) + (<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">2</span>] +&lt; <span class="mi">8</span>) + <span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">3</span>];
+    <span class="nv">@types</span>.<span class="nb">push</span>(<span class="nv">$png</span>[<span class="nv">$i</span>+<span class="mi">4</span> .. <span class="nv">$i</span>+<span class="mi">7</span>].<span class="nb">map</span>(*.<span class="nb">chr</span>).<span class="nb">join</span>);
+    <span class="nv">$i</span> += <span class="mi">12</span> + <span class="nv">$len</span>;
+}
+<span class="nb">say</span> <span class="s">'chunk sequence : IHDR, then one or more IDAT, then IEND'</span>;
+<span class="nb">say</span> <span class="s">'  starts IHDR  : '</span>, <span class="nv">@types</span>.<span class="nb">head</span> <span class="n">eq</span> <span class="s">'IHDR'</span>;
+<span class="nb">say</span> <span class="s">'  ends IEND    : '</span>, <span class="nv">@types</span>.<span class="nb">tail</span> <span class="n">eq</span> <span class="s">'IEND'</span>;
+<span class="nb">say</span> <span class="s">'  IDAT count   : engine-dependent — do not assert on it'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'Raku++ emits four IDAT chunks and 122 bytes where Rakudo emits two'</span>;
+<span class="nb">say</span> <span class="s">'and 98, for the same pixels. The cause is `take $a, $b, $c` inside'</span>;
+<span class="nb">say</span> <span class="s">'gather: Raku++ takes three separate items, Rakudo takes one'</span>;
+<span class="nb">say</span> <span class="s">'3-element List.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so never hash or golden-file this module`s output across engines.'</span>;
+<span class="nb">say</span> <span class="s">'Compare the decoded pixels instead — those are identical.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>chunk sequence : IHDR, then one or more IDAT, then IEND
+  starts IHDR  : True
+  ends IEND    : True
+  IDAT count   : engine-dependent — do not assert on it
+
+Raku++ emits four IDAT chunks and 122 bytes where Rakudo emits two
+and 98, for the same pixels. The cause is `take $a, $b, $c` inside
+gather: Raku++ takes three separate items, Rakudo takes one
+3-element List.
+
+so never hash or golden-file this module`s output across engines.
+Compare the decoded pixels instead — those are identical.</code></pre></div>
+<p>One last property worth stating plainly: the output is <strong>larger</strong> than the input. 16 384 raw bytes become about 16.5 KB. The name is the warning — this is a container, not a compressor.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

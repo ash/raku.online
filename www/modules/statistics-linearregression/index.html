@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statistics::LinearRegression — The Raku Ecosystem, Working</title>
+<meta name="description" content="Ordinary least-squares in exact Rat arithmetic — and a degenerate fit returns a defined Rat with denominator zero.">
+<link rel="canonical" href="https://raku.online/modules/statistics-linearregression/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Statistics::LinearRegression — The Raku Ecosystem, Working">
+<meta property="og:description" content="Ordinary least-squares in exact Rat arithmetic — and a degenerate fit returns a defined Rat with denominator zero.">
+<meta property="og:url" content="https://raku.online/modules/statistics-linearregression/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Statistics::LinearRegression","description":"Ordinary least-squares in exact Rat arithmetic — and a degenerate fit returns a defined Rat with denominator zero.","programmingLanguage":"Raku","version":"1.1.2","url":"https://raku.online/modules/statistics-linearregression/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Statistics-LinearRegression.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · statistics</div><h1>Statistics::LinearRegression</h1><span class="status st-full">Works</span></div><p class="summary">Ordinary least-squares in exact Rat arithmetic — and a degenerate fit returns a defined Rat with denominator zero.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1.2</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Statistics::LinearRegression">raku.land</a> · <a href="https://github.com/raku-community-modules/Statistics-LinearRegression.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Statistics::LinearRegression</code></pre></div><p class="fact-sub"><code>zef install Statistics::LinearRegression</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Fitting a straight line to paired measurements: the slope and intercept that minimise the squared vertical error. This distribution computes them with the closed-form normal equations, keeping everything exact when the inputs are integers.</p>
+<h2 id="fitting">Fitting <a class="anchor" href="#fitting" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/statistics-linearregression/01-basics.raku" title="This example as a file: 01-basics.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Statistics::LinearRegression</span>;
+
+<span class="k">my</span> <span class="nv">@x</span> = <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>, <span class="mi">5</span>, <span class="mi">6</span>;
+<span class="k">my</span> <span class="nv">@y</span> = <span class="mi">2</span>, <span class="mi">4</span>, <span class="mi">5</span>, <span class="mi">4</span>, <span class="mi">5</span>, <span class="mi">7</span>;
+
+<span class="k">my</span> <span class="nv">$lr</span> = <span class="n">LR</span>.<span class="nb">new</span>(<span class="nv">@x</span>, <span class="nv">@y</span>);
+<span class="k">my</span> (<span class="nv">$slope</span>, <span class="nv">$intercept</span>) = <span class="nv">$lr</span>.<span class="n">get-parameters</span>;
+<span class="nb">say</span> <span class="s">'slope      : '</span>, <span class="nv">$slope</span>, <span class="s">'   ('</span>, <span class="nv">$slope</span>.<span class="n">WHAT</span>.^<span class="n">name</span>, <span class="s">')'</span>;
+<span class="nb">say</span> <span class="s">'intercept  : '</span>, <span class="nv">$intercept</span>;
+<span class="nb">say</span> <span class="s">'at x = 10  : '</span>, <span class="nv">$lr</span>.<span class="n">at</span>(<span class="mi">10</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$sx</span>  = <span class="nv">@x</span>.<span class="nb">sum</span>;
+<span class="k">my</span> <span class="nv">$sy</span>  = <span class="nv">@y</span>.<span class="nb">sum</span>;
+<span class="k">my</span> <span class="nv">$sxy</span> = (<span class="nv">@x</span> <span class="n">Z</span>* <span class="nv">@y</span>).<span class="nb">sum</span>;
+<span class="k">my</span> <span class="nv">$sxx</span> = (<span class="nv">@x</span> <span class="n">Z</span>* <span class="nv">@x</span>).<span class="nb">sum</span>;
+<span class="k">my</span> <span class="nv">$n</span>   = <span class="nv">@x</span>.<span class="nb">elems</span>;
+<span class="k">my</span> <span class="nv">$closed</span> = (<span class="nv">$n</span> * <span class="nv">$sxy</span> - <span class="nv">$sx</span> * <span class="nv">$sy</span>) / (<span class="nv">$n</span> * <span class="nv">$sxx</span> - <span class="nv">$sx</span> * <span class="nv">$sx</span>);
+<span class="nb">say</span> <span class="s">'closed form: '</span>, <span class="nv">$closed</span>;
+<span class="nb">say</span> <span class="s">'matches    : '</span>, <span class="nv">$slope</span> == <span class="nv">$closed</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'results are exact Rats, not Nums, when the inputs are integers.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>slope      : 0.771429   (Rat)
+intercept  : 1.8
+at x = 10  : 9.514286
+
+closed form: 0.771429
+matches    : True
+
+results are exact Rats, not Nums, when the inputs are integers.</code></pre></div>
+<p><code>LR</code> takes either two lists or two numbers — data or parameters:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/statistics-linearregression/02-two-forms.raku" title="This example as a file: 02-two-forms.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Statistics::LinearRegression</span>;
+
+<span class="k">my</span> <span class="nv">$fit</span> = <span class="n">LR</span>.<span class="nb">new</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], [<span class="mi">3</span>, <span class="mi">2</span>, <span class="mi">1</span>]);
+<span class="nb">say</span> <span class="s">'from data       : '</span>, <span class="nv">$fit</span>.<span class="n">get-parameters</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$line</span> = <span class="n">LR</span>.<span class="nb">new</span>(<span class="mi">7</span>, <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'from parameters : '</span>, <span class="nv">$line</span>.<span class="n">get-parameters</span>.<span class="nb">raku</span>, <span class="s">'  (slope 7, intercept 3)'</span>;
+<span class="nb">say</span> <span class="s">'  at x = 2      : '</span>, <span class="nv">$line</span>.<span class="n">at</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'two numbers are parameters, two lists are data, and nothing warns if'</span>;
+<span class="nb">say</span> <span class="s">'you mix them up.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the four helper subs are behind an import tag:'</span>;
+<span class="nb">say</span> <span class="s">'  use Statistics::LinearRegression :ALL;'</span>;
+<span class="nb">say</span> <span class="s">'  calc-slope, calc-intercept, get-parameters, value-at'</span>;
+<span class="nb">say</span> <span class="s">'a plain `use` gives you LR only.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>from data       : (-1.0, 4.0)
+from parameters : (7, 3)  (slope 7, intercept 3)
+  at x = 2      : 17
+
+two numbers are parameters, two lists are data, and nothing warns if
+you mix them up.
+
+the four helper subs are behind an import tag:
+  use Statistics::LinearRegression :ALL;
+  calc-slope, calc-intercept, get-parameters, value-at
+a plain `use` gives you LR only.</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A degenerate fit — one point, or every <code>x</code> the same — returns a <strong>defined</strong> <code>Rat</code> with denominator 0. It does not throw, it is not <code>Nil</code>, and it is not equal to 0. It detonates later, at the first stringification.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/statistics-linearregression/03-degenerate.raku" title="This example as a file: 03-degenerate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Statistics::LinearRegression</span>;
+
+<span class="k">my</span> (<span class="nv">$slope</span>, <span class="nv">$intercept</span>) = <span class="n">LR</span>.<span class="nb">new</span>([<span class="mi">2</span>, <span class="mi">2</span>, <span class="mi">2</span>], [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>]).<span class="n">get-parameters</span>;
+<span class="nb">say</span> <span class="s">'all x equal:'</span>;
+<span class="nb">say</span> <span class="s">'  .WHAT        : '</span>, <span class="nv">$slope</span>.<span class="n">WHAT</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  .defined     : '</span>, <span class="nv">$slope</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'  .denominator : '</span>, <span class="nv">$slope</span>.<span class="n">denominator</span>;
+<span class="nb">say</span> <span class="s">'  == 0         : '</span>, <span class="nv">$slope</span> == <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'  .Num         : '</span>, <span class="nv">$slope</span>.<span class="nb">Num</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="k">try</span> <span class="nv">$slope</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">'  .Str         : '</span>, <span class="nv">$!</span> ?? <span class="s">'throws X::Numeric::DivideByZero'</span> !! <span class="nv">$s</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so `if $slope.defined { … }` passes, the bad value propagates through'</span>;
+<span class="nb">say</span> <span class="s">'.at() unchanged, and the program dies at whatever line first PRINTS'</span>;
+<span class="nb">say</span> <span class="s">'it. Guard on the denominator:'</span>;
+<span class="k">sub</span> <span class="n">fit</span>(<span class="nv">@x</span>, <span class="nv">@y</span>) {
+    <span class="k">my</span> (<span class="nv">$m</span>, <span class="nv">$b</span>) = <span class="n">LR</span>.<span class="nb">new</span>(<span class="nv">@x</span>, <span class="nv">@y</span>).<span class="n">get-parameters</span>;
+    <span class="nb">die</span> <span class="s">'degenerate fit: the x values do not vary'</span> <span class="k">if</span> <span class="nv">$m</span>.<span class="n">denominator</span> == <span class="mi">0</span>;
+    (<span class="nv">$m</span>, <span class="nv">$b</span>)
+}
+<span class="k">for</span> ([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], [<span class="mi">3</span>, <span class="mi">2</span>, <span class="mi">1</span>]), ([<span class="mi">2</span>, <span class="mi">2</span>, <span class="mi">2</span>], [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>]) -&gt; (<span class="nv">@x</span>, <span class="nv">@y</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">fit</span>(<span class="nv">@x</span>, <span class="nv">@y</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  fit(%-12s) -&gt; %s'</span>, <span class="nv">@x</span>.<span class="nb">raku</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>all x equal:
+  .WHAT        : Rat
+  .defined     : True
+  .denominator : 0
+  == 0         : False
+  .Num         : NaN
+  .Str         : throws X::Numeric::DivideByZero
+
+so `if $slope.defined { … }` passes, the bad value propagates through
+.at() unchanged, and the program dies at whatever line first PRINTS
+it. Guard on the denominator:
+  fit([1, 2, 3]   ) -&gt; $(-1.0, 4.0)
+  fit([2, 2, 2]   ) -&gt; degenerate fit: the x values do not vary</code></pre></div>
+<h2 id="no-length-check">No length check <a class="anchor" href="#no-length-check" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/statistics-linearregression/04-mismatch.raku" title="This example as a file: 04-mismatch.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Statistics::LinearRegression</span>;
+
+<span class="nb">say</span> <span class="s">'mismatched list lengths are NOT checked:'</span>;
+<span class="nb">say</span> <span class="s">'  LR.new([1,2,3], [1,2]).get-parameters = '</span>,
+    <span class="n">LR</span>.<span class="nb">new</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], [<span class="mi">1</span>, <span class="mi">2</span>]).<span class="n">get-parameters</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  LR.new([1,2], [1,2,3]).get-parameters = '</span>,
+    <span class="n">LR</span>.<span class="nb">new</span>([<span class="mi">1</span>, <span class="mi">2</span>], [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>]).<span class="n">get-parameters</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'N comes from +@x while only min(@x, @y) cross terms exist, so you'</span>;
+<span class="nb">say</span> <span class="s">'get a silently wrong fit rather than an error. Check first:'</span>;
+<span class="k">sub</span> <span class="n">fit</span>(<span class="nv">@x</span>, <span class="nv">@y</span>) {
+    <span class="nb">die</span> <span class="s">&quot;x has {+@x} points, y has {+@y}&quot;</span> <span class="k">unless</span> <span class="nv">@x</span>.<span class="nb">elems</span> == <span class="nv">@y</span>.<span class="nb">elems</span>;
+    <span class="n">LR</span>.<span class="nb">new</span>(<span class="nv">@x</span>, <span class="nv">@y</span>).<span class="n">get-parameters</span>
+}
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">fit</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>], [<span class="mi">1</span>, <span class="mi">2</span>]);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and empty lists give the same &lt;0/0&gt; as the degenerate case:'</span>;
+<span class="nb">say</span> <span class="s">'  LR.new([], []).get-parameters = '</span>, <span class="n">LR</span>.<span class="nb">new</span>([], []).<span class="n">get-parameters</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>mismatched list lengths are NOT checked:
+  LR.new([1,2,3], [1,2]).get-parameters = (-0.5, 2.0)
+  LR.new([1,2], [1,2,3]).get-parameters = (-8.0, 15.0)
+
+N comes from +@x while only min(@x, @y) cross terms exist, so you
+get a silently wrong fit rather than an error. Check first:
+  x has 3 points, y has 2
+
+and empty lists give the same &lt;0/0&gt; as the degenerate case:
+  LR.new([], []).get-parameters = (&lt;0/0&gt;, &lt;0/0&gt;)</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing. Every coefficient, every type and every degenerate case above is identical on both engines — this is exact rational arithmetic with no container, hash or laziness question in it, which is the shape that ports cleanly.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/statistics-linearregression/05-portable.raku" title="This example as a file: 05-portable.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Statistics::LinearRegression</span>;
+
+<span class="c1"># a fit that reports what it did, and refuses what it cannot do</span>
+<span class="k">sub</span> <span class="n">regress</span>(<span class="nv">@x</span>, <span class="nv">@y</span>) {
+    <span class="nb">die</span> <span class="s">&quot;x has {+@x} points, y has {+@y}&quot;</span> <span class="k">unless</span> <span class="nv">@x</span>.<span class="nb">elems</span> == <span class="nv">@y</span>.<span class="nb">elems</span>;
+    <span class="nb">die</span> <span class="s">'need at least two points'</span>        <span class="k">unless</span> <span class="nv">@x</span>.<span class="nb">elems</span> &gt;= <span class="mi">2</span>;
+    <span class="k">my</span> <span class="nv">$lr</span> = <span class="n">LR</span>.<span class="nb">new</span>(<span class="nv">@x</span>, <span class="nv">@y</span>);
+    <span class="k">my</span> (<span class="nv">$m</span>, <span class="nv">$b</span>) = <span class="nv">$lr</span>.<span class="n">get-parameters</span>;
+    <span class="nb">die</span> <span class="s">'the x values do not vary'</span>        <span class="k">if</span> <span class="nv">$m</span>.<span class="n">denominator</span> == <span class="mi">0</span>;
+    %( <span class="n">slope</span> =&gt; <span class="nv">$m</span>, <span class="n">intercept</span> =&gt; <span class="nv">$b</span>, <span class="n">predict</span> =&gt; -&gt; <span class="nv">$x</span> { <span class="nv">$lr</span>.<span class="n">at</span>(<span class="nv">$x</span>) } )
+}
+<span class="k">my</span> <span class="nv">%f</span> = <span class="n">regress</span>([<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>], [<span class="mi">2</span>, <span class="mi">4</span>, <span class="mi">6</span>, <span class="mi">8</span>]);
+<span class="nb">say</span> <span class="s">'slope     : '</span>, <span class="nv">%f</span><span class="s">&lt;slope&gt;</span>;
+<span class="nb">say</span> <span class="s">'intercept : '</span>, <span class="nv">%f</span><span class="s">&lt;intercept&gt;</span>;
+<span class="nb">say</span> <span class="s">'predict 10: '</span>, <span class="nv">%f</span><span class="s">&lt;predict&gt;</span>(<span class="mi">10</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the class`s full name is Statistics::LinearRegression::LR; `LR` is'</span>;
+<span class="nb">say</span> <span class="s">'what a plain `use` exports it as.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>slope     : 2
+intercept : 0
+predict 10: 20
+
+the class`s full name is Statistics::LinearRegression::LR; `LR` is
+what a plain `use` exports it as.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

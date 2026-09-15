@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>path-coverage — The Raku Ecosystem, Working</title>
+<meta name="description" content="Two lint scripts for a distribution's source tree — neither of which can see a `.rakumod` file.">
+<link rel="canonical" href="https://raku.online/modules/path-coverage/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="path-coverage — The Raku Ecosystem, Working">
+<meta property="og:description" content="Two lint scripts for a distribution's source tree — neither of which can see a `.rakumod` file.">
+<meta property="og:url" content="https://raku.online/modules/path-coverage/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"path-coverage","description":"Two lint scripts for a distribution's source tree — neither of which can see a `.rakumod` file.","programmingLanguage":"Raku","version":"0.2","url":"https://raku.online/modules/path-coverage/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/teodozjan/path6-coverage.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · developer tools</div><h1>path-coverage</h1><span class="status st-full">Works</span></div><p class="summary">Two lint scripts for a distribution's source tree — neither of which can see a <code>.rakumod</code> file.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2</code> <span class="fact-sub">github:teodozjan</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>File::Find</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:teodozjan/path-coverage">raku.land</a> · <a href="git://github.com/teodozjan/path6-coverage.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install path-coverage</code></pre></div><p class="fact-sub"><code>zef install path-coverage</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A distribution's <code>lib/Foo/Bar.rakumod</code> should declare <code>unit class Foo::Bar</code>, and its META6 <code>provides</code> should list that pair. Checking both by hand is tedious, so this distribution ships two scripts: one complains about mismatches, one prints the <code>provides</code> entries.</p>
+<p>There is no importable API — <code>provides</code> is empty and the distribution is two <code>bin/</code> scripts.</p>
+<h2 id="what-they-print">What they print <a class="anchor" href="#what-they-print" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-coverage/01-coverage.raku" title="This example as a file: 01-coverage.raku">File</a><pre class="native-code"><code><span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pathcov-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Deep'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Good.pm6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class Good;\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Bad.pm6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class Wrong;\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Deep/Ok.pm6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class Deep::Ok;\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Modern.rakumod'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class AlsoWrong;\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$bin</span> = <span class="nv">$*HOME</span>.<span class="n">add</span>(<span class="s">'.raku/bin'</span>);
+<span class="n">indir</span> <span class="nv">$root</span>, {
+    <span class="k">my</span> <span class="nv">$cov</span> = <span class="nb">run</span> <span class="nv">$bin</span>.<span class="n">add</span>(<span class="s">'path-coverage'</span>).<span class="nb">Str</span>, :<span class="n">out</span>;
+    <span class="nb">say</span> <span class="s">'path-coverage says:'</span>;
+    <span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$_</span> <span class="k">for</span> <span class="nv">$cov</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">sort</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="k">my</span> <span class="nv">$prov</span> = <span class="nb">run</span> <span class="nv">$bin</span>.<span class="n">add</span>(<span class="s">'path-provides'</span>).<span class="nb">Str</span>, :<span class="n">out</span>;
+    <span class="nb">say</span> <span class="s">'path-provides says:'</span>;
+    <span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$_</span> <span class="k">for</span> <span class="nv">$prov</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">sort</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>path-coverage says:
+  Wrong should be Bad or declared with my keyword
+
+path-provides says:
+  "Deep::Ok" : "./lib/Deep/Ok.pm6",
+  "Good" : "./lib/Good.pm6",
+  "Wrong" : "./lib/Bad.pm6",</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Neither script can see a <code>.rakumod</code> or <code>.raku</code> file, so on any modern distribution both print nothing and exit 0 — a clean bill of health that means "I did not look".</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-coverage/02-blind.raku" title="This example as a file: 02-blind.raku">File</a><pre class="native-code"><code><span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pathcov2-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Modern.rakumod'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class AlsoWrong;\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$bin</span> = <span class="nv">$*HOME</span>.<span class="n">add</span>(<span class="s">'.raku/bin/path-coverage'</span>).<span class="nb">Str</span>;
+<span class="k">my</span> <span class="nv">@lines</span> = <span class="n">indir</span> <span class="nv">$root</span>, { <span class="nb">run</span>(<span class="nv">$bin</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">grep</span>(*.<span class="nb">chars</span>) };
+<span class="nb">say</span> <span class="s">'a lib/ holding only Modern.rakumod, declaring `unit class AlsoWrong`:'</span>;
+<span class="nb">say</span> <span class="s">'  path-coverage output lines : '</span>, <span class="nv">@lines</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the file filter is  name =&gt; /.p [l||m] 6? $/  — a literal &quot;p&quot; then'</span>;
+<span class="nb">say</span> <span class="s">'&quot;l&quot; or &quot;m&quot; at the end of the name. It matches .pm, .pm6, .pl, .pl6'</span>;
+<span class="nb">say</span> <span class="s">'and nothing else. A distribution written since the .rakumod rename'</span>;
+<span class="nb">say</span> <span class="s">'gets a silent all-clear from path-coverage and an EMPTY provides'</span>;
+<span class="nb">say</span> <span class="s">'block from path-provides, which is precisely the case where you'</span>;
+<span class="nb">say</span> <span class="s">'most wanted the tool to speak up.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a lib/ holding only Modern.rakumod, declaring `unit class AlsoWrong`:
+  path-coverage output lines : 0
+
+the file filter is  name =&gt; /.p [l||m] 6? $/  — a literal "p" then
+"l" or "m" at the end of the name. It matches .pm, .pm6, .pl, .pl6
+and nothing else. A distribution written since the .rakumod rename
+gets a silent all-clear from path-coverage and an EMPTY provides
+block from path-provides, which is precisely the case where you
+most wanted the tool to speak up.</code></pre></div>
+<h2 id="two-more-things-it-gets-wrong">Two more things it gets wrong <a class="anchor" href="#two-more-things-it-gets-wrong" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-coverage/03-quirks.raku" title="This example as a file: 03-quirks.raku">File</a><pre class="native-code"><code><span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;pathcov3-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/Plain.pm6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;class Inner \{ \}\nmy class Hidden \{ \}\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'lib/R.pl6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit role R;\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'Top.pm6'</span>).<span class="nb">spurt</span>(<span class="s">&quot;unit class Top;\n&quot;</span>);
+
+<span class="n">indir</span> <span class="nv">$root</span>, {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="nv">$*HOME</span>.<span class="n">add</span>(<span class="s">'.raku/bin/path-coverage'</span>).<span class="nb">Str</span>, :<span class="n">out</span>;
+    <span class="nb">say</span> <span class="s">'path-coverage says:'</span>;
+    <span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$_</span> <span class="k">for</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">sort</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a non-`unit` inner declaration is reported as if it were the file`s'</span>;
+<span class="nb">say</span> <span class="s">'package, so any file with a helper class in it produces a false'</span>;
+<span class="nb">say</span> <span class="s">'positive. `my class` is correctly ignored, so the two ARE told apart'</span>;
+<span class="nb">say</span> <span class="s">'— but only the `my` form.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the name stripper only removes \\.pm6?$, so a .pl6 or .p6 file keeps'</span>;
+<span class="nb">say</span> <span class="s">'its extension in the expected name and can never match. And outside'</span>;
+<span class="nb">say</span> <span class="s">'a lib/ directory the expected name is derived from the raw relative'</span>;
+<span class="nb">say</span> <span class="s">'path, giving nonsense like &quot;.::Top&quot;.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>path-coverage says:
+  Inner should be Plain or declared with my keyword
+  R should be R.pl6 or declared with my keyword
+  Top should be .::Top or declared with my keyword
+
+a non-`unit` inner declaration is reported as if it were the file`s
+package, so any file with a helper class in it produces a false
+positive. `my class` is correctly ignored, so the two ARE told apart
+— but only the `my` form.
+
+the name stripper only removes \.pm6?$, so a .pl6 or .p6 file keeps
+its extension in the expected name and can never match. And outside
+a lib/ directory the expected name is derived from the raw relative
+path, giving nonsense like ".::Top".</code></pre></div>
+<p><code>path-provides</code> performs no checking at all — it transcribes whatever name it finds beside whatever path it found it in, including the mismatched pair that <code>path-coverage</code> flags. Its output is also not valid JSON: every line ends in a comma, including the last, and there are no enclosing braces.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nothing. Both scripts produce byte-identical output on both engines for every tree above, including the blind spot — this is <code>File::Find</code> plus a grammar, and the parts that could diverge are not reached.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/path-coverage/04-grammar.raku" title="This example as a file: 04-grammar.raku">File</a><pre class="native-code"><code><span class="nb">say</span> <span class="s">'one implementation detail worth knowing, because it explains the'</span>;
+<span class="nb">say</span> <span class="s">'shape of the output: the grammar`s TOP requires a `unit` declaration'</span>;
+<span class="nb">say</span> <span class="s">'immediately followed by a `my unit` declaration on the same line,'</span>;
+<span class="nb">say</span> <span class="s">'which a real line of source essentially never satisfies.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the tool produces output anyway, because Raku action methods fire'</span>;
+<span class="nb">say</span> <span class="s">'for sub-rules that matched even when the overall parse fails. The'</span>;
+<span class="nb">say</span> <span class="s">'entire output is a side effect of a parse that never succeeds.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'both scripts start #!/usr/bin/env perl6. That works through the'</span>;
+<span class="nb">say</span> <span class="s">'installed ~/.raku/bin wrappers on both engines, but the shebang'</span>;
+<span class="nb">say</span> <span class="s">'itself would need a perl6 on PATH if you ran the file directly.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>one implementation detail worth knowing, because it explains the
+shape of the output: the grammar`s TOP requires a `unit` declaration
+immediately followed by a `my unit` declaration on the same line,
+which a real line of source essentially never satisfies.
+
+the tool produces output anyway, because Raku action methods fire
+for sub-rules that matched even when the overall parse fails. The
+entire output is a side effect of a parse that never succeeds.
+
+both scripts start #!/usr/bin/env perl6. That works through the
+installed ~/.raku/bin wrappers on both engines, but the shebang
+itself would need a perl6 on PATH if you ran the file directly.</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>
