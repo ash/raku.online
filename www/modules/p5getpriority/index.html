@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5getpriority — The Raku Ecosystem, Working</title>
+<meta name="description" content="Scheduling priority and process groups — getpriority, setpriority, getppid, getpgrp and setpgrp — bound directly, returning plain integers.">
+<link rel="canonical" href="https://raku.online/modules/p5getpriority/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P5getpriority — The Raku Ecosystem, Working">
+<meta property="og:description" content="Scheduling priority and process groups — getpriority, setpriority, getppid, getpgrp and setpgrp — bound directly, returning plain integers.">
+<meta property="og:url" content="https://raku.online/modules/p5getpriority/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"P5getpriority","description":"Scheduling priority and process groups — getpriority, setpriority, getppid, getpgrp and setpgrp — bound directly, returning plain integers.","programmingLanguage":"Raku","version":"0.0.8","url":"https://raku.online/modules/p5getpriority/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/P5getpriority.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>P5getpriority</h1><span class="status st-full">Works</span></div><p class="summary">Scheduling priority and process groups — getpriority, setpriority, getppid, getpgrp and setpgrp — bound directly, returning plain integers.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.8</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/P5getpriority">raku.land</a> · <a href="https://github.com/lizmat/P5getpriority.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install P5getpriority</code></pre></div><p class="fact-sub"><code>zef install P5getpriority</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A long-running batch job that should not compete with interactive work wants to lower its own priority; a supervisor wants to know what priority a child is running at. That is <code>nice</code>, and underneath it <code>getpriority(2)</code> and <code>setpriority(2)</code>.</p>
+<p>Unlike the database modules in the same family, there is no record reshaping here — these are thin bindings returning integers straight from C.</p>
+<h2 id="reading-a-priority">Reading a priority <a class="anchor" href="#reading-a-priority" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getpriority/01-priority.raku" title="This example as a file: 01-priority.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getpriority</span>;
+
+<span class="k">constant</span> <span class="n">PRIO_PROCESS</span> = <span class="mi">0</span>;   <span class="c1"># from &lt;sys/resource.h&gt;</span>
+<span class="k">constant</span> <span class="n">PRIO_PGRP</span>    = <span class="mi">1</span>;
+<span class="k">constant</span> <span class="n">PRIO_USER</span>    = <span class="mi">2</span>;
+
+<span class="c1"># &quot;who = 0&quot; means &quot;me&quot;. The absolute value is not portable; the range is.</span>
+<span class="k">my</span> <span class="nv">$me</span> = <span class="n">getpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'own nice value is in -20..20 : '</span>, -<span class="mi">20</span> &lt;= <span class="nv">$me</span> &lt;= <span class="mi">20</span>;
+<span class="nb">say</span> <span class="s">'own nice value is an Int     : '</span>, <span class="nv">$me</span> ~~ <span class="nb">Int</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'process-group priority in range : '</span>, -<span class="mi">20</span> &lt;= <span class="n">getpriority</span>(<span class="n">PRIO_PGRP</span>, <span class="mi">0</span>) &lt;= <span class="mi">20</span>;
+<span class="nb">say</span> <span class="s">'getppid is positive             : '</span>, <span class="n">getppid</span>() &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'getpgrp is positive             : '</span>, <span class="n">getpgrp</span>() &gt; <span class="mi">0</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>own nice value is in -20..20 : True
+own nice value is an Int     : True
+
+process-group priority in range : True
+getppid is positive             : True
+getpgrp is positive             : True</code></pre></div>
+<p>The <code>$which</code> argument takes the <code>&lt;sys/resource.h&gt;</code> constants: 0 for a process, 1 for a process group, 2 for a user. The module exports <strong>no constants for them</strong>, so you declare your own as above.</p>
+<h2 id="writing-one">Writing one <a class="anchor" href="#writing-one" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getpriority/02-setpriority.raku" title="This example as a file: 02-setpriority.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getpriority</span>;
+
+<span class="k">constant</span> <span class="n">PRIO_PROCESS</span> = <span class="mi">0</span>;
+
+<span class="c1"># writing back the value already there is a no-op, and 0 means success</span>
+<span class="k">my</span> <span class="nv">$me</span> = <span class="n">getpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'setpriority to the current value : '</span>, <span class="n">setpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">0</span>, <span class="nv">$me</span>);
+<span class="nb">say</span> <span class="s">'and it is unchanged              : '</span>, <span class="n">getpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">0</span>) == <span class="nv">$me</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>setpriority to the current value : 0
+and it is unchanged              : True</code></pre></div>
+<p>Only the no-op form is shown here on purpose. Raising a process's nice value is <strong>irreversible</strong> for a non-root process — you can be nicer, never less nice — so an example that actually lowered the priority would leave the program it ran in worse than it found it.</p>
+<p><code>setpgrp</code> is left alone entirely: moving a process out of its shell's process group detaches it from job control.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>getpriority</code> signals failure by returning <code>-1</code>, and <code>-1</code> is also a perfectly valid nice value. The module exposes no <code>errno</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getpriority/03-minus-one-trap.raku" title="This example as a file: 03-minus-one-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getpriority</span>;
+
+<span class="k">constant</span> <span class="n">PRIO_PROCESS</span> = <span class="mi">0</span>;
+
+<span class="nb">say</span> <span class="s">'a pid that does not exist:'</span>;
+<span class="nb">say</span> <span class="s">'  getpriority(PRIO_PROCESS, 999999) = '</span>, <span class="n">getpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">999_999</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a process niced to -1 would return exactly the same number,'</span>;
+<span class="nb">say</span> <span class="s">'and -1 is inside the legal range : '</span>, -<span class="mi">20</span> &lt;= -<span class="mi">1</span> &lt;= <span class="mi">20</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'setpriority has the same ambiguity, except that 0 means success:'</span>;
+<span class="nb">say</span> <span class="s">'  on a nonexistent pid : '</span>, <span class="n">setpriority</span>(<span class="n">PRIO_PROCESS</span>, <span class="mi">999_999</span>, <span class="mi">0</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a pid that does not exist:
+  getpriority(PRIO_PROCESS, 999999) = -1
+
+a process niced to -1 would return exactly the same number,
+and -1 is inside the legal range : True
+
+setpriority has the same ambiguity, except that 0 means success:
+  on a nonexistent pid : -1</code></pre></div>
+<p>In C the documented idiom is to clear <code>errno</code>, make the call, and inspect <code>errno</code> afterwards. Nothing here does that, and nothing is exported that could. So <code>getpriority(0, $pid)</code> on a pid that has gone away is byte-for-byte the same answer as a process that has been niced to -1.</p>
+<p>Check the pid exists separately, or use <code>setpriority</code>'s unambiguous <code>0</code> when you need a definite answer.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every reading, the no-op write, both process-group calls and both failure cases produced identical output on Raku++ and Rakudo.</p>
+<p>One introspection oddity, identical on both: <code>getppid</code> and <code>getpgrp</code> are declared <code>--&gt; uint32</code> and <code>.^name</code> reports <code>Int</code>, so do not expect the native type to survive into Raku.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

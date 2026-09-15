@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git::Status — The Raku Ecosystem, Working</title>
+<meta name="description" content="Run git status in a directory and present the porcelain output as seven typed lists plus a clean flag, read once at construction.">
+<link rel="canonical" href="https://raku.online/modules/git-status/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Git::Status — The Raku Ecosystem, Working">
+<meta property="og:description" content="Run git status in a directory and present the porcelain output as seven typed lists plus a clean flag, read once at construction.">
+<meta property="og:url" content="https://raku.online/modules/git-status/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Git::Status","description":"Run git status in a directory and present the porcelain output as seven typed lists plus a clean flag, read once at construction.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/git-status/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/Git-Status.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · git</div><h1>Git::Status</h1><span class="status st-part">Partial</span></div><p class="summary">Run git status in a directory and present the porcelain output as seven typed lists plus a clean flag, read once at construction.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/Git::Status">raku.land</a> · <a href="https://github.com/lizmat/Git-Status.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Git::Status</code></pre></div><p class="fact-sub"><code>zef install Git::Status</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A release script wants one question answered before it does anything: is this working tree clean? Shelling out to <code>git status --porcelain</code> and testing the output for emptiness is three lines nobody writes the same way twice, and the porcelain format has enough status letters to make "what exactly is dirty?" a second, longer job.</p>
+<p>This distribution answers both. It reads the porcelain output once, in <code>TWEAK</code>, and exposes the result as a flag plus lists.</p>
+<h2 id="reading-a-repository">Reading a repository <a class="anchor" href="#reading-a-repository" aria-label="link">#</a></h2>
+<p>The example builds its own throwaway repository so the output is the same everywhere:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/git-status/01-status.raku" title="This example as a file: 01-status.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Git::Status</span>;
+
+<span class="k">my</span> <span class="nv">$repo</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;gs-{$*PID}&quot;</span>);
+<span class="nv">$repo</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span> }
+
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'init'</span>, <span class="s">'-q'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.email'</span>, <span class="s">'f@example.invalid'</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.name'</span>,  <span class="s">'Fixture'</span>;
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'tracked.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;one\n&quot;</span>);
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'todelete.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;two\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'add'</span>, <span class="s">'.'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'commit'</span>, <span class="s">'-qm'</span>, <span class="s">'first'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+
+<span class="nb">say</span> <span class="s">'a clean tree:'</span>;
+<span class="k">my</span> <span class="nv">$clean</span> = <span class="n">Git::Status</span>.<span class="nb">new</span>(<span class="n">directory</span> =&gt; <span class="nv">$repo</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'  is-clean : '</span>, <span class="nv">$clean</span>.<span class="n">is-clean</span>;
+<span class="nb">say</span> <span class="s">'  gist     : '</span>, <span class="nv">$clean</span>.<span class="nb">gist</span>.<span class="nb">raku</span>;
+
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'tracked.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;one\nchanged\n&quot;</span>);
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'untracked.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;three\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'rm'</span>, <span class="s">'-q'</span>, <span class="s">'todelete.txt'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'after changing, adding and removing a file:'</span>;
+<span class="k">my</span> <span class="nv">$st</span> = <span class="n">Git::Status</span>.<span class="nb">new</span>(<span class="n">directory</span> =&gt; <span class="nv">$repo</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'  is-clean  : '</span>, <span class="nv">$st</span>.<span class="n">is-clean</span>;
+<span class="nb">say</span> <span class="s">'  modified  : '</span>, <span class="nv">$st</span>.<span class="n">modified</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  deleted   : '</span>, <span class="nv">$st</span>.<span class="n">deleted</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  untracked : '</span>, <span class="nv">$st</span>.<span class="n">untracked</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a clean tree:
+  is-clean : True
+  gist     : ""
+
+after changing, adding and removing a file:
+  is-clean  : False
+  modified  : tracked.txt
+  deleted   : todelete.txt
+  untracked : untracked.txt</code></pre></div>
+<p>The <code>directory</code> attribute is <code>IO()</code>-coerced, so a <code>Str</code> is fine, and it defaults to <code>$*CWD</code>. <code>.is-clean</code> is the <code>.so</code> of <code>.clean</code>; either will do.</p>
+<h2 id="the-gist">The gist <a class="anchor" href="#the-gist" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/git-status/02-gist.raku" title="This example as a file: 02-gist.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Git::Status</span>;
+
+<span class="k">my</span> <span class="nv">$repo</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;gs2-{$*PID}&quot;</span>);
+<span class="nv">$repo</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span> }
+
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'init'</span>, <span class="s">'-q'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.email'</span>, <span class="s">'f@example.invalid'</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.name'</span>,  <span class="s">'Fixture'</span>;
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'a.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;x\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'add'</span>, <span class="s">'.'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'commit'</span>, <span class="s">'-qm'</span>, <span class="s">'first'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'a.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;y\n&quot;</span>);
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'b.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;z\n&quot;</span>);
+
+<span class="nb">say</span> <span class="n">Git::Status</span>.<span class="nb">new</span>(<span class="n">directory</span> =&gt; <span class="nv">$repo</span>.<span class="nb">Str</span>).<span class="nb">gist</span>.<span class="n">subst</span>(<span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'&lt;REPO&gt;'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Git::Status:
+  &lt;REPO&gt;
+
+Modified:
+  a.txt
+
+Untracked:
+  b.txt</code></pre></div>
+<p><code>.gist</code> is a ready-to-print summary and returns the <strong>empty string</strong> for a clean repository — so <code>say $status</code> prints a blank line rather than anything reassuring. Test <code>.is-clean</code> for that.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Four of the seven accessors are always empty. <code>.added</code>, <code>.renamed</code>, <code>.copied</code> and <code>.updated</code> are wired up to nothing.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/git-status/03-added-trap.raku" title="This example as a file: 03-added-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Git::Status</span>;
+
+<span class="k">my</span> <span class="nv">$repo</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;gs3-{$*PID}&quot;</span>);
+<span class="nv">$repo</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span> }
+
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'init'</span>, <span class="s">'-q'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.email'</span>, <span class="s">'f@example.invalid'</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'config'</span>, <span class="s">'user.name'</span>,  <span class="s">'Fixture'</span>;
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'base.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;x\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'add'</span>, <span class="s">'.'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'commit'</span>, <span class="s">'-qm'</span>, <span class="s">'first'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+
+<span class="nv">$repo</span>.<span class="n">add</span>(<span class="s">'staged-new.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;new\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'add'</span>, <span class="s">'staged-new.txt'</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+
+<span class="k">my</span> <span class="nv">$porcelain</span> = <span class="nb">run</span>(<span class="s">'git'</span>, <span class="s">'-C'</span>, <span class="nv">$repo</span>.<span class="nb">Str</span>, <span class="s">'status'</span>, <span class="s">'--porcelain'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="s">'git itself reports : '</span>, <span class="nv">$porcelain</span>.<span class="nb">trim</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$st</span> = <span class="n">Git::Status</span>.<span class="nb">new</span>(<span class="n">directory</span> =&gt; <span class="nv">$repo</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'clean flag flipped : '</span>, !<span class="nv">$st</span>.<span class="n">is-clean</span>;
+<span class="nb">say</span> <span class="s">'.added reports     : '</span>, <span class="nv">$st</span>.<span class="n">added</span>.<span class="nb">elems</span>, <span class="s">' entries'</span>;
+<span class="nb">say</span> <span class="s">'.gist mentions it  : '</span>, <span class="nv">$st</span>.<span class="nb">gist</span>.<span class="n">contains</span>(<span class="s">'staged-new'</span>) ?? <span class="s">'yes'</span> !! <span class="s">'no'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>git itself reports : "A  staged-new.txt"
+clean flag flipped : True
+.added reports     : 0 entries
+.gist mentions it  : no</code></pre></div>
+<p>In <code>TWEAK</code>, the branches for status letters <code>A</code>, <code>R</code>, <code>C</code> and <code>U</code> set the clean flag to <code>False</code> and never push the path onto their array; only <code>M</code>, <code>D</code> and <code>?</code> record anything. A newly staged file is therefore invisible to everything except <code>.clean</code>, and the gist has no "Added:" section even though the class contains the code to print one.</p>
+<p><code>.deleted</code> does pick up a staged deletion, so the asymmetry is a bug rather than a decision about index versus worktree. Anyone writing "list the files I've staged" against this gets a confident empty answer.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in <code>.raku</code> rendering. The accessors hand back an <code>array[str]</code>, which Raku++ prints as <code>["tracked.txt"]</code> and Rakudo as <code>array[str].new("tracked.txt")</code>. The values, the gist and the flags are identical, which is why every example above joins rather than <code>.raku</code>s.</p>
+<p>Three things that are not engine differences. The status is read <strong>once, in <code>TWEAK</code></strong> — the object is a snapshot, so change the repository and you must build a new one. Any porcelain status character the class does not recognise produces <code>note "Unrecognized: '$_'"</code> on <strong>stderr</strong>, from inside the constructor, with no way to turn it off. And it parses git's v1 porcelain format, in which a rename line is <code>XY ORIG -&gt; PATH</code>; the whole <code>ORIG -&gt; PATH</code> string would land in the path slot, which is moot only because <code>.renamed</code> is never populated.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Highlight::Terminal — The Raku Ecosystem, Working</title>
+<meta name="description" content="A lookup table from Raku syntax-category names to SGR colour parameters, plus the two methods that wrap text in the matching escape.">
+<link rel="canonical" href="https://raku.online/modules/highlight-terminal/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Highlight::Terminal — The Raku Ecosystem, Working">
+<meta property="og:description" content="A lookup table from Raku syntax-category names to SGR colour parameters, plus the two methods that wrap text in the matching escape.">
+<meta property="og:url" content="https://raku.online/modules/highlight-terminal/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Highlight::Terminal","description":"A lookup table from Raku syntax-category names to SGR colour parameters, plus the two methods that wrap text in the matching escape.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/highlight-terminal/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/FCO/Highlight-Terminal.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · terminal</div><h1>Highlight::Terminal</h1><span class="status st-full">Works</span></div><p class="summary">A lookup table from Raku syntax-category names to SGR colour parameters, plus the two methods that wrap text in the matching escape.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:FCO</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:FCO/Highlight::Terminal">raku.land</a> · <a href="https://github.com/FCO/Highlight-Terminal.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Highlight::Terminal</code></pre></div><p class="fact-sub"><code>zef install Highlight::Terminal</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>If you are writing something that prints Raku source — a REPL, a pretty-printer, a grammar tracer — you need a colour for each kind of token, and picking ninety of them is not the interesting part of the job. This distribution has picked them: a table from category name to SGR parameters, and a method that wraps a string in the right escape.</p>
+<p>It is a <strong>role</strong>, not a set of subs. You compose it into your own class.</p>
+<h2 id="composing-and-colouring">Composing and colouring <a class="anchor" href="#composing-and-colouring" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/highlight-terminal/01-hl.raku" title="This example as a file: 01-hl.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Highlight::Terminal</span>;
+
+<span class="k">class</span> <span class="n">HL</span> <span class="k">does</span> <span class="n">Highlight::Terminal</span> {}
+<span class="k">my</span> <span class="nv">$h</span> = <span class="n">HL</span>.<span class="nb">new</span>;
+
+<span class="nb">say</span> <span class="s">'table entries       : '</span>, <span class="nv">$h</span>.<span class="nb">map</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'entries with colour : '</span>, <span class="nv">$h</span>.<span class="nb">map</span>.<span class="nb">values</span>.<span class="nb">grep</span>(*.<span class="nb">defined</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> &lt;<span class="n">version</span> <span class="n">arrow</span> <span class="n">block</span> <span class="k">multi</span>&gt; -&gt; <span class="nv">$t</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-8s %s'</span>, <span class="nv">$t</span>, <span class="nv">$h</span>.<span class="n">hl</span>(<span class="nv">$t</span>, <span class="s">'TEXT'</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">'unknown category    : '</span>, <span class="nv">$h</span>.<span class="n">hl</span>(<span class="s">'no-such-category'</span>, <span class="s">'TEXT'</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>table entries       : 90
+entries with colour : 42
+
+version  "\x[1B][33;4mTEXT\x[1B][m"
+arrow    "\x[1B][35;1mTEXT\x[1B][m"
+block    "\x[1B][35mTEXT\x[1B][m"
+multi    "\x[1B][32;1mTEXT\x[1B][m"
+unknown category    : "TEXT"</code></pre></div>
+<p><code>use Highlight::Terminal;</code> on its own gives you nothing callable — no subs are exported. Compose the role, then call <code>.hl($category, $text)</code>. An unknown category passes its text through unchanged rather than erroring, which is either convenient or a way to lose a typo silently.</p>
+<h2 id="the-fallback">The fallback <a class="anchor" href="#the-fallback" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/highlight-terminal/02-fallback.raku" title="This example as a file: 02-fallback.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Highlight::Terminal</span>;
+
+<span class="k">class</span> <span class="n">HL</span> <span class="k">does</span> <span class="n">Highlight::Terminal</span> {}
+<span class="k">my</span> <span class="nv">$h</span> = <span class="n">HL</span>.<span class="nb">new</span>;
+
+<span class="k">for</span> <span class="s">'version'</span>, <span class="s">'arrow'</span>, <span class="s">'arrow-one'</span>, <span class="s">'arrow-one-deeper'</span>, <span class="s">'block-xxx'</span>, <span class="s">'no-such'</span> -&gt; <span class="nv">$t</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'from-map(%-20s) = %-8s   table entry: %s'</span>,
+        <span class="s">&quot;'$t'&quot;</span>, <span class="nv">$h</span>.<span class="n">from-map</span>(<span class="nv">$t</span>).<span class="nb">raku</span>,
+        <span class="nv">$h</span>.<span class="nb">map</span>{<span class="nv">$t</span>}:<span class="n">exists</span> ?? <span class="nv">$h</span>.<span class="nb">map</span>{<span class="nv">$t</span>}.<span class="nb">raku</span> !! <span class="s">'absent'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>from-map('version'           ) = "33;4"     table entry: "33;4"
+from-map('arrow'             ) = "35;1"     table entry: "35;1"
+from-map('arrow-one'         ) = "35;1"     table entry: Str
+from-map('arrow-one-deeper'  ) = "35;1"     table entry: absent
+from-map('block-xxx'         ) = "35"       table entry: Str
+from-map('no-such'           ) = Nil        table entry: absent</code></pre></div>
+<p><code>from-map</code> splits the category on <code>-</code> and walks the cumulative prefixes longest-first, so <code>arrow-one-deeper</code> — absent from the table entirely — still resolves to <code>arrow</code>'s colour. That is what the 48 undefined <code>Str</code> placeholders in the table are for: they exist to make the prefix walk stop in the right place.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>hl</code> does not nest. Highlighting a span that already contains a highlighted span emits two resets, and the inner one cancels the outer colour.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/highlight-terminal/03-nesting.raku" title="This example as a file: 03-nesting.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Highlight::Terminal</span>;
+
+<span class="k">class</span> <span class="n">HL</span> <span class="k">does</span> <span class="n">Highlight::Terminal</span> {}
+<span class="k">my</span> <span class="nv">$h</span> = <span class="n">HL</span>.<span class="nb">new</span>;
+
+<span class="k">my</span> <span class="nv">$inner</span> = <span class="nv">$h</span>.<span class="n">hl</span>(<span class="s">'version'</span>, <span class="s">'INNER'</span>);
+<span class="k">my</span> <span class="nv">$outer</span> = <span class="nv">$h</span>.<span class="n">hl</span>(<span class="s">'block'</span>, <span class="s">&quot;before{$inner}after&quot;</span>);
+
+<span class="nb">say</span> <span class="s">'inner : '</span>, <span class="nv">$inner</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'outer : '</span>, <span class="nv">$outer</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'reset sequences in the outer string : '</span>, +<span class="nv">$outer</span>.<span class="nb">comb</span>(<span class="sr">/ \x1b '[m' /</span>);
+<span class="nb">say</span> <span class="s">'the word &quot;after&quot; is preceded by a reset, so it renders with no colour'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>inner : "\x[1B][33;4mINNER\x[1B][m"
+outer : "\x[1B][35mbefore\x[1B][33;4mINNER\x[1B][mafter\x[1B][m"
+reset sequences in the outer string : 2
+the word "after" is preceded by a reset, so it renders with no colour</code></pre></div>
+<p>There is nothing in the API to say "restore the enclosing colour" — the reset is unconditional. Anyone composing nested categories, a string literal inside a block say, gets silently mis-coloured output. Colour the innermost spans only, or re-emit the outer escape yourself after each inner span.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Not in output. The one measurable difference is how often the <code>where</code> constraints on the two <code>hl</code> candidates are evaluated: a single <code>hl</code> call rebuilds the 90-entry table four times under Raku++ and three under Rakudo, and for an unknown category three times against one. Nothing a user sees, but it says something about the cost.</p>
+<p>That cost is the thing worth knowing. <code>method map</code> constructs the whole 90-entry <code>Map</code> on <strong>every call</strong>, and every <code>hl</code> triggers it three or four times. Highlighting a large file therefore pays for thousands of <code>Map</code> constructions. Cache the table in your own class if you are colouring more than a few lines.</p>
+<p>Two smaller notes. The reset used is <code>ESC[m</code>, not the more usual <code>ESC[0m</code> — equivalent per the specification, but it will surprise anyone string-matching for <code>\e[0m</code>. And 48 of the 90 table entries are undefined <code>Str</code> type objects, so <code>.map.values</code> is full of them.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

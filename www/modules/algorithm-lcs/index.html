@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::LCS — The Raku Ecosystem, Working</title>
+<meta name="description" content="The longest common subsequence of two sequences — the subsequence itself, not its length — with the common prefix and suffix stripped before the dynamic-programming table is built.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-lcs/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::LCS — The Raku Ecosystem, Working">
+<meta property="og:description" content="The longest common subsequence of two sequences — the subsequence itself, not its length — with the common prefix and suffix stripped before the dynamic-programming table is built.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-lcs/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::LCS","description":"The longest common subsequence of two sequences — the subsequence itself, not its length — with the common prefix and suffix stripped before the dynamic-programming table is built.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/algorithm-lcs/","license":"https://spdx.org/licenses/MIT","codeRepository":"https://github.com/raku-community-modules/Algorithm-LCS.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>Algorithm::LCS</h1><span class="status st-full">Works</span></div><p class="summary">The longest common subsequence of two sequences — the subsequence itself, not its length — with the common prefix and suffix stripped before the dynamic-programming table is built.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>MIT</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Algorithm::LCS">raku.land</a> · <a href="https://github.com/raku-community-modules/Algorithm-LCS.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::LCS</code></pre></div><p class="fact-sub"><code>zef install Algorithm::LCS</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Longest common subsequence is the machinery under <code>diff</code>: the lines two files share, in order, are their LCS, and everything else is an insertion or a deletion. It is also how you measure similarity between two version strings, two DNA reads, or two clickstreams.</p>
+<p>This distribution returns the subsequence itself rather than its length, which is the harder half and the one you actually want when building a diff.</p>
+<h2 id="finding-the-subsequence">Finding the subsequence <a class="anchor" href="#finding-the-subsequence" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-lcs/01-lcs.raku" title="This example as a file: 01-lcs.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::LCS</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">@a</span>, <span class="nv">@b</span>, |<span class="n">c</span>) {
+    <span class="k">my</span> <span class="nv">@r</span> = <span class="n">lcs</span>(<span class="nv">@a</span>, <span class="nv">@b</span>, |<span class="n">c</span>);
+    <span class="nb">sprintf</span>(<span class="s">'lcs(%-10s, %-10s) = %-14s len=%d'</span>,
+        <span class="nv">@a</span>.<span class="nb">join</span>(<span class="s">''</span>), <span class="nv">@b</span>.<span class="nb">join</span>(<span class="s">''</span>), <span class="s">'['</span> ~ <span class="nv">@r</span>.<span class="nb">join</span>(<span class="s">' '</span>) ~ <span class="s">']'</span>, <span class="nv">@r</span>.<span class="nb">elems</span>)
+}
+
+<span class="nb">say</span> <span class="n">show</span> [<span class="s">&lt;X M J Y A U Z&gt;</span>], [<span class="s">&lt;M Z J A W X U&gt;</span>];
+<span class="nb">say</span> <span class="n">show</span> [<span class="s">&lt;A G C A T&gt;</span>], [<span class="s">&lt;G A C&gt;</span>];
+<span class="nb">say</span> <span class="n">show</span> <span class="s">'human'</span>.<span class="nb">comb</span>.<span class="nb">Array</span>, <span class="s">'chimpanzee'</span>.<span class="nb">comb</span>.<span class="nb">Array</span>;
+<span class="nb">say</span> <span class="n">show</span> [<span class="s">&lt;a b c&gt;</span>], [<span class="s">&lt;a b c&gt;</span>];
+<span class="nb">say</span> <span class="n">show</span> [<span class="s">&lt;a b c&gt;</span>], [<span class="s">&lt;x y z&gt;</span>];
+<span class="nb">say</span> <span class="n">show</span> [<span class="s">&lt;A A A&gt;</span>], [<span class="s">&lt;A A&gt;</span>];
+<span class="nb">say</span> <span class="n">show</span> [<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>], [<span class="mi">2</span>, <span class="mi">4</span>, <span class="mi">5</span>];</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>lcs(XMJYAUZ   , MZJAWXU   ) = [M J A U]      len=4
+lcs(AGCAT     , GAC       ) = [G A]          len=2
+lcs(human     , chimpanzee) = [h m a n]      len=4
+lcs(abc       , abc       ) = [a b c]        len=3
+lcs(abc       , xyz       ) = []             len=0
+lcs(AAA       , AA        ) = [A A]          len=2
+lcs(1234      , 245       ) = [2 4]          len=2</code></pre></div>
+<p><code>XMJYAUZ</code> against <code>MZJAWXU</code> gives <code>MJAU</code>, length 4, which is the textbook answer. The result is a <code>Seq</code>.</p>
+<h2 id="choosing-how-elements-compare">Choosing how elements compare <a class="anchor" href="#choosing-how-elements-compare" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-lcs/02-compare.raku" title="This example as a file: 02-compare.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::LCS</span>;
+
+<span class="nb">say</span> <span class="s">'default comparator is eqv, which is type-strict:'</span>;
+<span class="nb">say</span> <span class="s">'  lcs([1,2,3], [&quot;1&quot;,&quot;2&quot;,&quot;3&quot;])              = '</span>, <span class="n">lcs</span>([<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>], [<span class="s">'1'</span>,<span class="s">'2'</span>,<span class="s">'3'</span>]).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  with :compare(&amp;infix:&lt;eq&gt;)               = '</span>,
+    <span class="n">lcs</span>([<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>], [<span class="s">'1'</span>,<span class="s">'2'</span>,<span class="s">'3'</span>], <span class="n">compare</span> =&gt; <span class="nv">&amp;infix</span>:<span class="s">&lt;eq&gt;</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  lcs([1.0, 2.0], [1, 2]) — Rat versus Int = '</span>, <span class="n">lcs</span>([<span class="mf">1.0</span>, <span class="mf">2.0</span>], [<span class="mi">1</span>, <span class="mi">2</span>]).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">':compare-i sees indices into the ORIGINAL arrays:'</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="s">&lt;q a b z&gt;</span>;
+<span class="k">my</span> <span class="nv">@b</span> = <span class="s">&lt;q a c z&gt;</span>;
+<span class="k">my</span> <span class="nv">@seen</span>;
+<span class="k">my</span> <span class="nv">@res</span> = <span class="n">lcs</span>(<span class="nv">@a</span>, <span class="nv">@b</span>, <span class="n">compare-i</span> =&gt; -&gt; <span class="nv">$i</span>, <span class="nv">$j</span> { <span class="nv">@seen</span>.<span class="nb">push</span>(<span class="s">&quot;($i,$j)&quot;</span>); <span class="nv">@a</span>[<span class="nv">$i</span>] <span class="n">eq</span> <span class="nv">@b</span>[<span class="nv">$j</span>] });
+<span class="nb">say</span> <span class="s">'  result      : '</span>, <span class="nv">@res</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  index pairs : '</span>, <span class="nv">@seen</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>default comparator is eqv, which is type-strict:
+  lcs([1,2,3], ["1","2","3"])              = ()
+  with :compare(&amp;infix:&lt;eq&gt;)               = (1, 2, 3)
+  lcs([1.0, 2.0], [1, 2]) — Rat versus Int = ()
+
+:compare-i sees indices into the ORIGINAL arrays:
+  result      : ("q", "a", "z")
+  index pairs : (0,0) (1,1) (2,2) (3,3) (2,2) (2,2)</code></pre></div>
+<p>The default <code>eqv</code> is type-strict, which catches a whole class of bugs and surprises anyone comparing numbers against strings. <code>:compare-i</code> exists for when the elements are expensive to compare and you have precomputed keys — it receives absolute indices into the original arrays, and is used for the prefix and suffix strip as well as for the table.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>lcs(@a, @b)</code> and <code>lcs(@b, @a)</code> are the same <strong>length</strong> but frequently a different subsequence, so the result is not a canonical key.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-lcs/03-asymmetry.raku" title="This example as a file: 03-asymmetry.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::LCS</span>;
+
+<span class="k">sub</span> <span class="n">words</span>(<span class="nv">@alpha</span>, <span class="nv">$maxlen</span>) {
+    <span class="k">my</span> <span class="nv">@w</span>; <span class="k">my</span> <span class="nv">@cur</span> = <span class="s">''</span>;
+    <span class="k">for</span> <span class="mi">1</span> .. <span class="nv">$maxlen</span> { <span class="nv">@cur</span> = (<span class="nv">@cur</span> <span class="n">X</span> <span class="nv">@alpha</span>).<span class="nb">map</span>(*.<span class="nb">join</span>); <span class="nv">@w</span>.<span class="nb">append</span>: <span class="nv">@cur</span> }
+    <span class="nv">@w</span>
+}
+
+<span class="k">my</span> <span class="nv">@w</span> = <span class="nb">words</span>(<span class="s">&lt;a b c&gt;</span>, <span class="mi">4</span>);
+<span class="k">my</span> (<span class="nv">$n</span>, <span class="nv">$lendiff</span>, <span class="nv">$seqdiff</span>) = <span class="mi">0</span>, <span class="mi">0</span>, <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">@examples</span>;
+<span class="k">for</span> <span class="nv">@w</span> -&gt; <span class="nv">$x</span> {
+    <span class="k">for</span> <span class="nv">@w</span> -&gt; <span class="nv">$y</span> {
+        <span class="k">my</span> <span class="nv">$ab</span> = <span class="n">lcs</span>(<span class="nv">$x</span>.<span class="nb">comb</span>.<span class="nb">Array</span>, <span class="nv">$y</span>.<span class="nb">comb</span>.<span class="nb">Array</span>, <span class="n">compare</span> =&gt; <span class="nv">&amp;infix</span>:<span class="s">&lt;eq&gt;</span>).<span class="nb">join</span>;
+        <span class="k">my</span> <span class="nv">$ba</span> = <span class="n">lcs</span>(<span class="nv">$y</span>.<span class="nb">comb</span>.<span class="nb">Array</span>, <span class="nv">$x</span>.<span class="nb">comb</span>.<span class="nb">Array</span>, <span class="n">compare</span> =&gt; <span class="nv">&amp;infix</span>:<span class="s">&lt;eq&gt;</span>).<span class="nb">join</span>;
+        <span class="nv">$n</span>++;
+        <span class="nv">$lendiff</span>++ <span class="k">if</span> <span class="nv">$ab</span>.<span class="nb">chars</span> != <span class="nv">$ba</span>.<span class="nb">chars</span>;
+        <span class="k">if</span> <span class="nv">$ab</span> <span class="n">ne</span> <span class="nv">$ba</span> {
+            <span class="nv">$seqdiff</span>++;
+            <span class="nv">@examples</span>.<span class="nb">push</span>(<span class="s">&quot;lcs('$x','$y')='$ab'  but  lcs('$y','$x')='$ba'&quot;</span>) <span class="k">if</span> <span class="nv">@examples</span> &lt; <span class="mi">3</span>;
+        }
+    }
+}
+<span class="nb">say</span> <span class="s">&quot;ordered pairs checked           : $n&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;length differs when swapped     : $lendiff&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;chosen subsequence differs      : $seqdiff&quot;</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+.<span class="nb">say</span> <span class="k">for</span> <span class="nv">@examples</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ordered pairs checked           : 14400
+length differs when swapped     : 0
+chosen subsequence differs      : 3006
+
+lcs('ab','ba')='b'  but  lcs('ba','ab')='a'
+lcs('ab','baa')='b'  but  lcs('baa','ab')='a'
+lcs('ab','bac')='b'  but  lcs('bac','ab')='a'</code></pre></div>
+<p>Twenty-one per cent of pairs give a different answer depending on argument order. Both answers are optimal — there is more than one longest common subsequence and the algorithm picks one — but if you are hashing the result, caching on it, or comparing two runs, you must fix the argument order.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Twice, both on mistakes rather than on correct use.</p>
+<p><code>@a</code> and <code>@b</code> are <code>Positional</code> parameters, so a bare <code>Str</code> is not a list of characters. <code>lcs('abc', 'abd')</code> is a <strong>compile-time error</strong> on Rakudo — <code>Calling lcs(Str, Str) will never work with declared signature</code> — and on Raku++ it binds and returns a silently empty result. Use <code>.comb.Array</code>, as every example above does.</p>
+<p>And the return value is a <code>Seq</code>. Consuming it twice throws <code>The iterator of this Seq is already in use/consumed</code> on Rakudo and quietly yields the values again on Raku++. Assign to <code>my @r</code>, or call <code>.List</code>, if you need it more than once.</p>
+<p>Correctness itself is solid on both: 14,641 pairs of strings up to length four over a three-letter alphabet, every answer both optimal in length and a genuine common subsequence of both inputs, with zero failures on either engine. The empty <code>class Algorithm::LCS</code> that ships alongside has no methods; do not instantiate it looking for any.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

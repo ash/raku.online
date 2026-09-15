@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::Manacher — The Raku Ecosystem, Working</title>
+<meta name="description" content="Manacher's linear scan for palindromic substrings — every maximal palindrome and its position, computed once at construction.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-manacher/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::Manacher — The Raku Ecosystem, Working">
+<meta property="og:description" content="Manacher's linear scan for palindromic substrings — every maximal palindrome and its position, computed once at construction.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-manacher/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::Manacher","description":"Manacher's linear scan for palindromic substrings — every maximal palindrome and its position, computed once at construction.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/algorithm-manacher/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/titsuki/p6-Algorithm-Manacher.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>Algorithm::Manacher</h1><span class="status st-full">Works</span></div><p class="summary">Manacher's linear scan for palindromic substrings — every maximal palindrome and its position, computed once at construction.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>4 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Algorithm::Manacher">raku.land</a> · <a href="git://github.com/titsuki/p6-Algorithm-Manacher.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::Manacher</code></pre></div><p class="fact-sub"><code>zef install Algorithm::Manacher</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Finding the longest palindromic substring by checking every substring is cubic. Manacher's algorithm does it in one linear pass, by remembering the widest palindrome found so far and using its symmetry to skip comparisons it has already made implicitly.</p>
+<p>This distribution runs that scan once, in <code>BUILD</code>, and the three query methods read the result. Construction costs are proportional to the text; the queries are cheap.</p>
+<h2 id="finding-palindromes">Finding palindromes <a class="anchor" href="#finding-palindromes" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-manacher/01-find.raku" title="This example as a file: 01-find.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Manacher</span>;
+
+<span class="k">sub</span> <span class="n">dump</span>(<span class="nv">%h</span>) {
+    <span class="nv">%h</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({
+        <span class="s">&quot;$_ =&gt; &quot;</span> ~ (<span class="nv">%h</span>{<span class="nv">$_</span>} ~~ <span class="nb">Positional</span>
+            ?? <span class="s">'['</span> ~ <span class="nv">%h</span>{<span class="nv">$_</span>}.<span class="nb">list</span>.<span class="nb">map</span>(*.<span class="nb">Int</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>) ~ <span class="s">']'</span>
+            !! <span class="nv">%h</span>{<span class="nv">$_</span>}.<span class="nb">Int</span>)
+    }).<span class="nb">join</span>(<span class="s">'  '</span>)
+}
+
+<span class="k">for</span> <span class="s">'banana'</span>, <span class="s">'abacaba'</span>, <span class="s">'aabb'</span>, <span class="s">'noon'</span>, <span class="s">'abc'</span> -&gt; <span class="nv">$t</span> {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="nv">$t</span>);
+    <span class="nb">say</span> <span class="s">&quot;text '$t'&quot;</span>;
+    <span class="nb">say</span> <span class="s">'  is-palindrome           : '</span>, <span class="nv">$m</span>.<span class="n">is-palindrome</span>;
+    <span class="nb">say</span> <span class="s">'  find-longest-palindrome : '</span>, <span class="n">dump</span>(<span class="nv">$m</span>.<span class="n">find-longest-palindrome</span>);
+    <span class="nb">say</span> <span class="s">'  find-all-palindrome     : '</span>, <span class="n">dump</span>(<span class="nv">$m</span>.<span class="n">find-all-palindrome</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>text 'banana'
+  is-palindrome           : False
+  find-longest-palindrome : anana =&gt; 1
+  find-all-palindrome     : a =&gt; [1,5]  ana =&gt; [1,3]  anana =&gt; 1  b =&gt; 0
+text 'abacaba'
+  is-palindrome           : True
+  find-longest-palindrome : abacaba =&gt; 0
+  find-all-palindrome     : a =&gt; [0,2,4,6]  aba =&gt; [0,4]  abacaba =&gt; 0
+text 'aabb'
+  is-palindrome           : False
+  find-longest-palindrome : aa =&gt; 0  bb =&gt; 2
+  find-all-palindrome     : a =&gt; [0,1]  aa =&gt; 0  b =&gt; [2,3]  bb =&gt; 2
+text 'noon'
+  is-palindrome           : True
+  find-longest-palindrome : noon =&gt; 0
+  find-all-palindrome     : n =&gt; [0,3]  noon =&gt; 0  o =&gt; [1,2]
+text 'abc'
+  is-palindrome           : False
+  find-longest-palindrome : a =&gt; 0  b =&gt; 1  c =&gt; 2
+  find-all-palindrome     : a =&gt; 0  b =&gt; 1  c =&gt; 2</code></pre></div>
+<p><code>find-longest-palindrome</code> returns <em>every</em> joint-longest palindrome when there is a tie, so <code>aabb</code> gives you two entries.</p>
+<h2 id="the-edges">The edges <a class="anchor" href="#the-edges" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-manacher/02-edges.raku" title="This example as a file: 02-edges.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Manacher</span>;
+
+<span class="nb">say</span> <span class="s">'empty text &quot;&quot;  : is-palindrome='</span>, <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="s">''</span>).<span class="n">is-palindrome</span>;
+<span class="nb">say</span> <span class="s">'one char  &quot;x&quot;  : is-palindrome='</span>, <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="s">'x'</span>).<span class="n">is-palindrome</span>;
+<span class="nb">say</span> <span class="s">'two same  &quot;xx&quot; : is-palindrome='</span>, <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="s">'xx'</span>).<span class="n">is-palindrome</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$jp</span> = <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="s">&quot;たけやぶやけた&quot;</span>);
+<span class="nb">say</span> <span class="s">'non-ASCII      : is-palindrome='</span>, <span class="nv">$jp</span>.<span class="n">is-palindrome</span>;
+<span class="k">my</span> <span class="nv">$comb</span> = <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="s">&quot;e\x[301]e\x[301]&quot;</span>);
+<span class="nb">say</span> <span class="s">'combining mark : chars='</span>, <span class="s">&quot;e\x[301]e\x[301]&quot;</span>.<span class="nb">chars</span>, <span class="s">' is-palindrome='</span>, <span class="nv">$comb</span>.<span class="n">is-palindrome</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>empty text ""  : is-palindrome=False
+one char  "x"  : is-palindrome=True
+two same  "xx" : is-palindrome=True
+
+non-ASCII      : is-palindrome=True
+combining mark : chars=2 is-palindrome=True</code></pre></div>
+<p>The empty string is <strong>not</strong> a palindrome here; a single character is. Palindromes are grapheme-based, so a combining acute counts as one character, which is the right answer.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>find-all-palindrome</code> does not return every palindromic substring — only the maximal one per centre.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-manacher/03-maximal-trap.raku" title="This example as a file: 03-maximal-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::Manacher</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="s">'banana'</span>;
+<span class="k">my</span> <span class="nv">%all</span> = <span class="n">Algorithm::Manacher</span>.<span class="nb">new</span>(<span class="n">text</span> =&gt; <span class="nv">$t</span>).<span class="n">find-all-palindrome</span>;
+
+<span class="k">my</span> <span class="nv">@every</span> = <span class="k">gather</span> <span class="k">for</span> <span class="mi">0</span> ..^ <span class="nv">$t</span>.<span class="nb">chars</span> -&gt; <span class="nv">$i</span> {
+    <span class="k">for</span> <span class="nv">$i</span> ..^ <span class="nv">$t</span>.<span class="nb">chars</span> -&gt; <span class="nv">$j</span> {
+        <span class="k">my</span> <span class="nv">$s</span> = <span class="nv">$t</span>.<span class="nb">substr</span>(<span class="nv">$i</span>, <span class="nv">$j</span> - <span class="nv">$i</span> + <span class="mi">1</span>);
+        <span class="k">take</span> <span class="nv">$s</span> <span class="k">if</span> <span class="nv">$s</span> <span class="n">eq</span> <span class="nv">$s</span>.<span class="nb">flip</span>;
+    }
+};
+
+<span class="nb">say</span> <span class="s">&quot;text                        : $t&quot;</span>;
+<span class="nb">say</span> <span class="s">'find-all-palindrome keys    : '</span>, <span class="nv">%all</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'every palindromic substring : '</span>, <span class="nv">@every</span>.<span class="nb">unique</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'missing from find-all       : '</span>, (<span class="nv">@every</span>.<span class="nb">unique</span> (-) <span class="nv">%all</span>.<span class="nb">keys</span>).<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">&quot;'a' occurs at indices       : &quot;</span>,
+    (<span class="mi">0</span> ..^ <span class="nv">$t</span>.<span class="nb">chars</span>).<span class="nb">grep</span>({ <span class="nv">$t</span>.<span class="nb">substr</span>(<span class="nv">$_</span>, <span class="mi">1</span>) <span class="n">eq</span> <span class="s">'a'</span> }).<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="s">&quot;find-all says 'a' is at     : &quot;</span>, <span class="nv">%all</span><span class="s">&lt;a&gt;</span>.<span class="nb">list</span>.<span class="nb">map</span>(*.<span class="nb">Int</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>text                        : banana
+find-all-palindrome keys    : a ana anana b
+every palindromic substring : a ana anana b n nan
+missing from find-all       : n nan
+
+'a' occurs at indices       : 1,3,5
+find-all says 'a' is at     : 1,5</code></pre></div>
+<p><code>n</code> and <code>nan</code> are genuine palindromic substrings of <code>banana</code> and are absent, because the maximal palindrome at each of their centres is something longer. The <code>a</code> at index 3 is absent for the same reason: the maximal palindrome centred there is <code>anana</code>.</p>
+<p>For "find every palindrome in this text", expand each returned maximal palindrome inward yourself. For "find the longest", which is what Manacher is for, this is exactly right.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only on the constructor with no argument at all. Rakudo enforces the <code>Str:D</code> constraint even when the named argument is absent, giving <code>Parameter '$!text' of routine 'BUILD' must be an object instance</code>; Raku++ lets the omission through and fails later inside <code>BUILD</code> on a <code>.split</code> of an undefined value. Both die; the message differs.</p>
+<p>Two things that are not engine differences. Positions come back as <strong><code>Rat</code></strong>, not <code>Int</code> — <code>0.0</code>, <code>1.0</code> — because the scan uses half-integer centres to handle even and odd lengths uniformly. They work as <code>substr</code> offsets and compare numerically, but <code>.WHAT</code> is <code>Rat</code>, which is why every example above coerces with <code>.Int</code>. And both hash-returning methods are built with <code>%result.push</code>, so a key seen once maps to a <strong>bare scalar</strong> and a key seen twice maps to an <strong>Array</strong>; <code>.list</code> and <code>[0]</code> work for either shape, but <code>.elems</code> and anything type-dispatched will not.</p>
+<p>Correctness was cross-checked against brute force over all 254 binary strings of length one to seven, with zero mismatches on either engine.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

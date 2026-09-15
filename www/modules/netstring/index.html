@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netstring — The Raku Ecosystem, Working</title>
+<meta name="description" content="Bernstein's netstring framing — a decimal byte count, a colon, the payload, a comma — as two encoders and one socket reader.">
+<link rel="canonical" href="https://raku.online/modules/netstring/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Netstring — The Raku Ecosystem, Working">
+<meta property="og:description" content="Bernstein's netstring framing — a decimal byte count, a colon, the payload, a comma — as two encoders and one socket reader.">
+<meta property="og:url" content="https://raku.online/modules/netstring/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Netstring","description":"Bernstein's netstring framing — a decimal byte count, a colon, the payload, a comma — as two encoders and one socket reader.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/netstring/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/Netstring.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Netstring</h1><span class="status st-div">Divergent</span></div><p class="summary">Bernstein's netstring framing — a decimal byte count, a colon, the payload, a comma — as two encoders and one socket reader.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/Netstring">raku.land</a> · <a href="https://github.com/raku-community-modules/Netstring.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Netstring</code></pre></div><p class="fact-sub"><code>zef install Netstring</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A stream protocol has to say where one message ends and the next begins. Scanning for a delimiter means escaping it in the payload; a netstring instead declares the length up front — <code>5:hello,</code> — so the reader knows exactly how many bytes to take and the payload needs no escaping at all.</p>
+<p>That property is why netstrings turn up in supervision protocols, in <code>qmail</code>-lineage tooling, and anywhere two processes talk over a pipe.</p>
+<h2 id="framing-a-message">Framing a message <a class="anchor" href="#framing-a-message" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/netstring/01-frame.raku" title="This example as a file: 01-frame.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Netstring</span>;
+
+<span class="k">for</span> <span class="s">'hello'</span>, <span class="s">''</span>, <span class="s">'a'</span>, <span class="s">'x'</span> <span class="n">x</span> <span class="mi">12</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'to-netstring(%-14s) = %s'</span>, <span class="nv">$s</span>.<span class="nb">raku</span>, <span class="n">to-netstring</span>(<span class="nv">$s</span>).<span class="nb">raku</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$u</span> = <span class="s">'caf'</span> ~ <span class="s">&quot;\c[LATIN SMALL LETTER E WITH ACUTE]&quot;</span>;
+<span class="nb">say</span> <span class="s">'the prefix is a BYTE count, not a character count:'</span>;
+<span class="nb">say</span> <span class="s">'  input          : '</span>, <span class="nv">$u</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  .chars         : '</span>, <span class="nv">$u</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="s">'  utf8 bytes     : '</span>, <span class="nv">$u</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">bytes</span>;
+<span class="nb">say</span> <span class="s">'  to-netstring   : '</span>, <span class="n">to-netstring</span>(<span class="nv">$u</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-netstring("hello"       ) = "5:hello,"
+to-netstring(""            ) = "0:,"
+to-netstring("a"           ) = "1:a,"
+to-netstring("xxxxxxxxxxxx") = "12:xxxxxxxxxxxx,"
+
+the prefix is a BYTE count, not a character count:
+  input          : "café"
+  .chars         : 4
+  utf8 bytes     : 5
+  to-netstring   : "5:café,"</code></pre></div>
+<p>Four characters, five bytes, and the frame says 5 — which is correct, and which a length-prefixed format has to get right.</p>
+<h2 id="bytes-out">Bytes out <a class="anchor" href="#bytes-out" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/netstring/02-buf.raku" title="This example as a file: 02-buf.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Netstring</span>;
+
+<span class="k">sub</span> <span class="n">hex</span>(<span class="nv">$b</span>) { <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>) }
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="s">'caf'</span> ~ <span class="s">&quot;\c[LATIN SMALL LETTER E WITH ACUTE]&quot;</span>;
+<span class="nb">say</span> <span class="s">'to-netstring-buf : '</span>, <span class="n">hex</span>(<span class="n">to-netstring-buf</span>(<span class="nv">$u</span>));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$binary</span> = <span class="nb">Blob</span>.<span class="nb">new</span>(<span class="mh">0x00</span>, <span class="mh">0x01</span>, <span class="mh">0xFF</span>, <span class="mh">0xFE</span>, <span class="mh">0x80</span>);
+<span class="nb">say</span> <span class="s">'a blob that is not valid UTF-8:'</span>;
+<span class="nb">say</span> <span class="s">'  bytes            : '</span>, <span class="n">hex</span>(<span class="nv">$binary</span>);
+<span class="nb">say</span> <span class="s">'  to-netstring-buf : '</span>, <span class="n">hex</span>(<span class="n">to-netstring-buf</span>(<span class="nv">$binary</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-netstring-buf : 35 3A 63 61 66 C3 A9 2C
+
+a blob that is not valid UTF-8:
+  bytes            : 00 01 FF FE 80
+  to-netstring-buf : 35 3A 00 01 FF FE 80 2C</code></pre></div>
+<p>Which is the thing to know.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>to-netstring</code> has a <code>Blob:D</code> candidate that cannot carry binary data — the one job netstrings exist for.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/netstring/03-blob-trap.raku" title="This example as a file: 03-blob-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Netstring</span>;
+
+<span class="k">my</span> <span class="nv">$binary</span> = <span class="nb">Blob</span>.<span class="nb">new</span>(<span class="mh">0x00</span>, <span class="mh">0x01</span>, <span class="mh">0xFF</span>, <span class="mh">0xFE</span>, <span class="mh">0x80</span>);
+
+<span class="nb">say</span> <span class="s">'to-netstring-buf handles it : '</span>,
+    <span class="n">to-netstring-buf</span>(<span class="nv">$binary</span>).<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">to-netstring</span>(<span class="nv">$binary</span>);
+<span class="nb">say</span> <span class="s">'to-netstring on the same blob : '</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the Str-returning candidate UTF-8 DECODES the payload to build'</span>;
+<span class="nb">say</span> <span class="s">'its return value, so any blob that is not valid UTF-8 fails.'</span>;
+<span class="nb">say</span> <span class="s">'always use to-netstring-buf for bytes.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-netstring-buf handles it : 35 3A 00 01 FF FE 80 2C
+
+to-netstring on the same blob : threw
+
+the Str-returning candidate UTF-8 DECODES the payload to build
+its return value, so any blob that is not valid UTF-8 fails.
+always use to-netstring-buf for bytes.</code></pre></div>
+<p>Both candidates advertise a <code>Blob:D</code> signature and only one means it. Worse, it fails <strong>late</strong> — on whichever blob first contains a byte sequence that is not valid UTF-8 — so it passes every test written against ASCII fixtures and breaks in production on the first binary payload.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p><code>read-netstring</code> is completely dead under Rakudo.</p>
+<p>The reader drives a native-integer accumulator loop — <code>my int $byte; until ($byte = $in.read(1)[0]) == 58 {…}</code> — which Rakudo rejects with <code>This container does not reference a native integer</code> on the very first byte read, for valid and invalid input alike. Under Raku++ it works properly: one byte at a time for the length prefix, one bulk read for the payload, one byte for the terminator, with clear errors on malformation.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/netstring/04-reader.raku" title="This example as a file: 04-reader.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Netstring</span>;
+
+<span class="k">class</span> <span class="n">FakeSocket</span> <span class="k">does</span> <span class="n">IO::Socket</span> {
+    <span class="k">has</span> <span class="nb">Buf</span> <span class="nv">$.data</span>;
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.pos</span> <span class="k">is</span> <span class="n">rw</span> = <span class="mi">0</span>;
+    <span class="k">method</span> <span class="n">read</span>(<span class="nv">$n</span>) {
+        <span class="k">my</span> <span class="nv">$take</span> = <span class="nb">min</span> <span class="nv">$n</span>.<span class="nb">Int</span>, <span class="nv">$!data</span>.<span class="nb">elems</span> - <span class="nv">$!pos</span>;
+        <span class="k">my</span> <span class="nv">$out</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="nv">$!data</span>[<span class="nv">$!pos</span> ..^ <span class="nv">$!pos</span> + <span class="nv">$take</span>]);
+        <span class="nv">$!pos</span> += <span class="nv">$take</span>;
+        <span class="nv">$out</span>
+    }
+}
+<span class="k">sub</span> <span class="n">sock</span>(<span class="nb">Str</span> <span class="nv">$s</span>) { <span class="n">FakeSocket</span>.<span class="nb">new</span>(<span class="n">data</span> =&gt; <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="nv">$s</span>.<span class="n">encode</span>(<span class="s">'latin-1'</span>).<span class="nb">list</span>)) }
+
+<span class="c1"># malformed input is refused on both engines, so this much is portable</span>
+<span class="k">for</span> <span class="s">'bad terminator'</span>, <span class="s">'5:hello;'</span>,
+    <span class="s">'non-digit length'</span>, <span class="s">'x:hello,'</span>,
+    <span class="s">'no colon'</span>, <span class="s">'5hello,'</span>,
+    <span class="s">'empty stream'</span>, <span class="s">''</span> -&gt; <span class="nv">$label</span>, <span class="nv">$wire</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">read-netstring</span>(<span class="n">sock</span>(<span class="nv">$wire</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-18s %-12s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="nv">$wire</span>.<span class="nb">raku</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'accepted'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>bad terminator     "5:hello;"   -&gt; refused
+non-digit length   "x:hello,"   -&gt; refused
+no colon           "5hello,"    -&gt; refused
+empty stream       ""           -&gt; refused</code></pre></div>
+<p>Refusing malformed input is the only part of the reader that behaves the same on both engines, which is why that is all the example asserts. Hand it <code>5:hello,</code> and Raku++ returns <code>hello</code> while Rakudo throws.</p>
+<p>Two further notes, both Raku++ only since that is the only engine where the reader runs. Leading zeros in the length prefix are accepted (<code>05:hello,</code> works). And a <strong>truncated</strong> stream returns the short content it managed to read alongside a confusing terminator message, so a caller who ignores the exception gets silently truncated data.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

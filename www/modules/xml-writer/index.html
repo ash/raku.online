@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XML::Writer — The Raku Ecosystem, Working</title>
+<meta name="description" content="Serialise a nested Raku data structure into XML, where a Pair with a Positional value is an element and one without is an attribute.">
+<link rel="canonical" href="https://raku.online/modules/xml-writer/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="XML::Writer — The Raku Ecosystem, Working">
+<meta property="og:description" content="Serialise a nested Raku data structure into XML, where a Pair with a Positional value is an element and one without is an attribute.">
+<meta property="og:url" content="https://raku.online/modules/xml-writer/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"XML::Writer","description":"Serialise a nested Raku data structure into XML, where a Pair with a Positional value is an element and one without is an attribute.","programmingLanguage":"Raku","version":"'*'","url":"https://raku.online/modules/xml-writer/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/masak/xml-writer.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · markup</div><h1>XML::Writer</h1><span class="status st-full">Works</span></div><p class="summary">Serialise a nested Raku data structure into XML, where a Pair with a Positional value is an element and one without is an attribute.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>'*'</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/XML::Writer">raku.land</a> · <a href="git://github.com/masak/xml-writer.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install XML::Writer</code></pre></div><p class="fact-sub"><code>zef install XML::Writer</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Building XML by string concatenation gets the escaping wrong eventually. Building it through a DOM is more machinery than a small document needs. The middle path is to describe the tree as ordinary Raku data and let something else turn it into text.</p>
+<p>This distribution is that: a tree of <code>Pair</code>s in, a string of XML out, with the escaping handled.</p>
+<h2 id="writing-a-document">Writing a document <a class="anchor" href="#writing-a-document" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-writer/01-serialise.raku" title="This example as a file: 01-serialise.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML::Writer</span>;
+
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">html</span>[
+    :<span class="nb">head</span>[ :<span class="n">title</span>[ <span class="s">'Report'</span> ] ],
+    :<span class="n">body</span>[ :<span class="n">h1</span>[ <span class="s">'Totals'</span> ], :<span class="n">p</span>[ <span class="s">'Rows: 3'</span> ] ],
+]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;html&gt;&lt;head&gt;&lt;title&gt;Report&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Totals&lt;/h1&gt;&lt;p&gt;Rows: 3&lt;/p&gt;&lt;/body&gt;
+&lt;/html&gt;</code></pre></div>
+<p>The rule is one line long: a <code>Pair</code> whose value is <code>Positional</code> is an <strong>element</strong>, a <code>Pair</code> whose value is not is an <strong>attribute</strong>, and a bare <code>Str</code> or number is a text node.</p>
+<h2 id="attributes-and-empty-elements">Attributes and empty elements <a class="anchor" href="#attributes-and-empty-elements" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-writer/02-attributes.raku" title="This example as a file: 02-attributes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML::Writer</span>;
+
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">a</span>[ :<span class="n">href</span>&lt;<span class="n">http</span>:<span class="sr">//</span><span class="n">example</span>.<span class="n">invalid</span>/&gt;, :<span class="k">class</span><span class="s">&lt;lnk&gt;</span>, <span class="s">'click'</span> ]);
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">br</span>[]);
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">n</span>[ <span class="mi">42</span> ]);
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">img</span>[ :<span class="n">src</span>&lt;<span class="n">a</span>.<span class="n">png</span>&gt;, :<span class="n">alt</span><span class="s">&lt;A&gt;</span> ]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;a href="http://example.invalid/" class="lnk"&gt;click&lt;/a&gt;
+&lt;br /&gt;
+&lt;n&gt;42&lt;/n&gt;
+&lt;img src="a.png" alt="A" /&gt;</code></pre></div>
+<p>An element with no children renders as a self-closing tag.</p>
+<h2 id="escaping">Escaping <a class="anchor" href="#escaping" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-writer/03-escaping.raku" title="This example as a file: 03-escaping.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML::Writer</span>;
+
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">p</span>[ <span class="s">'&lt;script&gt;a&amp;b&quot;c&quot;&lt;/script&gt;'</span> ]);
+<span class="nb">say</span> <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">a</span>[ :<span class="n">title</span>(<span class="s">'&quot; onmouseover=x &quot;'</span>), <span class="s">'hi'</span> ]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>&lt;p&gt;&amp;lt;script&amp;gt;a&amp;amp;b&amp;quot;c&amp;quot;&amp;lt;/script&amp;gt;&lt;/p&gt;
+&lt;a title="&amp;quot; onmouseover=x &amp;quot;"&gt;hi&lt;/a&gt;</code></pre></div>
+<p><code>&lt;</code>, <code>&gt;</code>, <code>"</code> and <code>&amp;</code> are escaped in <strong>both</strong> text nodes and attribute values, which is the part most hand-rolled serialisers get half right. The quoted attack string in the second line comes back inert.</p>
+<p>It does not escape <code>'</code>, which is safe only because the writer always emits double quotes. If you post-process the output into single-quoted attributes, you have reintroduced the hole.</p>
+<h2 id="what-it-refuses">What it refuses <a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-writer/04-refuses.raku" title="This example as a file: 04-refuses.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML::Writer</span>;
+
+<span class="k">sub</span> <span class="n">attempt</span>(<span class="nv">$label</span>, <span class="nv">&amp;c</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">c</span>();
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-30s %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.<span class="nb">raku</span>);
+}
+
+<span class="n">attempt</span> <span class="s">'no argument'</span>,          { <span class="n">XML::Writer</span>.<span class="n">serialize</span>() };
+<span class="n">attempt</span> <span class="s">'two root elements'</span>,    { <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">a</span>[<span class="mi">1</span>], :<span class="n">b</span>[<span class="mi">2</span>]) };
+<span class="n">attempt</span> <span class="s">'a bare string'</span>,        { <span class="n">XML::Writer</span>.<span class="n">serialize</span>(<span class="s">'plain'</span>) };
+<span class="n">attempt</span> <span class="s">'one root element'</span>,     { <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">a</span>[<span class="mi">1</span>]) };</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>no argument                    Please pass exactly one argument to XML::Writer.serialize
+two root elements              Please pass exactly one argument to XML::Writer.serialize
+a bare string                  The XML tree must have a single root node
+one root element               "&lt;a&gt;1&lt;/a&gt;"</code></pre></div>
+<p>Exactly one argument, and it must be an element. The two failure messages distinguish "no root" from "not an element", which is more than most serialisers bother with.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The serialiser injects newlines into the markup, at positions determined purely by character count — including inside whitespace-significant elements.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/xml-writer/05-newline-trap.raku" title="This example as a file: 05-newline-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">XML::Writer</span>;
+
+<span class="k">my</span> <span class="nv">$out</span> = <span class="n">XML::Writer</span>.<span class="n">serialize</span>(:<span class="n">pre</span>[ (<span class="mi">1</span>.<span class="mf">.10</span>).<span class="nb">map</span>({ <span class="s">'span'</span> =&gt; [<span class="s">&quot;chunk$_&quot;</span>] }) ]);
+<span class="nb">say</span> <span class="s">'newlines inside the &lt;pre&gt; : '</span>, <span class="nv">$out</span>.<span class="nb">comb</span>(<span class="s">&quot;\n&quot;</span>).<span class="nb">elems</span> - <span class="mi">1</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="nv">$out</span>.<span class="n">subst</span>(<span class="s">&quot;\n&quot;</span>, <span class="s">'\n'</span> ~ <span class="s">&quot;\n&quot;</span>, :<span class="n">g</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>newlines inside the &lt;pre&gt; : 2
+
+&lt;pre&gt;&lt;span&gt;chunk1&lt;/span&gt;&lt;span&gt;chunk2&lt;/span&gt;&lt;span&gt;chunk3&lt;/span&gt;&lt;span&gt;chunk4&lt;/span&gt;\n
+&lt;span&gt;chunk5&lt;/span&gt;&lt;span&gt;chunk6&lt;/span&gt;&lt;span&gt;chunk7&lt;/span&gt;&lt;span&gt;chunk8&lt;/span&gt;\n
+&lt;span&gt;chunk9&lt;/span&gt;&lt;span&gt;chunk10&lt;/span&gt;&lt;/pre&gt;\n</code></pre></div>
+<p>The walker appends a newline whenever the accumulated output has grown more than seventy characters since the last one. In XML that is legal but not neutral: inside <code>&lt;pre&gt;</code>, or any element carrying <code>xml:space="preserve"</code>, it changes the content.</p>
+<p>It also makes the output non-deterministic with respect to <strong>element name length</strong> — rename a tag and the line breaks move, so byte-comparing two serialisations of the same tree is not a safe test.</p>
+<p>Strip the newlines if the document has whitespace-significant elements in it.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every document, every escape and every rejection in this page was byte-identical on Raku++ and Rakudo.</p>
+<p>The distribution declares <strong>no version at all</strong> in its metadata — the field is literally <code>*</code> — so it cannot be depended on with a version range and the installers cannot order upgrades against it. It declares no <code>auth</code> either.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

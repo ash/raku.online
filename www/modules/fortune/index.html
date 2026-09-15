@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fortune — The Raku Ecosystem, Working</title>
+<meta name="description" content="Read and write the Unix fortune file format — records separated by a delimiter line, with an optional binary index — and ship a Slackware database so it works out of the box.">
+<link rel="canonical" href="https://raku.online/modules/fortune/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Fortune — The Raku Ecosystem, Working">
+<meta property="og:description" content="Read and write the Unix fortune file format — records separated by a delimiter line, with an optional binary index — and ship a Slackware database so it works out of the box.">
+<meta property="og:url" content="https://raku.online/modules/fortune/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Fortune","description":"Read and write the Unix fortune file format — records separated by a delimiter line, with an optional binary index — and ship a Slackware database so it works out of the box.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/fortune/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://codeberg.org/1-1sam/raku-Fortune.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · text</div><h1>Fortune</h1><span class="status st-full">Works</span></div><p class="summary">Read and write the Unix fortune file format — records separated by a delimiter line, with an optional binary index — and ship a Slackware database so it works out of the box.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">zef:samy</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Pod::To::Text</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:samy/Fortune">raku.land</a> · <a href="https://codeberg.org/1-1sam/raku-Fortune.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Fortune</code></pre></div><p class="fact-sub"><code>zef install Fortune</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The <code>fortune</code> file format is a plain-text file of records separated by a line holding one delimiter character, usually <code>%</code>, optionally paired with a binary <code>.dat</code> index recording the version, flags and offsets. It is the simplest possible "pick a random quote" store, and it is still what <code>fortune(6)</code> reads.</p>
+<p>This distribution reads and writes both halves, and bundles the Slackware database so there is something to draw from immediately.</p>
+<h2 id="drawing-a-fortune">Drawing a fortune <a class="anchor" href="#drawing-a-fortune" aria-label="link">#</a></h2>
+<p>Every draw is random, so an example asserts <strong>properties</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/fortune/01-fortune.raku" title="This example as a file: 01-fortune.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Fortune</span>;
+
+<span class="k">my</span> <span class="nv">$db</span> = <span class="nv">$Fortune::DATABASE</span>;
+<span class="nb">say</span> <span class="s">'the bundled database exists : '</span>, <span class="nv">$db</span>.<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'records in it               : '</span>, <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$db</span>.<span class="n">absolute</span>).<span class="n">fortune</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@picks</span> = (^<span class="mi">25</span>).<span class="nb">map</span>({ <span class="n">fortune</span>() });
+<span class="nb">say</span> <span class="s">'25 draws:'</span>;
+<span class="nb">say</span> <span class="s">'  every result is a Str or Nil : '</span>, ?<span class="n">all</span>(<span class="nv">@picks</span>.<span class="nb">map</span>({ <span class="nv">$_</span> ~~ <span class="nb">Str</span>|<span class="nb">Nil</span> }));
+<span class="nb">say</span> <span class="s">'  every result is in the store : '</span>,
+    ?<span class="n">all</span>(<span class="nv">@picks</span>.<span class="nb">grep</span>(*.<span class="nb">defined</span>).<span class="nb">map</span>({ <span class="nv">$_</span> (<span class="n">elem</span>) <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$db</span>.<span class="n">absolute</span>).<span class="n">fortune</span>.<span class="nb">Set</span> }));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">':short  — all 160 characters or fewer : '</span>,
+    ?<span class="n">all</span>((^<span class="mi">25</span>).<span class="nb">map</span>({ <span class="n">fortune</span>(:<span class="n">short</span>) }).<span class="nb">grep</span>(*.<span class="nb">defined</span>).<span class="nb">map</span>({ .<span class="nb">chars</span> &lt;= <span class="mi">160</span> }));
+<span class="nb">say</span> <span class="s">':long   — all longer than 160         : '</span>,
+    ?<span class="n">all</span>((^<span class="mi">25</span>).<span class="nb">map</span>({ <span class="n">fortune</span>(:<span class="n">long</span>) }).<span class="nb">grep</span>(*.<span class="nb">defined</span>).<span class="nb">map</span>({ .<span class="nb">chars</span> &gt; <span class="mi">160</span> }));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the bundled database exists : True
+records in it               : 16942
+
+25 draws:
+  every result is a Str or Nil : True
+  every result is in the store : True
+
+:short  — all 160 characters or fewer : True
+:long   — all longer than 160         : True</code></pre></div>
+<p><code>$Fortune::DATABASE</code> is the bundled file as an <code>IO::Path</code>. <code>fortune()</code> with no arguments draws from it.</p>
+<h2 id="your-own-database">Your own database <a class="anchor" href="#your-own-database" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/fortune/02-own.raku" title="This example as a file: 02-own.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Fortune</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;fortune-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="k">my</span> <span class="nv">$db</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sayings'</span>);
+<span class="nv">$db</span>.<span class="nb">spurt</span>(<span class="s">&quot;alpha\n\%\nbeta\n\%\ngamma\n\%\n&quot;</span>);
+
+<span class="k">my</span> <span class="nv">$f</span> = <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$db</span>.<span class="n">absolute</span>);
+<span class="nb">say</span> <span class="s">'records  : '</span>, <span class="nv">$f</span>.<span class="n">fortune</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'delimiter: '</span>, <span class="nv">$f</span>.<span class="n">delimit</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'order    : '</span>, <span class="nv">$f</span>.<span class="n">order</span>;
+<span class="nb">say</span> <span class="s">'rot13    : '</span>, <span class="nv">$f</span>.<span class="n">rot13</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="n">strfile</span>(<span class="nv">$db</span>.<span class="n">absolute</span>);
+<span class="nb">say</span> <span class="s">'strfile wrote the index : '</span>, <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sayings.dat'</span>).<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'  size                  : '</span>, <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'sayings.dat'</span>).<span class="n">s</span>, <span class="s">' bytes'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$g</span> = <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$db</span>.<span class="n">absolute</span>);
+<span class="nb">say</span> <span class="s">'reading again picks the index up: version='</span>, <span class="nv">$g</span>.<span class="n">version</span>,
+    <span class="s">' delimit='</span>, <span class="nv">$g</span>.<span class="n">delimit</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>records  : "alpha" "beta" "gamma" ""
+delimiter: "\%"
+order    : FORTUNE_UNORDER
+rot13    : False
+
+strfile wrote the index : True
+  size                  : 64 bytes
+
+reading again picks the index up: version=1 delimit="\%"</code></pre></div>
+<p>Look at that record list. Three sayings in the file and four records back, because the terminating delimiter leaves a trailing empty one — which is the thing to know.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>fortune()</code> returns <code>Nil</code> at random from a perfectly good database.</p>
+<p>A correctly written fortune file <strong>ends</strong> with a delimiter line. The reader splits on <code>"$delimit\n"</code>, so that terminator yields a trailing empty string, which becomes a record. <code>fortune()</code> then does <code>.pick || Nil</code> — and the empty string is false.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/fortune/03-nil-trap.raku" title="This example as a file: 03-nil-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Fortune</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;fortune2-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="k">my</span> <span class="nv">$db</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'one'</span>);
+<span class="c1"># ONE saying, written exactly the way every fortune file is written</span>
+<span class="nv">$db</span>.<span class="nb">spurt</span>(<span class="s">&quot;the only saying\n\%\n&quot;</span>);
+
+<span class="nb">say</span> <span class="s">'records found : '</span>, <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$db</span>.<span class="n">absolute</span>).<span class="n">fortune</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%seen</span>;
+<span class="nv">%seen</span>{ <span class="n">fortune</span>(<span class="nv">$db</span>.<span class="n">absolute</span>).<span class="nb">defined</span> ?? <span class="s">'a quote'</span> !! <span class="s">'Nil'</span> }++ <span class="k">for</span> ^<span class="mi">400</span>;
+<span class="nb">say</span> <span class="s">'400 draws from a one-record database:'</span>;
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-8s : %s'</span>, <span class="nv">$_</span>, <span class="nv">%seen</span>{<span class="nv">$_</span>} &gt; <span class="mi">100</span> ?? <span class="s">'hundreds'</span> !! <span class="s">'a few'</span>) <span class="k">for</span> <span class="nv">%seen</span>.<span class="nb">keys</span>.<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$bundled</span> = <span class="n">Fortune</span>.<span class="nb">new</span>(<span class="nv">$Fortune::DATABASE</span>.<span class="n">absolute</span>);
+<span class="nb">say</span> <span class="s">'the shipped database has '</span>, <span class="nv">$bundled</span>.<span class="n">fortune</span>.<span class="nb">grep</span>(* <span class="n">eq</span> <span class="s">''</span>).<span class="nb">elems</span>,
+    <span class="s">' empty records among '</span>, <span class="nv">$bundled</span>.<span class="n">fortune</span>.<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>records found : "the only saying" ""
+
+400 draws from a one-record database:
+  Nil      : hundreds
+  a quote  : hundreds
+
+the shipped database has 3 empty records among 16942</code></pre></div>
+<p>Half the draws from a one-record file return <code>Nil</code>. Even the bundled database has three empty records, so <code>fortune()</code> with no arguments returns <code>Nil</code> about once in every five or six thousand calls. <code>say fortune()</code> then prints <code>(Nil)</code>, and <code>fortune().chars</code> dies.</p>
+<p>Filter the empties, or guard every call with <code>//</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in the exception type raised for a non-ASCII delimiter — <code>X::TypeCheck::Binding::Parameter</code> on Raku++, <code>X::AdHoc</code> on Rakudo — and in how a typed attribute reports its own name. Every record, every draw property and the index round trip were identical.</p>
+<p>Two naming traps, the same on both engines. <code>Fortune.new($db).fortune</code> is the <strong>whole list of records</strong>, not one quote — the attribute accessor and the exported sub share a name, so <code>$f.fortune.pick</code> is what you want and <code>fortune($db)</code> is the sub. And the single-file <code>fortune</code> candidate accepts <code>:equal</code>, <code>:all</code> and <code>:offensive</code> in its signature and never reads them; only the directory candidate consults them, and there <code>:all</code> is defeated by a second unconditional filter.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

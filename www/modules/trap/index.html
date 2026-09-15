@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trap — The Raku Ecosystem, Working</title>
+<meta name="description" content="A class that impersonates an output handle well enough for print, say and printf, and keeps what was written instead of sending it anywhere.">
+<link rel="canonical" href="https://raku.online/modules/trap/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Trap — The Raku Ecosystem, Working">
+<meta property="og:description" content="A class that impersonates an output handle well enough for print, say and printf, and keeps what was written instead of sending it anywhere.">
+<meta property="og:url" content="https://raku.online/modules/trap/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Trap","description":"A class that impersonates an output handle well enough for print, say and printf, and keeps what was written instead of sending it anywhere.","programmingLanguage":"Raku","version":"0.0.5","url":"https://raku.online/modules/trap/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/Trap.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · testing</div><h1>Trap</h1><span class="status st-div">Divergent</span></div><p class="summary">A class that impersonates an output handle well enough for print, say and printf, and keeps what was written instead of sending it anywhere.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.5</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/Trap">raku.land</a> · <a href="https://github.com/lizmat/Trap.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Trap</code></pre></div><p class="fact-sub"><code>zef install Trap</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Testing a routine that prints means capturing what it printed. Redirecting a real file handle and reading it back is several lines and a temporary file; what you want is an object that says "yes, I am <code>$*OUT</code>" and remembers.</p>
+<p>This distribution is that object, with a <code>:tee</code> option for when you want to capture the output <em>and</em> still see it.</p>
+<h2 id="capturing-output">Capturing output <a class="anchor" href="#capturing-output" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/trap/01-trap.raku" title="This example as a file: 01-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Trap</span>;
+
+<span class="k">my</span> (<span class="nv">$text</span>, <span class="nv">$silent</span>);
+{
+    <span class="k">my</span> <span class="nv">$*OUT</span>;                <span class="c1"># scope the replacement</span>
+    <span class="n">Trap</span>(<span class="nv">$*OUT</span>);             <span class="c1"># $*OUT is now a Trap instance</span>
+    <span class="nb">say</span> <span class="s">'first line'</span>;
+    <span class="nb">print</span> <span class="s">'no newline'</span>;
+    <span class="nb">say</span> <span class="s">''</span>;
+    <span class="nb">printf</span>(<span class="s">&quot;%s=%d\n&quot;</span>, <span class="s">'n'</span>, <span class="mi">42</span>);
+    <span class="nv">$text</span>   = <span class="nv">$*OUT</span>.<span class="n">text</span>;
+    <span class="nv">$silent</span> = <span class="nv">$*OUT</span>.<span class="n">silent</span>;
+}
+<span class="nb">say</span> <span class="s">'nothing leaked above this line'</span>;
+<span class="nb">say</span> <span class="s">'captured : '</span>, <span class="nv">$text</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'silent   : '</span>, <span class="nv">$silent</span>;
+<span class="nb">say</span> <span class="s">'.text returns a : '</span>, <span class="nv">$text</span>.^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>nothing leaked above this line
+captured : "first line\nno newline\nn=42\n"
+silent   : False
+.text returns a : Str</code></pre></div>
+<p>The idiom is two statements: declare <code>my $*OUT</code> to scope the replacement, then call the class itself on it. <code>Trap</code> has a <code>CALL-ME</code>, so <code>Trap($*OUT)</code> reads like a function and installs the instance.</p>
+<p><code>.silent</code> is <code>True</code> while nothing has been recorded — useful for asserting that a quiet path really was quiet.</p>
+<h2 id="both-handles-at-once">Both handles at once <a class="anchor" href="#both-handles-at-once" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/trap/02-both.raku" title="This example as a file: 02-both.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Trap</span>;
+
+<span class="k">my</span> (<span class="nv">$same</span>, <span class="nv">$both</span>);
+{
+    <span class="k">my</span> <span class="nv">$*OUT</span>;
+    <span class="k">my</span> <span class="nv">$*ERR</span>;
+    <span class="n">Trap</span>(<span class="nv">$*OUT</span>, <span class="nv">$*ERR</span>);
+    <span class="nb">say</span>  <span class="s">'to out'</span>;
+    <span class="nb">note</span> <span class="s">'to err'</span>;
+    <span class="nv">$same</span> = <span class="nv">$*OUT</span> === <span class="nv">$*ERR</span>;
+    <span class="nv">$both</span> = <span class="nv">$*OUT</span>.<span class="n">text</span>;
+}
+<span class="nb">say</span> <span class="s">'both handles are literally the same object : '</span>, <span class="nv">$same</span>;
+<span class="nb">say</span> <span class="s">'interleaved text : '</span>, <span class="nv">$both</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>both handles are literally the same object : True
+interleaved text : "to out\nto err\n"</code></pre></div>
+<p>Two-handle mode gives you <strong>one</strong> object, so out and err are interleaved in <code>.text</code> with nothing to tell them apart. If you need to distinguish them, trap them separately.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A <code>Trap</code> is not an <code>IO::Handle</code>, and it implements exactly three methods.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/trap/03-not-a-handle.raku" title="This example as a file: 03-not-a-handle.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Trap</span>;
+
+<span class="k">my</span> <span class="nv">@missing</span>;
+{
+    <span class="k">my</span> <span class="nv">$*OUT</span>;
+    <span class="n">Trap</span>(<span class="nv">$*OUT</span>);
+    <span class="k">for</span> &lt;<span class="n">flush</span> <span class="n">write</span> <span class="n">t</span> <span class="nb">lines</span> <span class="nb">slurp</span> <span class="n">encoding</span>&gt; -&gt; <span class="nv">$m</span> {
+        <span class="nv">@missing</span>.<span class="nb">push</span>(<span class="nv">$m</span>) <span class="k">unless</span> <span class="nv">$*OUT</span>.^<span class="n">can</span>(<span class="nv">$m</span>);
+    }
+}
+<span class="nb">note</span> <span class="s">'methods a real handle has that Trap lacks : '</span>, <span class="nv">@missing</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">note</span> <span class="s">'Trap does IO::Handle : '</span>, <span class="n">Trap</span> ~~ <span class="n">IO::Handle</span>;
+<span class="nb">note</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$e</span> = <span class="s">'no error'</span>;
+{ <span class="k">my</span> <span class="nv">$*OUT</span>; <span class="n">Trap</span>(<span class="nv">$*OUT</span>); <span class="k">try</span> { <span class="k">my</span> <span class="nv">$x</span> = <span class="nv">$*OUT</span>.<span class="n">t</span>; <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nv">$e</span> = .^<span class="n">name</span> } } } }
+<span class="nb">note</span> <span class="s">'$*OUT.t inside a trap -&gt; '</span>, <span class="nv">$e</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code></code></pre></div>
+<p><code>.t</code> is the near-universal "am I attached to a terminal?" test that every colour-aware library runs before deciding whether to emit escapes. Wrapping such a library in a <code>Trap</code> replaces its output with a crash rather than capturing it.</p>
+<p>A second thing in the same area, and it is process-wide: <code>Trap($*OUT)</code> written <strong>without</strong> a preceding <code>my $*OUT</code> replaces <code>PROCESS::&lt;$OUT&gt;</code> for the whole program, and the class has no <code>restore</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On <code>:tee&lt;OUT&gt;</code>, the module's headline convenience — and it is an engine bug rather than a module one.</p>
+<p>Under Raku++, a lexical <code>my $*OUT</code> in the same scope shadows <code>PROCESS::{'$OUT'}</code> as well as the dynamic variable, so the tee target comes back undefined and the teed copy is silently lost. <code>PROCESS::{'$ERR'}</code> is unaffected, and a <code>my $*FOO</code> in the same position does not do it, so the shadowing is specific to that one pairing. Under Rakudo the tee works and the line appears on the terminal as well as in <code>.text</code>.</p>
+<p>Teeing to a <strong>file</strong> is unaffected on Rakudo and hits the same shadowing on Raku++; teeing to <code>ERR</code> works on both. So <code>:tee</code> is portable only for <code>ERR</code> and, on one engine, not at all.</p>
+<p>Two smaller notes, identical on both engines. An unusable tee target dies at construction with <code>'42' cannot be used to tee</code>, which is the right time for it. And <code>$*OUT.^name</code> is <code>FileHandle</code> under Raku++ and <code>IO::Handle</code> under Rakudo, so keep that out of anything you assert on.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

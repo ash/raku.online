@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pod::Literate — The Raku Ecosystem, Working</title>
+<meta name="description" content="A grammar that splits a Raku source file into alternating documentation and code chunks, handing back the matched substrings.">
+<link rel="canonical" href="https://raku.online/modules/pod-literate/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pod::Literate — The Raku Ecosystem, Working">
+<meta property="og:description" content="A grammar that splits a Raku source file into alternating documentation and code chunks, handing back the matched substrings.">
+<meta property="og:url" content="https://raku.online/modules/pod-literate/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Pod::Literate","description":"A grammar that splits a Raku source file into alternating documentation and code chunks, handing back the matched substrings.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/pod-literate/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/codesections/pod-literate.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · Pod</div><h1>Pod::Literate</h1><span class="status st-full">Works</span></div><p class="summary">A grammar that splits a Raku source file into alternating documentation and code chunks, handing back the matched substrings.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">github:codesections</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:codesections/Pod::Literate">raku.land</a> · <a href="https://github.com/codesections/pod-literate.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Pod::Literate</code></pre></div><p class="fact-sub"><code>zef install Pod::Literate</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Literate programming interleaves prose and code, and a tool that wants to extract either half needs to know where one ends and the other begins. Raku already puts both in one file; what is missing is the split.</p>
+<p>This distribution is that split, as a grammar. It is a pure text operation: it does not build Pod objects and does not compile the code, it hands you the matched substrings and lets you decide what they are for.</p>
+<h2 id="splitting-a-file">Splitting a file <a class="anchor" href="#splitting-a-file" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-literate/01-split.raku" title="This example as a file: 01-split.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Literate</span>;
+
+<span class="k">my</span> <span class="nv">$source</span> = <span class="s">q:to/END/</span>;
+<span class="s">unit module Literate;
+
+=begin pod
+This is the first documentation block.
+It has two lines.
+=end pod
+
+sub first() is export { 1 }
+
+=begin pod
+A second block, after some code.
+=end pod
+
+sub second() is export { 2 }
+END
+</span>
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Pod::Literate</span>.<span class="n">parse</span>(<span class="nv">$source</span>);
+<span class="nb">say</span> <span class="s">'matched     : '</span>, <span class="nv">$m</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">'pod chunks  : '</span>, <span class="nv">$m</span><span class="s">&lt;pod&gt;</span>.<span class="nb">elems</span>;
+<span class="k">for</span> <span class="nv">$m</span><span class="s">&lt;pod&gt;</span>.<span class="nb">kv</span> -&gt; <span class="nv">$i</span>, <span class="nv">$p</span> { <span class="nb">say</span> <span class="s">&quot;  pod[$i]  = &lt;&lt;{$p.Str.trim}&gt;&gt;&quot;</span> }
+<span class="nb">say</span> <span class="s">'code chunks : '</span>, <span class="nv">$m</span><span class="s">&lt;code&gt;</span>.<span class="nb">elems</span>;
+<span class="k">for</span> <span class="nv">$m</span><span class="s">&lt;code&gt;</span>.<span class="nb">kv</span> -&gt; <span class="nv">$i</span>, <span class="nv">$c</span> { <span class="nb">say</span> <span class="s">&quot;  code[$i] = &lt;&lt;{$c.Str.trim}&gt;&gt;&quot;</span> }</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>matched     : True
+pod chunks  : 2
+  pod[0]  = &lt;&lt;=begin pod
+This is the first documentation block.
+It has two lines.
+=end pod&gt;&gt;
+  pod[1]  = &lt;&lt;=begin pod
+A second block, after some code.
+=end pod&gt;&gt;
+code chunks : 3
+  code[0] = &lt;&lt;unit module Literate;&gt;&gt;
+  code[1] = &lt;&lt;sub first() is export { 1 }&gt;&gt;
+  code[2] = &lt;&lt;sub second() is export { 2 }&gt;&gt;</code></pre></div>
+<p>The unit <strong>is</strong> the grammar. There is no actions class and no wrapper sub, so <code>Pod::Literate.parse($text)</code> or <code>.parsefile($path)</code> is the whole interface, and you read <code>$/&lt;pod&gt;</code> and <code>$/&lt;code&gt;</code> yourself. Both are lists of matches.</p>
+<h2 id="what-it-recognises">What it recognises <a class="anchor" href="#what-it-recognises" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-literate/02-recognises.raku" title="This example as a file: 02-recognises.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Literate</span>;
+
+<span class="k">sub</span> <span class="n">try-parse</span>(<span class="nv">$label</span>, <span class="nv">$text</span>) {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Pod::Literate</span>.<span class="n">parse</span>(<span class="nv">$text</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-32s -&gt; %s'</span>, <span class="nv">$label</span>,
+        <span class="nv">$m</span>.<span class="nb">defined</span> ?? <span class="s">&quot;matched ({$m&lt;pod&gt;.elems} pod, {$m&lt;code&gt;.elems} code)&quot;</span> !! <span class="s">'Nil'</span>);
+}
+
+<span class="n">try-parse</span> <span class="s">'delimited =begin/=end'</span>,      <span class="s">&quot;=begin pod\nhi\n=end pod\nmy \$x = 1;\n&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'abbreviated =head1'</span>,         <span class="s">&quot;=head1 NAME\n\nmy \$x = 1;\n&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'=head1 inside =begin pod'</span>,   <span class="s">&quot;=begin pod\n=head1 NAME\n=end pod\nmy \$x = 1;\n&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'paragraph =for'</span>,             <span class="s">&quot;=for comment\nthis\n\nmy \$x = 1;\n&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'code only'</span>,                  <span class="s">&quot;my \$x = 1;\n&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'code, no trailing newline'</span>,  <span class="s">&quot;my \$x = 1;&quot;</span>;
+<span class="n">try-parse</span> <span class="s">'empty string'</span>,               <span class="s">&quot;&quot;</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>delimited =begin/=end            -&gt; matched (1 pod, 1 code)
+abbreviated =head1               -&gt; Nil
+=head1 inside =begin pod         -&gt; matched (1 pod, 1 code)
+paragraph =for                   -&gt; Nil
+code only                        -&gt; matched (0 pod, 1 code)
+code, no trailing newline        -&gt; Nil
+empty string                     -&gt; matched (0 pod, 0 code)</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Only <code>=begin</code>/<code>=end</code> pod is understood, and anything else makes the <strong>whole file</strong> fail to parse.</p>
+<p>The <code>pod</code> token requires a literal <code>=begin</code>, and the <code>code</code> token forbids any line starting with <code>=</code>. A top-level <code>=head1 NAME</code> therefore matches neither alternative, <code>TOP</code> cannot consume the input, and <code>.parse</code> returns <strong><code>Nil</code></strong> — not a partial match, not an exception, not a diagnostic.</p>
+<p>That is the common case, not a corner. The conventional Raku module preamble is exactly <code>=head1 NAME</code> outside any <code>=begin pod</code> block, and the spike above proves the split: <code>=head1</code> at top level gives <code>Nil</code>, while the identical <code>=head1</code> nested inside a <code>=begin pod</code> block parses fine. <code>=for</code> paragraph blocks fail the same way — and the grammar declares <code>pod-paragraph-line</code> and <code>pod-abbreviated-block-line</code> tokens that <code>TOP</code> never reaches.</p>
+<p>Since every failure mode is a silent <code>Nil</code>, check the match before touching <code>$/&lt;pod&gt;</code>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pod-literate/03-guard.raku" title="This example as a file: 03-guard.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Pod::Literate</span>;
+
+<span class="k">my</span> <span class="nv">$awkward</span> = <span class="s">&quot;=head1 NAME\n\nmy \$x = 1;\n&quot;</span>;
+<span class="k">with</span> <span class="n">Pod::Literate</span>.<span class="n">parse</span>(<span class="nv">$awkward</span>) -&gt; <span class="nv">$m</span> {
+    <span class="nb">say</span> <span class="s">'parsed, pod chunks: '</span>, <span class="nv">$m</span><span class="s">&lt;pod&gt;</span>.<span class="nb">elems</span>;
+}
+<span class="k">else</span> {
+    <span class="nb">say</span> <span class="s">'did not parse — check for abbreviated pod or a missing trailing newline'</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>did not parse — check for abbreviated pod or a missing trailing newline</code></pre></div>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every spike in this page behaved identically on Raku++ and Rakudo, which makes this the most portable of the Pod-handling distributions in the handbook.</p>
+<p>One more failure mode, for the same reason as the others: a file whose last line has <strong>no trailing newline</strong> returns <code>Nil</code> too, because both <code>pod</code> and <code>code</code> require a terminating <code>\n</code>. Append one before parsing if the source might have been trimmed.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

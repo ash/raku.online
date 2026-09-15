@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digest::FNV — The Raku Ecosystem, Working</title>
+<meta name="description" content="The Fowler–Noll–Vo non-cryptographic hash in its three historical variants, at any of six widths from 32 to 1024 bits.">
+<link rel="canonical" href="https://raku.online/modules/digest-fnv/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Digest::FNV — The Raku Ecosystem, Working">
+<meta property="og:description" content="The Fowler–Noll–Vo non-cryptographic hash in its three historical variants, at any of six widths from 32 to 1024 bits.">
+<meta property="og:url" content="https://raku.online/modules/digest-fnv/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Digest::FNV","description":"The Fowler–Noll–Vo non-cryptographic hash in its three historical variants, at any of six widths from 32 to 1024 bits.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/digest-fnv/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/tony-o/perl6-digest-fnv.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · hashing</div><h1>Digest::FNV</h1><span class="status st-full">Works</span></div><p class="summary">The Fowler–Noll–Vo non-cryptographic hash in its three historical variants, at any of six widths from 32 to 1024 bits.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">zef:tony-o</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tony-o/Digest::FNV">raku.land</a> · <a href="git://github.com/tony-o/perl6-digest-fnv.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Digest::FNV</code></pre></div><p class="fact-sub"><code>zef install Digest::FNV</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>FNV is the hash you reach for when you want speed and distribution and do not care about an adversary: hash-table bucketing, bloom filters, checksum-ish deduplication, cache keys. It is a multiply-and-xor over the input bytes with a published offset basis, so implementations across languages agree — which is the point, when the same key has to hash the same way in two systems.</p>
+<h2 id="hashing">Hashing <a class="anchor" href="#hashing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-fnv/01-fnv.raku" title="This example as a file: 01-fnv.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::FNV</span> :<span class="n">DEFAULT</span>, :<span class="n">DEPRECATED</span>;
+
+<span class="k">my</span> <span class="nv">@v32</span> = <span class="s">''</span> =&gt; <span class="mh">0x811c9dc5</span>, <span class="s">'a'</span> =&gt; <span class="mh">0xe40c292c</span>, <span class="s">'foobar'</span> =&gt; <span class="mh">0xbf9cf968</span>;
+<span class="k">my</span> <span class="nv">@v64</span> = <span class="s">''</span> =&gt; <span class="mh">0xcbf29ce484222325</span>, <span class="s">'a'</span> =&gt; <span class="mh">0xaf63dc4c8601ec8c</span>,
+          <span class="s">'foobar'</span> =&gt; <span class="mh">0x85944171f73967e8</span>;
+
+<span class="nb">say</span> <span class="s">'FNV-1a against the published reference vectors:'</span>;
+<span class="k">for</span> <span class="nv">@v32</span> -&gt; <span class="nv">$p</span> {
+    <span class="k">my</span> <span class="nv">$g</span> = <span class="n">fnv1a</span>(<span class="nv">$p</span>.<span class="n">key</span>, :<span class="n">bits</span>(<span class="mi">32</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  fnv1a(%-8s :bits(32)) = 0x%08x  expect 0x%08x  %s'</span>,
+        <span class="s">&quot;'{$p.key}'&quot;</span>, <span class="nv">$g</span>, <span class="nv">$p</span>.<span class="n">value</span>, <span class="nv">$g</span> == <span class="nv">$p</span>.<span class="n">value</span> ?? <span class="s">'ok'</span> !! <span class="s">'MISMATCH'</span>);
+}
+<span class="k">for</span> <span class="nv">@v64</span> -&gt; <span class="nv">$p</span> {
+    <span class="k">my</span> <span class="nv">$g</span> = <span class="n">fnv1a</span>(<span class="nv">$p</span>.<span class="n">key</span>, :<span class="n">bits</span>(<span class="mi">64</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  fnv1a(%-8s :bits(64)) = 0x%016x  %s'</span>,
+        <span class="s">&quot;'{$p.key}'&quot;</span>, <span class="nv">$g</span>, <span class="nv">$g</span> == <span class="nv">$p</span>.<span class="n">value</span> ?? <span class="s">'ok'</span> !! <span class="s">'MISMATCH'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>FNV-1a against the published reference vectors:
+  fnv1a(''       :bits(32)) = 0x811c9dc5  expect 0x811c9dc5  ok
+  fnv1a('a'      :bits(32)) = 0xe40c292c  expect 0xe40c292c  ok
+  fnv1a('foobar' :bits(32)) = 0xbf9cf968  expect 0xbf9cf968  ok
+  fnv1a(''       :bits(64)) = 0xcbf29ce484222325  ok
+  fnv1a('a'      :bits(64)) = 0xaf63dc4c8601ec8c  ok
+  fnv1a('foobar' :bits(64)) = 0x85944171f73967e8  ok</code></pre></div>
+<p>Both the 32- and 64-bit reference vectors pass, including the empty-string offset basis.</p>
+<h2 id="widths-and-variants">Widths and variants <a class="anchor" href="#widths-and-variants" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-fnv/02-widths.raku" title="This example as a file: 02-widths.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::FNV</span> :<span class="n">DEFAULT</span>, :<span class="n">DEPRECATED</span>;
+
+<span class="nb">say</span> <span class="s">'default width  : '</span>, <span class="n">fnv1a</span>(<span class="s">'foobar'</span>) == <span class="n">fnv1a</span>(<span class="s">'foobar'</span>, :<span class="n">bits</span>(<span class="mi">64</span>)) ?? <span class="s">'64'</span> !! <span class="s">'?'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="mi">32</span>, <span class="mi">64</span>, <span class="mi">128</span>, <span class="mi">256</span> -&gt; <span class="nv">$b</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  :bits(%-4d) -&gt; %s'</span>, <span class="nv">$b</span>, <span class="n">fnv1a</span>(<span class="s">'foobar'</span>, :<span class="n">bits</span>(<span class="nv">$b</span>)).<span class="n">base</span>(<span class="mi">16</span>).<span class="nb">lc</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'fnv1  vs fnv1a differ by the order of xor and multiply:'</span>;
+<span class="nb">say</span> <span class="s">'  fnv1  : '</span>, <span class="n">fnv1</span>(<span class="s">'foobar'</span>);
+<span class="nb">say</span> <span class="s">'  fnv1a : '</span>, <span class="n">fnv1a</span>(<span class="s">'foobar'</span>);
+<span class="nb">say</span> <span class="s">'  fnv0  : '</span>, <span class="n">fnv0</span>(<span class="s">'foobar'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>default width  : 64
+
+  :bits(32  ) -&gt; bf9cf968
+  :bits(64  ) -&gt; 85944171f73967e8
+  :bits(128 ) -&gt; 343e1662793c64bf6f0d3597ba446f18
+  :bits(256 ) -&gt; b055ea2f306cadad4f0f81c02d3889dc32453dad5ae35b753ba1a91084af3428
+
+fnv1  vs fnv1a differ by the order of xor and multiply:
+  fnv1  : 3750802935296928194
+  fnv1a : 9625390261332436968
+  fnv0  : 833638993740285423</code></pre></div>
+<p><code>:bits</code> accepts 32, 64, 128, 256, 512 and 1024; anything else fails the parameter's <code>where</code> clause. Results are deterministic within a run, across runs and across engines — there is no seeding and no randomisation.</p>
+<h2 id="the-import-tags">The import tags <a class="anchor" href="#the-import-tags" aria-label="link">#</a></h2>
+<p><code>fnv0</code> sits behind the <code>:DEPRECATED</code> tag, and Raku's tag system <strong>replaces</strong> rather than adds:</p>
+<div class="tablewrap"><table><thead><tr><th>you write</th><th>you get</th></tr></thead><tbody><tr><td><code>use Digest::FNV;</code></td><td><code>fnv1</code>, <code>fnv1a</code></td></tr><tr><td><code>use Digest::FNV :DEPRECATED;</code></td><td><code>fnv0</code> only — the other two are gone</td></tr><tr><td><code>use Digest::FNV :DEFAULT, :DEPRECATED;</code></td><td>all three</td></tr></tbody></table></div>
+<p>That is why every example on this page names both tags.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The hash is computed over <strong>codepoints masked to eight bits</strong>, not over bytes, so any two characters exactly 256 codepoints apart hash identically — and the results do not match any other FNV implementation for non-ASCII input.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/digest-fnv/03-mask-trap.raku" title="This example as a file: 03-mask-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Digest::FNV</span> :<span class="n">DEFAULT</span>, :<span class="n">DEPRECATED</span>;
+
+<span class="k">my</span> (<span class="nv">$a</span>, <span class="nv">$b</span>) = <span class="s">&quot;\x[00E9]&quot;</span>, <span class="s">&quot;\x[01E9]&quot;</span>;     <span class="c1"># é and ǩ</span>
+<span class="nb">say</span> <span class="s">'codepoints    : '</span>, <span class="nv">$a</span>.<span class="nb">ords</span>, <span class="s">' and '</span>, <span class="nv">$b</span>.<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="s">'489 +&amp; 0xff   : '</span>, <span class="mi">489</span> +&amp; <span class="mh">0xff</span>;
+<span class="nb">say</span> <span class="s">'fnv1a of each : '</span>, <span class="n">fnv1a</span>(<span class="nv">$a</span>), <span class="s">' and '</span>, <span class="n">fnv1a</span>(<span class="nv">$b</span>);
+<span class="nb">say</span> <span class="s">'they collide  : '</span>, <span class="n">fnv1a</span>(<span class="nv">$a</span>) == <span class="n">fnv1a</span>(<span class="nv">$b</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$h</span> = <span class="mh">0xcbf29ce484222325</span>;
+<span class="k">for</span> <span class="nv">$a</span>.<span class="n">encode</span>(<span class="s">'utf8'</span>).<span class="nb">list</span> { <span class="nv">$h</span> = ((<span class="nv">$h</span> +^ <span class="nv">$_</span>) * <span class="mh">0x100000001B3</span>) +&amp; <span class="mh">0xffffffffffffffff</span> }
+<span class="nb">say</span> <span class="s">'byte-oriented FNV-1a of the UTF-8 bytes : '</span>, <span class="nv">$h</span>;
+<span class="nb">say</span> <span class="s">'this module agrees with it              : '</span>, <span class="nv">$h</span> == <span class="n">fnv1a</span>(<span class="nv">$a</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>codepoints    : (233) and (489)
+489 +&amp; 0xff   : 233
+fnv1a of each : 12638336734137078692 and 12638336734137078692
+they collide  : True
+
+byte-oriented FNV-1a of the UTF-8 bytes : 775207407765167617
+this module agrees with it              : False</code></pre></div>
+<p>Two lines of ordinary accented text produce a collision against a hash function. The masking throws away the high bits of every codepoint above 255, and because the 32- and 64-bit reference vectors are pure ASCII, the defect is invisible to the very tests that would be written to check it.</p>
+<p>For anything interoperable, encode first and hash the bytes — but note the next section before you reach for <code>.encode</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On a <code>Buf</code>. <code>Buf.new(102,111,111).^can('ords')</code> is <code>True</code> under Raku++ and <code>False</code> under Rakudo, and the module guards with <code>return 0 unless $data.^can('ords')</code> — so hashing binary data gives the correct hash on one engine and a silent <strong><code>0</code></strong> on the other. That makes <code>fnv1a($str.encode('utf8'))</code> an unportable workaround for the masking problem above.</p>
+<p>Two more things, identical on both. Any non-<code>Str</code> argument is accepted silently: <code>fnv1a(42)</code> equals <code>fnv1a('42')</code> — numbers are stringified, not hashed as numbers — and <code>fnv1a(Any)</code> returns <strong><code>0</code></strong>, which is a quiet way to collapse a whole keyspace. And the unit name <code>Digest::FNV</code> does not exist as a package: the file declares <code>Digest::FNV1</code> and the subs are plain lexicals, so neither <code>Digest::FNV::fnv1a</code> nor <code>Digest::FNV1::fnv1a</code> is reachable. Only the imported names work.</p>
+<p>The distribution states no licence in its metadata.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

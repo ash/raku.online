@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email::MessageID — The Raku Ecosystem, Working</title>
+<meta name="description" content="Generate a value for a Message-ID header from a nanosecond timestamp, a short random run and the process id, attached to the machine's hostname.">
+<link rel="canonical" href="https://raku.online/modules/email-messageid/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Email::MessageID — The Raku Ecosystem, Working">
+<meta property="og:description" content="Generate a value for a Message-ID header from a nanosecond timestamp, a short random run and the process id, attached to the machine's hostname.">
+<meta property="og:url" content="https://raku.online/modules/email-messageid/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Email::MessageID","description":"Generate a value for a Message-ID header from a nanosecond timestamp, a short random run and the process id, attached to the machine's hostname.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/email-messageid/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://codeberg.org/lizmat/Email-MessageID.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · email</div><h1>Email::MessageID</h1><span class="status st-full">Works</span></div><p class="summary">Generate a value for a Message-ID header from a nanosecond timestamp, a short random run and the process id, attached to the machine's hostname.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/Email::MessageID">raku.land</a> · <a href="https://codeberg.org/lizmat/Email-MessageID.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Email::MessageID</code></pre></div><p class="fact-sub"><code>zef install Email::MessageID</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Every email needs a <code>Message-ID:</code> header, and it has to be globally unique because threading, deduplication and bounce correlation all key on it. RFC 5322 says the right-hand side should be a domain you control and leaves the left-hand side to you.</p>
+<p>This distribution mints one: a timestamp, some randomness and the process id, joined with dots.</p>
+<h2 id="minting-an-identifier">Minting an identifier <a class="anchor" href="#minting-an-identifier" aria-label="link">#</a></h2>
+<p>The values are unique by construction, so an example asserts their <strong>properties</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/email-messageid/01-shape.raku" title="This example as a file: 01-shape.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Email::MessageID</span>;
+
+<span class="k">my</span> <span class="nv">@ids</span> = (^<span class="mi">500</span>).<span class="nb">map</span>({ <span class="n">message-id</span>() });
+
+<span class="nb">say</span> <span class="s">'exactly one @ in each   : '</span>, ?<span class="n">all</span>(<span class="nv">@ids</span>.<span class="nb">map</span>({ .<span class="nb">comb</span>(<span class="s">'@'</span>) == <span class="mi">1</span> }));
+<span class="nb">say</span> <span class="s">'no whitespace           : '</span>, ?<span class="n">all</span>(<span class="nv">@ids</span>.<span class="nb">map</span>({ !<span class="sr">/\s/</span> }));
+<span class="nb">say</span> <span class="s">'no angle brackets       : '</span>, ?<span class="n">all</span>(<span class="nv">@ids</span>.<span class="nb">map</span>({ !<span class="sr">/&lt;[&lt;&gt;]&gt;/</span> }));
+<span class="nb">say</span> <span class="s">'distinct over 500 draws : '</span>, <span class="nv">@ids</span>.<span class="nb">unique</span>.<span class="nb">elems</span> == <span class="mi">500</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@f</span> = <span class="nv">@ids</span>[<span class="mi">0</span>].<span class="nb">split</span>(<span class="s">'@'</span>)[<span class="mi">0</span>].<span class="nb">split</span>(<span class="s">'.'</span>);
+<span class="nb">say</span> <span class="s">'the local part has '</span>, <span class="nv">@f</span>.<span class="nb">elems</span>, <span class="s">' dot-separated fields'</span>;
+<span class="nb">say</span> <span class="s">'  field 1 is a timestamp : '</span>, ?<span class="k">so</span> <span class="nv">@f</span>[<span class="mi">0</span>] ~~ <span class="sr">/^ \d+ $/</span>;
+<span class="nb">say</span> <span class="s">'  field 2 is hex-ish     : '</span>, ?<span class="k">so</span> <span class="nv">@f</span>[<span class="mi">1</span>] ~~ <span class="sr">/^ &lt;[A..Fa..f0..9]&gt;+ $/</span>;
+<span class="nb">say</span> <span class="s">'  field 3 is this PID    : '</span>, <span class="nv">@f</span>[<span class="mi">2</span>] == <span class="nv">$*PID</span>;
+<span class="nb">say</span> <span class="s">'  host part is the hostname : '</span>, <span class="nv">@ids</span>[<span class="mi">0</span>].<span class="nb">split</span>(<span class="s">'@'</span>)[<span class="mi">1</span>] <span class="n">eq</span> <span class="nv">$*KERNEL</span>.<span class="n">hostname</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>exactly one @ in each   : True
+no whitespace           : True
+no angle brackets       : True
+distinct over 500 draws : True
+
+the local part has 3 dot-separated fields
+  field 1 is a timestamp : True
+  field 2 is hex-ish     : True
+  field 3 is this PID    : True
+  host part is the hostname : True</code></pre></div>
+<h2 id="supplying-your-own-halves">Supplying your own halves <a class="anchor" href="#supplying-your-own-halves" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/email-messageid/02-explicit.raku" title="This example as a file: 02-explicit.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Email::MessageID</span>;
+
+<span class="nb">say</span> <span class="s">'bare    : '</span>, <span class="n">message-id</span>(:<span class="n">host</span>&lt;<span class="n">example</span>.<span class="n">com</span>&gt;, :<span class="n">user</span><span class="s">&lt;fixed-key&gt;</span>);
+<span class="nb">say</span> <span class="s">':header : '</span>, <span class="n">message-id</span>(:<span class="n">host</span>&lt;<span class="n">example</span>.<span class="n">com</span>&gt;, :<span class="n">user</span><span class="s">&lt;fixed-key&gt;</span>, :<span class="n">header</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>bare    : fixed-key@example.com
+:header : Message-ID: &lt;fixed-key@example.com&gt;</code></pre></div>
+<p><code>:header</code> returns the whole header line, in angle brackets. The bare form returns <code>user@host</code> with <strong>no brackets</strong>, which is not a valid <code>msg-id</code> field value on its own — so use one or the other, never the bare value pasted after your own <code>Message-ID: </code>.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The default identifier is not opaque. It publishes your machine's hostname, your process id, and the exact nanosecond you generated it, in clear text, in a header that travels with every message you send.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/email-messageid/03-disclosure.raku" title="This example as a file: 03-disclosure.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Email::MessageID</span>;
+
+<span class="k">my</span> <span class="nv">$id</span> = <span class="n">message-id</span>();
+<span class="nb">say</span> <span class="s">'hostname in the identifier : '</span>, <span class="nv">$id</span>.<span class="nb">split</span>(<span class="s">'@'</span>)[<span class="mi">1</span>] <span class="n">eq</span> <span class="nv">$*KERNEL</span>.<span class="n">hostname</span>;
+<span class="nb">say</span> <span class="s">'PID in the identifier      : '</span>, <span class="nv">$id</span>.<span class="nb">split</span>(<span class="s">'@'</span>)[<span class="mi">0</span>].<span class="nb">split</span>(<span class="s">'.'</span>)[<span class="mi">2</span>] == <span class="nv">$*PID</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@stamps</span> = (^<span class="mi">200</span>).<span class="nb">map</span>({ <span class="n">message-id</span>().<span class="nb">split</span>(<span class="s">'@'</span>)[<span class="mi">0</span>].<span class="nb">split</span>(<span class="s">'.'</span>)[<span class="mi">0</span>].<span class="nb">Int</span> });
+<span class="nb">say</span> <span class="s">'the leading field is strictly increasing across 200 draws : '</span>, [&lt;] <span class="nv">@stamps</span>;
+<span class="nb">say</span> <span class="s">'  so a recipient holding two of your messages can order them'</span>;
+<span class="nb">say</span> <span class="s">'  and measure the interval between them'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>hostname in the identifier : True
+PID in the identifier      : True
+
+the leading field is strictly increasing across 200 draws : True
+  so a recipient holding two of your messages can order them
+  and measure the interval between them</code></pre></div>
+<p>The phrase "world unique" invites you to read the value as a random token. It is not random, it is <strong>structured</strong>, and three of its four components are facts about your computer. A recipient with two of your messages can order them and time the gap; a recipient with many can estimate your sending volume from the PID and timestamp gaps.</p>
+<p>Anywhere the identifier will be seen by someone you would not tell your hostname to, pass an explicit <code>:host</code> — a domain you actually control, as RFC 5322 intends — and an explicit <code>:user</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>In clock resolution, visibly. The module builds its leading field from the core <code>nano</code> routine, and under Raku++ every value is a multiple of 1000 — so the timestamps all end in <code>000</code> — while Rakudo delivers genuine nanosecond granularity. Uniqueness held at 500 of 500 in-process and across separate processes on both engines, so it does not cost you a collision here; it does mean the identifiers carry less entropy on one engine than the other.</p>
+<p>Two smaller notes. The random component is only three to nine characters drawn from a 22-symbol alphabet, so uniqueness rests mainly on the timestamp and the PID. And the sub is declared <code>my sub … is export</code>, which makes it importable but never qualifiable: <code>Email::MessageID::message-id(…)</code> does not resolve on either engine.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

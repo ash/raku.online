@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text::Diff::Sift4 — The Raku Ecosystem, Working</title>
+<meta name="description" content="The Sift4 string-distance approximation — one linear pass counting matches inside a sliding offset window — as a cheap stand-in for Levenshtein.">
+<link rel="canonical" href="https://raku.online/modules/text-diff-sift4/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Text::Diff::Sift4 — The Raku Ecosystem, Working">
+<meta property="og:description" content="The Sift4 string-distance approximation — one linear pass counting matches inside a sliding offset window — as a cheap stand-in for Levenshtein.">
+<meta property="og:url" content="https://raku.online/modules/text-diff-sift4/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Text::Diff::Sift4","description":"The Sift4 string-distance approximation — one linear pass counting matches inside a sliding offset window — as a cheap stand-in for Levenshtein.","programmingLanguage":"Raku","version":"2.0.1","url":"https://raku.online/modules/text-diff-sift4/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/masterduke17/text-diff-sift4.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · text comparison</div><h1>Text::Diff::Sift4</h1><span class="status st-full">Works</span></div><p class="summary">The Sift4 string-distance approximation — one linear pass counting matches inside a sliding offset window — as a cheap stand-in for Levenshtein.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>2.0.1</code> <span class="fact-sub">zef:MasterDuke</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:MasterDuke/Text::Diff::Sift4">raku.land</a> · <a href="https://github.com/masterduke17/text-diff-sift4.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Text::Diff::Sift4</code></pre></div><p class="fact-sub"><code>zef install Text::Diff::Sift4</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Levenshtein distance costs the product of the two string lengths. For a search box firing on every keystroke against ten thousand product names, that product is the whole budget. Sift4 trades exactness for a single linear pass: walk both strings together, count the characters that match within a bounded offset, and charge for the transpositions you had to step over.</p>
+<p>The result is a Levenshtein-<em>like</em> number in O(n) rather than O(nm), which is the right trade when you are ranking candidates rather than counting edits.</p>
+<h2 id="measuring-a-distance">Measuring a distance <a class="anchor" href="#measuring-a-distance" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-diff-sift4/01-sift.raku" title="This example as a file: 01-sift.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Diff::Sift4</span>;
+
+<span class="k">for</span> &lt;<span class="n">kitten</span> <span class="n">sitting</span>&gt;, <span class="s">&lt;Sift Sifter&gt;</span>, <span class="s">&lt;London Londo&gt;</span>, <span class="s">&lt;abcdefg abcdefg&gt;</span>,
+    <span class="s">&lt;a b&gt;</span>, (<span class="s">'Hello World'</span>, <span class="s">'Hello Wolrd'</span>) -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s %-12s -&gt; %d'</span>, <span class="nv">$a</span>, <span class="nv">$b</span>, <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>));
+}
+<span class="nb">say</span> <span class="n">sift4</span>(<span class="s">''</span>, <span class="s">''</span>), <span class="s">' '</span>, <span class="n">sift4</span>(<span class="s">''</span>, <span class="s">'abc'</span>), <span class="s">' '</span>, <span class="n">sift4</span>(<span class="s">'abc'</span>, <span class="s">''</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>kitten       sitting      -&gt; 3
+Sift         Sifter       -&gt; 2
+London       Londo        -&gt; 1
+abcdefg      abcdefg      -&gt; 0
+a            b            -&gt; 1
+Hello World  Hello Wolrd  -&gt; 1
+0 3 3</code></pre></div>
+<p>The signature is all-native — <code>sift4(str, str, int, int)</code> — and the two trailing integers are the tuning knobs. <code>$maxOffset</code> bounds how far the scan will look for a displaced match; <code>$maxDistance</code> makes it give up early.</p>
+<h2 id="tuning-the-two-knobs">Tuning the two knobs <a class="anchor" href="#tuning-the-two-knobs" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-diff-sift4/02-knobs.raku" title="This example as a file: 02-knobs.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Diff::Sift4</span>;
+
+<span class="k">my</span> (<span class="nv">$a</span>, <span class="nv">$b</span>) = <span class="s">'abcdefghijklm'</span>, <span class="s">'mlkjihgfedcba'</span>;
+
+<span class="nb">say</span> <span class="s">'defaults            : '</span>, <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>);
+<span class="nb">say</span> <span class="s">'maxOffset 1         : '</span>, <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'maxOffset 12        : '</span>, <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>, <span class="mi">12</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'maxDistance sweep 0..6:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, (<span class="mi">0</span>.<span class="mf">.6</span>).<span class="nb">map</span>({ <span class="s">&quot;md=$_:&quot;</span> ~ <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>, <span class="mi">10</span>, <span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">'  '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>defaults            : 9
+maxOffset 1         : 11
+maxOffset 12        : 8
+
+maxDistance sweep 0..6:
+  md=0:9  md=1:2  md=2:3  md=3:4  md=4:5  md=5:6  md=6:7</code></pre></div>
+<p>Two things fall out of that sweep. A <strong>larger</strong> <code>$maxOffset</code> gives a <strong>smaller</strong> distance, because the scan can reach further to pair up displaced characters. And <code>$maxDistance</code> does not clamp the answer, it aborts the scan and returns <code>$maxDistance + 1</code> — so <code>md=3</code> gives 4, <code>md=5</code> gives 6, and only from <code>md=9</code> upwards do you get the real 9. Using it as a threshold test works; reading the number it returns as a distance does not. <code>$maxDistance = 0</code> disables the bail-out rather than meaning "give up at once".</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Sift4 systematically <strong>underestimates</strong> the true edit distance, and it does so on short ordinary words — not only on the pathological ones.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/text-diff-sift4/03-underestimate.raku" title="This example as a file: 03-underestimate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Text::Diff::Sift4</span>;
+
+<span class="k">sub</span> <span class="n">lev</span>(<span class="nb">Str</span> <span class="nv">$a</span>, <span class="nb">Str</span> <span class="nv">$b</span>) {
+    <span class="k">my</span> <span class="nv">@p</span> = ^(<span class="nv">$b</span>.<span class="nb">chars</span> + <span class="mi">1</span>);
+    <span class="k">for</span> <span class="nv">$a</span>.<span class="nb">comb</span>.<span class="nb">kv</span> -&gt; <span class="nv">$i</span>, <span class="nv">$ca</span> {
+        <span class="k">my</span> <span class="nv">@c</span> = <span class="nv">$i</span> + <span class="mi">1</span>,;
+        <span class="k">for</span> <span class="nv">$b</span>.<span class="nb">comb</span>.<span class="nb">kv</span> -&gt; <span class="nv">$j</span>, <span class="nv">$cb</span> {
+            <span class="nv">@c</span>.<span class="nb">push</span>: <span class="nb">min</span>(<span class="nv">@p</span>[<span class="nv">$j</span>+<span class="mi">1</span>] + <span class="mi">1</span>, <span class="nv">@c</span>[<span class="nv">$j</span>] + <span class="mi">1</span>, <span class="nv">@p</span>[<span class="nv">$j</span>] + (<span class="nv">$ca</span> <span class="n">eq</span> <span class="nv">$cb</span> ?? <span class="mi">0</span> !! <span class="mi">1</span>));
+        }
+        <span class="nv">@p</span> = <span class="nv">@c</span>;
+    }
+    <span class="nv">@p</span>[*-<span class="mi">1</span>]
+}
+
+<span class="k">for</span> &lt;<span class="n">kitten</span> <span class="n">sitting</span>&gt;, <span class="s">&lt;flaw lawn&gt;</span>, <span class="s">&lt;banana ananas&gt;</span>,
+    <span class="s">&lt;abcd dcba&gt;</span>, <span class="s">&lt;xyzabcdefghij abcdefghijxyz&gt;</span> -&gt; (<span class="nv">$a</span>, <span class="nv">$b</span>) {
+    <span class="k">my</span> (<span class="nv">$s</span>, <span class="nv">$l</span>) = <span class="n">sift4</span>(<span class="nv">$a</span>, <span class="nv">$b</span>), <span class="n">lev</span>(<span class="nv">$a</span>, <span class="nv">$b</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s %-14s sift4=%-2d levenshtein=%-2d %s'</span>,
+        <span class="nv">$a</span>, <span class="nv">$b</span>, <span class="nv">$s</span>, <span class="nv">$l</span>, <span class="nv">$s</span> == <span class="nv">$l</span> ?? <span class="s">'agree'</span> !! <span class="s">'UNDERESTIMATES'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>kitten         sitting        sift4=3  levenshtein=3  agree
+flaw           lawn           sift4=1  levenshtein=2  UNDERESTIMATES
+banana         ananas         sift4=1  levenshtein=2  UNDERESTIMATES
+abcd           dcba           sift4=3  levenshtein=4  UNDERESTIMATES
+xyzabcdefghij  abcdefghijxyz  sift4=3  levenshtein=6  UNDERESTIMATES</code></pre></div>
+<p><code>kitten</code>/<code>sitting</code> is the textbook example and Sift4 gets it exactly right, which is precisely what lulls people into treating it as a drop-in replacement. Then <code>flaw</code>/<code>lawn</code> scores 1 against a true 2, and <code>banana</code>/ <code>ananas</code> does the same. A fuzzy-match threshold of "distance ≤ 1" therefore admits pairs that are two edits apart, silently.</p>
+<p>Treat the number as a ranking signal, not as an edit count. If you need a threshold with a guarantee behind it, compute the real distance on the shortlist Sift4 produces.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every spike in this page — the reference pairs, the two sweeps, the Levenshtein comparison, and a Unicode check where both spellings of <code>café</code> measure distance 0 — produced byte-identical output under Raku++ and Rakudo. It is the rare module whose behaviour does not vary at all.</p>
+<p>Worth noting for its own sake: because the parameters are native <code>str</code>, the strings still carry Raku's grapheme semantics, so a combining acute and a precomposed one compare equal at distance 0, and <code>漢字</code> against <code>漢字字</code> is 1. Sift4 here is grapheme-based, which is the right answer for a distance.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

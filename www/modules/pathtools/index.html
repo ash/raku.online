@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PathTools — The Raku Ecosystem, Working</title>
+<meta name="description" content="Five shell-flavoured filesystem helpers — list a tree, delete paths, create a directory chain, mint temporary paths — all Str in and Str out.">
+<link rel="canonical" href="https://raku.online/modules/pathtools/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PathTools — The Raku Ecosystem, Working">
+<meta property="og:description" content="Five shell-flavoured filesystem helpers — list a tree, delete paths, create a directory chain, mint temporary paths — all Str in and Str out.">
+<meta property="og:url" content="https://raku.online/modules/pathtools/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"PathTools","description":"Five shell-flavoured filesystem helpers — list a tree, delete paths, create a directory chain, mint temporary paths — all Str in and Str out.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/pathtools/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/ugexe/Raku-PathTools.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · filesystem</div><h1>PathTools</h1><span class="status st-full">Works</span></div><p class="summary">Five shell-flavoured filesystem helpers — list a tree, delete paths, create a directory chain, mint temporary paths — all Str in and Str out.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code> <span class="fact-sub">github:ugexe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:ugexe/PathTools">raku.land</a> · <a href="https://github.com/ugexe/Raku-PathTools.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install PathTools</code></pre></div><p class="fact-sub"><code>zef install PathTools</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>IO::Path</code> is the right abstraction and sometimes the long way round. When what you want is "give me every file under here" or "make this whole chain of directories", a sub that takes a string and returns strings is less ceremony than composing <code>.dir</code>, <code>.d</code>, <code>.mkdir</code> and a recursion yourself.</p>
+<p>This distribution is those five subs, with the switches spelled the way <code>ls</code> and <code>rm</code> spell them.</p>
+<h2 id="listing-and-creating">Listing and creating <a class="anchor" href="#listing-and-creating" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pathtools/01-ls.raku" title="This example as a file: 01-ls.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">PathTools</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="s">&quot;{$*TMPDIR}/pt-{$*PID}&quot;</span>;
+<span class="k">LEAVE</span> { <span class="n">rm</span>(<span class="nv">$root</span>, :<span class="n">r</span>, :<span class="n">d</span>, :<span class="n">f</span>) <span class="k">if</span> <span class="nv">$root</span>.<span class="nb">IO</span>.<span class="n">e</span> }
+
+<span class="nb">say</span> <span class="s">'mkdirs returns the deepest directory it made:'</span>;
+<span class="k">my</span> <span class="nv">$deep</span> = <span class="n">mkdirs</span>(<span class="s">&quot;$root/a/b/c&quot;</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$deep</span>.<span class="n">subst</span>(<span class="nv">$root</span>, <span class="s">'&lt;ROOT&gt;'</span>);
+<span class="nb">say</span> <span class="s">'  it exists : '</span>, <span class="nv">$deep</span>.<span class="nb">IO</span>.<span class="n">d</span>;
+
+<span class="s">&quot;$root/a/one.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'x'</span>);
+<span class="s">&quot;$root/a/b/two.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'y'</span>);
+<span class="s">&quot;$root/a/b/c/three.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'z'</span>);
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">@l</span>) { <span class="nv">@l</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>, <span class="s">'&lt;ROOT&gt;'</span>)).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">&quot;\n  &quot;</span>) }
+
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'ls flat (files and directories):'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="s">&quot;$root/a&quot;</span>).<span class="nb">list</span>);
+<span class="nb">say</span> <span class="s">'ls recursive:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="s">&quot;$root/a&quot;</span>, :<span class="n">r</span>).<span class="nb">list</span>);
+<span class="nb">say</span> <span class="s">'ls recursive, directories only:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="s">&quot;$root/a&quot;</span>, :<span class="n">r</span>, :!<span class="n">f</span>).<span class="nb">list</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>mkdirs returns the deepest directory it made:
+  &lt;ROOT&gt;/a/b/c
+  it exists : True
+
+ls flat (files and directories):
+  &lt;ROOT&gt;/a/b
+  &lt;ROOT&gt;/a/one.txt
+ls recursive:
+  &lt;ROOT&gt;/a/b
+  &lt;ROOT&gt;/a/b/c
+  &lt;ROOT&gt;/a/b/c/three.txt
+  &lt;ROOT&gt;/a/b/two.txt
+  &lt;ROOT&gt;/a/one.txt
+ls recursive, directories only:
+  &lt;ROOT&gt;/a/b
+  &lt;ROOT&gt;/a/b/c</code></pre></div>
+<p><code>:f</code> and <code>:d</code> say whether files and directories appear in the output, and <code>:r</code> turns on recursion. Both default to <code>True</code>; <code>:r</code> defaults to <code>False</code>.</p>
+<h2 id="temporary-paths">Temporary paths <a class="anchor" href="#temporary-paths" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pathtools/02-mktemp.raku" title="This example as a file: 02-mktemp.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">PathTools</span>;
+
+<span class="k">my</span> <span class="nv">$path</span> = <span class="n">tmppath</span>();
+<span class="nb">say</span> <span class="s">'tmppath mints a path without creating anything:'</span>;
+<span class="nb">say</span> <span class="s">'  looks like a path : '</span>, <span class="nv">$path</span>.<span class="nb">IO</span>.<span class="n">parent</span>.<span class="n">d</span>;
+<span class="nb">say</span> <span class="s">'  it exists         : '</span>, <span class="nv">$path</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span>  = <span class="n">mktemp</span>();
+<span class="k">my</span> <span class="nv">$file</span> = <span class="n">mktemp</span>(:<span class="n">f</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'mktemp creates:'</span>;
+<span class="nb">say</span> <span class="s">'  directory exists : '</span>, <span class="nv">$dir</span>.<span class="nb">IO</span>.<span class="n">d</span>;
+<span class="nb">say</span> <span class="s">'  file exists      : '</span>, <span class="nv">$file</span>.<span class="nb">IO</span>.<span class="n">f</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>tmppath mints a path without creating anything:
+  looks like a path : True
+  it exists         : False
+
+mktemp creates:
+  directory exists : True
+  file exists      : True</code></pre></div>
+<p><code>tmppath</code> mints a name; <code>mktemp</code> creates a directory, or a file with <code>:f</code>. Which brings us to the thing that is easy to miss: <code>mktemp</code> results are <strong>process-scoped</strong>. An <code>END</code> block deletes both the directory and the file — and anything you wrote into them — when the program exits. It is scratch space for this run, not a path you own.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>ls(:r, :!d)</code> is not "all files, recursively". Suppressing directories from the output suppresses the <strong>recursion</strong> as well.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/pathtools/03-recursion-trap.raku" title="This example as a file: 03-recursion-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">PathTools</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="s">&quot;{$*TMPDIR}/pt2-{$*PID}&quot;</span>;
+<span class="k">LEAVE</span> { <span class="n">rm</span>(<span class="nv">$root</span>, :<span class="n">r</span>, :<span class="n">d</span>, :<span class="n">f</span>) <span class="k">if</span> <span class="nv">$root</span>.<span class="nb">IO</span>.<span class="n">e</span> }
+
+<span class="n">mkdirs</span>(<span class="s">&quot;$root/sub&quot;</span>);
+<span class="s">&quot;$root/top.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'t'</span>);
+<span class="s">&quot;$root/sub/deep.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>(<span class="s">'d'</span>);
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">@l</span>) { <span class="nv">@l</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>, <span class="s">'&lt;ROOT&gt;'</span>)).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' | '</span>) }
+
+<span class="nb">say</span> <span class="s">'the nested file exists : '</span>, <span class="s">&quot;$root/sub/deep.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'ls(:r)          : '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="nv">$root</span>, :<span class="n">r</span>).<span class="nb">list</span>);
+<span class="nb">say</span> <span class="s">'ls(:r, :!d)     : '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="nv">$root</span>, :<span class="n">r</span>, :!<span class="n">d</span>).<span class="nb">list</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the working incantation:'</span>;
+<span class="nb">say</span> <span class="s">'ls(:r).grep(*.IO.f) : '</span>, <span class="n">show</span>(<span class="n">ls</span>(<span class="nv">$root</span>, :<span class="n">r</span>).<span class="nb">grep</span>(*.<span class="nb">IO</span>.<span class="n">f</span>).<span class="nb">list</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the nested file exists : True
+ls(:r)          : &lt;ROOT&gt;/sub | &lt;ROOT&gt;/sub/deep.txt | &lt;ROOT&gt;/top.txt
+ls(:r, :!d)     : &lt;ROOT&gt;/top.txt
+
+the working incantation:
+ls(:r).grep(*.IO.f) : &lt;ROOT&gt;/sub/deep.txt | &lt;ROOT&gt;/top.txt</code></pre></div>
+<p>The recursive step is gated on the same <code>:d</code> flag that controls the output, so asking not to <em>see</em> directories means never <em>entering</em> them. No error, no warning — just a truncated list, and in a backup or checksum script, silently missing every nested file.</p>
+<p>Use <code>ls($path, :r).grep(*.IO.f)</code> instead.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On how loudly they refuse an inconsistency in the module's own return type.</p>
+<p><code>ls</code> returns a <strong>list</strong> when given a directory and a bare <strong><code>Str</code></strong> when given a plain file. Rakudo catches that at the first <code>@</code>-sigilled binding — <code>Type check failed in binding to parameter '@got'; expected Positional but got Str</code> — while Raku++ binds the string as a one-element list and carries on. So code that looks fine on Raku++ breaks on Rakudo. Normalise with <code>my @l = ls($p) ~~ Positional ?? ls($p).list !! (ls($p),)</code> if the path might be either.</p>
+<p>One more thing that is not an engine difference: <code>rm</code> defaults <code>:d</code> to <code>True</code> but leaves <code>:r</code> undefined, so <code>rm($dir)</code> on a non-empty directory attempts an <code>rmdir</code>, fails inside a <code>try</code>, and reports nothing at all. Pass <code>:r</code> explicitly when you mean recursive, as every <code>LEAVE</code> block above does.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

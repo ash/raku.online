@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5getservbyname — The Raku Ecosystem, Working</title>
+<meta name="description" content="The POSIX service-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back, with ports byte-swapped into host order for you.">
+<link rel="canonical" href="https://raku.online/modules/p5getservbyname/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P5getservbyname — The Raku Ecosystem, Working">
+<meta property="og:description" content="The POSIX service-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back, with ports byte-swapped into host order for you.">
+<meta property="og:url" content="https://raku.online/modules/p5getservbyname/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"P5getservbyname","description":"The POSIX service-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back, with ports byte-swapped into host order for you.","programmingLanguage":"Raku","version":"0.0.8","url":"https://raku.online/modules/p5getservbyname/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/P5getservbyname.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>P5getservbyname</h1><span class="status st-full">Works</span></div><p class="summary">The POSIX service-database calls, shaped so the return value matches what Perl's built-ins of the same name hand back, with ports byte-swapped into host order for you.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.8</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/P5getservbyname">raku.land</a> · <a href="https://github.com/lizmat/P5getservbyname.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install P5getservbyname</code></pre></div><p class="fact-sub"><code>zef install P5getservbyname</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>/etc/services</code> maps service names to port numbers, and <code>getservbyname(3)</code> is how a program asks about it without parsing the file. Raku has no built-in for it, so anything that wants to resolve <code>https</code> to 443 the way the operating system would has to bind the C call.</p>
+<p>This distribution binds it, and shapes the answer the way Perl's <code>getserv*</code> built-ins do — which matters if you are porting Perl, and is a reasonable shape regardless.</p>
+<h2 id="looking-a-service-up">Looking a service up <a class="anchor" href="#looking-a-service-up" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getservbyname/01-lookup.raku" title="This example as a file: 01-lookup.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="k">for</span> &lt;<span class="n">ssh</span> <span class="n">http</span> <span class="n">https</span> <span class="n">smtp</span> <span class="n">domain</span>&gt; -&gt; <span class="nv">$name</span> {
+    <span class="k">my</span> <span class="nv">@r</span> = <span class="n">getservbyname</span>(<span class="nv">$name</span>, <span class="s">'tcp'</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-8s/tcp  fields=%d  name=%-8s port=%-5d proto=%s'</span>,
+        <span class="nv">$name</span>, <span class="nv">@r</span>.<span class="nb">elems</span>, <span class="nv">@r</span>[<span class="mi">0</span>], <span class="nv">@r</span>[<span class="mi">2</span>], <span class="nv">@r</span>[<span class="mi">3</span>]);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>ssh     /tcp  fields=4  name=ssh      port=22    proto=tcp
+http    /tcp  fields=4  name=http     port=80    proto=tcp
+https   /tcp  fields=4  name=https    port=443   proto=tcp
+smtp    /tcp  fields=4  name=smtp     port=25    proto=tcp
+domain  /tcp  fields=4  name=domain   port=53    proto=tcp</code></pre></div>
+<p>The record is <code>($name, $aliases, $port, $proto)</code>, in Perl's order. The IANA numbers are the same on every machine, which is why they are safe to print; the <strong>aliases are not</strong> — they come from your <code>/etc/services</code> and vary.</p>
+<p>The port is already in host byte order. The module byte-swaps in both directions, so you never see network order.</p>
+<h2 id="scalar-context">Scalar context <a class="anchor" href="#scalar-context" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getservbyname/02-scalar.raku" title="This example as a file: 02-scalar.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="nb">say</span> <span class="s">'by name, gives the port : '</span>, <span class="n">getservbyname</span>(<span class="nb">Scalar</span>, <span class="s">'https'</span>, <span class="s">'tcp'</span>);
+<span class="nb">say</span> <span class="s">'by port, gives the name : '</span>, <span class="n">getservbyport</span>(<span class="nb">Scalar</span>, <span class="mi">443</span>, <span class="s">'tcp'</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the list forms of the same two calls:'</span>;
+<span class="nb">say</span> <span class="s">'  getservbyname(&quot;https&quot;,&quot;tcp&quot;)[2] = '</span>, <span class="n">getservbyname</span>(<span class="s">'https'</span>, <span class="s">'tcp'</span>)[<span class="mi">2</span>];
+<span class="nb">say</span> <span class="s">'  getservbyport(443,&quot;tcp&quot;)[0]     = '</span>, <span class="n">getservbyport</span>(<span class="mi">443</span>, <span class="s">'tcp'</span>)[<span class="mi">0</span>];</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>by name, gives the port : 443
+by port, gives the name : https
+
+the list forms of the same two calls:
+  getservbyname("https","tcp")[2] = 443
+  getservbyport(443,"tcp")[0]     = https</code></pre></div>
+<p>Perl asks for a scalar by calling in scalar context; Raku has no such thing, so the module takes the <strong><code>Scalar</code> type object</strong> as an extra first argument. The result is asymmetric by design: lookup by name gives you the id, lookup by id gives you the name.</p>
+<h2 id="enumerating">Enumerating <a class="anchor" href="#enumerating" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getservbyname/03-enumerate.raku" title="This example as a file: 03-enumerate.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="nb">say</span> <span class="s">'setservent : '</span>, <span class="n">setservent</span>(<span class="mi">1</span>);
+<span class="k">my</span> (<span class="nv">$n</span>, <span class="nv">$widest</span>) = <span class="mi">0</span>, <span class="mi">0</span>;
+<span class="k">loop</span> {
+    <span class="k">my</span> <span class="nv">@e</span> = <span class="n">getservent</span>() <span class="k">or</span> <span class="k">last</span>;
+    <span class="nv">$n</span>++;
+    <span class="nv">$widest</span> = <span class="nv">@e</span>.<span class="nb">elems</span> <span class="k">if</span> <span class="nv">@e</span>.<span class="nb">elems</span> &gt; <span class="nv">$widest</span>;
+}
+<span class="nb">say</span> <span class="s">'endservent : '</span>, <span class="n">endservent</span>();
+<span class="nb">say</span> <span class="s">'entries walked : '</span>, <span class="nv">$n</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'every entry had four fields : '</span>, <span class="nv">$widest</span> == <span class="mi">4</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>setservent : 1
+endservent : 1
+entries walked : True
+every entry had four fields : True</code></pre></div>
+<p>The sentinel for "no more entries" is the same empty list a failed lookup gives, so one test ends the loop — and the two cases are indistinguishable.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The protocol argument is mandatory and must match exactly. There is no "any protocol" lookup.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getservbyname/04-proto-trap.raku" title="This example as a file: 04-proto-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="k">for</span> <span class="s">'tcp'</span>, <span class="s">'TCP'</span>, <span class="s">''</span> -&gt; <span class="nv">$proto</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'getservbyname(&quot;ssh&quot;, %-7s) -&gt; %d field(s)'</span>,
+        <span class="nv">$proto</span>.<span class="nb">raku</span>, <span class="n">getservbyname</span>(<span class="s">'ssh'</span>, <span class="nv">$proto</span>).<span class="nb">elems</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'in C you pass NULL for proto to match any protocol.'</span>;
+<span class="nb">say</span> <span class="s">'here the parameter is Str(), so the only thing you can supply'</span>;
+<span class="nb">say</span> <span class="s">'is a string — and the empty string matches nothing.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>getservbyname("ssh", "tcp"  ) -&gt; 4 field(s)
+getservbyname("ssh", "TCP"  ) -&gt; 0 field(s)
+getservbyname("ssh", ""     ) -&gt; 0 field(s)
+
+in C you pass NULL for proto to match any protocol.
+here the parameter is Str(), so the only thing you can supply
+is a string — and the empty string matches nothing.</code></pre></div>
+<p>The lookup is also <strong>case-sensitive</strong>: <code>'TCP'</code> returns nothing. So a protocol name arriving from a configuration file has to be lower-cased before it gets here, and there is no way to ask the question C lets you ask.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every lookup, every scalar form, the enumeration and all three rejections produced identical output on Raku++ and Rakudo.</p>
+<p>The convention shared by the whole <code>P5get*</code> family is worth stating once, because it is the thing that catches people. <strong>A failed lookup returns an empty list, never an exception</strong> — so destructuring into four variables leaves every one of them undefined, and the natural Perl transcription that reads field 2 of the result gets <code>Any</code> rather than an error. Test the <em>list</em>, never a field:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5getservbyname/05-miss.raku" title="This example as a file: 05-miss.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5getservbyname</span>;
+
+<span class="k">my</span> <span class="nv">@miss</span> = <span class="n">getservbyname</span>(<span class="s">'nosuchservice-xyzzy'</span>, <span class="s">'tcp'</span>);
+<span class="nb">say</span> <span class="s">'list form elems   : '</span>, <span class="nv">@miss</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'scalar form       : '</span>, <span class="n">getservbyname</span>(<span class="nb">Scalar</span>, <span class="s">'nosuchservice-xyzzy'</span>, <span class="s">'tcp'</span>).<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> (<span class="nv">$name</span>, <span class="nv">$aliases</span>, <span class="nv">$port</span>, <span class="nv">$proto</span>) = <span class="n">getservbyname</span>(<span class="s">'nosuchservice-xyzzy'</span>, <span class="s">'tcp'</span>);
+<span class="nb">say</span> <span class="s">'port after a failed lookup : '</span>, <span class="nv">$port</span>.<span class="nb">defined</span> ?? <span class="nv">$port</span> !! <span class="s">'undefined'</span>;
+<span class="nb">say</span> <span class="s">'the right test is on the list : '</span>,
+    ?<span class="n">getservbyname</span>(<span class="s">'nosuchservice-xyzzy'</span>, <span class="s">'tcp'</span>).<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>list form elems   : 0
+scalar form       : False
+
+port after a failed lookup : undefined
+the right test is on the list : False</code></pre></div>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geo::WellKnownBinary — The Raku Ecosystem, Working</title>
+<meta name="description" content="Decode OGC Well-Known Binary — the packed byte format PostGIS keeps geometry in — into Geo::Geometry objects, in either byte order and every Z/M/ZM variant.">
+<link rel="canonical" href="https://raku.online/modules/geo-wellknownbinary/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Geo::WellKnownBinary — The Raku Ecosystem, Working">
+<meta property="og:description" content="Decode OGC Well-Known Binary — the packed byte format PostGIS keeps geometry in — into Geo::Geometry objects, in either byte order and every Z/M/ZM variant.">
+<meta property="og:url" content="https://raku.online/modules/geo-wellknownbinary/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Geo::WellKnownBinary","description":"Decode OGC Well-Known Binary — the packed byte format PostGIS keeps geometry in — into Geo::Geometry objects, in either byte order and every Z/M/ZM variant.","programmingLanguage":"Raku","version":"0.1.6","url":"https://raku.online/modules/geo-wellknownbinary/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/kjpye/Geo-WellKnownBinary.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · geospatial</div><h1>Geo::WellKnownBinary</h1><span class="status st-div">Divergent</span></div><p class="summary">Decode OGC Well-Known Binary — the packed byte format PostGIS keeps geometry in — into Geo::Geometry objects, in either byte order and every Z/M/ZM variant.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.6</code> <span class="fact-sub">zef:kjpye</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Geo::Geometry</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:kjpye/Geo::WellKnownBinary">raku.land</a> · <a href="https://github.com/kjpye/Geo-WellKnownBinary.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Geo::WellKnownBinary</code></pre></div><p class="fact-sub"><code>zef install Geo::WellKnownBinary</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A geometry column in PostGIS comes back as a packed byte string: a byte-order flag, a <code>uint32</code> type code, and then coordinates as IEEE-754 doubles. That is Well-Known Binary, and reading it by hand means getting the endianness, the type-code arithmetic and the nesting right.</p>
+<p>This distribution reads it. It is decode-only — there is no encoder here — and it hands back the objects from <code>Geo::Geometry</code>, so you need that installed and usually <code>use</code>d to name the types.</p>
+<h2 id="decoding-a-point">Decoding a point <a class="anchor" href="#decoding-a-point" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-wellknownbinary/01-point.raku" title="This example as a file: 01-point.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::WellKnownBinary</span>;
+
+<span class="k">sub</span> <span class="n">hex</span>(<span class="nb">Buf</span> <span class="nv">$b</span>) { <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>) }
+
+<span class="c1"># POINT(1 2), little-endian: 01 | 01000000 | 1.0 | 2.0</span>
+<span class="k">my</span> <span class="nv">$le</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>,
+                 <span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xF0</span>,<span class="mh">0x3F</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x40</span>);
+
+<span class="c1"># the same point, big-endian</span>
+<span class="k">my</span> <span class="nv">$be</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x00</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x01</span>,
+                 <span class="mh">0x3F</span>,<span class="mh">0xF0</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                 <span class="mh">0x40</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>);
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">from-wkb</span>(<span class="nv">$le</span>);
+<span class="k">my</span> <span class="nv">$q</span> = <span class="n">from-wkb</span>(<span class="nv">$be</span>);
+<span class="nb">say</span> <span class="s">'little-endian bytes : '</span>, <span class="n">hex</span>(<span class="nv">$le</span>);
+<span class="nb">say</span> <span class="s">'  type : '</span>, <span class="nv">$p</span>.^<span class="n">name</span>, <span class="s">'   x='</span>, <span class="nv">$p</span>.<span class="n">x</span>, <span class="s">' y='</span>, <span class="nv">$p</span>.<span class="n">y</span>;
+<span class="nb">say</span> <span class="s">'big-endian bytes    : '</span>, <span class="n">hex</span>(<span class="nv">$be</span>);
+<span class="nb">say</span> <span class="s">'  type : '</span>, <span class="nv">$q</span>.^<span class="n">name</span>, <span class="s">'   x='</span>, <span class="nv">$q</span>.<span class="n">x</span>, <span class="s">' y='</span>, <span class="nv">$q</span>.<span class="n">y</span>;
+<span class="nb">say</span> <span class="s">'the two agree       : '</span>, (<span class="nv">$p</span>.<span class="n">x</span> == <span class="nv">$q</span>.<span class="n">x</span> &amp;&amp; <span class="nv">$p</span>.<span class="n">y</span> == <span class="nv">$q</span>.<span class="n">y</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>little-endian bytes : 01 01 00 00 00 00 00 00 00 00 00 F0 3F 00 00 00 00 00 00 00 40
+  type : Point   x=1 y=2
+big-endian bytes    : 00 00 00 00 01 3F F0 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+  type : Point   x=1 y=2
+the two agree       : True</code></pre></div>
+<p>That matches the published layout exactly, and the two byte orders agree.</p>
+<h2 id="lines-and-polygons">Lines and polygons <a class="anchor" href="#lines-and-polygons" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-wellknownbinary/02-shapes.raku" title="This example as a file: 02-shapes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::WellKnownBinary</span>;
+
+<span class="c1"># LINESTRING(1 2, 3 4)</span>
+<span class="k">my</span> <span class="nv">$ls</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>,
+                 <span class="mh">0x02</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                 <span class="mh">0x02</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0xF0</span>,<span class="mh">0x3F</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x40</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x08</span>,<span class="mh">0x40</span>,
+                 <span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x10</span>,<span class="mh">0x40</span>);
+<span class="k">my</span> <span class="nv">$g</span> = <span class="n">from-wkb</span>(<span class="nv">$ls</span>);
+<span class="nb">say</span> <span class="s">'type   : '</span>, <span class="nv">$g</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'points : '</span>, <span class="nv">$g</span>.<span class="n">points</span>.<span class="nb">map</span>({ <span class="s">&quot;({.x},{.y})&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+
+<span class="c1"># POLYGON((0 0, 1 0, 1 1, 0 0)) — one ring of four points</span>
+<span class="k">my</span> <span class="nv">$poly</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>, <span class="mh">0x03</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>, <span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>, <span class="mh">0x04</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>);
+<span class="k">for</span> (<span class="mf">0e0</span>,<span class="mf">0e0</span>), (<span class="mf">1e0</span>,<span class="mf">0e0</span>), (<span class="mf">1e0</span>,<span class="mf">1e0</span>), (<span class="mf">0e0</span>,<span class="mf">0e0</span>) -&gt; (<span class="nv">$x</span>, <span class="nv">$y</span>) {
+    <span class="nv">$poly</span>.<span class="nb">append</span>(<span class="nb">Buf</span>.<span class="nb">new</span>.<span class="n">write-num64</span>(<span class="mi">0</span>, <span class="nv">$x</span>, <span class="n">LittleEndian</span>));
+    <span class="nv">$poly</span>.<span class="nb">append</span>(<span class="nb">Buf</span>.<span class="nb">new</span>.<span class="n">write-num64</span>(<span class="mi">0</span>, <span class="nv">$y</span>, <span class="n">LittleEndian</span>));
+}
+<span class="k">my</span> <span class="nv">$pg</span> = <span class="n">from-wkb</span>(<span class="nv">$poly</span>);
+<span class="nb">say</span> <span class="s">'type   : '</span>, <span class="nv">$pg</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'rings  : '</span>, <span class="nv">$pg</span>.<span class="n">rings</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'ring 0 : '</span>, <span class="nv">$pg</span>.<span class="n">rings</span>[<span class="mi">0</span>].<span class="n">points</span>.<span class="nb">map</span>({ <span class="s">&quot;({.x},{.y})&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>type   : LineString
+points : (1,2) (3,4)
+type   : Polygon
+rings  : 1
+ring 0 : (0,0) (1,0) (1,1) (0,0)</code></pre></div>
+<p>The type codes follow the OGC numbering, and the Z, M and ZM variants of every type are handled by the same dispatch.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The byte-order flag is not validated, and trailing bytes are ignored.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-wellknownbinary/03-lenient.raku" title="This example as a file: 03-lenient.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::WellKnownBinary</span>;
+
+<span class="c1"># the spec allows only 0 (big) and 1 (little); this says 0x42</span>
+<span class="k">my</span> <span class="nv">$odd</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x42</span>, <span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                  <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0xF0</span>,<span class="mh">0x3F</span>, <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0x40</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">from-wkb</span>(<span class="nv">$odd</span>);
+<span class="nb">say</span> <span class="s">'byte-order flag 0x42 : '</span>, <span class="nv">$r</span>.^<span class="n">name</span>, <span class="s">' x='</span>, <span class="nv">$r</span>.<span class="n">x</span>, <span class="s">' y='</span>, <span class="nv">$r</span>.<span class="n">y</span>;
+
+<span class="c1"># four bytes of junk after a complete point</span>
+<span class="k">my</span> <span class="nv">$extra</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>, <span class="mh">0x01</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,
+                    <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0xF0</span>,<span class="mh">0x3F</span>, <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0x40</span>,
+                    <span class="mh">0xDE</span>,<span class="mh">0xAD</span>,<span class="mh">0xBE</span>,<span class="mh">0xEF</span>);
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">from-wkb</span>(<span class="nv">$extra</span>);
+<span class="nb">say</span> <span class="s">'four junk bytes after : '</span>, <span class="nv">$s</span>.^<span class="n">name</span>, <span class="s">' x='</span>, <span class="nv">$s</span>.<span class="n">x</span>, <span class="s">' y='</span>, <span class="nv">$s</span>.<span class="n">y</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>byte-order flag 0x42 : Point x=1 y=2
+four junk bytes after : Point x=1 y=2</code></pre></div>
+<p>The code reads the flag as <code>$buff[$offset++] ?? wkbNDR !! wkbXDR</code>, so <em>any</em> non-zero byte means little-endian. A corrupt first byte is silently accepted rather than rejected, and there is no "I consumed exactly the buffer" check that works — the module's own <code>fail "from-wkb: buffer too short"</code> runs after the reads that would already have thrown.</p>
+<p>If the bytes come from anywhere you do not control, check the first byte is 0 or 1 yourself, and compare the geometry's expected size against the buffer length.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On what a truncated buffer throws, and it changes what a <code>CATCH</code> can match.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-wellknownbinary/04-truncated.raku" title="This example as a file: 04-truncated.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::WellKnownBinary</span>;
+
+<span class="k">for</span> <span class="s">'empty'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>,
+    <span class="s">'flag only'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>),
+    <span class="s">'half a point'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>, <span class="mh">0x01</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>, <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>) -&gt; <span class="nv">$label</span>, <span class="nv">$b</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">from-wkb</span>(<span class="nv">$b</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-14s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="nv">$r</span>.^<span class="n">name</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'an unrecognised type code is the one case both engines agree on:'</span>;
+<span class="k">my</span> <span class="nv">$bad</span> = <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>, <span class="mh">0x63</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>,<span class="mh">0x00</span>, <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0xF0</span>,<span class="mh">0x3F</span>, <span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mi">0</span>,<span class="mh">0x40</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">from-wkb</span>(<span class="nv">$bad</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'no error'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>empty          -&gt; threw
+flag only      -&gt; threw
+half a point   -&gt; threw
+
+an unrecognised type code is the one case both engines agree on:
+  Can't handle geometry type 99 in from-wkb</code></pre></div>
+<p>Raku++ raises a typed <code>X::OutOfRange</code> reading <code>read past end of buffer</code>; Rakudo raises an <code>X::AdHoc</code> carrying the raw virtual-machine message <code>MVMArray: read_buf out of bounds offset 5 start 0 elems 9 count 8</code>. So <code>CATCH { when X::OutOfRange {…} }</code> around <code>from-wkb</code> works on one engine and not the other. Catch broadly, or check the length before you decode.</p>
+<p>The unrecognised-type case is the only path where the module's own <code>Failure</code>-returning contract applies, and it behaves the same on both.</p>
+<p>Reading the source, the <code>MultiPoint</code> branches pass their points under a <code>polygons =&gt;</code> named argument and the ZM branch calls a <code>newZM</code> constructor; those look like copy-paste slips, but no MultiPoint fixture was built here so that is a place to look rather than a claim.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Directory::Bubble — The Raku Ecosystem, Working</title>
+<meta name="description" content="The list-building half of a recursive delete — every descendant in an order safe to remove in, and how far a deletion would cascade up the parent chain.">
+<link rel="canonical" href="https://raku.online/modules/file-directory-bubble/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Directory::Bubble — The Raku Ecosystem, Working">
+<meta property="og:description" content="The list-building half of a recursive delete — every descendant in an order safe to remove in, and how far a deletion would cascade up the parent chain.">
+<meta property="og:url" content="https://raku.online/modules/file-directory-bubble/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Directory::Bubble","description":"The list-building half of a recursive delete — every descendant in an order safe to remove in, and how far a deletion would cascade up the parent chain.","programmingLanguage":"Raku","version":"0.1","url":"https://raku.online/modules/file-directory-bubble/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/stuart-little/raku-file-directory-bubble.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · filesystem</div><h1>File::Directory::Bubble</h1><span class="status st-full">Works</span></div><p class="summary">The list-building half of a recursive delete — every descendant in an order safe to remove in, and how far a deletion would cascade up the parent chain.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1</code> <span class="fact-sub">zef:stuart-little</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:stuart-little/File::Directory::Bubble">raku.land</a> · <a href="https://github.com/stuart-little/raku-file-directory-bubble.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Directory::Bubble</code></pre></div><p class="fact-sub"><code>zef install File::Directory::Bubble</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>rm -r</code> has one property people rely on and one they wish it had. It removes the tree; it does not tell you first. And it does not clean up the now-empty parent directories the removal left behind.</p>
+<p>This distribution separates the walking from the removing, so a caller can print exactly what would go before anything goes — and it walks <em>upwards</em> as well, telling you how far a deletion would cascade once a directory is left empty.</p>
+<h2 id="listing-a-tree">Listing a tree <a class="anchor" href="#listing-a-tree" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-directory-bubble/01-down.raku" title="This example as a file: 01-down.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Directory::Bubble</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;bb-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b/c'</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b1/c'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b1/c/d'</span>).<span class="nb">spurt</span>(<span class="s">'one'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'foo.txt'</span>).<span class="nb">spurt</span>(<span class="s">'top'</span>);
+
+<span class="k">sub</span> <span class="n">rel</span>(<span class="nv">$p</span>) { <span class="nv">$p</span>.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>.<span class="nb">Str</span>, <span class="s">'&lt;ROOT&gt;'</span>) }
+
+<span class="nb">say</span> <span class="s">'bbDown($root), sorted:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$_</span> <span class="k">for</span> <span class="n">bbDown</span>(<span class="nv">$root</span>).<span class="nb">map</span>(<span class="nv">&amp;rel</span>).<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'bbDown of an empty directory : '</span>, <span class="n">bbDown</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b/c'</span>)).<span class="nb">map</span>(<span class="nv">&amp;rel</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'listParents of a leaf, first three : '</span>,
+    <span class="n">listParents</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b1/c/d'</span>)).<span class="nb">head</span>(<span class="mi">3</span>).<span class="nb">map</span>(<span class="nv">&amp;rel</span>).<span class="nb">List</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>bbDown($root), sorted:
+  /private&lt;ROOT&gt;
+  /private&lt;ROOT&gt;/a
+  /private&lt;ROOT&gt;/a/b
+  /private&lt;ROOT&gt;/a/b/c
+  /private&lt;ROOT&gt;/a/b1
+  /private&lt;ROOT&gt;/a/b1/c
+  /private&lt;ROOT&gt;/a/b1/c/d
+  /private&lt;ROOT&gt;/foo.txt
+
+bbDown of an empty directory : ("/private&lt;ROOT&gt;/a/b/c",)
+listParents of a leaf, first three : ("/private&lt;ROOT&gt;/a/b1/c", "/private&lt;ROOT&gt;/a/b1", "/private&lt;ROOT&gt;/a")</code></pre></div>
+<p><code>bbDown</code> includes the directory you pointed at, as the <strong>last</strong> element.</p>
+<h2 id="the-removal-order">The removal order <a class="anchor" href="#the-removal-order" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-directory-bubble/02-order.raku" title="This example as a file: 02-order.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Directory::Bubble</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;bb2-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b1/c'</span>);
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b2'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b1/c/d'</span>).<span class="nb">spurt</span>(<span class="s">'one'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b2/e'</span>).<span class="nb">spurt</span>(<span class="s">'two'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/f'</span>).<span class="nb">spurt</span>(<span class="s">'three'</span>);
+
+<span class="k">sub</span> <span class="n">rel</span>(<span class="nv">$p</span>) { <span class="nv">$p</span>.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>.<span class="nb">Str</span>, <span class="s">'&lt;ROOT&gt;'</span>) }
+
+<span class="nb">say</span> <span class="s">'bbDown(a) in the order it hands them back:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$_</span> <span class="k">for</span> <span class="n">bbDown</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a'</span>)).<span class="nb">map</span>(<span class="nv">&amp;rel</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="n">smartRm</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="n">bbDown</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a'</span>));
+<span class="nb">say</span> <span class="s">'feeding that order straight to smartRm:'</span>;
+<span class="nb">say</span> <span class="s">'  a still exists    : '</span>, <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a'</span>).<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">'  root still exists : '</span>, <span class="nv">$root</span>.<span class="n">e</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>bbDown(a) in the order it hands them back:
+  /private&lt;ROOT&gt;/a/b2/e
+  /private&lt;ROOT&gt;/a/b2
+  /private&lt;ROOT&gt;/a/f
+  /private&lt;ROOT&gt;/a/b1/c/d
+  /private&lt;ROOT&gt;/a/b1/c
+  /private&lt;ROOT&gt;/a/b1
+  /private&lt;ROOT&gt;/a
+
+feeding that order straight to smartRm:
+  a still exists    : False
+  root still exists : True</code></pre></div>
+<p>Deepest first, the directory itself last. That is already the safe order — do <strong>not</strong> <code>.reverse</code> it, or every <code>rmdir</code> hits a non-empty directory, fails inside the module's <code>try</code>, and says nothing at all.</p>
+<h2 id="walking-upwards">Walking upwards <a class="anchor" href="#walking-upwards" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-directory-bubble/03-up.raku" title="This example as a file: 03-up.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Directory::Bubble</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;bb3-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b/c'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/keep.txt'</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>);
+
+<span class="k">sub</span> <span class="n">rel</span>(<span class="nv">$p</span>) { <span class="nv">$p</span>.<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>.<span class="nb">Str</span>, <span class="s">'&lt;ROOT&gt;'</span>) }
+
+<span class="nb">say</span> <span class="s">'noChildrenExcept(a/b/c, [])  : '</span>, <span class="n">noChildrenExcept</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b/c'</span>), []);
+<span class="nb">say</span> <span class="s">'noChildrenExcept(a, [])      : '</span>, <span class="n">noChildrenExcept</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a'</span>), []);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'bbUpEmpty(a/b/c, []) — how far removing it would cascade:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">bbUpEmpty</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'a/b/c'</span>), []).<span class="nb">map</span>(<span class="nv">&amp;rel</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it stops at a, because a still holds keep.txt'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>noChildrenExcept(a/b/c, [])  : True
+noChildrenExcept(a, [])      : False
+
+bbUpEmpty(a/b/c, []) — how far removing it would cascade:
+  ("/private&lt;ROOT&gt;/a/b/c", "/private&lt;ROOT&gt;/a/b")
+
+it stops at a, because a still holds keep.txt</code></pre></div>
+<p><code>bbUpEmpty</code> is the answer to "if I delete this, what else becomes empty?" — the thing <code>rm -r</code> will not tell you.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>bbDown</code> on a path that does not exist returns neither an empty list nor an exception, and the natural loop then iterates once over the non-path.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-directory-bubble/04-missing-trap.raku" title="This example as a file: 04-missing-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Directory::Bubble</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;bb4-{$*PID}&quot;</span>);
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="k">my</span> <span class="nv">$missing</span> = <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'no-such-thing'</span>);
+<span class="nb">say</span> <span class="s">'the path exists            : '</span>, <span class="nv">$missing</span>.<span class="n">e</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="n">bbDown</span>(<span class="nv">$missing</span>);
+<span class="nb">say</span> <span class="s">'bbDown returned a list     : '</span>, <span class="nv">$d</span> ~~ <span class="nb">Positional</span>;
+<span class="nb">say</span> <span class="s">'it is defined              : '</span>, <span class="nv">$d</span>.<span class="nb">so</span> ~~ <span class="nb">Bool</span>;
+<span class="k">my</span> <span class="nv">@loop</span>;
+<span class="k">for</span> <span class="nv">$d</span> { <span class="nv">@loop</span>.<span class="nb">push</span>(<span class="s">'one iteration'</span>) }
+<span class="nb">say</span> <span class="s">'for bbDown($missing) {...} runs : '</span>, <span class="nv">@loop</span>.<span class="nb">elems</span>, <span class="s">' time(s)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so the guard has to be your own:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$missing</span>.<span class="n">e</span> ?? <span class="s">'walk it'</span> !! <span class="s">'skip it'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the path exists            : False
+bbDown returned a list     : False
+it is defined              : True
+for bbDown($missing) {...} runs : 1 time(s)
+
+so the guard has to be your own:
+  skip it</code></pre></div>
+<p><code>for bbDown($p) { smartRm($_) }</code> therefore calls <code>smartRm</code> once on something that is not a path. <code>smartRm</code> fails silently in turn — on a non-empty directory or a missing path it returns a falsy value and throws nothing — so a deletion loop that ignores return values will report success while leaving the tree exactly where it was.</p>
+<p>Check <code>.e</code> before walking, and check what <code>smartRm</code> gave you back.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On what "not a path" is. Raku++ returns <code>False</code> from <code>bbDown</code> on a missing path; Rakudo returns an unthrown <code>Failure</code> carrying <code>X::IO::DoesNotExist</code>. Rakudo's at least names the problem if you look at it. Both iterate once in a <code>for</code> loop, which is the behaviour that matters.</p>
+<p><code>smartRm</code>'s silent-failure return value differs the same way — <code>False</code> versus an empty list — and neither throws.</p>
+<p>One naming note, identical on both. You <code>use File::Directory::Bubble</code>, and the package the module actually declares is called <strong><code>Bubble</code></strong>. Neither name can qualify the subs: <code>File::Directory::Bubble::smartRm</code> and <code>Bubble::smartRm</code> are both undefined. You get seven unprefixed subs into your lexical scope — <code>smartRm</code>, <code>bbDown</code> and <code>listParents</code> among them, all generic enough to collide — with no namespace to disambiguate them.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

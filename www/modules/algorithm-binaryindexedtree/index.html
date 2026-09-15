@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::BinaryIndexedTree — The Raku Ecosystem, Working</title>
+<meta name="description" content="A Fenwick tree — an array of cumulative counts supporting a bucket increment and a prefix sum, each in logarithmic time.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-binaryindexedtree/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::BinaryIndexedTree — The Raku Ecosystem, Working">
+<meta property="og:description" content="A Fenwick tree — an array of cumulative counts supporting a bucket increment and a prefix sum, each in logarithmic time.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-binaryindexedtree/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::BinaryIndexedTree","description":"A Fenwick tree — an array of cumulative counts supporting a bucket increment and a prefix sum, each in logarithmic time.","programmingLanguage":"Raku","version":"0.0.8","url":"https://raku.online/modules/algorithm-binaryindexedtree/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/titsuki/raku-Algorithm-BinaryIndexedTree.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · data structures</div><h1>Algorithm::BinaryIndexedTree</h1><span class="status st-full">Works</span></div><p class="summary">A Fenwick tree — an array of cumulative counts supporting a bucket increment and a prefix sum, each in logarithmic time.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.8</code> <span class="fact-sub">zef:titsuki</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:titsuki/Algorithm::BinaryIndexedTree">raku.land</a> · <a href="https://github.com/titsuki/raku-Algorithm-BinaryIndexedTree.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::BinaryIndexedTree</code></pre></div><p class="fact-sub"><code>zef install Algorithm::BinaryIndexedTree</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Keeping a running total over a mutable array is a choice between two bad options: store the values and pay linearly for every prefix sum, or store the prefix sums and pay linearly for every update. A Fenwick tree does both in logarithmic time by storing partial sums over ranges whose lengths are powers of two.</p>
+<p>It is the structure under order statistics, under "how many events before this timestamp", and under any histogram that is read and written at the same rate.</p>
+<h2 id="building-and-querying">Building and querying <a class="anchor" href="#building-and-querying" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-binaryindexedtree/01-fenwick.raku" title="This example as a file: 01-fenwick.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::BinaryIndexedTree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Algorithm::BinaryIndexedTree</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+<span class="k">my</span> <span class="nv">@freq</span> = <span class="mi">0</span>, <span class="mi">3</span>, <span class="mi">1</span>, <span class="mi">4</span>, <span class="mi">1</span>, <span class="mi">5</span>, <span class="mi">9</span>, <span class="mi">2</span>, <span class="mi">6</span>;     <span class="c1"># index 0 unused for now</span>
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="nv">$_</span>, <span class="nv">@freq</span>[<span class="nv">$_</span>]) <span class="k">for</span> <span class="mi">1</span> .. <span class="mi">8</span>;
+
+<span class="nb">say</span> <span class="s">'get  1..8 : '</span>, (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">get</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'sum  1..8 : '</span>, (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'reference : '</span>, [\+](<span class="nv">@freq</span>[<span class="mi">1</span>.<span class="mf">.8</span>]).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a range query, sum(3..6) : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">6</span>) - <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'which should be          : '</span>, <span class="nv">@freq</span>[<span class="mi">3</span>.<span class="mf">.6</span>].<span class="nb">sum</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>get  1..8 : 3 1 4 1 5 9 2 6
+sum  1..8 : 3 4 8 9 14 23 25 31
+reference : 3 4 8 9 14 23 25 31
+
+a range query, sum(3..6) : 19
+which should be          : 19</code></pre></div>
+<p>The prefix sums match a plain triangular reduce exactly.</p>
+<h2 id="updating">Updating <a class="anchor" href="#updating" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-binaryindexedtree/02-update.raku" title="This example as a file: 02-update.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::BinaryIndexedTree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Algorithm::BinaryIndexedTree</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="nv">$_</span>, <span class="mi">1</span>) <span class="k">for</span> <span class="mi">1</span> .. <span class="mi">8</span>;
+
+<span class="nb">say</span> <span class="s">'before : get(5)='</span>, <span class="nv">$t</span>.<span class="n">get</span>(<span class="mi">5</span>), <span class="s">' sum(8)='</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">8</span>);
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="mi">5</span>, <span class="mi">100</span>);
+<span class="nb">say</span> <span class="s">'after add(5, 100) : get(5)='</span>, <span class="nv">$t</span>.<span class="n">get</span>(<span class="mi">5</span>), <span class="s">' sum(8)='</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'add is an INCREMENT, not a store — there is no setter:'</span>;
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="mi">5</span>, <span class="mi">100</span>);
+<span class="nb">say</span> <span class="s">'after a second add(5, 100) : get(5)='</span>, <span class="nv">$t</span>.<span class="n">get</span>(<span class="mi">5</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>before : get(5)=1 sum(8)=8
+after add(5, 100) : get(5)=101 sum(8)=108
+
+add is an INCREMENT, not a store — there is no setter:
+after a second add(5, 100) : get(5)=201</code></pre></div>
+<p>There is no way to set a bucket to a value, no way to clear it and no way to resize the table. To overwrite a bucket you must read it and add the difference.</p>
+<h2 id="the-bounds">The bounds <a class="anchor" href="#the-bounds" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-binaryindexedtree/03-bounds.raku" title="This example as a file: 03-bounds.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::BinaryIndexedTree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Algorithm::BinaryIndexedTree</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+
+<span class="k">for</span> <span class="mi">8</span>, <span class="mi">9</span>, -<span class="mi">1</span> -&gt; <span class="nv">$i</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="nv">$i</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'sum(%2d) -&gt; %s'</span>, <span class="nv">$i</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="nv">$r</span>.<span class="nb">Str</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'note that index == size is accepted, so new(size =&gt; 8) has NINE slots'</span>;
+<span class="nb">say</span> <span class="s">'the default new() allocates 1001 of them'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sum( 8) -&gt; 0
+sum( 9) -&gt; Error: index must be smaller than table size
+sum(-1) -&gt; Error: index must be larger or equal to 0
+
+note that index == size is accepted, so new(size =&gt; 8) has NINE slots
+the default new() allocates 1001 of them</code></pre></div>
+<p>The message says the index must be <em>smaller</em> than the table size, and the check is <code>$index &gt; $!size</code> — so index equal to size is allowed. Out-of-range indices <code>die</code>; they do not return an undefined value.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Index 0 is not part of the tree at all. It is a separate accumulator that is added to <strong>every</strong> prefix sum, including <code>sum(0)</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-binaryindexedtree/04-zero-trap.raku" title="This example as a file: 04-zero-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::BinaryIndexedTree</span>;
+
+<span class="k">my</span> <span class="nv">$t</span> = <span class="n">Algorithm::BinaryIndexedTree</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="nv">$_</span>, <span class="mi">1</span>) <span class="k">for</span> <span class="mi">1</span> .. <span class="mi">8</span>;
+
+<span class="nb">say</span> <span class="s">'eight buckets holding one each'</span>;
+<span class="nb">say</span> <span class="s">'  sum(0)  : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'  sum(1)  : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'  sum(8)  : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$t</span>.<span class="n">add</span>(<span class="mi">0</span>, <span class="mi">1000</span>);
+<span class="nb">say</span> <span class="s">'after add(0, 1000):'</span>;
+<span class="nb">say</span> <span class="s">'  get(0)     : '</span>, <span class="nv">$t</span>.<span class="n">get</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'  sum(0)     : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="s">'  sum(1)     : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">1</span>), <span class="s">'   but get(1) is still '</span>, <span class="nv">$t</span>.<span class="n">get</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'  sum(8)     : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">'  get(1..8)  : '</span>, (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">map</span>({ <span class="nv">$t</span>.<span class="n">get</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'it does cancel in a range query:'</span>;
+<span class="nb">say</span> <span class="s">'  sum(6) - sum(2) : '</span>, <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">6</span>) - <span class="nv">$t</span>.<span class="nb">sum</span>(<span class="mi">2</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>eight buckets holding one each
+  sum(0)  : 0
+  sum(1)  : 1
+  sum(8)  : 8
+
+after add(0, 1000):
+  get(0)     : 1000
+  sum(0)     : 1000
+  sum(1)     : 1001   but get(1) is still 1
+  sum(8)     : 1008
+  get(1..8)  : 1 1 1 1 1 1 1 1
+
+it does cancel in a range query:
+  sum(6) - sum(2) : 4</code></pre></div>
+<p>Every real bucket still reads 1, and yet <code>sum(1)</code> jumped from 1 to 1001. A programmer reaching for a cumulative-frequency table will assume either 0-based buckets, so that <code>sum(0)</code> covers the first element, or 1-based with <code>sum(0)</code> as the empty prefix returning 0. Neither is what happens.</p>
+<p>The saving grace is that the extra term cancels in a range query, so <code>sum(b) - sum(a)</code> stays correct. Use range queries, or simply never touch index 0.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>In two messages and one return value, none of which changes an answer.</p>
+<p>A positional <code>new(8)</code> is rejected on both engines, with <code>No matching multi candidate for method BUILD</code> on Raku++ and <code>Default constructor for 'Algorithm::BinaryIndexedTree' only takes named arguments</code> on Rakudo. And <code>add(0, 5)</code> — which takes an early <code>return;</code> — hands back <code>Any</code> on Raku++ and <code>Nil</code> on Rakudo; that is an engine-wide difference in what a bare <code>return</code> yields, not something this module does.</p>
+<p>One thing that is not an engine difference: <code>$value</code> is untyped, so <code>add(1, "7")</code> quietly coerces the string, and <code>add(1, 2.5)</code> turns your integer table into <code>Rat</code>s from that point on.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

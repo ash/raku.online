@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::ZobristHashing — The Raku Ecosystem, Working</title>
+<meta name="description" content="Zobrist hashing — a random value per (position, piece) pair, XORed together — so a one-square change costs two more XORs rather than a rehash.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-zobristhashing/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::ZobristHashing — The Raku Ecosystem, Working">
+<meta property="og:description" content="Zobrist hashing — a random value per (position, piece) pair, XORed together — so a one-square change costs two more XORs rather than a rehash.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-zobristhashing/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::ZobristHashing","description":"Zobrist hashing — a random value per (position, piece) pair, XORed together — so a one-square change costs two more XORs rather than a rehash.","programmingLanguage":"Raku","version":"0.0.6","url":"https://raku.online/modules/algorithm-zobristhashing/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/titsuki/raku-Algorithm-ZobristHashing.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>Algorithm::ZobristHashing</h1><span class="status st-full">Works</span></div><p class="summary">Zobrist hashing — a random value per (position, piece) pair, XORed together — so a one-square change costs two more XORs rather than a rehash.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.6</code> <span class="fact-sub">zef:titsuki</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:titsuki/Algorithm::ZobristHashing">raku.land</a> · <a href="https://github.com/titsuki/raku-Algorithm-ZobristHashing.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::ZobristHashing</code></pre></div><p class="fact-sub"><code>zef install Algorithm::ZobristHashing</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A chess engine looks at millions of positions a second and needs to know whether it has seen each one before. Rehashing a whole board per node is the wrong shape of work, because consecutive positions differ by one move.</p>
+<p>Zobrist hashing fixes that. Give every <code>(square, piece)</code> pair a random number, XOR one per square to hash the board, and then a single move is <code>hash ^ old ^ new</code> — two XORs, regardless of board size. That incremental property is the entire point.</p>
+<h2 id="hashing-a-board">Hashing a board <a class="anchor" href="#hashing-a-board" aria-label="link">#</a></h2>
+<p>Every value here is drawn at random, so what an example can show is the <strong>property</strong>:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-zobristhashing/01-zobrist.raku" title="This example as a file: 01-zobrist.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::ZobristHashing</span>;
+
+<span class="k">my</span> <span class="nv">$z</span> = <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>;
+
+<span class="k">my</span> <span class="nv">$h</span> = <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'abc'</span>);
+<span class="k">my</span> <span class="nv">$x</span> = <span class="nv">$z</span>.<span class="n">get</span>(<span class="mi">0</span>, <span class="s">'a'</span>) +^ <span class="nv">$z</span>.<span class="n">get</span>(<span class="mi">1</span>, <span class="s">'b'</span>) +^ <span class="nv">$z</span>.<span class="n">get</span>(<span class="mi">2</span>, <span class="s">'c'</span>);
+<span class="nb">say</span> <span class="s">'a hash is the XOR of its per-(position,piece) keys : '</span>, <span class="nv">$h</span> == <span class="nv">$x</span>;
+
+<span class="nb">say</span> <span class="s">'stable within one instance    : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'abc'</span>) == <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'different across instances    : '</span>,
+    <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>.<span class="n">encode</span>(<span class="s">'abc'</span>) != <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>.<span class="n">encode</span>(<span class="s">'abc'</span>);
+<span class="nb">say</span> <span class="s">'position matters, not just content : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'ab'</span>) != <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'ba'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a hash is the XOR of its per-(position,piece) keys : True
+stable within one instance    : True
+different across instances    : True
+position matters, not just content : True</code></pre></div>
+<p>Two instances disagree because each draws its own table. That is correct for Zobrist hashing and worth planning around: the table is per-object, drawn lazily, and <strong>not persistable</strong> — there is no seed parameter and no way to serialise <code>$!table</code>, so a transposition table cannot be written to disk and read back.</p>
+<h2 id="the-incremental-update">The incremental update <a class="anchor" href="#the-incremental-update" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-zobristhashing/02-incremental.raku" title="This example as a file: 02-incremental.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::ZobristHashing</span>;
+
+<span class="k">my</span> <span class="nv">$z</span> = <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>;
+
+<span class="k">my</span> <span class="nv">@board</span> = <span class="s">&lt;r n b q k b n r&gt;</span>;
+<span class="k">my</span> <span class="nv">$before</span> = <span class="nv">$z</span>.<span class="n">encode</span>(<span class="nv">@board</span>);
+
+<span class="k">my</span> <span class="nv">@after</span> = <span class="nv">@board</span>.<span class="nb">clone</span>;
+<span class="nv">@after</span>[<span class="mi">3</span>] = <span class="s">'Q'</span>;
+
+<span class="k">my</span> <span class="nv">$incremental</span> = <span class="nv">$before</span> +^ <span class="nv">$z</span>.<span class="n">get</span>(<span class="mi">3</span>, <span class="s">'q'</span>) +^ <span class="nv">$z</span>.<span class="n">get</span>(<span class="mi">3</span>, <span class="s">'Q'</span>);
+
+<span class="nb">say</span> <span class="s">'full rehash of the new board equals the incremental update : '</span>,
+    <span class="nv">$z</span>.<span class="n">encode</span>(<span class="nv">@after</span>) == <span class="nv">$incremental</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>full rehash of the new board equals the incremental update : True</code></pre></div>
+<p>That identity is the one property that actually matters for the intended use, and it holds exactly.</p>
+<h2 id="what-counts-as-input">What counts as input <a class="anchor" href="#what-counts-as-input" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-zobristhashing/03-input.raku" title="This example as a file: 03-input.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::ZobristHashing</span>;
+
+<span class="k">my</span> <span class="nv">$z</span> = <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>;
+
+<span class="nb">say</span> <span class="s">'a Str is split into characters : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'ab'</span>) == <span class="nv">$z</span>.<span class="n">encode</span>([<span class="s">'a'</span>, <span class="s">'b'</span>]);
+<span class="nb">say</span> <span class="s">'elements are stringified       : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'12'</span>) == <span class="nv">$z</span>.<span class="n">encode</span>([<span class="mi">1</span>, <span class="mi">2</span>]);
+<span class="nb">say</span> <span class="s">'so &quot;ab&quot; is not [&quot;ab&quot;]          : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>(<span class="s">'ab'</span>) != <span class="nv">$z</span>.<span class="n">encode</span>([<span class="s">'ab'</span>]);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'nested arrays are FLATTENED, so structure is lost:'</span>;
+<span class="nb">say</span> <span class="s">'  [[1,2],[3,4]] == [1,2,3,4] : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>([[<span class="mi">1</span>,<span class="mi">2</span>],[<span class="mi">3</span>,<span class="mi">4</span>]]) == <span class="nv">$z</span>.<span class="n">encode</span>([<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>,<span class="mi">4</span>]);
+<span class="nb">say</span> <span class="s">'  [[1],[2,3,4]] == [1,2,3,4] : '</span>, <span class="nv">$z</span>.<span class="n">encode</span>([[<span class="mi">1</span>],[<span class="mi">2</span>,<span class="mi">3</span>,<span class="mi">4</span>]]) == <span class="nv">$z</span>.<span class="n">encode</span>([<span class="mi">1</span>,<span class="mi">2</span>,<span class="mi">3</span>,<span class="mi">4</span>]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a Str is split into characters : True
+elements are stringified       : True
+so "ab" is not ["ab"]          : True
+
+nested arrays are FLATTENED, so structure is lost:
+  [[1,2],[3,4]] == [1,2,3,4] : True
+  [[1],[2,3,4]] == [1,2,3,4] : True</code></pre></div>
+<p>A two-dimensional board must be flattened by you if you care which flattening was used, because the module will flatten it either way and the two are indistinguishable afterwards.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The default hash is <strong>30 bits wide</strong>, not 64. The table entries are drawn from <code>0 ..^ 1e9</code>, and XOR cannot widen them.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-zobristhashing/04-width-trap.raku" title="This example as a file: 04-width-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::ZobristHashing</span>;
+
+<span class="k">my</span> <span class="nv">$z</span> = <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>;               <span class="c1"># default rand-max = 1e9</span>
+<span class="k">my</span> <span class="nv">@h</span> = (^<span class="mi">500</span>).<span class="nb">map</span>({ <span class="nv">$z</span>.<span class="n">encode</span>([<span class="nv">$_</span>, <span class="s">'x'</span>, <span class="nv">$_</span> * <span class="mi">7</span>]) });
+<span class="nb">say</span> <span class="s">'default rand-max 1e9'</span>;
+<span class="nb">say</span> <span class="s">'  widest hash seen over 500 inputs : '</span>, <span class="nv">@h</span>.<span class="nb">map</span>(*.<span class="n">base</span>(<span class="mi">2</span>).<span class="nb">chars</span>).<span class="nb">max</span>, <span class="s">' bits'</span>;
+<span class="nb">say</span> <span class="s">'  any hash &gt;= 2**30                : '</span>, ?<span class="nv">@h</span>.<span class="nb">grep</span>(* &gt;= <span class="mi">2</span>**<span class="mi">30</span>);
+
+<span class="k">my</span> <span class="nv">$w</span> = <span class="n">Algorithm::ZobristHashing</span>.<span class="nb">new</span>(<span class="n">rand-max</span> =&gt; <span class="mi">2</span>**<span class="mi">64</span>);
+<span class="k">my</span> <span class="nv">@w</span> = (^<span class="mi">500</span>).<span class="nb">map</span>({ <span class="nv">$w</span>.<span class="n">encode</span>([<span class="nv">$_</span>, <span class="s">'x'</span>, <span class="nv">$_</span> * <span class="mi">7</span>]) });
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'rand-max =&gt; 2**64'</span>;
+<span class="nb">say</span> <span class="s">'  widest hash seen over 500 inputs : '</span>, <span class="nv">@w</span>.<span class="nb">map</span>(*.<span class="n">base</span>(<span class="mi">2</span>).<span class="nb">chars</span>).<span class="nb">max</span>, <span class="s">' bits'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'2**30 is '</span>, <span class="mi">2</span>**<span class="mi">30</span>, <span class="s">', so the birthday bound is around '</span>, (<span class="mi">2</span>**<span class="mi">30</span>).<span class="nb">sqrt</span>.<span class="nb">round</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>default rand-max 1e9
+  widest hash seen over 500 inputs : 30 bits
+  any hash &gt;= 2**30                : False
+
+rand-max =&gt; 2**64
+  widest hash seen over 500 inputs : 64 bits
+
+2**30 is 1073741824, so the birthday bound is around 32768</code></pre></div>
+<p>A real 64-bit Zobrist needs on the order of five billion positions before a collision. At 30 bits the birthday bound is near 32,000, and in practice the first collision turned up between twenty and a hundred thousand distinct inputs across several runs. For a transposition table that is not a lot of positions.</p>
+<p>Nothing in the API hints at it — <code>rand-max</code> looks like a tuning knob rather than a correctness one. The fix is one named argument: <code>Algorithm::ZobristHashing.new(rand-max =&gt; 2**64)</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere in behaviour. Every property in this page held identically on Raku++ and Rakudo; the numbers themselves are random and differ per object, per run and per engine, as they must.</p>
+<p>One more thing, and it is the shape of a bug you will not see coming. <code>encode</code> on <strong>empty input returns the <code>Int</code> type object</strong>, not <code>0</code> and not a failure. <code>if $hash { … }</code> and <code>$hash // $default</code> both treat it as absent, <code>$hash == 0</code> warns, and storing it in a <code>my Int $h</code> succeeds. Guard with <code>.defined</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

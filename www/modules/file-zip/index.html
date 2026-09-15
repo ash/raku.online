@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File::Zip — The Raku Ecosystem, Working</title>
+<meta name="description" content="Read a zip archive by shelling out to the system unzip — validate the path, list the members, extract to a directory.">
+<link rel="canonical" href="https://raku.online/modules/file-zip/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="File::Zip — The Raku Ecosystem, Working">
+<meta property="og:description" content="Read a zip archive by shelling out to the system unzip — validate the path, list the members, extract to a directory.">
+<meta property="og:url" content="https://raku.online/modules/file-zip/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"File::Zip","description":"Read a zip archive by shelling out to the system unzip — validate the path, list the members, extract to a directory.","programmingLanguage":"Raku","version":"0.1.2","url":"https://raku.online/modules/file-zip/","license":"https://spdx.org/licenses/AGPL-3.0","codeRepository":"git@gitlab.com:tyil/perl6-file-zip.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · archives</div><h1>File::Zip</h1><span class="status st-full">Works</span></div><p class="summary">Read a zip archive by shelling out to the system unzip — validate the path, list the members, extract to a directory.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.2</code> <span class="fact-sub">gitlab:tyil</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>File::Temp</code>, <code>File::Which</code></dd></div><div class="fact"><dt>License</dt><dd>AGPL-3.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/gitlab:tyil/File::Zip">raku.land</a> · <a href="git@gitlab.com:tyil/perl6-file-zip.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install File::Zip</code></pre></div><p class="fact-sub"><code>zef install File::Zip</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Reading a zip file from Raku without a bundled decompressor means running <code>unzip</code>, and running <code>unzip</code> means parsing its output. This distribution wraps both: the constructor validates that the path is a real file that <code>file(1)</code> calls a zip archive, <code>files</code> turns the columns of <code>unzip -l</code> into a hash, and <code>extract</code> runs <code>unzip -d</code>.</p>
+<p>It reads archives. There is no method that writes one.</p>
+<h2 id="opening-and-listing">Opening and listing <a class="anchor" href="#opening-and-listing" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-zip/01-list.raku" title="This example as a file: 01-list.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Zip</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;zip-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/nested'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/alpha.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;alpha\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/beta.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;beta beta\n&quot;</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/nested/gamma.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;gamma gamma gamma\n&quot;</span>);
+<span class="c1"># pin the timestamps so the listing is the same everywhere</span>
+<span class="nb">run</span> <span class="s">'touch'</span>, <span class="s">'-t'</span>, <span class="s">'202401021530'</span>,
+    <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/alpha.txt'</span>).<span class="nb">Str</span>, <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/beta.txt'</span>).<span class="nb">Str</span>,
+    <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/nested/gamma.txt'</span>).<span class="nb">Str</span>, <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/nested'</span>).<span class="nb">Str</span>,
+    <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src'</span>).<span class="nb">Str</span>;
+<span class="nb">run</span> <span class="s">'zip'</span>, <span class="s">'-q'</span>, <span class="s">'-r'</span>, <span class="s">'-X'</span>, <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'bundle.zip'</span>).<span class="nb">Str</span>, <span class="s">'src'</span>, :<span class="n">cwd</span>(<span class="nv">$root</span>.<span class="nb">Str</span>);
+
+<span class="k">my</span> <span class="nv">$zip</span> = <span class="n">File::Zip</span>.<span class="nb">new</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'bundle.zip'</span>));
+<span class="nb">say</span> <span class="s">'object : '</span>, <span class="nv">$zip</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'path   : '</span>, <span class="nv">$zip</span>.<span class="n">path</span>.<span class="n">basename</span>, <span class="s">'  (a '</span>, <span class="nv">$zip</span>.<span class="n">path</span>.^<span class="n">name</span>, <span class="s">')'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">%f</span> = <span class="nv">$zip</span>.<span class="n">files</span>;
+<span class="nb">say</span> <span class="s">'members : '</span>, <span class="nv">%f</span>.<span class="nb">keys</span>.<span class="nb">elems</span>;
+<span class="k">for</span> <span class="nv">%f</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-22s %d bytes  %s %s'</span>, <span class="nv">$k</span>, <span class="nv">%f</span>{<span class="nv">$k</span>}<span class="s">&lt;length&gt;</span>, <span class="nv">%f</span>{<span class="nv">$k</span>}<span class="s">&lt;date&gt;</span>, <span class="nv">%f</span>{<span class="nv">$k</span>}<span class="s">&lt;time&gt;</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>object : File::Zip
+path   : bundle.zip  (a IO::Path)
+
+members : 5
+  src/                   0 bytes  01-02-2024 15:30
+  src/alpha.txt          6 bytes  01-02-2024 15:30
+  src/beta.txt           10 bytes  01-02-2024 15:30
+  src/nested/            0 bytes  01-02-2024 15:30
+  src/nested/gamma.txt   18 bytes  01-02-2024 15:30</code></pre></div>
+<h2 id="extracting">Extracting <a class="anchor" href="#extracting" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-zip/02-extract.raku" title="This example as a file: 02-extract.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Zip</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;zip2-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src'</span>);
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'src/one.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;one\n&quot;</span>);
+<span class="nb">run</span> <span class="s">'zip'</span>, <span class="s">'-q'</span>, <span class="s">'-r'</span>, <span class="s">'-X'</span>, <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'bundle.zip'</span>).<span class="nb">Str</span>, <span class="s">'src'</span>, :<span class="n">cwd</span>(<span class="nv">$root</span>.<span class="nb">Str</span>);
+
+<span class="nb">mkdir</span> <span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'out'</span>);
+<span class="k">my</span> <span class="nv">$zip</span> = <span class="n">File::Zip</span>.<span class="nb">new</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'bundle.zip'</span>));
+<span class="nb">say</span> <span class="s">'extract to a directory : '</span>, <span class="nv">$zip</span>.<span class="n">extract</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'out'</span>));
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">sub</span> <span class="n">walk</span>(<span class="nv">$d</span>) { <span class="nv">$d</span>.<span class="n">dir</span>.<span class="nb">sort</span>(*.<span class="n">basename</span>).<span class="nb">map</span>({ .<span class="n">d</span> ?? (<span class="nv">$_</span>, |<span class="n">walk</span>(<span class="nv">$_</span>)) !! <span class="nv">$_</span> }).<span class="nb">flat</span> }
+<span class="nb">say</span> <span class="s">'what landed there:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, .<span class="nb">Str</span>.<span class="n">subst</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'out'</span>).<span class="nb">Str</span> ~ <span class="s">'/'</span>, <span class="s">''</span>) <span class="k">for</span> <span class="n">walk</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'out'</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>extract to a directory : True
+
+what landed there:
+  src
+  src/one.txt</code></pre></div>
+<p><code>extract</code> with <strong>no</strong> argument writes into <code>$*CWD</code>, which nothing in the name suggests. Always pass a destination.</p>
+<h2 id="what-the-constructor-refuses">What the constructor refuses <a class="anchor" href="#what-the-constructor-refuses" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/file-zip/03-refuses.raku" title="This example as a file: 03-refuses.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">File::Zip</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;zip3-{$*PID}&quot;</span>);
+<span class="k">LEAVE</span> { <span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span> }
+<span class="nv">$root</span>.<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'adir'</span>).<span class="nb">mkdir</span>;
+<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'notazip.txt'</span>).<span class="nb">spurt</span>(<span class="s">&quot;I am plain text\n&quot;</span>);
+
+<span class="k">sub</span> <span class="n">attempt</span>(<span class="nv">$label</span>, <span class="nv">&amp;c</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">c</span>();
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-26s %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'accepted'</span>);
+}
+
+<span class="n">attempt</span> <span class="s">'a missing path'</span>,   { <span class="n">File::Zip</span>.<span class="nb">new</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'nope.zip'</span>)) };
+<span class="n">attempt</span> <span class="s">'a directory'</span>,      { <span class="n">File::Zip</span>.<span class="nb">new</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'adir'</span>)) };
+<span class="n">attempt</span> <span class="s">'a plain text file'</span>,{ <span class="n">File::Zip</span>.<span class="nb">new</span>(<span class="nv">$root</span>.<span class="n">add</span>(<span class="s">'notazip.txt'</span>)) };</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a missing path             refused
+a directory                refused
+a plain text file          refused</code></pre></div>
+<p>The constructor also refuses to build unless <strong>both</strong> <code>zip</code> and <code>unzip</code> are on your <code>PATH</code>, though only <code>unzip</code> is ever run.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>extract</code> blocks forever on an archive whose files are already at the destination.</p>
+<p><code>unzip</code> is run without <code>-o</code> and with stdin inherited, so it asks the user to confirm each replacement and waits. In a service, a cron job or a test that extracts the same archive twice, the process wedges — and the prompt text goes to the terminal, where nothing the caller controls can see it.</p>
+<p>With stdin redirected from <code>/dev/null</code> it does not hang; it answers "none" to its own question and silently extracts nothing, returning <code>False</code>. So the behaviour depends on what stdin happens to be, and neither outcome is the one you wanted.</p>
+<p>Extract to a fresh directory every time, or remove the destination first.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere in this module's own behaviour — the listing, the extraction, the three rejections and the hang were identical on Raku++ and Rakudo.</p>
+<p>One difference in the scaffolding around it: when a <code>run</code> of <code>zip</code> fails, Rakudo throws <code>The spawned command 'zip' exited unsuccessfully</code> where Raku++ merely prints the error. Worth knowing if you script around this module rather than only using it.</p>
+<p>The thing to guard on both engines is the listing. <code>files</code> parses <code>unzip -l</code> with <code>.words</code>, so <strong>any archived name containing a space is truncated at the first space</strong> — and the truncated key also carries the wrong <code>length</code>, because the columns have shifted. Names with spaces are common in real archives.</p>
+<p><code>files(:!cache)</code> reads fresh but does <strong>not</strong> refresh the cache, so the very next <code>files()</code> returns the stale list again.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

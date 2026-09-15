@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEB128 — The Raku Ecosystem, Working</title>
+<meta name="description" content="LEB128 variable-length integers, signed and unsigned — the format DWARF, WebAssembly and Protocol Buffers pack integers with — at arbitrary precision.">
+<link rel="canonical" href="https://raku.online/modules/leb128/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LEB128 — The Raku Ecosystem, Working">
+<meta property="og:description" content="LEB128 variable-length integers, signed and unsigned — the format DWARF, WebAssembly and Protocol Buffers pack integers with — at arbitrary precision.">
+<meta property="og:url" content="https://raku.online/modules/leb128/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"LEB128","description":"LEB128 variable-length integers, signed and unsigned — the format DWARF, WebAssembly and Protocol Buffers pack integers with — at arbitrary precision.","programmingLanguage":"Raku","version":"1.0","url":"https://raku.online/modules/leb128/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/jnthn/LEB128.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>LEB128</h1><span class="status st-full">Works</span></div><p class="summary">LEB128 variable-length integers, signed and unsigned — the format DWARF, WebAssembly and Protocol Buffers pack integers with — at arbitrary precision.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0</code> <span class="fact-sub">zef:jnthn</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jnthn/LEB128">raku.land</a> · <a href="https://github.com/jnthn/LEB128.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install LEB128</code></pre></div><p class="fact-sub"><code>zef install LEB128</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A four-byte integer field wastes three bytes when the value is under 128, and most values in a binary format are small. LEB128 fixes that: seven bits of payload per byte, the top bit meaning "another byte follows". WebAssembly uses it for every index and offset, DWARF for every line-table delta, Protocol Buffers for every varint field.</p>
+<p>Reading or writing any of those formats from Raku means having this.</p>
+<h2 id="encoding-and-decoding">Encoding and decoding <a class="anchor" href="#encoding-and-decoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/leb128/01-leb.raku" title="This example as a file: 01-leb.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LEB128</span>;
+
+<span class="k">sub</span> <span class="n">hex</span>(<span class="nb">Buf</span> <span class="nv">$b</span>) { <span class="nv">$b</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>) }
+
+<span class="nb">say</span> <span class="s">'unsigned:'</span>;
+<span class="k">for</span> <span class="mi">0</span>, <span class="mi">1</span>, <span class="mi">127</span>, <span class="mi">128</span>, <span class="mi">300</span>, <span class="mi">624485</span>, <span class="mi">2</span>**<span class="mi">64</span> -&gt; <span class="nv">$v</span> {
+    <span class="k">my</span> <span class="nb">Buf</span> <span class="nv">$e</span> = <span class="n">encode-leb128-unsigned</span>(<span class="nv">$v</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-22s %2d bytes  %-30s -&gt; %s'</span>,
+        <span class="nv">$v</span>.<span class="nb">Str</span>, <span class="nv">$e</span>.<span class="nb">elems</span>, <span class="n">hex</span>(<span class="nv">$e</span>), <span class="n">decode-leb128-unsigned</span>(<span class="nv">$e</span>).<span class="nb">Str</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'signed:'</span>;
+<span class="k">for</span> <span class="mi">0</span>, <span class="mi">63</span>, <span class="mi">64</span>, -<span class="mi">1</span>, -<span class="mi">64</span>, -<span class="mi">65</span>, <span class="mi">624485</span>, -<span class="mi">624485</span> -&gt; <span class="nv">$v</span> {
+    <span class="k">my</span> <span class="nb">Buf</span> <span class="nv">$e</span> = <span class="n">encode-leb128-signed</span>(<span class="nv">$v</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  %-10s %2d bytes  %-12s -&gt; %s'</span>,
+        <span class="nv">$v</span>.<span class="nb">Str</span>, <span class="nv">$e</span>.<span class="nb">elems</span>, <span class="n">hex</span>(<span class="nv">$e</span>), <span class="n">decode-leb128-signed</span>(<span class="nv">$e</span>).<span class="nb">Str</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>unsigned:
+  0                       1 bytes  00                             -&gt; 0
+  1                       1 bytes  01                             -&gt; 1
+  127                     1 bytes  7F                             -&gt; 127
+  128                     2 bytes  80 01                          -&gt; 128
+  300                     2 bytes  AC 02                          -&gt; 300
+  624485                  3 bytes  E5 8E 26                       -&gt; 624485
+  18446744073709551616   10 bytes  80 80 80 80 80 80 80 80 80 02  -&gt; 18446744073709551616
+
+signed:
+  0           1 bytes  00           -&gt; 0
+  63          1 bytes  3F           -&gt; 63
+  64          2 bytes  C0 00        -&gt; 64
+  -1          1 bytes  7F           -&gt; -1
+  -64         1 bytes  40           -&gt; -64
+  -65         2 bytes  BF 7F        -&gt; -65
+  624485      3 bytes  E5 8E 26     -&gt; 624485
+  -624485     3 bytes  9B F1 59     -&gt; -624485</code></pre></div>
+<p><code>624485</code> encoding to <code>E5 8E 26</code> is the DWARF specification's own worked example. Note the byte-boundary asymmetry in the signed form: <code>63</code> fits in one byte and <code>64</code> needs two, while <code>-64</code> fits and <code>-65</code> does not — the sign extension comes from bit 6 of the final byte.</p>
+<h2 id="splicing-into-a-buffer">Splicing into a buffer <a class="anchor" href="#splicing-into-a-buffer" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/leb128/02-buffer.raku" title="This example as a file: 02-buffer.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LEB128</span>;
+
+<span class="k">my</span> <span class="nb">Buf</span> <span class="nv">$buf</span> .= <span class="nb">new</span>;
+<span class="k">my</span> <span class="nb">int</span> <span class="nv">$offset</span> = <span class="mi">0</span>;
+
+<span class="k">for</span> <span class="mi">300</span>, <span class="mi">7</span>, <span class="mi">624485</span> -&gt; <span class="nv">$v</span> {
+    <span class="k">my</span> <span class="nv">$written</span> = <span class="n">encode-leb128-unsigned</span>(<span class="nv">$v</span>, <span class="nv">$buf</span>, <span class="nv">$offset</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'encoded %-8s at offset %-2d -&gt; %d byte(s) written, buffer now %s'</span>,
+        <span class="nv">$v</span>.<span class="nb">Str</span>, <span class="nv">$offset</span>, <span class="nv">$written</span>, <span class="nv">$buf</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>));
+    <span class="nv">$offset</span> += <span class="nv">$written</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>encoded 300      at offset 0  -&gt; 2 byte(s) written, buffer now AC 02
+encoded 7        at offset 2  -&gt; 1 byte(s) written, buffer now AC 02 07
+encoded 624485   at offset 3  -&gt; 3 byte(s) written, buffer now AC 02 07 E5 8E 26</code></pre></div>
+<p>The three-argument form returns <strong>bytes written, not the new offset</strong>, so you must accumulate. The natural misreading works for the first two values and silently corrupts the third. <code>decode</code>'s <code>$read is rw</code> parameter is likewise a count, not a position.</p>
+<h2 id="malformed-input">Malformed input <a class="anchor" href="#malformed-input" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/leb128/03-malformed.raku" title="This example as a file: 03-malformed.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LEB128</span>;
+
+<span class="k">for</span> <span class="s">'empty'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>,
+    <span class="s">'a continuation with nothing after it'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x80</span>),
+    <span class="s">'all continuations'</span>, <span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0xFF</span>, <span class="mh">0xFF</span>, <span class="mh">0xFF</span>) -&gt; <span class="nv">$label</span>, <span class="nv">$b</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">decode-leb128-unsigned</span>(<span class="nv">$b</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-38s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.^<span class="n">name</span> !! <span class="nv">$r</span>.<span class="nb">Str</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'trailing bytes after a complete value are IGNORED:'</span>;
+<span class="nb">say</span> <span class="s">'  decode(01 DE AD) = '</span>, <span class="n">decode-leb128-unsigned</span>(<span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x01</span>, <span class="mh">0xDE</span>, <span class="mh">0xAD</span>));
+<span class="nb">say</span> <span class="s">'and a non-canonical padded zero is accepted:'</span>;
+<span class="nb">say</span> <span class="s">'  decode(80 80 80 00) = '</span>, <span class="n">decode-leb128-unsigned</span>(<span class="nb">Buf</span>.<span class="nb">new</span>(<span class="mh">0x80</span>, <span class="mh">0x80</span>, <span class="mh">0x80</span>, <span class="mh">0x00</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>empty                                  -&gt; X::LEB128::Incomplete
+a continuation with nothing after it   -&gt; X::LEB128::Incomplete
+all continuations                      -&gt; X::LEB128::Incomplete
+
+trailing bytes after a complete value are IGNORED:
+  decode(01 DE AD) = 1
+and a non-canonical padded zero is accepted:
+  decode(80 80 80 00) = 0</code></pre></div>
+<p>Truncation raises a typed <code>X::LEB128::Incomplete</code> rather than returning garbage, which is the right behaviour. Trailing data is not reported, so if you need "this buffer held exactly one value", check the byte count yourself.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>encode-leb128-unsigned</code> on a <strong>negative</strong> number never returns. Not an exception you can catch — the process hangs.</p>
+<p>The parameter is typed <code>Int</code>, not <code>UInt</code>, so a negative sails past the type check; the encoder then shifts right forever, because <code>-1 +&gt; 7</code> is <code>-1</code> at arbitrary precision, appending bytes until memory runs out.</p>
+<p>The signed encoder handles every negative correctly, so the trap is specifically routing a possibly-negative value into the unsigned sub — which is exactly what happens when a delta, an offset difference, or a subtraction result reaches it. Guard with <code>$v &gt;= 0</code> at your own call site, or use the signed form.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On the native <code>int</code> in the splicing form's signature. Raku++ coerces a boxed <code>Int</code>; Rakudo refuses to dispatch at all:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/leb128/04-native-int.raku" title="This example as a file: 04-native-int.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LEB128</span>;
+
+<span class="k">my</span> <span class="nb">Buf</span> <span class="nv">$buf</span> .= <span class="nb">new</span>;
+<span class="k">my</span> <span class="nb">int</span> <span class="nv">$native</span> = <span class="mi">0</span>;
+<span class="nb">say</span> <span class="s">'a native int offset works on both engines : '</span>,
+    <span class="n">encode-leb128-unsigned</span>(<span class="mi">300</span>, <span class="nv">$buf</span>, <span class="nv">$native</span>), <span class="s">' byte(s)'</span>;
+<span class="nb">say</span> <span class="s">'and the buffer holds : '</span>, <span class="nv">$buf</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a native int offset works on both engines : 2 byte(s)
+and the buffer holds : AC 02</code></pre></div>
+<p>Declare <code>my int $offset</code>, as above, and the two agree. A plain <code>my Int $off</code> works on Raku++ and dies with <code>X::Multi::NoMatch</code> on Rakudo.</p>
+<p>Everything else in this page — the round trips, the DWARF vector, the 64-bit-and-beyond values, the typed truncation error, the tolerance for trailing and padded bytes — was byte-identical on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

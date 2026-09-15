@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance::CompoundInterest — The Raku Ecosystem, Working</title>
+<meta name="description" content="Four time-value-of-money formulas — future value of a lump sum or a payment stream, and the two inverses that solve for periods or payment size.">
+<link rel="canonical" href="https://raku.online/modules/finance-compoundinterest/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Finance::CompoundInterest — The Raku Ecosystem, Working">
+<meta property="og:description" content="Four time-value-of-money formulas — future value of a lump sum or a payment stream, and the two inverses that solve for periods or payment size.">
+<meta property="og:url" content="https://raku.online/modules/finance-compoundinterest/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Finance::CompoundInterest","description":"Four time-value-of-money formulas — future value of a lump sum or a payment stream, and the two inverses that solve for periods or payment size.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/finance-compoundinterest/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/peelle/Finance-CompoundInterest.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · finance</div><h1>Finance::CompoundInterest</h1><span class="status st-full">Works</span></div><p class="summary">Four time-value-of-money formulas — future value of a lump sum or a payment stream, and the two inverses that solve for periods or payment size.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Finance::CompoundInterest">raku.land</a> · <a href="git://github.com/peelle/Finance-CompoundInterest.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Finance::CompoundInterest</code></pre></div><p class="fact-sub"><code>zef install Finance::CompoundInterest</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Four questions come up constantly in anything that touches money over time. What will this lump sum be worth? What will these regular payments add up to? How long until they reach a target? How large must each one be?</p>
+<p>They are four rearrangements of the same formula, and this distribution is seventeen lines that provide all four.</p>
+<h2 id="the-four-formulas">The four formulas <a class="anchor" href="#the-four-formulas" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/finance-compoundinterest/01-finance.raku" title="This example as a file: 01-finance.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Finance::CompoundInterest</span>;
+
+<span class="nb">say</span> <span class="s">'1000 at 5% compounded monthly for 10 years:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">compound_interest</span>(<span class="mf">1000.0</span>, <span class="mf">0.05</span>, <span class="mf">12.0</span>, <span class="mf">10.0</span>).<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'200 a month for 60 months at 0.5% a month:'</span>;
+<span class="k">my</span> <span class="nv">$fv</span> = <span class="n">compound_interest_with_payments</span>(<span class="mf">200.0</span>, <span class="mf">0.005</span>, <span class="mf">60.0</span>);
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$fv</span>.<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the two inverses of that same stream:'</span>;
+<span class="nb">say</span> <span class="s">'  periods needed for 13954.01 : '</span>, <span class="n">ciwp_payment_period</span>(<span class="mf">13954.01</span>, <span class="mf">0.005</span>, <span class="mf">200.0</span>).<span class="nb">round</span>(<span class="mf">0.0001</span>);
+<span class="nb">say</span> <span class="s">'  payment size for 13954.01   : '</span>, <span class="n">ciwp_payment_size</span>(<span class="mf">13954.01</span>, <span class="mf">0.005</span>, <span class="mf">60.0</span>).<span class="nb">round</span>(<span class="mf">0.01</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1000 at 5% compounded monthly for 10 years:
+  1647.01
+
+200 a month for 60 months at 0.5% a month:
+  13954.01
+
+the two inverses of that same stream:
+  periods needed for 13954.01 : 60
+  payment size for 13954.01   : 200</code></pre></div>
+<p>The three payment-stream results are mutually consistent, which is the check worth running: 200 a month for 60 months at half a percent is 13,954.01, and both inverses recover 60 and 200.</p>
+<h2 id="a-case-you-can-verify-by-hand">A case you can verify by hand <a class="anchor" href="#a-case-you-can-verify-by-hand" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/finance-compoundinterest/02-simple.raku" title="This example as a file: 02-simple.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Finance::CompoundInterest</span>;
+
+<span class="nb">say</span> <span class="s">'1000 at 10% compounded once a year for 3 years:'</span>;
+<span class="nb">say</span> <span class="s">'  computed : '</span>, <span class="n">compound_interest</span>(<span class="mf">1000.0</span>, <span class="mf">0.10</span>, <span class="mf">1.0</span>, <span class="mf">3.0</span>).<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">'  by hand  : '</span>, (<span class="mi">1000</span> * <span class="mf">1.1</span> ** <span class="mi">3</span>).<span class="nb">round</span>(<span class="mf">0.01</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'return type : '</span>, <span class="n">compound_interest</span>(<span class="mf">1000.0</span>, <span class="mf">0.10</span>, <span class="mf">1.0</span>, <span class="mf">3.0</span>).^<span class="n">name</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1000 at 10% compounded once a year for 3 years:
+  computed : 1331
+  by hand  : 1331
+
+return type : Num</code></pre></div>
+<p>Note the return type. Every parameter is a <code>Rat()</code> coercion and every result is a <strong><code>Num</code></strong>, because raising to a rational power leaves the rational domain. Do not expect exact decimal money out of this; round at the point of display.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>One parameter out of thirteen is not a coercion type, and only that one refuses an <code>Int</code> or a <code>Num</code>.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/finance-compoundinterest/03-rat-trap.raku" title="This example as a file: 03-rat-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Finance::CompoundInterest</span>;
+
+<span class="k">sub</span> <span class="n">attempt</span>(<span class="nv">$label</span>, <span class="nv">&amp;c</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">c</span>();
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-58s %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="s">'refused'</span> !! <span class="s">'ok -&gt; '</span> ~ <span class="nv">$r</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>));
+}
+
+<span class="n">attempt</span> <span class="s">'compound_interest(1000, 1/20, 12, 10)  — Int and Rat'</span>,
+        { <span class="n">compound_interest</span>(<span class="mi">1000</span>, <span class="mi">1</span>/<span class="mi">20</span>, <span class="mi">12</span>, <span class="mi">10</span>) };
+<span class="n">attempt</span> <span class="s">'compound_interest(1000e0, 0.05e0, 12e0, 10e0)  — all Num'</span>,
+        { <span class="n">compound_interest</span>(<span class="mf">1000e0</span>, <span class="mf">0.05e0</span>, <span class="mf">12e0</span>, <span class="mf">10e0</span>) };
+<span class="n">attempt</span> <span class="s">'ciwp_payment_size(13954.01, 0.005e0, 60)  — Num rate'</span>,
+        { <span class="n">ciwp_payment_size</span>(<span class="mf">13954.01</span>, <span class="mf">0.005e0</span>, <span class="mi">60</span>) };
+<span class="n">attempt</span> <span class="s">'ciwp_payment_period(13954.01, 0.005e0, 200)  — Num rate'</span>,
+        { <span class="n">ciwp_payment_period</span>(<span class="mf">13954.01</span>, <span class="mf">0.005e0</span>, <span class="mi">200</span>) };
+<span class="n">attempt</span> <span class="s">'compound_interest_with_payments(200, 0.005, 60)  — Int and Rat'</span>,
+        { <span class="n">compound_interest_with_payments</span>(<span class="mi">200</span>, <span class="mf">0.005</span>, <span class="mi">60</span>) };
+<span class="n">attempt</span> <span class="s">'compound_interest_with_payments(200, 0.005e0, 60)  — Num rate'</span>,
+        { <span class="n">compound_interest_with_payments</span>(<span class="mi">200</span>, <span class="mf">0.005e0</span>, <span class="mi">60</span>) };
+<span class="n">attempt</span> <span class="s">'compound_interest_with_payments(200, 1, 60)  — Int rate'</span>,
+        { <span class="n">compound_interest_with_payments</span>(<span class="mi">200</span>, <span class="mi">1</span>, <span class="mi">60</span>) };</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>compound_interest(1000, 1/20, 12, 10)  — Int and Rat       ok -&gt; 1647.0095
+compound_interest(1000e0, 0.05e0, 12e0, 10e0)  — all Num   ok -&gt; 1647.0095
+ciwp_payment_size(13954.01, 0.005e0, 60)  — Num rate       ok -&gt; 200.0001
+ciwp_payment_period(13954.01, 0.005e0, 200)  — Num rate    ok -&gt; 60
+compound_interest_with_payments(200, 0.005, 60)  — Int and Rat ok -&gt; 13954.0061
+compound_interest_with_payments(200, 0.005e0, 60)  — Num rate refused
+compound_interest_with_payments(200, 1, 60)  — Int rate    refused</code></pre></div>
+<p>Twelve parameters are declared <code>Rat()</code>. <code>compound_interest_with_payments</code>'s <code>$interest_rate</code> is declared plain <code>Rat</code>. So a rate arriving as a <code>Num</code> — from JSON, from a division by a <code>Num</code>, from any <code>.Num</code> upstream — or as a whole-number <code>Int</code> works in three of the four subs and is a binding failure in the fourth.</p>
+<p>Nothing in the shape of the interface hints at it. Coerce every rate with <code>.Rat</code> before it gets here.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>In one introspection answer, which matters only if you go poking at the result. Raku++ answers <code>.numerator</code> and <code>.denominator</code> on the returned <code>Num</code>; Rakudo correctly refuses, since a <code>Num</code> has neither. That is an extra method on one engine's <code>Num</code>, not something the module does, but it will mislead anyone probing the return value.</p>
+<p>Every number in this page was identical on both engines.</p>
+<p>Two more things to watch, neither engine-related. The argument <strong>orders differ between siblings</strong>: <code>compound_interest_with_payments(payment, rate, periods)</code> against <code>ciwp_payment_size(final_value, rate, periods)</code>, both three positionals of the same types — so a transposition binds cleanly and gives you a confident wrong number. And the distribution states no <code>auth</code>, so it has no canonical raku.land path.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

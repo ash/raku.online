@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LCS::All — The Raku Ecosystem, Working</title>
+<meta name="description" content="Every longest common subsequence of two sequences, not just one, returned as lists of index pairs into the originals.">
+<link rel="canonical" href="https://raku.online/modules/lcs-all/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LCS::All — The Raku Ecosystem, Working">
+<meta property="og:description" content="Every longest common subsequence of two sequences, not just one, returned as lists of index pairs into the originals.">
+<meta property="og:url" content="https://raku.online/modules/lcs-all/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"LCS::All","description":"Every longest common subsequence of two sequences, not just one, returned as lists of index pairs into the originals.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/lcs-all/","license":"https://spdx.org/licenses/none stated","codeRepository":"git://github.com/wollmers/P6-LCS-All.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>LCS::All</h1><span class="status st-full">Works</span></div><p class="summary">Every longest common subsequence of two sequences, not just one, returned as lists of index pairs into the originals.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>none stated</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/LCS::All">raku.land</a> · <a href="git://github.com/wollmers/P6-LCS-All.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install LCS::All</code></pre></div><p class="fact-sub"><code>zef install LCS::All</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A normal longest-common-subsequence routine picks one winner among ties. For a diff tool that is a problem: when two alignments are equally good, showing the user an arbitrary one produces the diffs people complain about — the ones where a moved block is rendered as an unrelated delete and insert.</p>
+<p>This distribution enumerates <strong>all</strong> of them, so a caller can choose.</p>
+<h2 id="every-alignment">Every alignment <a class="anchor" href="#every-alignment" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lcs-all/01-all.raku" title="This example as a file: 01-all.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LCS::All</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">@a</span>, <span class="nv">@b</span>) {
+    <span class="k">my</span> <span class="nv">@r</span> = <span class="n">allLCS</span>(<span class="nv">@a</span>, <span class="nv">@b</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-18s %-18s'</span>, <span class="nv">@a</span>.<span class="nb">join</span>(<span class="s">''</span>), <span class="nv">@b</span>.<span class="nb">join</span>(<span class="s">''</span>));
+    <span class="k">for</span> <span class="nv">@r</span>[<span class="mi">0</span>].<span class="nb">list</span> -&gt; <span class="nv">$solution</span> {
+        <span class="nb">say</span> <span class="s">'  solution : '</span>,
+            <span class="nv">$solution</span>.<span class="nb">elems</span>
+              ?? <span class="nv">$solution</span>.<span class="nb">map</span>({ <span class="s">&quot;({.[0]},{.[1]})&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>)
+              !! <span class="s">'(none)'</span>;
+    }
+}
+
+<span class="n">show</span> [<span class="s">&lt;a b c&gt;</span>], [<span class="s">&lt;a b c&gt;</span>];
+<span class="n">show</span> [<span class="s">&lt;a b c&gt;</span>], [<span class="s">&lt;a c b&gt;</span>];
+<span class="n">show</span> [<span class="s">&lt;a b c d&gt;</span>], [<span class="s">&lt;b d&gt;</span>];
+<span class="n">show</span> [<span class="s">&lt;a b&gt;</span>], [<span class="s">&lt;c d&gt;</span>];</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>abc                abc               
+  solution : (0,0) (1,1) (2,2)
+abc                acb               
+  solution : (0,0) (1,2)
+  solution : (0,0) (2,1)
+abcd               bd                
+  solution : (1,0) (3,1)
+ab                 cd                
+  solution : (none)</code></pre></div>
+<p><code>abc</code> against <code>acb</code> genuinely has two distinct longest common subsequences of length two — <code>a,c</code> and <code>a,b</code> — and both are listed. That is the case a single-answer routine has to pick between.</p>
+<h2 id="recovering-the-elements">Recovering the elements <a class="anchor" href="#recovering-the-elements" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lcs-all/02-recover.raku" title="This example as a file: 02-recover.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LCS::All</span>;
+
+<span class="k">my</span> <span class="nv">@x</span> = <span class="s">&lt;t h e   q u i c k&gt;</span>.<span class="nb">grep</span>(*.<span class="nb">chars</span>);
+<span class="k">my</span> <span class="nv">@y</span> = <span class="s">&lt;t h e   q u a c k&gt;</span>.<span class="nb">grep</span>(*.<span class="nb">chars</span>);
+
+<span class="k">my</span> <span class="nv">@r</span> = <span class="n">allLCS</span>(<span class="nv">@x</span>, <span class="nv">@y</span>);
+<span class="nb">say</span> <span class="s">'solutions : '</span>, <span class="nv">@r</span>[<span class="mi">0</span>].<span class="nb">elems</span>;
+<span class="k">for</span> <span class="nv">@r</span>[<span class="mi">0</span>].<span class="nb">list</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="s">'  as indices  : '</span>, <span class="nv">$s</span>.<span class="nb">map</span>({ <span class="s">&quot;({.[0]},{.[1]})&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+    <span class="nb">say</span> <span class="s">'  as elements : '</span>, <span class="nv">$s</span>.<span class="nb">map</span>({ <span class="nv">@x</span>[.[<span class="mi">0</span>]] }).<span class="nb">join</span>(<span class="s">''</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>solutions : 1
+  as indices  : (0,0) (1,1) (2,2) (3,3) (4,4) (6,6) (7,7)
+  as elements : thequck</code></pre></div>
+<p>You get <strong>index pairs</strong>, not elements. To recover the subsequence you map the first index of each pair back through your own array — which is more work than returning the elements, and is the right choice, because the indices are what a diff actually needs.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The result is wrapped three levels deep, and the "no common subsequence" answer is not empty.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lcs-all/03-depth-trap.raku" title="This example as a file: 03-depth-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">LCS::All</span>;
+
+<span class="k">my</span> <span class="nv">@disjoint</span> = <span class="n">allLCS</span>([<span class="s">&lt;a b&gt;</span>], [<span class="s">&lt;c d&gt;</span>]);
+
+<span class="nb">say</span> <span class="s">'allLCS on two disjoint sequences:'</span>;
+<span class="nb">say</span> <span class="s">'  the whole return value : '</span>, <span class="nv">@disjoint</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  .elems                 : '</span>, <span class="nv">@disjoint</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  is it true?            : '</span>, ?<span class="nv">@disjoint</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the genuinely empty thing is three subscripts down:'</span>;
+<span class="nb">say</span> <span class="s">'  [0].elems     : '</span>, <span class="nv">@disjoint</span>[<span class="mi">0</span>].<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  [0][0].elems  : '</span>, <span class="nv">@disjoint</span>[<span class="mi">0</span>][<span class="mi">0</span>].<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'so this test is always true and tells you nothing:'</span>;
+<span class="nb">say</span> <span class="s">'  if allLCS(...) { ... }   -&gt;  '</span>, ?<span class="n">allLCS</span>([<span class="s">&lt;a b&gt;</span>], [<span class="s">&lt;c d&gt;</span>]);
+<span class="nb">say</span> <span class="s">'and this is the one that works:'</span>;
+<span class="nb">say</span> <span class="s">'  allLCS(...)[0][0].elems  -&gt;  '</span>, <span class="n">allLCS</span>([<span class="s">&lt;a b&gt;</span>], [<span class="s">&lt;c d&gt;</span>])[<span class="mi">0</span>][<span class="mi">0</span>].<span class="nb">elems</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>allLCS on two disjoint sequences:
+  the whole return value : [[[],],]
+  .elems                 : 1
+  is it true?            : True
+
+the genuinely empty thing is three subscripts down:
+  [0].elems     : 1
+  [0][0].elems  : 0
+
+so this test is always true and tells you nothing:
+  if allLCS(...) { ... }   -&gt;  True
+and this is the one that works:
+  allLCS(...)[0][0].elems  -&gt;  1</code></pre></div>
+<p>The structure is an outer one-element list, then the list of solutions, then each solution as a list of <code>[i, j]</code> pairs. <code>allLCS($x, $y).elems</code> is <code>1</code> whether there are two solutions or none, and the value is truthy either way.</p>
+<p>Test <code>@r[0][0].elems</code>, or <code>@r[0].grep(*.elems)</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every alignment, including all four degenerate pairs, produced byte-identical output on Raku++ and Rakudo, and no input raised an exception.</p>
+<p>The distribution states <strong>neither an author nor a licence</strong> in its metadata, which matters if the result is going into anything you redistribute.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

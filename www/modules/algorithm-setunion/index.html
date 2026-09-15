@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm::SetUnion — The Raku Ecosystem, Working</title>
+<meta name="description" content="A disjoint-set forest over the integers 0 ..^ size, with union by subtree size and full path compression, and the node array exposed.">
+<link rel="canonical" href="https://raku.online/modules/algorithm-setunion/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Algorithm::SetUnion — The Raku Ecosystem, Working">
+<meta property="og:description" content="A disjoint-set forest over the integers 0 ..^ size, with union by subtree size and full path compression, and the node array exposed.">
+<meta property="og:url" content="https://raku.online/modules/algorithm-setunion/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Algorithm::SetUnion","description":"A disjoint-set forest over the integers 0 ..^ size, with union by subtree size and full path compression, and the node array exposed.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/algorithm-setunion/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/titsuki/p6-Algorithm-SetUnion.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · algorithms</div><h1>Algorithm::SetUnion</h1><span class="status st-full">Works</span></div><p class="summary">A disjoint-set forest over the integers 0 ..^ size, with union by subtree size and full path compression, and the node array exposed.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">titsuki</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/titsuki/Algorithm::SetUnion">raku.land</a> · <a href="git://github.com/titsuki/p6-Algorithm-SetUnion.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Algorithm::SetUnion</code></pre></div><p class="fact-sub"><code>zef install Algorithm::SetUnion</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>"Are these two things in the same group, and if not, merge their groups" is the question under connected components, under Kruskal's minimum spanning tree, under image segmentation, and under any equivalence-class bookkeeping. Answered naively it is quadratic; answered with a disjoint-set forest it is very nearly constant.</p>
+<p>This distribution is that forest, with both standard optimisations: merge the smaller tree under the larger, and flatten the path on every lookup.</p>
+<h2 id="unioning-and-finding">Unioning and finding <a class="anchor" href="#unioning-and-finding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-setunion/01-union.raku" title="This example as a file: 01-union.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::SetUnion</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">Algorithm::SetUnion</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+
+<span class="nb">say</span> <span class="s">'a fresh forest — every element is its own root:'</span>;
+<span class="nb">say</span> <span class="s">'  find(i) for 0..7 : '</span>, (^<span class="mi">8</span>).<span class="nb">map</span>({ <span class="nv">$u</span>.<span class="n">find</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  .size            : '</span>, <span class="nv">$u</span>.<span class="n">size</span>, <span class="s">'   .nodes.elems : '</span>, <span class="nv">$u</span>.<span class="n">nodes</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'union(0,1) -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'union(2,3) -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">2</span>, <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'union(1,3) -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">1</span>, <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'union(4,5) -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">4</span>, <span class="mi">5</span>);
+<span class="nb">say</span> <span class="s">'  find(i) for 0..7 : '</span>, (^<span class="mi">8</span>).<span class="nb">map</span>({ <span class="nv">$u</span>.<span class="n">find</span>(<span class="nv">$_</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'union of two elements already together -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'union of an element with itself        -&gt; '</span>, <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">0</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>a fresh forest — every element is its own root:
+  find(i) for 0..7 : 0 1 2 3 4 5 6 7
+  .size            : 8   .nodes.elems : 8
+
+union(0,1) -&gt; True
+union(2,3) -&gt; True
+union(1,3) -&gt; True
+union(4,5) -&gt; True
+  find(i) for 0..7 : 0 0 0 0 4 4 6 7
+
+union of two elements already together -&gt; False
+union of an element with itself        -&gt; False</code></pre></div>
+<p><code>union</code> returns <code>True</code> when it actually merged something and <code>False</code> when the two were already in one set — which is the only same-set test the class offers. There is no <code>connected</code> or <code>same-set</code> method.</p>
+<h2 id="reading-the-components-out">Reading the components out <a class="anchor" href="#reading-the-components-out" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-setunion/02-components.raku" title="This example as a file: 02-components.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::SetUnion</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">Algorithm::SetUnion</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">8</span>);
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">1</span>); <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">2</span>, <span class="mi">3</span>); <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">1</span>, <span class="mi">3</span>); <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">4</span>, <span class="mi">5</span>);
+
+<span class="k">my</span> <span class="nv">%g</span>;
+<span class="nv">%g</span>.<span class="nb">push</span>(<span class="nv">$u</span>.<span class="n">find</span>(<span class="nv">$_</span>) =&gt; <span class="nv">$_</span>) <span class="k">for</span> ^<span class="mi">8</span>;
+<span class="k">for</span> <span class="nv">%g</span>.<span class="nb">keys</span>.<span class="nb">sort</span>({ +<span class="nv">$_</span> }) -&gt; <span class="nv">$r</span> {
+    <span class="nb">say</span> <span class="s">&quot;root $r : &quot;</span>, <span class="nv">%g</span>{<span class="nv">$r</span>}.<span class="nb">list</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>),
+        <span class="s">&quot;   nodes[$r].size = &quot;</span>, <span class="nv">$u</span>.<span class="n">nodes</span>[<span class="nv">$r</span>].<span class="n">size</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the size of the component holding 1 : '</span>, <span class="nv">$u</span>.<span class="n">nodes</span>[<span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">1</span>)].<span class="n">size</span>;
+<span class="nb">say</span> <span class="s">'nodes[1].size, which is NOT that    : '</span>, <span class="nv">$u</span>.<span class="n">nodes</span>[<span class="mi">1</span>].<span class="n">size</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>root 0 : 0,1,2,3   nodes[0].size = 4
+root 4 : 4,5   nodes[4].size = 2
+root 6 : 6   nodes[6].size = 1
+root 7 : 7   nodes[7].size = 1
+
+the size of the component holding 1 : 4
+nodes[1].size, which is NOT that    : 1</code></pre></div>
+<p><code>.size</code> on the forest is the <strong>capacity</strong> you constructed it with, not the number of components. The size of the component containing <code>$i</code> is <code>$u.nodes[$u.find($i)].size</code> — and <code>nodes[$j].size</code> for a non-root <code>$j</code> is a stale leftover from when <code>$j</code> was a root.</p>
+<h2 id="path-compression">Path compression <a class="anchor" href="#path-compression" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-setunion/03-compression.raku" title="This example as a file: 03-compression.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::SetUnion</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">Algorithm::SetUnion</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">4</span>);
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">1</span>);         <span class="c1"># root 0, size 2</span>
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">2</span>, <span class="mi">3</span>);         <span class="c1"># root 2, size 2</span>
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">2</span>);         <span class="c1"># equal sizes, so 2 hangs under 0 and 3 sits at depth 2</span>
+
+<span class="nb">say</span> <span class="s">'parents before find(3) : '</span>, (^<span class="mi">4</span>).<span class="nb">map</span>({ <span class="nv">$u</span>.<span class="n">nodes</span>[<span class="nv">$_</span>].<span class="n">parent</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'find(3) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">3</span>);
+<span class="nb">say</span> <span class="s">'parents after  find(3) : '</span>, (^<span class="mi">4</span>).<span class="nb">map</span>({ <span class="nv">$u</span>.<span class="n">nodes</span>[<span class="nv">$_</span>].<span class="n">parent</span> }).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parents before find(3) : 0 0 0 2
+find(3) = 0
+parents after  find(3) : 0 0 0 0</code></pre></div>
+<p>The lookup rewrites every parent pointer it walked past, so the next lookup on any of them is one step.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>find</code> returns a root index, and that index is not a stable identity for the set. A later union somewhere else can change what <code>find</code> returns for an element that never moved.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/algorithm-setunion/04-root-trap.raku" title="This example as a file: 04-root-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Algorithm::SetUnion</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">Algorithm::SetUnion</span>.<span class="nb">new</span>(<span class="n">size</span> =&gt; <span class="mi">6</span>);
+
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">1</span>);
+<span class="nb">say</span> <span class="s">'after union(0,1)               : find(0) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">0</span>);
+
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">2</span>, <span class="mi">3</span>); <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">4</span>, <span class="mi">5</span>); <span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">2</span>, <span class="mi">4</span>);
+<span class="nb">say</span> <span class="s">'after three unions on the other side : find(0) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">0</span>),
+    <span class="s">'   find(2) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">2</span>);
+
+<span class="nv">$u</span>.<span class="n">union</span>(<span class="mi">0</span>, <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">'after union(0,2)               : find(0) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">0</span>),
+    <span class="s">'   find(2) = '</span>, <span class="nv">$u</span>.<span class="n">find</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'element 0 never moved, and its root id changed anyway'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>after union(0,1)               : find(0) = 0
+after three unions on the other side : find(0) = 0   find(2) = 2
+after union(0,2)               : find(0) = 2   find(2) = 2
+
+element 0 never moved, and its root id changed anyway</code></pre></div>
+<p>Because the merge is by size, the <strong>larger</strong> component's root survives. Element 0 was its own root for three operations and then stopped being one. Cache a root as a key in a hash and your bookkeeping silently desynchronises from the forest.</p>
+<p>Re-read <code>find</code> every time you need the identity, or maintain your own mapping and update it on every <code>True</code> from <code>union</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in a warning. <code>Algorithm::SetUnion.new</code> with <strong>no</strong> <code>size</code> silently produces an empty structure whose <code>.size</code> is the <code>Int</code> type object — Rakudo at least emits <code>Use of uninitialized value of type Int in numeric context</code> from <code>BUILD</code>, and Raku++ says nothing at all. <code>size =&gt; -3</code> is accepted on both and also produces an empty structure.</p>
+<p>Two more things, identical on both engines. Any out-of-range index, including <code>find(4)</code> on a size-4 forest, dies with <code>Cannot look up attributes in a Algorithm::SetUnion::Node type object</code> — a message that does not mention indices — while <code>find(-1)</code> gives a different message again. And <code>@.nodes</code> exposes <code>is rw</code> attributes, so a caller can corrupt the forest by writing through them.</p>
+<p>Correctness was cross-checked against a naive scan-based implementation over nine unions on a twelve-element set: identical partitions and identical <code>union</code> return values, on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serialise::Map — The Raku Ecosystem, Working</title>
+<meta name="description" content="An interface-only role declaring that a class can hand out a Map of its state and rebuild itself from one.">
+<link rel="canonical" href="https://raku.online/modules/serialise-map/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Serialise::Map — The Raku Ecosystem, Working">
+<meta property="og:description" content="An interface-only role declaring that a class can hand out a Map of its state and rebuild itself from one.">
+<meta property="og:url" content="https://raku.online/modules/serialise-map/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Serialise::Map","description":"An interface-only role declaring that a class can hand out a Map of its state and rebuild itself from one.","programmingLanguage":"Raku","version":"0.1.1","url":"https://raku.online/modules/serialise-map/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/samgwise/p6-mappable.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · serialisation</div><h1>Serialise::Map</h1><span class="status st-full">Works</span></div><p class="summary">An interface-only role declaring that a class can hand out a Map of its state and rebuild itself from one.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.1</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Serialise::Map">raku.land</a> · <a href="git://github.com/samgwise/p6-mappable.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Serialise::Map</code></pre></div><p class="fact-sub"><code>zef install Serialise::Map</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A serialisation layer that knows how to write a <code>Map</code> should not also have to know about your classes, and your classes should not have to know about the format. The usual way to bridge that is an interface: a class promises two methods, and anything holding an object of that kind can call them.</p>
+<p>This distribution is that promise, and nothing else. There is no implementation — composing the role obliges you to write both methods.</p>
+<h2 id="composing-it">Composing it <a class="anchor" href="#composing-it" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/serialise-map/01-compose.raku" title="This example as a file: 01-compose.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Serialise::Map</span>;
+
+<span class="k">class</span> <span class="n">Point</span> <span class="k">does</span> <span class="n">Serialise::Map</span> {
+    <span class="k">has</span> <span class="nv">$.x</span>;
+    <span class="k">has</span> <span class="nv">$.y</span>;
+    <span class="k">method</span> <span class="n">to-map</span>(--&gt; <span class="nb">Map</span>) { <span class="nb">Map</span>.<span class="nb">new</span>(( <span class="n">x</span> =&gt; <span class="nv">$!x</span>, <span class="n">y</span> =&gt; <span class="nv">$!y</span> )) }
+    <span class="k">method</span> <span class="n">from-map</span>(<span class="nb">Map</span> <span class="nv">$map</span>) { <span class="nb">self</span>.<span class="nb">new</span>(|<span class="nv">$map</span>) }
+}
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Point</span>.<span class="nb">new</span>(:<span class="n">x</span>(<span class="mi">3</span>), :<span class="n">y</span>(<span class="mi">4</span>));
+<span class="k">my</span> <span class="nv">$m</span> = <span class="nv">$p</span>.<span class="n">to-map</span>;
+
+<span class="nb">say</span> <span class="s">'to-map returns a : '</span>, <span class="nv">$m</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'  contents       : '</span>, <span class="nv">$m</span>.<span class="nb">sort</span>(*.<span class="n">key</span>).<span class="nb">map</span>({ <span class="s">&quot;{.key}={.value}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nv">$p</span>.<span class="n">from-map</span>(<span class="nv">$m</span>);
+<span class="nb">say</span> <span class="s">'round trip : x='</span>, <span class="nv">$q</span>.<span class="n">x</span>, <span class="s">' y='</span>, <span class="nv">$q</span>.<span class="n">y</span>;
+<span class="nb">say</span> <span class="s">'same class : '</span>, <span class="nv">$q</span>.^<span class="n">name</span> <span class="n">eq</span> <span class="nv">$p</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the object does the role : '</span>, <span class="nv">$p</span> ~~ <span class="n">Serialise::Map</span>;
+<span class="nb">say</span> <span class="s">'the role requires        : '</span>, <span class="n">Serialise::Map</span>.^<span class="n">methods</span>.<span class="nb">map</span>(*.<span class="n">name</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>to-map returns a : Map
+  contents       : x=3 y=4
+
+round trip : x=3 y=4
+same class : True
+
+the object does the role : True
+the role requires        : from-map to-map</code></pre></div>
+<p>That is the whole distribution: a type you can test against and two required methods.</p>
+<h2 id="what-the-role-buys-you">What the role buys you <a class="anchor" href="#what-the-role-buys-you" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/serialise-map/02-buys.raku" title="This example as a file: 02-buys.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Serialise::Map</span>;
+
+<span class="k">class</span> <span class="n">Point</span> <span class="k">does</span> <span class="n">Serialise::Map</span> {
+    <span class="k">has</span> <span class="nv">$.x</span>; <span class="k">has</span> <span class="nv">$.y</span>;
+    <span class="k">method</span> <span class="n">to-map</span>(--&gt; <span class="nb">Map</span>) { <span class="nb">Map</span>.<span class="nb">new</span>(( <span class="n">x</span> =&gt; <span class="nv">$!x</span>, <span class="n">y</span> =&gt; <span class="nv">$!y</span> )) }
+    <span class="k">method</span> <span class="n">from-map</span>(<span class="nb">Map</span> <span class="nv">$map</span>) { <span class="nb">self</span>.<span class="nb">new</span>(|<span class="nv">$map</span>) }
+}
+
+<span class="k">class</span> <span class="n">Plain</span> { <span class="k">has</span> <span class="nv">$.z</span> }
+
+<span class="k">sub</span> <span class="n">save</span>(<span class="nv">$thing</span>) {
+    <span class="nv">$thing</span> ~~ <span class="n">Serialise::Map</span>
+        ?? <span class="s">'saved: '</span> ~ <span class="nv">$thing</span>.<span class="n">to-map</span>.<span class="nb">sort</span>(*.<span class="n">key</span>).<span class="nb">map</span>({ <span class="s">&quot;{.key}={.value}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>)
+        !! <span class="s">'cannot serialise a '</span> ~ <span class="nv">$thing</span>.^<span class="n">name</span>
+}
+
+<span class="nb">say</span> <span class="n">save</span>(<span class="n">Point</span>.<span class="nb">new</span>(:<span class="n">x</span>(<span class="mi">1</span>), :<span class="n">y</span>(<span class="mi">2</span>)));
+<span class="nb">say</span> <span class="n">save</span>(<span class="n">Plain</span>.<span class="nb">new</span>(:<span class="n">z</span>(<span class="mi">9</span>)));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>saved: x=1 y=2
+cannot serialise a Plain</code></pre></div>
+<p>One type check tells a storage layer whether it can proceed. That is the value, and it is real — it is just small.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>from-map</code> is declared as an <strong>instance</strong> method, so the deserialiser is shaped like something you can only call on an object you already have.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/serialise-map/03-instance-trap.raku" title="This example as a file: 03-instance-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Serialise::Map</span>;
+
+<span class="k">class</span> <span class="n">Point</span> <span class="k">does</span> <span class="n">Serialise::Map</span> {
+    <span class="k">has</span> <span class="nv">$.x</span>; <span class="k">has</span> <span class="nv">$.y</span>;
+    <span class="k">method</span> <span class="n">to-map</span>(--&gt; <span class="nb">Map</span>) { <span class="nb">Map</span>.<span class="nb">new</span>(( <span class="n">x</span> =&gt; <span class="nv">$!x</span>, <span class="n">y</span> =&gt; <span class="nv">$!y</span> )) }
+    <span class="k">method</span> <span class="n">from-map</span>(<span class="nb">Map</span> <span class="nv">$map</span>) { <span class="nb">self</span>.<span class="nb">new</span>(|<span class="nv">$map</span>) }
+}
+
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Point</span>.<span class="nb">new</span>(:<span class="n">x</span>(<span class="mi">1</span>), :<span class="n">y</span>(<span class="mi">2</span>)).<span class="n">to-map</span>;
+
+<span class="nb">say</span> <span class="s">'on an instance    : '</span>, <span class="n">Point</span>.<span class="nb">new</span>(:<span class="n">x</span>(<span class="mi">0</span>), :<span class="n">y</span>(<span class="mi">0</span>)).<span class="n">from-map</span>(<span class="nv">$m</span>).<span class="n">x</span>;
+<span class="nb">say</span> <span class="s">'on the type object: '</span>, <span class="n">Point</span>.<span class="n">from-map</span>(<span class="nv">$m</span>).<span class="n">x</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the second works only because THIS body happens to be self.new(|$map).'</span>;
+<span class="nb">say</span> <span class="s">'a body that assigns to attributes would compose just as legally'</span>;
+<span class="nb">say</span> <span class="s">'and could not be called on the type object at all.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>on an instance    : 1
+on the type object: 1
+
+the second works only because THIS body happens to be self.new(|$map).
+a body that assigns to attributes would compose just as legally
+and could not be called on the type object at all.</code></pre></div>
+<p>The role imposes no <code>:U</code> invocant and no return type on <code>from-map</code>, so nothing in the contract guarantees it works as a constructor. A consumer who writes <code>method from-map(Map $m) { $!x = $m&lt;x&gt;; self }</code> satisfies the role and breaks every caller that treated it as one.</p>
+<p>Nothing enforces the round trip either — the role does not constrain what <code>from-map</code> returns.</p>
+<p>If you are defining the interface for your own codebase, add <code>:U</code> to the invocant and <code>--&gt; ::?CLASS</code> to the return.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only on which missing method they name first. A class that composes the role and implements neither is refused by both engines, with Rakudo naming <code>to-map</code> at compile time and Raku++ naming <code>from-map</code> from a runtime-style frame.</p>
+<p>Both refuse it, which is the behaviour that matters. It does mean the error text cannot be asserted in a test.</p>
+<p>The distribution declares no <code>auth</code> and no <code>api</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

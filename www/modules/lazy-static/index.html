@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lazy::Static — The Raku Ecosystem, Working</title>
+<meta name="description" content="Wrap a block in a closure that runs it at most once, on first call, and hands every later caller — on any thread — the same value.">
+<link rel="canonical" href="https://raku.online/modules/lazy-static/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lazy::Static — The Raku Ecosystem, Working">
+<meta property="og:description" content="Wrap a block in a closure that runs it at most once, on first call, and hands every later caller — on any thread — the same value.">
+<meta property="og:url" content="https://raku.online/modules/lazy-static/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Lazy::Static","description":"Wrap a block in a closure that runs it at most once, on first call, and hands every later caller — on any thread — the same value.","programmingLanguage":"Raku","version":"0.0.1","url":"https://raku.online/modules/lazy-static/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/samgwise/Lazy-Static.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · concurrency</div><h1>Lazy::Static</h1><span class="status st-full">Works</span></div><p class="summary">Wrap a block in a closure that runs it at most once, on first call, and hands every later caller — on any thread — the same value.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.1</code> <span class="fact-sub">samgwise</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/samgwise/Lazy::Static">raku.land</a> · <a href="https://github.com/samgwise/Lazy-Static.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Lazy::Static</code></pre></div><p class="fact-sub"><code>zef install Lazy::Static</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>state $x = expensive()</code> computes once and remembers — until two threads reach it at the same moment, at which point both may run <code>expensive()</code> and one result is thrown away. If <code>expensive()</code> opens a connection or allocates a handle, throwing one away is not free.</p>
+<p>This distribution is the thread-safe version. The first thread through runs the generator; everyone else blocks on a <code>Promise</code> until the value is ready.</p>
+<h2 id="making-something-lazy">Making something lazy <a class="anchor" href="#making-something-lazy" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lazy-static/01-lazy.raku" title="This example as a file: 01-lazy.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lazy::Static</span>;
+
+<span class="k">my</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">&amp;answer</span> = <span class="n">lazy-static</span> -&gt; { <span class="nv">$calls</span>++; <span class="mi">6</span> * <span class="mi">7</span> };
+
+<span class="nb">say</span> <span class="s">'generator calls before first use : '</span>, <span class="nv">$calls</span>;
+<span class="nb">say</span> <span class="s">'call 1 -&gt; '</span>, <span class="n">answer</span>();
+<span class="nb">say</span> <span class="s">'call 2 -&gt; '</span>, <span class="n">answer</span>();
+<span class="nb">say</span> <span class="s">'call 3 -&gt; '</span>, <span class="n">answer</span>();
+<span class="nb">say</span> <span class="s">'generator calls after three uses : '</span>, <span class="nv">$calls</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>generator calls before first use : 0
+call 1 -&gt; 42
+call 2 -&gt; 42
+call 3 -&gt; 42
+generator calls after three uses : 1</code></pre></div>
+<p><code>lazy-static</code> returns a zero-argument <code>Callable</code>. If you never call it, the generator never runs.</p>
+<h2 id="under-contention">Under contention <a class="anchor" href="#under-contention" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lazy-static/02-threads.raku" title="This example as a file: 02-threads.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lazy::Static</span>;
+
+<span class="k">my</span> <span class="n">atomicint</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">&amp;value</span> = <span class="n">lazy-static</span> -&gt; { <span class="n">atomic-fetch-inc</span>(<span class="nv">$calls</span>); <span class="nb">sleep</span> <span class="mf">0.2</span>; <span class="s">'computed-once'</span> };
+
+<span class="k">my</span> <span class="nv">@results</span> = <span class="nb">await</span> (^<span class="mi">16</span>).<span class="nb">map</span>: { <span class="k">start</span> <span class="n">value</span>() };
+
+<span class="nb">say</span> <span class="s">'sixteen concurrent callers'</span>;
+<span class="nb">say</span> <span class="s">'  distinct results : '</span>, <span class="nv">@results</span>.<span class="nb">unique</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="s">'  result count     : '</span>, <span class="nv">@results</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'  generator calls  : '</span>, <span class="nv">$calls</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>sixteen concurrent callers
+  distinct results : computed-once
+  result count     : 16
+  generator calls  : 1</code></pre></div>
+<p>Sixteen threads, one generator call. That is the whole point of the distribution, and it holds.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A generator that dies wedges the closure forever. Not a retry, not a re-raise — a permanent block.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/lazy-static/03-failure-trap.raku" title="This example as a file: 03-failure-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Lazy::Static</span>;
+
+<span class="k">my</span> <span class="nv">&amp;value</span> = <span class="n">lazy-static</span> -&gt; { <span class="nb">die</span> <span class="s">'generator failed'</span> };
+
+<span class="k">my</span> <span class="nv">$first</span> = (<span class="k">try</span> <span class="n">value</span>()) // <span class="s">&quot;call 1 threw: {$!.message}&quot;</span>;
+<span class="nb">say</span> <span class="nv">$first</span>;
+
+<span class="k">my</span> <span class="nv">$p</span> = <span class="k">start</span> { <span class="n">value</span>() };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$p</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">3</span>));
+<span class="nb">say</span> <span class="s">'call 2 status after three seconds: '</span>, <span class="nv">$p</span>.<span class="n">status</span>;
+<span class="nb">exit</span> <span class="mi">0</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>call 1 threw: generator failed
+call 2 status after three seconds: Planned</code></pre></div>
+<p><code>Planned</code> is the proof. The guard counter is incremented <em>before</em> the generator runs and the <code>Promise</code> is only kept on success, so the first caller gets the exception and every later caller waits on a promise that will never be kept. A generator that can fail — one that opens a file, reads a configuration, touches a socket — will deadlock every subsequent consumer, and in a thread pool that means the pool drains silently.</p>
+<p>The <code>exit 0</code> above is load-bearing: without it the wedged thread keeps the program from finishing. Wrap the generator body in your own <code>try</code> and return a sentinel if it can fail.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. All three spikes, including the deadlock, behaved identically on Raku++ and Rakudo.</p>
+<p>Two things about the distribution itself. It is <strong>not in the zef index</strong> — the installer resolves it from the REA archive, and notes that the index path carries no checksum, so transport security is the only integrity check. And <code>rakupp test Lazy::Static</code> re-fetches over the network rather than testing the installed copy, and reports no file count.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

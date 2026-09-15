@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIME::QuotedPrint — The Raku Ecosystem, Working</title>
+<meta name="description" content="Quoted-printable encoding and decoding — bytes outside printable ASCII become =XX escapes — with a byte pair, a text pair, and the RFC 2047 header variant.">
+<link rel="canonical" href="https://raku.online/modules/mime-quotedprint/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MIME::QuotedPrint — The Raku Ecosystem, Working">
+<meta property="og:description" content="Quoted-printable encoding and decoding — bytes outside printable ASCII become =XX escapes — with a byte pair, a text pair, and the RFC 2047 header variant.">
+<meta property="og:url" content="https://raku.online/modules/mime-quotedprint/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"MIME::QuotedPrint","description":"Quoted-printable encoding and decoding — bytes outside printable ASCII become =XX escapes — with a byte pair, a text pair, and the RFC 2047 header variant.","programmingLanguage":"Raku","version":"1.0.0","url":"https://raku.online/modules/mime-quotedprint/","license":"https://spdx.org/licenses/CC0-1.0","codeRepository":"git://github.com/retupmoca/p6-MIME-QuotedPrint.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>MIME::QuotedPrint</h1><span class="status st-full">Works</span></div><p class="summary">Quoted-printable encoding and decoding — bytes outside printable ASCII become =XX escapes — with a byte pair, a text pair, and the RFC 2047 header variant.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.0.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>CC0-1.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/MIME::QuotedPrint">raku.land</a> · <a href="git://github.com/retupmoca/p6-MIME-QuotedPrint.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install MIME::QuotedPrint</code></pre></div><p class="fact-sub"><code>zef install MIME::QuotedPrint</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Quoted-printable is the transfer encoding mail uses when the body is mostly ASCII with a few accented characters: it leaves the readable bytes alone and escapes the rest as <code>=XX</code>, so the result stays roughly legible and survives seven-bit transports.</p>
+<p>This distribution encodes and decodes it, in both a byte-oriented and a text-oriented flavour, plus the <code>Q</code> variant RFC 2047 uses inside mail headers.</p>
+<h2 id="encoding-and-decoding">Encoding and decoding <a class="anchor" href="#encoding-and-decoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mime-quotedprint/01-qp.raku" title="This example as a file: 01-qp.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">constant</span> <span class="n">QP</span> = <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nb">Str</span> <span class="nv">$s</span>) { <span class="nv">$s</span>.<span class="n">subst</span>(<span class="s">&quot;\r&quot;</span>, <span class="s">'\r'</span>, :<span class="n">g</span>).<span class="n">subst</span>(<span class="s">&quot;\n&quot;</span>, <span class="s">'\n'</span>, :<span class="n">g</span>) }
+
+<span class="k">for</span> <span class="s">'hello world'</span>, <span class="s">'a=b'</span>, <span class="s">'caf'</span> ~ <span class="s">&quot;\c[LATIN SMALL LETTER E WITH ACUTE]&quot;</span>,
+    <span class="s">&quot;tab\there&quot;</span>, <span class="s">'trailing space '</span>, <span class="s">''</span> -&gt; <span class="nv">$in</span> {
+    <span class="k">my</span> <span class="nv">$enc</span> = <span class="n">QP</span>.<span class="n">encode-str</span>(<span class="nv">$in</span>);
+    <span class="k">my</span> <span class="nv">$dec</span> = <span class="n">QP</span>.<span class="n">decode-str</span>(<span class="nv">$enc</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'in=%-22s enc=%-26s round-trip=%s'</span>,
+        <span class="nv">$in</span>.<span class="nb">raku</span>, <span class="n">show</span>(<span class="nv">$enc</span>).<span class="nb">raku</span>, <span class="nv">$dec</span> <span class="n">eq</span> <span class="nv">$in</span> ?? <span class="s">'exact'</span> !! <span class="s">'DIFFERS'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>in="hello world"          enc="hello world"              round-trip=exact
+in="a=b"                  enc="a=3Db"                    round-trip=exact
+in="café"                 enc="caf=C3=A9"                round-trip=exact
+in="tab\there"            enc="tab\there"                round-trip=exact
+in="trailing space "      enc="trailing space =\\n"      round-trip=exact
+in=""                     enc=""                         round-trip=exact</code></pre></div>
+<p>Nothing is exported — all four routines are methods on the class, callable on the type object.</p>
+<h2 id="bytes">Bytes <a class="anchor" href="#bytes" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mime-quotedprint/02-bytes.raku" title="This example as a file: 02-bytes.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">constant</span> <span class="n">QP</span> = <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">my</span> <span class="nv">$blob</span> = <span class="nb">Blob</span>.<span class="nb">new</span>(<span class="mh">0x00</span>, <span class="mh">0x1F</span>, <span class="mh">0x3D</span>, <span class="mh">0x41</span>, <span class="mh">0x7F</span>, <span class="mh">0x80</span>, <span class="mh">0xFF</span>);
+<span class="k">my</span> <span class="nv">$enc</span>  = <span class="n">QP</span>.<span class="n">encode</span>(<span class="nv">$blob</span>);
+<span class="k">my</span> <span class="nv">$dec</span>  = <span class="n">QP</span>.<span class="n">decode</span>(<span class="nv">$enc</span>);
+
+<span class="nb">say</span> <span class="s">'input bytes  : '</span>, <span class="nv">$blob</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'encoded      : '</span>, <span class="nv">$enc</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'decoded bytes: '</span>, <span class="nv">$dec</span>.<span class="nb">list</span>.<span class="nb">map</span>({ .<span class="n">fmt</span>(<span class="s">'%02X'</span>) }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'byte-exact   : '</span>, <span class="nv">$dec</span>.<span class="nb">list</span> <span class="n">eqv</span> <span class="nv">$blob</span>.<span class="nb">list</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input bytes  : 00 1F 3D 41 7F 80 FF
+encoded      : "=00=1F=3DA=7F=80=FF"
+decoded bytes: 00 1F 3D 41 7F 80 FF
+byte-exact   : True</code></pre></div>
+<p><code>encode</code>/<code>decode</code> take and give <code>Blob</code>/<code>Buf</code>; <code>encode-str</code>/<code>decode-str</code> do the UTF-8 conversion for you.</p>
+<h2 id="mail-header-mode">Mail-header mode <a class="anchor" href="#mail-header-mode" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mime-quotedprint/03-header.raku" title="This example as a file: 03-header.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">constant</span> <span class="n">QP</span> = <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">for</span> <span class="s">'a b c'</span>, <span class="s">'under_score'</span>, <span class="s">'x?y'</span>, <span class="s">'caf'</span> ~ <span class="s">&quot;\c[LATIN SMALL LETTER E WITH ACUTE]&quot;</span> -&gt; <span class="nv">$in</span> {
+    <span class="k">my</span> <span class="nv">$enc</span> = <span class="n">QP</span>.<span class="n">encode-str</span>(<span class="nv">$in</span>, :<span class="n">mime-header</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s -&gt; %-16s round-trip=%s'</span>,
+        <span class="nv">$in</span>.<span class="nb">raku</span>, <span class="nv">$enc</span>.<span class="nb">raku</span>, <span class="n">QP</span>.<span class="n">decode-str</span>(<span class="nv">$enc</span>, :<span class="n">mime-header</span>) <span class="n">eq</span> <span class="nv">$in</span> ?? <span class="s">'exact'</span> !! <span class="s">'DIFFERS'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"a b c"      -&gt; "a_b_c"          round-trip=exact
+"under_score" -&gt; "under=5Fscore"  round-trip=exact
+"x?y"        -&gt; "x=3Fy"          round-trip=exact
+"café"       -&gt; "caf=C3=A9"      round-trip=exact</code></pre></div>
+<p>The <code>Q</code> encoding differs from the body encoding in three places: a space becomes <code>_</code>, a literal underscore must be escaped, and <code>?</code> must be escaped because it delimits the encoded-word. All three are handled.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The decoder cannot read standards-conformant quoted-printable.</p>
+<p>RFC 2045's soft line break is <code>=</code> CR LF — which is what every mail agent on earth emits. This decoder only understands <code>=</code> LF, and on the standard form it tries to parse the <code>\r\n</code> as a hex pair and dies.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/mime-quotedprint/04-crlf-trap.raku" title="This example as a file: 04-crlf-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">constant</span> <span class="n">QP</span> = <span class="n">MIME::QuotedPrint</span>;
+
+<span class="k">my</span> <span class="nv">$mine</span> = <span class="n">QP</span>.<span class="n">encode-str</span>(<span class="s">'A'</span> <span class="n">x</span> <span class="mi">100</span>);
+<span class="nb">say</span> <span class="s">'this encoder emits its soft break as : '</span>, <span class="nv">$mine</span>.<span class="nb">substr</span>(<span class="mi">74</span>, <span class="mi">3</span>).<span class="nb">ords</span>.<span class="nb">List</span>.<span class="nb">raku</span>,
+    <span class="s">&quot;   ('=' then LF)&quot;</span>;
+<span class="nb">say</span> <span class="s">'and decodes its own output exactly   : '</span>, <span class="n">QP</span>.<span class="n">decode-str</span>(<span class="nv">$mine</span>) <span class="n">eq</span> <span class="s">'A'</span> <span class="n">x</span> <span class="mi">100</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$rfc</span> = <span class="nv">$mine</span>.<span class="n">subst</span>(<span class="s">&quot;=\n&quot;</span>, <span class="s">&quot;=\r\n&quot;</span>, :<span class="n">g</span>);
+<span class="nb">say</span> <span class="s">'the RFC form is                      : '</span>, <span class="nv">$rfc</span>.<span class="nb">substr</span>(<span class="mi">74</span>, <span class="mi">4</span>).<span class="nb">ords</span>.<span class="nb">List</span>.<span class="nb">raku</span>,
+    <span class="s">&quot;   ('=' then CR then LF)&quot;</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="k">try</span> <span class="n">QP</span>.<span class="n">decode-str</span>(<span class="nv">$rfc</span>);
+<span class="nb">say</span> <span class="s">'decoding it                          : '</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="s">'ok'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the fix is to normalise first:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">QP</span>.<span class="n">decode-str</span>(<span class="nv">$rfc</span>.<span class="n">subst</span>(<span class="s">&quot;=\r\n&quot;</span>, <span class="s">&quot;=\n&quot;</span>, :<span class="n">g</span>)) <span class="n">eq</span> <span class="s">'A'</span> <span class="n">x</span> <span class="mi">100</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>this encoder emits its soft break as : (65, 61, 10)   ('=' then LF)
+and decodes its own output exactly   : True
+
+the RFC form is                      : (65, 61, 13, 10, 65)   ('=' then CR then LF)
+decoding it                          : threw
+
+the fix is to normalise first:
+  True</code></pre></div>
+<p>The encoder and decoder are self-consistent, so a round trip inside this module always passes — the incompatibility only surfaces against real mail, which is the worst place for it to surface. Normalise <code>=\r\n</code> to <code>=\n</code> before decoding anything from the wire.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in the exception type raised on that malformed input, which is a distinction without a difference given that neither one is useful. Raku++ raises <code>X::Str::Numeric</code> from the hex conversion; Rakudo raises an <code>X::TypeCheck</code> from initialising a <code>Buf</code> element with a <code>Failure</code>.</p>
+<p>Two things that are the same on both and worth guarding. Malformed escapes are <strong>silently swallowed</strong> rather than reported: <code>decode-str('=')</code> and <code>decode-str('=Z')</code> both return the empty string, dropping the characters, while <code>decode-str('=ZZ')</code> throws. So corrupt input decodes to short output with no signal, inconsistently.</p>
+<p>And a literal newline in the input is hard-escaped to <code>=0A</code> rather than becoming a line break, so the encoder always produces a single logical line whose only breaks are its own soft ones.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

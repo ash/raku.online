@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cache::Async — The Raku Ecosystem, Working</title>
+<meta name="description" content="A thread-safe read-through cache built around a producer closure — every get returns a Promise, and concurrent requests for one key collapse onto a single producer call.">
+<link rel="canonical" href="https://raku.online/modules/cache-async/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cache::Async — The Raku Ecosystem, Working">
+<meta property="og:description" content="A thread-safe read-through cache built around a producer closure — every get returns a Promise, and concurrent requests for one key collapse onto a single producer call.">
+<meta property="og:url" content="https://raku.online/modules/cache-async/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Cache::Async","description":"A thread-safe read-through cache built around a producer closure — every get returns a Promise, and concurrent requests for one key collapse onto a single producer call.","programmingLanguage":"Raku","version":"0.3.4","url":"https://raku.online/modules/cache-async/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/Cache-Async.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · caching</div><h1>Cache::Async</h1><span class="status st-full">Works</span></div><p class="summary">A thread-safe read-through cache built around a producer closure — every get returns a Promise, and concurrent requests for one key collapse onto a single producer call.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3.4</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>10 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/Cache::Async">raku.land</a> · <a href="https://github.com/lizmat/Cache-Async.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Cache::Async</code></pre></div><p class="fact-sub"><code>zef install Cache::Async</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A cache in front of a slow backend has one hard problem and it is not storage. It is the stampede: when a popular key expires, every request that arrives in the next few milliseconds sees a miss and calls the backend, and you have turned one slow call into fifty.</p>
+<p>This distribution solves that. Ask for a key and you always get a <code>Promise</code>; if a producer is already running for that key, you get <em>its</em> promise rather than starting a second one.</p>
+<h2 id="caching">Caching <a class="anchor" href="#caching" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cache-async/01-cache.raku" title="This example as a file: 01-cache.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cache::Async</span>;
+
+<span class="k">my</span> <span class="n">atomicint</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$cache</span> = <span class="n">Cache::Async</span>.<span class="nb">new</span>(
+    <span class="n">max-size</span> =&gt; <span class="mi">10</span>,
+    <span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>, *<span class="nv">@extra</span>) {
+        <span class="n">atomic-fetch-inc</span>(<span class="nv">$calls</span>);
+        <span class="s">&quot;value-for-$k&quot;</span> ~ (<span class="nv">@extra</span> ?? <span class="s">'+'</span> ~ <span class="nv">@extra</span>.<span class="nb">join</span>(<span class="s">','</span>) !! <span class="s">''</span>)
+    },
+);
+
+<span class="nb">say</span> <span class="s">'get returns a : '</span>, <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'a'</span>).^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a       -&gt; '</span>, <span class="nb">await</span> <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'a'</span>);
+<span class="nb">say</span> <span class="s">'a again -&gt; '</span>, <span class="nb">await</span> <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'a'</span>);
+<span class="nb">say</span> <span class="s">'b       -&gt; '</span>, <span class="nb">await</span> <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'b'</span>);
+<span class="nb">say</span> <span class="s">'extra arguments reach the producer : '</span>, <span class="nb">await</span> <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'c'</span>, <span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'producer calls : '</span>, <span class="n">atomic-fetch</span>(<span class="nv">$calls</span>);
+<span class="nb">say</span> <span class="s">'hits, misses   : '</span>, <span class="nv">$cache</span>.<span class="n">hits-misses</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>get returns a : Promise
+
+a       -&gt; value-for-a
+a again -&gt; value-for-a
+b       -&gt; value-for-b
+extra arguments reach the producer : value-for-c+1,2
+
+producer calls : 3
+hits, misses   : (2, 3)</code></pre></div>
+<p>Every <code>get</code> must be awaited before the next if you want reproducible counts — the whole point is that they can overlap.</p>
+<h2 id="the-rest-of-the-interface">The rest of the interface <a class="anchor" href="#the-rest-of-the-interface" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cache-async/02-interface.raku" title="This example as a file: 02-interface.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cache::Async</span>;
+
+<span class="k">my</span> <span class="nv">$cache</span> = <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) { <span class="nv">$k</span>.<span class="nb">uc</span> });
+
+<span class="nb">await</span> <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'a'</span>);
+<span class="nb">say</span> <span class="s">'get-if-present(&quot;a&quot;)    : '</span>, <span class="nv">$cache</span>.<span class="n">get-if-present</span>(<span class="s">'a'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'get-if-present(&quot;nope&quot;) : '</span>, <span class="nv">$cache</span>.<span class="n">get-if-present</span>(<span class="s">'nope'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$cache</span>.<span class="nb">put</span>(<span class="s">'warm'</span>, <span class="s">'preloaded'</span>);
+<span class="nb">say</span> <span class="s">'put then get-if-present : '</span>, <span class="nv">$cache</span>.<span class="n">get-if-present</span>(<span class="s">'warm'</span>).<span class="nb">raku</span>;
+<span class="nv">$cache</span>.<span class="n">remove</span>(<span class="s">'a'</span>);
+<span class="nb">say</span> <span class="s">'after remove(&quot;a&quot;)       : '</span>, <span class="nv">$cache</span>.<span class="n">get-if-present</span>(<span class="s">'a'</span>).<span class="nb">raku</span>;
+<span class="nv">$cache</span>.<span class="n">clear</span>;
+<span class="nb">say</span> <span class="s">'after clear             : '</span>, <span class="nv">$cache</span>.<span class="n">get-if-present</span>(<span class="s">'warm'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'defaults : max-size='</span>, <span class="nv">$cache</span>.<span class="n">max-size</span>,
+    <span class="s">' cache-undefined='</span>, <span class="nv">$cache</span>.<span class="n">cache-undefined</span>,
+    <span class="s">' max-age='</span>, <span class="nv">$cache</span>.<span class="n">max-age</span>.<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>get-if-present("a")    : "A"
+get-if-present("nope") : Nil
+
+put then get-if-present : "preloaded"
+after remove("a")       : Nil
+after clear             : Nil
+
+defaults : max-size=1024 cache-undefined=True max-age=Any</code></pre></div>
+<p><code>get-if-present</code> does not call the producer and does not touch the counters.</p>
+<h2 id="ages-and-validation">Ages and validation <a class="anchor" href="#ages-and-validation" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cache-async/03-ages.raku" title="This example as a file: 03-ages.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cache::Async</span>;
+
+<span class="k">sub</span> <span class="n">attempt</span>(<span class="nv">$label</span>, <span class="nv">&amp;c</span>) {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">c</span>();
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-34s %s'</span>, <span class="nv">$label</span>, <span class="nv">$!</span> ?? <span class="nv">$!</span>.<span class="n">message</span> !! <span class="s">'accepted'</span>);
+}
+
+<span class="n">attempt</span> <span class="s">'max-age &lt; refresh-after'</span>, {
+    <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) { <span class="nv">$k</span> },
+        <span class="n">max-age</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">1</span>), <span class="n">refresh-after</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">5</span>))
+};
+<span class="n">attempt</span> <span class="s">'jitter with no age set'</span>, {
+    <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) { <span class="nv">$k</span> }, <span class="n">jitter</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">1</span>))
+};
+<span class="n">attempt</span> <span class="s">'jitter &gt;= max-age'</span>, {
+    <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) { <span class="nv">$k</span> },
+        <span class="n">max-age</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">1</span>), <span class="n">jitter</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">2</span>))
+};
+<span class="n">attempt</span> <span class="s">'a consistent set'</span>, {
+    <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) { <span class="nv">$k</span> },
+        <span class="n">max-age</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">10</span>), <span class="n">refresh-after</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">5</span>),
+        <span class="n">jitter</span> =&gt; <span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mi">1</span>))
+};</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>max-age &lt; refresh-after            max-age cannot be less than refresh-after
+jitter with no age set             jitter set, but neither max-age nor refresh-after set
+jitter &gt;= max-age                  jitter cannot be larger or equals to refresh-after/max-age
+a consistent set                   accepted</code></pre></div>
+<p>The three consistency rules all fire with messages that say what is wrong, which is better than most constructors manage.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A producer failure is cached <strong>permanently</strong>. There is no negative time to live and no retry.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cache-async/04-poison-trap.raku" title="This example as a file: 04-poison-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cache::Async</span>;
+
+<span class="k">my</span> <span class="n">atomicint</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$cache</span> = <span class="n">Cache::Async</span>.<span class="nb">new</span>(<span class="n">producer</span> =&gt; <span class="k">sub</span> (<span class="nv">$k</span>) {
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="n">atomic-inc-fetch</span>(<span class="nv">$calls</span>);
+    <span class="nb">die</span> <span class="s">'transient outage'</span> <span class="k">if</span> <span class="nv">$n</span> == <span class="mi">1</span>;      <span class="c1"># fails once, then works</span>
+    <span class="s">&quot;value-$n&quot;</span>
+});
+
+<span class="k">for</span> <span class="mi">1</span> .. <span class="mi">4</span> -&gt; <span class="nv">$i</span> {
+    <span class="k">my</span> <span class="nv">$p</span> = <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'k'</span>);
+    <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$p</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">5</span>));
+    <span class="nb">say</span> <span class="s">&quot;attempt $i : &quot;</span>, <span class="nv">$p</span>.<span class="n">status</span>;
+}
+<span class="nb">say</span> <span class="s">'producer was called '</span>, <span class="n">atomic-fetch</span>(<span class="nv">$calls</span>), <span class="s">' time(s) in four attempts'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nv">$cache</span>.<span class="n">remove</span>(<span class="s">'k'</span>);
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nv">$cache</span>.<span class="n">get</span>(<span class="s">'k'</span>);
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$p</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">5</span>));
+<span class="nb">say</span> <span class="s">'after remove(&quot;k&quot;), the next get : '</span>, <span class="nv">$p</span>.<span class="n">status</span>,
+    <span class="s">' -&gt; '</span>, <span class="nv">$p</span>.<span class="n">status</span> ~~ <span class="n">Kept</span> ?? <span class="nv">$p</span>.<span class="n">result</span> !! <span class="s">'still broken'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>attempt 1 : Broken
+attempt 2 : Broken
+attempt 3 : Broken
+attempt 4 : Broken
+producer was called 1 time(s) in four attempts
+
+after remove("k"), the next get : Kept -&gt; value-2</code></pre></div>
+<p>One call, four attempts. Every later <code>get</code> hands back the same broken <code>Promise</code>; <code>max-age</code> does not help, because the entry's promise is still defined and the value path is never reached; and <code>get-if-present</code> reports <code>Nil</code>, so nothing in the interface even tells you the key is stuck.</p>
+<p>A transient backend blip therefore becomes a permanent hole for the lifetime of the process. Catch inside the producer and return a sentinel, or <code>remove</code> the key when you see a broken promise.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On a cache built with no producer at all. Rakudo refuses it — <code>Impossible coercion from 'Str' into 'Callable'</code> — while Raku++ calls the undefined <code>Callable</code> and gets its first argument back, turning the cache into a silent identity function. Supply a producer and the engines agree everywhere.</p>
+<p>Three things that are not engine differences and are worth knowing before you rely on them.</p>
+<p><strong><code>hits-misses</code> is a reader-clears gauge, not a counter.</strong> It reports the counts since the last call and resets them, so two monitoring callers each see part of the traffic and neither sees the total.</p>
+<p><strong>The eviction is FIFO, not LRU.</strong> The hit path does not move an entry to the front — the source carries the author's own note wondering whether it should — so a key read five times is evicted before a key read once, if it was inserted first.</p>
+<p><strong><code>put</code> past <code>max-size</code> throws from inside the module</strong>, because it inserts into the entry hash without linking the entry into the recency list. Warming a cache with <code>put</code> is safe only below <code>max-size</code>; <code>get</code> past it is fine.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

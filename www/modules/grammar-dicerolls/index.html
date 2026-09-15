@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grammar::DiceRolls — The Raku Ecosystem, Working</title>
+<meta name="description" content="A grammar for tabletop dice notation — 3d6, 2d6+1d4-1 — with two action classes, one returning a total and one every individual die.">
+<link rel="canonical" href="https://raku.online/modules/grammar-dicerolls/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Grammar::DiceRolls — The Raku Ecosystem, Working">
+<meta property="og:description" content="A grammar for tabletop dice notation — 3d6, 2d6+1d4-1 — with two action classes, one returning a total and one every individual die.">
+<meta property="og:url" content="https://raku.online/modules/grammar-dicerolls/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Grammar::DiceRolls","description":"A grammar for tabletop dice notation — 3d6, 2d6+1d4-1 — with two action classes, one returning a total and one every individual die.","programmingLanguage":"Raku","version":"0.3.1","url":"https://raku.online/modules/grammar-dicerolls/","license":"https://spdx.org/licenses/AGPL-3.0-or-later","codeRepository":"https://home.tyil.nl/git/raku/Grammar::DiceRolls/"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · grammars</div><h1>Grammar::DiceRolls</h1><span class="status st-full">Works</span></div><p class="summary">A grammar for tabletop dice notation — 3d6, 2d6+1d4-1 — with two action classes, one returning a total and one every individual die.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.3.1</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>AGPL-3.0-or-later</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/Grammar::DiceRolls">raku.land</a> · <a href="https://home.tyil.nl/git/raku/Grammar::DiceRolls/">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Grammar::DiceRolls</code></pre></div><p class="fact-sub"><code>zef install Grammar::DiceRolls</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>3d6+2</code> is a compact, universally understood way to say "roll three six-sided dice and add two". Any program that touches tabletop rules — a character generator, a combat simulator, a chat bot — needs to read that notation and act on it.</p>
+<p>This distribution splits the job the way Raku wants it split: a grammar that recognises the notation, and two separate action classes that decide what to do with a successful parse.</p>
+<h2 id="parsing-the-notation">Parsing the notation <a class="anchor" href="#parsing-the-notation" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/grammar-dicerolls/01-parse.raku" title="This example as a file: 01-parse.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Grammar::DiceRolls</span>;
+
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="s">'3d6+2d4-1'</span>);
+<span class="nb">say</span> <span class="s">'parsed  : '</span>, ?<span class="nv">$m</span>;
+<span class="nb">say</span> <span class="s">'dice    : '</span>, <span class="nv">$m</span><span class="s">&lt;dice&gt;</span>.<span class="nb">map</span>({ <span class="s">&quot;{$_&lt;count&gt;}d{$_&lt;sides&gt;}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'bonus   : '</span>, <span class="nv">$m</span><span class="s">&lt;bonus&gt;</span>.<span class="nb">map</span>({ <span class="nv">$_</span><span class="s">&lt;value&gt;</span>.<span class="nb">Str</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">for</span> <span class="s">'1d6'</span>, <span class="s">'1d6+2'</span>, <span class="s">'1d6-2'</span>, <span class="s">'2d6+1d4'</span>, <span class="s">'1d6+2-3'</span>, <span class="s">'d6'</span>, <span class="s">'0d6'</span>, <span class="s">'1d0'</span>, <span class="s">'1 d 6'</span>, <span class="s">''</span> -&gt; <span class="nv">$s</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'parse %-10s -&gt; %s'</span>, <span class="s">&quot;'$s'&quot;</span>, <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="nv">$s</span>) ?? <span class="s">'ok'</span> !! <span class="s">'no match'</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parsed  : True
+dice    : 3d6 2d4
+bonus   : -1
+
+parse '1d6'      -&gt; ok
+parse '1d6+2'    -&gt; ok
+parse '1d6-2'    -&gt; ok
+parse '2d6+1d4'  -&gt; ok
+parse '1d6+2-3'  -&gt; ok
+parse 'd6'       -&gt; no match
+parse '0d6'      -&gt; ok
+parse '1d0'      -&gt; ok
+parse '1 d 6'    -&gt; no match
+parse ''         -&gt; no match</code></pre></div>
+<p>The count is mandatory — <code>d6</code> alone does not parse — and whitespace anywhere inside the expression is rejected. <code>0d6</code> and <code>1d0</code> both parse, which is worth knowing before you trust the result.</p>
+<h2 id="rolling">Rolling <a class="anchor" href="#rolling" aria-label="link">#</a></h2>
+<p>Dice are random, so what an example can assert is the shape and the bounds:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/grammar-dicerolls/02-roll.raku" title="This example as a file: 02-roll.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Grammar::DiceRolls</span>;
+<span class="k">use</span> <span class="n">Grammar::DiceRolls::CountActions</span>;
+<span class="k">use</span> <span class="n">Grammar::DiceRolls::ListActions</span>;
+
+<span class="k">my</span> <span class="nv">@totals</span> = (^<span class="mi">200</span>).<span class="nb">map</span>({
+    <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="s">'3d6+2'</span>, <span class="n">actions</span> =&gt; <span class="n">Grammar::DiceRolls::CountActions</span>.<span class="nb">new</span>).<span class="n">made</span>
+});
+<span class="nb">say</span> <span class="s">'CountActions gives an Int  : '</span>, ?<span class="n">all</span>(<span class="nv">@totals</span>.<span class="nb">map</span>(* ~~ <span class="nb">Int</span>));
+<span class="nb">say</span> <span class="s">'3d6+2 is always in 5..20   : '</span>, ?<span class="n">all</span>(<span class="nv">@totals</span>.<span class="nb">map</span>({ <span class="mi">5</span> &lt;= <span class="nv">$_</span> &lt;= <span class="mi">20</span> }));
+<span class="nb">say</span> <span class="s">'and the range is exercised : '</span>, <span class="nv">@totals</span>.<span class="nb">min</span> == <span class="mi">5</span> || <span class="nv">@totals</span>.<span class="nb">unique</span>.<span class="nb">elems</span> &gt; <span class="mi">8</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">@lists</span> = (^<span class="mi">200</span>).<span class="nb">map</span>({
+    <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="s">'3d6+2'</span>, <span class="n">actions</span> =&gt; <span class="n">Grammar::DiceRolls::ListActions</span>.<span class="nb">new</span>).<span class="n">made</span>.<span class="nb">List</span>
+});
+<span class="nb">say</span> <span class="s">'ListActions gives 4 values : '</span>, ?<span class="n">all</span>(<span class="nv">@lists</span>.<span class="nb">map</span>(*.<span class="nb">elems</span> == <span class="mi">4</span>));
+<span class="nb">say</span> <span class="s">'first three are each 1..6  : '</span>, ?<span class="n">all</span>(<span class="nv">@lists</span>.<span class="nb">map</span>({ ?<span class="n">all</span>(.[^<span class="mi">3</span>].<span class="nb">map</span>({ <span class="mi">1</span> &lt;= <span class="nv">$_</span> &lt;= <span class="mi">6</span> })) }));
+<span class="nb">say</span> <span class="s">'the last is the bonus, 2   : '</span>, ?<span class="n">all</span>(<span class="nv">@lists</span>.<span class="nb">map</span>(*.[<span class="mi">3</span>] == <span class="mi">2</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>CountActions gives an Int  : True
+3d6+2 is always in 5..20   : True
+and the range is exercised : True
+
+ListActions gives 4 values : True
+first three are each 1..6  : True
+the last is the bonus, 2   : True</code></pre></div>
+<p><code>CountActions</code> gives you the sum. <code>ListActions</code> gives you every die result in order, followed by the bonuses — which is what you want when the table expects you to show your work.</p>
+<h2 id="limits">Limits <a class="anchor" href="#limits" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/grammar-dicerolls/03-limits.raku" title="This example as a file: 03-limits.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Grammar::DiceRolls</span>;
+<span class="k">use</span> <span class="n">Grammar::DiceRolls::ListActions</span>;
+<span class="k">use</span> <span class="n">X::Grammar::DiceRolls::TooManyDice</span>;
+<span class="k">use</span> <span class="n">X::Grammar::DiceRolls::TooManySides</span>;
+
+<span class="k">sub</span> <span class="n">roll</span>(<span class="nv">$expr</span>, *<span class="nv">%limits</span>) {
+    <span class="k">my</span> <span class="nv">$a</span> = <span class="n">Grammar::DiceRolls::ListActions</span>.<span class="nb">new</span>(|<span class="nv">%limits</span>);
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="nv">$expr</span>, <span class="n">actions</span> =&gt; <span class="nv">$a</span>);
+    <span class="nv">$!</span> ?? <span class="s">&quot;{$!.^name.subst('X::Grammar::DiceRolls::', '')} count={$!.count}&quot;</span>
+       !! <span class="s">&quot;ok, {$r.made.elems} results&quot;</span>
+}
+
+<span class="nb">say</span> <span class="s">'2d6  with limit-dice 2   : '</span>, <span class="nb">roll</span>(<span class="s">'2d6'</span>,   :<span class="n">limit-dice</span>(<span class="mi">2</span>));
+<span class="nb">say</span> <span class="s">'3d6  with limit-dice 2   : '</span>, <span class="nb">roll</span>(<span class="s">'3d6'</span>,   :<span class="n">limit-dice</span>(<span class="mi">2</span>));
+<span class="nb">say</span> <span class="s">'1d20 with limit-sides 6  : '</span>, <span class="nb">roll</span>(<span class="s">'1d20'</span>,  :<span class="n">limit-sides</span>(<span class="mi">6</span>));
+<span class="nb">say</span> <span class="s">'2d6+1 with limit-dice 2  : '</span>, <span class="nb">roll</span>(<span class="s">'2d6+1'</span>, :<span class="n">limit-dice</span>(<span class="mi">2</span>));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>2d6  with limit-dice 2   : ok, 2 results
+3d6  with limit-dice 2   : TooManyDice count=3
+1d20 with limit-sides 6  : TooManySides count=20
+2d6+1 with limit-dice 2  : TooManyDice count=3</code></pre></div>
+<p>That last line is the first surprise: a <strong>bonus counts as a die</strong> against <code>limit-dice</code>, because <code>bonus</code> increments the counter before checking it. So <code>2d6+1</code> with a limit of two dice is refused even though only two dice are rolled.</p>
+<p>The two exception classes carry only a <code>.count</code> and no message, and they mean different things by it — <code>TooManySides</code> reports the offending number of sides, not a die count.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A <code>ListActions</code> object is single-use. Its die counter only ever accumulates, so the limit applies to the <strong>lifetime of the object</strong>, not to the expression being parsed.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/grammar-dicerolls/04-reuse-trap.raku" title="This example as a file: 04-reuse-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Grammar::DiceRolls</span>;
+<span class="k">use</span> <span class="n">Grammar::DiceRolls::ListActions</span>;
+
+<span class="k">my</span> <span class="nv">$actions</span> = <span class="n">Grammar::DiceRolls::ListActions</span>.<span class="nb">new</span>(<span class="n">limit-dice</span> =&gt; <span class="mi">3</span>);
+
+<span class="k">for</span> <span class="mi">1</span>, <span class="mi">2</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="s">'2d6'</span>, <span class="n">actions</span> =&gt; <span class="nv">$actions</span>);
+    <span class="nb">say</span> <span class="s">&quot;parse $n of the identical '2d6' : &quot;</span>,
+        <span class="nv">$!</span> ?? <span class="s">&quot;threw, count={$!.count}&quot;</span> !! <span class="s">&quot;ok, {$r.made.elems} results&quot;</span>;
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'a fresh object each time works:'</span>;
+<span class="k">for</span> <span class="mi">1</span>, <span class="mi">2</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">Grammar::DiceRolls</span>.<span class="n">parse</span>(<span class="s">'2d6'</span>,
+        <span class="n">actions</span> =&gt; <span class="n">Grammar::DiceRolls::ListActions</span>.<span class="nb">new</span>(<span class="n">limit-dice</span> =&gt; <span class="mi">3</span>));
+    <span class="nb">say</span> <span class="s">&quot;  parse $n : &quot;</span>, <span class="nv">$!</span> ?? <span class="s">'threw'</span> !! <span class="s">&quot;ok, {$r.made.elems} results&quot;</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>parse 1 of the identical '2d6' : ok, 2 results
+parse 2 of the identical '2d6' : threw, count=4
+
+a fresh object each time works:
+  parse 1 : ok, 2 results
+  parse 2 : ok, 2 results</code></pre></div>
+<p>The natural pattern — build the actions object once, roll many times — fails after the first few rolls, and the exception blames the expression rather than the reuse. Construct a fresh <code>ListActions</code> for every parse.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every spike in this page, including the limit behaviour and the counter that does not reset, produced identical verdicts on Raku++ and Rakudo.</p>
+<p>The values themselves are genuinely random and are not reproducible across engines even with a fixed seed, because both action classes call <code>.pick</code> on a <code>Range</code>. Do not expect the same numbers from the two engines.</p>
+<p>Two degenerate cases to guard against, since neither is rejected: <code>0d6</code> yields an empty list, and <code>1d0</code> yields <code>(Nil,)</code> from picking on an empty range — which, fed to <code>CountActions</code>, puts a <code>Nil</code> into a <code>.sum</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Env::Dotenv — The Raku Ecosystem, Working</title>
+<meta name="description" content="Read a .env file in the current directory and turn each line into a key and a value, either copied into the process environment or returned as a hash.">
+<link rel="canonical" href="https://raku.online/modules/env-dotenv/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Env::Dotenv — The Raku Ecosystem, Working">
+<meta property="og:description" content="Read a .env file in the current directory and turn each line into a key and a value, either copied into the process environment or returned as a hash.">
+<meta property="og:url" content="https://raku.online/modules/env-dotenv/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Env::Dotenv","description":"Read a .env file in the current directory and turn each line into a key and a value, either copied into the process environment or returned as a hash.","programmingLanguage":"Raku","version":"0.0.6","url":"https://raku.online/modules/env-dotenv/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/ispyhumanfly/raku-dotenv.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · configuration</div><h1>Env::Dotenv</h1><span class="status st-div">Divergent</span></div><p class="summary">Read a .env file in the current directory and turn each line into a key and a value, either copied into the process environment or returned as a hash.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.6</code> <span class="fact-sub">zef:ispyhumanfly</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:ispyhumanfly/Env::Dotenv">raku.land</a> · <a href="git://github.com/ispyhumanfly/raku-dotenv.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Env::Dotenv</code></pre></div><p class="fact-sub"><code>zef install Env::Dotenv</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>The twelve-factor convention keeps configuration in environment variables and keeps the development values in a <code>.env</code> file next to the code, outside version control. Nearly every language has a small library that reads that file; this is Raku's.</p>
+<h2 id="loading-a-file">Loading a file <a class="anchor" href="#loading-a-file" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/env-dotenv/01-load.raku" title="This example as a file: 01-load.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Env::Dotenv</span> :<span class="n">load</span>, :<span class="nb">values</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;dotenv-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'.env'</span>).<span class="nb">spurt</span>: <span class="s">q:to/ENV/</span>;
+<span class="s">SIMPLE=hello
+DATABASE=postgres
+PORT=5432
+ENV
+</span>
+<span class="n">indir</span> <span class="nv">$dir</span>, {
+    <span class="k">my</span> <span class="nv">%v</span> = <span class="n">dotenv_values</span>();
+    <span class="nb">say</span> <span class="s">'dotenv_values : '</span>, <span class="nv">%v</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_={%v{$_}}&quot;</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+    <span class="n">dotenv_load</span>();
+    <span class="nb">say</span> <span class="s">'after dotenv_load, ENV&lt;SIMPLE&gt; = '</span>, <span class="nv">%*ENV</span><span class="s">&lt;SIMPLE&gt;</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>dotenv_values : DATABASE=postgres PORT=5432 SIMPLE=hello
+after dotenv_load, ENV&lt;SIMPLE&gt; = hello</code></pre></div>
+<p>There is also an object flavour behind the <code>:oop</code> tag — <code>Dotenv.new.load</code> and <code>.values</code> — doing exactly the same two things.</p>
+<h2 id="the-import-tags">The import tags <a class="anchor" href="#the-import-tags" aria-label="link">#</a></h2>
+<p>A plain <code>use Env::Dotenv;</code> imports <strong>nothing at all</strong>. Every export sits behind a tag:</p>
+<div class="tablewrap"><table><thead><tr><th>tag</th><th>gives you</th></tr></thead><tbody><tr><td><code>:load</code></td><td><code>dotenv_load()</code>, which populates <code>%*ENV</code></td></tr><tr><td><code>:values</code></td><td><code>dotenv_values()</code>, which returns a <code>Hash</code></td></tr><tr><td><code>:oop</code></td><td><code>class Dotenv</code> with <code>.load</code> and <code>.values</code></td></tr></tbody></table></div>
+<p>Neither routine takes a path. The filename <code>.env</code> and the location <code>$*CWD</code> are both hard-coded, so behaviour depends on where the process was started rather than where the script lives.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Values are truncated at the first <code>=</code>, so base64 and URLs with query strings are silently corrupted.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/env-dotenv/02-equals-trap.raku" title="This example as a file: 02-equals-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Env::Dotenv</span> :<span class="nb">values</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;dotenv2-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+
+<span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'.env'</span>).<span class="nb">spurt</span>: <span class="s">q:to/ENV/</span>;
+<span class="s">BASE64=aGVsbG8=
+URL=https://example.com/?a=1&amp;b=2
+QUOTED=&quot;double quoted&quot;
+SPACED = padded
+EXPORTED=plain
+ENV
+</span>
+<span class="n">indir</span> <span class="nv">$dir</span>, {
+    <span class="k">my</span> <span class="nv">%v</span> = <span class="n">dotenv_values</span>();
+    <span class="k">for</span> <span class="nv">%v</span>.<span class="nb">keys</span>.<span class="nb">sort</span> -&gt; <span class="nv">$k</span> {
+        <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-12s =&gt; %s'</span>, <span class="nv">$k</span>.<span class="nb">raku</span>, <span class="nv">%v</span>{<span class="nv">$k</span>}.<span class="nb">raku</span>);
+    }
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>"BASE64"     =&gt; "aGVsbG8"
+"EXPORTED"   =&gt; "plain"
+"QUOTED"     =&gt; "\"double quoted\""
+"SPACED "    =&gt; " padded"
+"URL"        =&gt; "https://example.com/?a"</code></pre></div>
+<p>Four defects in five lines. The base64 padding is gone, the URL stops at its first query parameter, the quotes are kept as part of the value, and whitespace around the <code>=</code> is preserved in both the key and the value — so the key is <code>'SPACED '</code> with a trailing space. An <code>export </code> prefix, which is how most people write these files so they can also be sourced by a shell, is absorbed into the key.</p>
+<p>Base64 secrets and URLs with query strings are exactly what people put in a <code>.env</code> file, which makes the truncation the one to watch.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>On a comment. There is no comment syntax and no blank-line skipping anywhere in the module's forty lines: every line is split on <code>=</code> and whatever comes out becomes a pair. A line with no <code>=</code> yields an undefined value, and <code>dotenv_values</code> calls <code>.chomp</code> on it.</p>
+<p>Under Rakudo that throws <code>No such method 'chomp' for invocant of type 'Any'</code>, so a <code>.env</code> file containing a <code>#</code> comment, a blank line or a bare word cannot be read at all. Under Raku++ the call returns, with <code>'# note'</code> or <code>''</code> as a <strong>key</strong> — arguably worse, since nothing tells you.</p>
+<p><code>dotenv_load</code> survives on both engines only because it happens not to call <code>.chomp</code>, so the two routines in the same module disagree about whether your file is readable.</p>
+<p>The most ordinary <code>.env</code> file in existence — one with a header comment and a trailing blank line — is therefore unreadable on one engine. Strip comments and blanks before calling, or use <code>dotenv_load</code> and read <code>%*ENV</code>.</p>
+<p>One smaller difference: with no tag at all, Rakudo reports the undeclared routines at compile time and Raku++ only at runtime.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

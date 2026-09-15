@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gray::Code::RBC — The Raku Ecosystem, Working</title>
+<meta name="description" content="Convert between integers and reflected binary Gray code, where consecutive values differ by exactly one bit, at arbitrary precision.">
+<link rel="canonical" href="https://raku.online/modules/gray-code-rbc/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Gray::Code::RBC — The Raku Ecosystem, Working">
+<meta property="og:description" content="Convert between integers and reflected binary Gray code, where consecutive values differ by exactly one bit, at arbitrary precision.">
+<meta property="og:url" content="https://raku.online/modules/gray-code-rbc/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Gray::Code::RBC","description":"Convert between integers and reflected binary Gray code, where consecutive values differ by exactly one bit, at arbitrary precision.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/gray-code-rbc/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/thundergnat/Gray-Code-RBC.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Gray::Code::RBC</h1><span class="status st-full">Works</span></div><p class="summary">Convert between integers and reflected binary Gray code, where consecutive values differ by exactly one bit, at arbitrary precision.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:thundergnat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:thundergnat/Gray::Code::RBC">raku.land</a> · <a href="git://github.com/thundergnat/Gray-Code-RBC.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Gray::Code::RBC</code></pre></div><p class="fact-sub"><code>zef install Gray::Code::RBC</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A rotary encoder that reads two bits at the moment they are both changing can report a position that is neither the old one nor the new one. Gray code fixes that by construction: consecutive values differ in exactly one bit, so a read caught mid-transition can only ever be off by one.</p>
+<p>The same property makes Gray code useful for hypercube traversal, Karnaugh maps, and any enumeration where you want each step to be a single flip. This distribution is the two conversions, at arbitrary precision.</p>
+<h2 id="encoding-and-decoding">Encoding and decoding <a class="anchor" href="#encoding-and-decoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/gray-code-rbc/01-gray.raku" title="This example as a file: 01-gray.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Gray::Code::RBC</span>;
+
+<span class="k">for</span> ^<span class="mi">8</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$g</span> = <span class="n">gray-encode</span>(<span class="nv">$n</span>);
+    <span class="nb">printf</span> <span class="s">&quot;%d -&gt; %s (%d) -&gt; %d\n&quot;</span>, <span class="nv">$n</span>, <span class="nv">$g</span>.<span class="n">base</span>(<span class="mi">2</span>).<span class="n">fmt</span>(<span class="s">'%03s'</span>), <span class="nv">$g</span>, <span class="n">gray-decode</span>(<span class="nv">$g</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>0 -&gt; 000 (0) -&gt; 0
+1 -&gt; 001 (1) -&gt; 1
+2 -&gt; 011 (3) -&gt; 2
+3 -&gt; 010 (2) -&gt; 3
+4 -&gt; 110 (6) -&gt; 4
+5 -&gt; 111 (7) -&gt; 5
+6 -&gt; 101 (5) -&gt; 6
+7 -&gt; 100 (4) -&gt; 7</code></pre></div>
+<p>That is the textbook RBC sequence 0, 1, 3, 2, 6, 7, 5, 4. The defining property is worth asserting rather than eyeballing:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/gray-code-rbc/02-hamming.raku" title="This example as a file: 02-hamming.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Gray::Code::RBC</span>;
+
+<span class="k">my</span> <span class="nv">@codes</span> = (^<span class="mi">16</span>).<span class="nb">map</span>({ <span class="n">gray-encode</span>(<span class="nv">$_</span>) });
+<span class="k">my</span> <span class="nv">@distances</span> = (^<span class="mi">15</span>).<span class="nb">map</span>({
+    (<span class="nv">@codes</span>[<span class="nv">$_</span>] +^ <span class="nv">@codes</span>[<span class="nv">$_</span> + <span class="mi">1</span>]).<span class="n">base</span>(<span class="mi">2</span>).<span class="nb">comb</span>.<span class="nb">grep</span>(<span class="s">'1'</span>).<span class="nb">elems</span>
+});
+<span class="nb">say</span> <span class="s">'hamming distances between consecutive codes : '</span>, <span class="nv">@distances</span>.<span class="nb">join</span>(<span class="s">','</span>);
+<span class="nb">say</span> <span class="s">'every one of them is 1                      : '</span>, ?<span class="n">all</span>(<span class="nv">@distances</span>.<span class="nb">map</span>(* == <span class="mi">1</span>));
+<span class="nb">say</span> <span class="s">'round trip over 0..999                      : '</span>,
+    ?<span class="n">all</span>((^<span class="mi">1000</span>).<span class="nb">map</span>({ <span class="n">gray-decode</span>(<span class="n">gray-encode</span>(<span class="nv">$_</span>)) == <span class="nv">$_</span> }));</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>hamming distances between consecutive codes : 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+every one of them is 1                      : True
+round trip over 0..999                      : True</code></pre></div>
+<h2 id="arbitrary-precision">Arbitrary precision <a class="anchor" href="#arbitrary-precision" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/gray-code-rbc/03-big.raku" title="This example as a file: 03-big.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Gray::Code::RBC</span>;
+
+<span class="k">my</span> <span class="nv">$big</span> = <span class="mi">2</span>**<span class="mi">100</span> + <span class="mi">12345</span>;
+<span class="nb">say</span> <span class="s">'input      : '</span>, <span class="nv">$big</span>;
+<span class="nb">say</span> <span class="s">'encoded    : '</span>, <span class="n">gray-encode</span>(<span class="nv">$big</span>);
+<span class="nb">say</span> <span class="s">'round trip : '</span>, <span class="n">gray-decode</span>(<span class="n">gray-encode</span>(<span class="nv">$big</span>)) == <span class="nv">$big</span>;
+<span class="nb">say</span> <span class="s">'bit width  : '</span>, <span class="n">gray-encode</span>(<span class="nv">$big</span>).<span class="n">base</span>(<span class="mi">2</span>).<span class="nb">chars</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>input      : 1267650600228229401496703217721
+encoded    : 1901475900342344102245054818341
+round trip : True
+bit width  : 101</code></pre></div>
+<p>There is no fixed word size. A 101-bit integer encodes and round-trips exactly, because the implementation is <code>$n +^ ($n +&gt; 1)</code> over Raku's arbitrary-precision integers rather than over a machine word.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Negative integers are accepted, and they silently produce a non-injective, non-reversible encoding.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/gray-code-rbc/04-negative-trap.raku" title="This example as a file: 04-negative-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Gray::Code::RBC</span>;
+
+<span class="k">for</span> -<span class="mi">4</span> .. <span class="mi">2</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$g</span> = <span class="n">gray-encode</span>(<span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'gray-encode(%2d) = %d   round trip -&gt; %2d   %s'</span>,
+        <span class="nv">$n</span>, <span class="nv">$g</span>, <span class="n">gray-decode</span>(<span class="nv">$g</span>), <span class="n">gray-decode</span>(<span class="nv">$g</span>) == <span class="nv">$n</span> ?? <span class="s">'ok'</span> !! <span class="s">'LOST'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'encode(-1) == encode(0) : '</span>, <span class="n">gray-encode</span>(-<span class="mi">1</span>) == <span class="n">gray-encode</span>(<span class="mi">0</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>gray-encode(-4) = 2   round trip -&gt;  3   LOST
+gray-encode(-3) = 3   round trip -&gt;  2   LOST
+gray-encode(-2) = 1   round trip -&gt;  1   LOST
+gray-encode(-1) = 0   round trip -&gt;  0   LOST
+gray-encode( 0) = 0   round trip -&gt;  0   ok
+gray-encode( 1) = 1   round trip -&gt;  1   ok
+gray-encode( 2) = 3   round trip -&gt;  2   ok
+
+encode(-1) == encode(0) : True</code></pre></div>
+<p>Gray coding is defined over non-negative integers only. The signature constrains the argument to <code>Int|Str</code>, not to a non-negative value, so <code>-1</code> and <code>0</code> both encode to 0 — two different inputs, one code — and every negative input fails to round-trip. For an encoding whose entire purpose is a one-to-one, one-bit-apart mapping, colliding codes with no error is the worst possible failure.</p>
+<p>Guard your own calls with <code>UInt</code> or <code>where * &gt;= 0</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every spike in this page, including the negative-input collisions, produced byte-identical output under Raku++ and Rakudo.</p>
+<p>The <code>where Int|Str</code> constraint is worth a second look though, because it is lenient in one direction and strict in the other. It <strong>accepts</strong> strings and defers to <code>.Int</code>, so <code>gray-encode('0xff')</code> returns 128, the same as <code>'255'</code>, because Raku's string-to-integer conversion understands the <code>0x</code> prefix. It <strong>rejects</strong> <code>255e0</code>, <code>255.0</code> and <code>255/1</code> with a binding failure, even though all three are integral — a <code>Num</code> that came out of arithmetic has to be <code>.Int</code>ed by the caller. And a non-numeric string passes the <code>where</code> clause and then dies later with <code>X::Str::Numeric</code> from the coercion, so the error points at the conversion rather than at the signature.</p>
+<p>There is no encoder for the binary-string form either: integers in, integers out, and any <code>.base(2)</code> formatting is your job.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

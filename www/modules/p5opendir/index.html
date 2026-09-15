@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5opendir — The Raku Ecosystem, Working</title>
+<meta name="description" content="Perl's directory-handle vocabulary — opendir, readdir, telldir, seekdir, rewinddir, closedir — over a snapshot of the names taken at open time.">
+<link rel="canonical" href="https://raku.online/modules/p5opendir/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P5opendir — The Raku Ecosystem, Working">
+<meta property="og:description" content="Perl's directory-handle vocabulary — opendir, readdir, telldir, seekdir, rewinddir, closedir — over a snapshot of the names taken at open time.">
+<meta property="og:url" content="https://raku.online/modules/p5opendir/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"P5opendir","description":"Perl's directory-handle vocabulary — opendir, readdir, telldir, seekdir, rewinddir, closedir — over a snapshot of the names taken at open time.","programmingLanguage":"Raku","version":"0.0.10","url":"https://raku.online/modules/p5opendir/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/P5opendir.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · filesystem</div><h1>P5opendir</h1><span class="status st-full">Works</span></div><p class="summary">Perl's directory-handle vocabulary — opendir, readdir, telldir, seekdir, rewinddir, closedir — over a snapshot of the names taken at open time.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.10</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/P5opendir">raku.land</a> · <a href="https://github.com/lizmat/P5opendir.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install P5opendir</code></pre></div><p class="fact-sub"><code>zef install P5opendir</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Porting Perl that walks directories means either rewriting every <code>opendir</code>/<code>readdir</code> loop as <code>.dir</code>, or keeping the loop and supplying the vocabulary. This distribution supplies the vocabulary — six subs with the Perl names and the Perl argument shapes, including <code>telldir</code> and <code>seekdir</code>, which Raku has no equivalent for at all.</p>
+<p>It is the one module in this family that is not NativeCall: the handle is a Raku class holding an array of names and a cursor.</p>
+<h2 id="walking-a-directory">Walking a directory <a class="anchor" href="#walking-a-directory" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5opendir/01-walk.raku" title="This example as a file: 01-walk.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5opendir</span>;
+
+<span class="k">my</span> <span class="nv">$fixture</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;p5od-{$*PID}&quot;</span>);
+<span class="nv">$fixture</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$fixture</span>.<span class="n">dir</span>; <span class="nv">$fixture</span>.<span class="n">rmdir</span> }
+<span class="nv">$fixture</span>.<span class="n">add</span>(<span class="nv">$_</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>) <span class="k">for</span> &lt;<span class="n">alpha</span> <span class="n">beta</span> <span class="n">gamma</span>&gt;;
+
+<span class="k">my</span> <span class="nv">$dh</span>;
+<span class="nb">say</span> <span class="s">'opendir returned : '</span>, <span class="n">opendir</span>(<span class="nv">$dh</span>, <span class="nv">$fixture</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'handle type      : '</span>, <span class="nv">$dh</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">'it stringifies to the path : '</span>, <span class="nv">$dh</span>.<span class="nb">Str</span> <span class="n">eq</span> <span class="nv">$fixture</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'telldir at the start : '</span>, <span class="n">telldir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'first entry  : '</span>, <span class="n">readdir</span>(<span class="nb">Scalar</span>, <span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'second entry : '</span>, <span class="n">readdir</span>(<span class="nb">Scalar</span>, <span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'telldir now  : '</span>, <span class="n">telldir</span>(<span class="nv">$dh</span>);
+<span class="n">rewinddir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'after rewinddir : '</span>, <span class="n">telldir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'closedir : '</span>, <span class="n">closedir</span>(<span class="nv">$dh</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>opendir returned : True
+handle type      : DIRHANDLE
+it stringifies to the path : True
+
+telldir at the start : 0
+first entry  : .
+second entry : ..
+telldir now  : 2
+after rewinddir : 0
+
+closedir : True</code></pre></div>
+<p><code>.</code> and <code>..</code> are normalised to the front of the list whether or not the filesystem reported them, so the first two entries are always those. One name at a time comes from <code>readdir(Scalar, $dh)</code> — the same <code>Scalar</code> type-object convention the rest of the <code>P5*</code> family uses for Perl's scalar context.</p>
+<h2 id="the-list-form">The list form <a class="anchor" href="#the-list-form" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5opendir/02-list.raku" title="This example as a file: 02-list.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5opendir</span>;
+
+<span class="k">my</span> <span class="nv">$fixture</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;p5od2-{$*PID}&quot;</span>);
+<span class="nv">$fixture</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$fixture</span>.<span class="n">dir</span>; <span class="nv">$fixture</span>.<span class="n">rmdir</span> }
+<span class="nv">$fixture</span>.<span class="n">add</span>(<span class="nv">$_</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>) <span class="k">for</span> &lt;<span class="n">alpha</span> <span class="n">beta</span>&gt;;
+
+<span class="k">my</span> <span class="nv">$dh</span>;
+<span class="n">opendir</span>(<span class="nv">$dh</span>, <span class="nv">$fixture</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'everything still to come : '</span>, <span class="n">readdir</span>(<span class="nv">$dh</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'and again                : '</span>, <span class="n">readdir</span>(<span class="nv">$dh</span>).<span class="nb">elems</span>, <span class="s">' entries'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>everything still to come : . .. alpha beta
+and again                : 0 entries</code></pre></div>
+<p>Which is the first surprise, and the one worth knowing about.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>readdir</code> in list form does not read the handle, it <strong>empties</strong> it — <code>rewinddir</code> cannot get the names back.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/p5opendir/03-splice-trap.raku" title="This example as a file: 03-splice-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">P5opendir</span>;
+
+<span class="k">my</span> <span class="nv">$fixture</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;p5od3-{$*PID}&quot;</span>);
+<span class="nv">$fixture</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$fixture</span>.<span class="n">dir</span>; <span class="nv">$fixture</span>.<span class="n">rmdir</span> }
+<span class="nv">$fixture</span>.<span class="n">add</span>(<span class="nv">$_</span>).<span class="nb">spurt</span>(<span class="s">'x'</span>) <span class="k">for</span> &lt;<span class="n">alpha</span> <span class="n">beta</span>&gt;;
+
+<span class="k">my</span> <span class="nv">$dh</span>;
+<span class="n">opendir</span>(<span class="nv">$dh</span>, <span class="nv">$fixture</span>.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="s">'elems before reading : '</span>, <span class="nv">$dh</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the Scalar form is non-destructive:'</span>;
+<span class="nb">say</span> <span class="s">'  one   : '</span>, <span class="n">readdir</span>(<span class="nb">Scalar</span>, <span class="nv">$dh</span>);
+<span class="n">rewinddir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'  again : '</span>, <span class="n">readdir</span>(<span class="nb">Scalar</span>, <span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'  elems : '</span>, <span class="nv">$dh</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the list form splices the names OUT:'</span>;
+<span class="k">my</span> <span class="nv">@all</span> = <span class="n">readdir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'  got   : '</span>, <span class="nv">@all</span>.<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">'  elems : '</span>, <span class="nv">$dh</span>.<span class="nb">elems</span>;
+<span class="n">rewinddir</span>(<span class="nv">$dh</span>);
+<span class="nb">say</span> <span class="s">'  after rewinddir, readdir gives : '</span>, <span class="n">readdir</span>(<span class="nv">$dh</span>).<span class="nb">elems</span>, <span class="s">' entries'</span>;
+<span class="nb">say</span> <span class="s">'  and readdir(Scalar, ...) gives : '</span>, <span class="n">readdir</span>(<span class="nb">Scalar</span>, <span class="nv">$dh</span>).<span class="nb">raku</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>elems before reading : 4
+
+the Scalar form is non-destructive:
+  one   : .
+  again : .
+  elems : 4
+
+the list form splices the names OUT:
+  got   : .. alpha beta
+  elems : 1
+  after rewinddir, readdir gives : 1 entries
+  and readdir(Scalar, ...) gives : Nil</code></pre></div>
+<p>The list candidate is implemented as <code>@!items.splice($!index)</code>, which removes the entries as it returns them. The one-at-a-time form is the only one <code>rewinddir</code> and <code>seekdir</code> actually work with.</p>
+<p>A closely related surprise: the handle is a <strong>snapshot</strong> taken at <code>opendir</code> time. Files created afterwards are invisible; files deleted afterwards are still listed. And <code>closedir</code> is a literal <code>True</code> that releases nothing — the handle keeps working after it.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only in the wording of the <code>X::Multi::NoMatch</code> message you get for misusing a handle, and in one place where a Rakudo core method is missing from Raku++.</p>
+<p>The module has two deliberate "this feature was removed" error paths, and both format their message with <code>Str.naive-word-wrapper</code> — a Rakudo core method that Raku++ does not have. So <code>readdir(Mu, $dh)</code> and the <code>:void</code> form die with the intended message on Rakudo and with <code>No such method 'naive-word-wrapper'</code> on Raku++. Both die; neither tells you the same thing.</p>
+<p>One thing that is not an engine difference and will bite a port: <code>opendir</code> on a missing path returns an <strong>undefined value, not <code>False</code></strong> — the <code>$success = False</code> in the source is unreachable, because the <code>CATCH</code> unwinds the sub first. Test the handle, not the return value. <code>seekdir</code> clamps silently in both directions.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

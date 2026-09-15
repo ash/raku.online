@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>String::Fold — The Raku Ecosystem, Working</title>
+<meta name="description" content="Re-flow a string into lines no wider than a given width, splitting on whitespace and greedily refilling — a reflow rather than a wrap, since every existing break is discarded.">
+<link rel="canonical" href="https://raku.online/modules/string-fold/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="String::Fold — The Raku Ecosystem, Working">
+<meta property="og:description" content="Re-flow a string into lines no wider than a given width, splitting on whitespace and greedily refilling — a reflow rather than a wrap, since every existing break is discarded.">
+<meta property="og:url" content="https://raku.online/modules/string-fold/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"String::Fold","description":"Re-flow a string into lines no wider than a given width, splitting on whitespace and greedily refilling — a reflow rather than a wrap, since every existing break is discarded.","programmingLanguage":"Raku","version":"0.2.0","url":"https://raku.online/modules/string-fold/","license":"https://spdx.org/licenses/AGPL-3.0","codeRepository":"https://gitlab.com/tyil/perl6-string-fold"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · text formatting</div><h1>String::Fold</h1><span class="status st-full">Works</span></div><p class="summary">Re-flow a string into lines no wider than a given width, splitting on whitespace and greedily refilling — a reflow rather than a wrap, since every existing break is discarded.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.2.0</code> <span class="fact-sub">none stated</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>AGPL-3.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/?/String::Fold">raku.land</a> · <a href="https://gitlab.com/tyil/perl6-string-fold">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install String::Fold</code></pre></div><p class="fact-sub"><code>zef install String::Fold</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Long prose arriving from a database column, a command-line argument or an API response has no line breaks in it, and printing it to a terminal gives you one very long line. This distribution is the one sub that fixes that: split on whitespace, refill greedily to a width, join with newlines.</p>
+<p>It is deliberately small. There is no hyphenation, no justification, no indent parameter and no handling of pre-formatted text.</p>
+<h2 id="folding-a-paragraph">Folding a paragraph <a class="anchor" href="#folding-a-paragraph" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/string-fold/01-fold.raku" title="This example as a file: 01-fold.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">String::Fold</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = <span class="s">'the quick brown fox jumps over the lazy dog'</span>;
+
+<span class="k">for</span> <span class="mi">10</span>, <span class="mi">20</span>, <span class="mi">43</span> -&gt; <span class="nv">$w</span> {
+    <span class="nb">say</span> <span class="s">&quot;--- width $w&quot;</span>;
+    <span class="nb">say</span> <span class="n">fold</span>(<span class="nv">$text</span>, :<span class="n">width</span>(<span class="nv">$w</span>));
+}
+<span class="nb">say</span> <span class="s">'--- default width is 79'</span>;
+<span class="nb">say</span> <span class="n">fold</span>(<span class="nv">$text</span>).<span class="nb">lines</span>.<span class="nb">elems</span>, <span class="s">' line(s)'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>--- width 10
+the quick
+brown fox
+jumps over
+the lazy
+dog
+--- width 20
+the quick brown fox
+jumps over the lazy
+dog
+--- width 43
+the quick brown fox jumps over the lazy dog
+--- default width is 79
+1 line(s)</code></pre></div>
+<p>The default is 79, the traditional terminal width less one. Anything wider than the text itself gives you the text back on a single line.</p>
+<h2 id="what-it-does-to-whitespace-you-already-had">What it does to whitespace you already had <a class="anchor" href="#what-it-does-to-whitespace-you-already-had" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/string-fold/02-whitespace.raku" title="This example as a file: 02-whitespace.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">String::Fold</span>;
+
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">$label</span>, <span class="nv">$in</span>, <span class="nv">$w</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-18s -&gt; %s'</span>, <span class="nv">$label</span>, <span class="n">fold</span>(<span class="nv">$in</span>, :<span class="n">width</span>(<span class="nv">$w</span>)).<span class="n">subst</span>(<span class="s">&quot;\n&quot;</span>, <span class="s">'|'</span>, :<span class="n">g</span>).<span class="nb">raku</span>);
+}
+
+<span class="n">show</span> <span class="s">'multiple spaces'</span>, <span class="s">'a     b'</span>,           <span class="mi">10</span>;
+<span class="n">show</span> <span class="s">'a tab'</span>,           <span class="s">&quot;a\tb&quot;</span>,              <span class="mi">10</span>;
+<span class="n">show</span> <span class="s">'leading space'</span>,   <span class="s">'  hi there'</span>,        <span class="mi">10</span>;
+<span class="n">show</span> <span class="s">'embedded newline'</span>, <span class="s">&quot;alpha\nbeta gamma&quot;</span>, <span class="mi">8</span>;
+<span class="n">show</span> <span class="s">'empty string'</span>,    <span class="s">''</span>,                  <span class="mi">10</span>;
+<span class="n">show</span> <span class="s">'spaces only'</span>,     <span class="s">'     '</span>,             <span class="mi">10</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>multiple spaces    -&gt; "a b"
+a tab              -&gt; "a b"
+leading space      -&gt; "hi there"
+embedded newline   -&gt; "alpha|beta|gamma"
+empty string       -&gt; ""
+spaces only        -&gt; ""</code></pre></div>
+<p>Runs of spaces collapse to one, tabs become single spaces, leading whitespace is dropped, and a newline you put in the input is treated as just more whitespace to split on. That last one is the important one: this is a <strong>reflow</strong>, not a wrapper. Feed it a poem or a pre-formatted address block and the original line structure is gone.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>A word longer than the width produces a spurious empty first line.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/string-fold/03-longword.raku" title="This example as a file: 03-longword.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">String::Fold</span>;
+
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">fold</span>(<span class="s">'supercalifragilistic'</span>, :<span class="n">width</span>(<span class="mi">8</span>));
+<span class="nb">say</span> <span class="s">'lines       : '</span>, <span class="nv">$r</span>.<span class="nb">lines</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">'first line  : '</span>, <span class="nv">$r</span>.<span class="nb">lines</span>[<span class="mi">0</span>].<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'second line : '</span>, <span class="nv">$r</span>.<span class="nb">lines</span>[<span class="mi">1</span>].<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and the same for any text whose FIRST word overflows:'</span>;
+<span class="nb">say</span> <span class="n">fold</span>(<span class="s">'hello world'</span>, :<span class="n">width</span>(<span class="mi">1</span>)).<span class="nb">lines</span>.<span class="nb">map</span>(*.<span class="nb">raku</span>).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>lines       : 2
+first line  : ""
+second line : "supercalifragilistic"
+
+and the same for any text whose FIRST word overflows:
+"" "hello" "world"</code></pre></div>
+<p>The function neither breaks the long word — which is a defensible choice — nor refrains from emitting a blank line before it, which is not. <code>.lines[0]</code> is the empty string. Code that prints the result of folding a single long token, a URL say, gets a blank line it never asked for and never sees in testing until a token happens to exceed the width.</p>
+<p>Guard it by dropping a leading empty line, or check <code>.chars</code> against the width before calling.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Only on stderr. For the long-word, empty-string and whitespace-only cases, Rakudo emits <code>Use of uninitialized value of type Any in string context</code> — three of them — from line 33 of the module, and Raku++ stays silent. The returned strings are byte-identical on both engines in every case tested here.</p>
+<p><code>:width(0)</code> and negative widths are rejected by the parameter's <code>where</code> constraint on both engines, arriving as an <code>X::TypeCheck::Binding::Parameter</code> rather than a message that mentions widths.</p>
+<p>Width is counted in graphemes, so a combining acute measures the same as a precomposed one — correct — while CJK text at <code>:width(5)</code> is allowed five characters that paint ten terminal columns.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

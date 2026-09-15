@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON::Pretty::Sorted — The Raku Ecosystem, Working</title>
+<meta name="description" content="A pretty-printing JSON writer with a caller-supplied ordering hook threaded through the whole document.">
+<link rel="canonical" href="https://raku.online/modules/json-pretty-sorted/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JSON::Pretty::Sorted — The Raku Ecosystem, Working">
+<meta property="og:description" content="A pretty-printing JSON writer with a caller-supplied ordering hook threaded through the whole document.">
+<meta property="og:url" content="https://raku.online/modules/json-pretty-sorted/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"JSON::Pretty::Sorted","description":"A pretty-printing JSON writer with a caller-supplied ordering hook threaded through the whole document.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/json-pretty-sorted/","license":"https://spdx.org/licenses/GPL-3.0","codeRepository":"https://github.com/holli-holzer/raku-JSON-Pretty-Sorted.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · JSON</div><h1>JSON::Pretty::Sorted</h1><span class="status st-part">Partial</span></div><p class="summary">A pretty-printing JSON writer with a caller-supplied ordering hook threaded through the whole document.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">github:holli-holzer</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>GPL-3.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>no test files, so trivially green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:holli-holzer/JSON::Pretty::Sorted">raku.land</a> · <a href="https://github.com/holli-holzer/raku-JSON-Pretty-Sorted.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install JSON::Pretty::Sorted</code></pre></div><p class="fact-sub"><code>zef install JSON::Pretty::Sorted</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>JSON written from a Raku <code>Hash</code> comes out in hash order, which is arbitrary and, on some engines, different every run. That makes two things impossible: diffing two generated documents, and committing one to version control without spurious churn.</p>
+<p>The fix is to impose an order. This distribution's premise is that the order should be yours to choose, so it takes a sorter block and threads it through every level.</p>
+<h2 id="writing-json">Writing JSON <a class="anchor" href="#writing-json" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-pretty-sorted/01-write.raku" title="This example as a file: 01-write.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Pretty::Sorted</span>;
+
+<span class="k">my</span> <span class="nv">&amp;bykey</span> = { <span class="nv">$^a</span>.<span class="n">key</span> <span class="n">cmp</span> <span class="nv">$^b</span>.<span class="n">key</span> };
+
+<span class="k">my</span> <span class="nv">%data</span> = <span class="n">zebra</span> =&gt; <span class="mi">1</span>, <span class="n">apple</span> =&gt; <span class="mi">2</span>, <span class="n">mango</span> =&gt; <span class="mi">3</span>, <span class="n">banana</span> =&gt; <span class="mi">4</span>;
+<span class="nb">say</span> <span class="n">to-json</span>(<span class="nv">%data</span>, <span class="n">sorter</span> =&gt; <span class="nv">&amp;bykey</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{
+  "apple" : 2,
+  "banana" : 4,
+  "mango" : 3,
+  "zebra" : 1
+}</code></pre></div>
+<h2 id="nested-documents">Nested documents <a class="anchor" href="#nested-documents" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-pretty-sorted/02-nested.raku" title="This example as a file: 02-nested.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Pretty::Sorted</span>;
+
+<span class="k">my</span> <span class="nv">&amp;bykey</span> = { <span class="nv">$^a</span>.<span class="n">key</span> <span class="n">cmp</span> <span class="nv">$^b</span>.<span class="n">key</span> };
+
+<span class="k">my</span> <span class="nv">%nest</span> = <span class="n">zebra</span> =&gt; <span class="mi">1</span>, <span class="n">apple</span> =&gt; { <span class="n">zz</span> =&gt; <span class="mi">1</span>, <span class="n">aa</span> =&gt; <span class="mi">2</span> }, <span class="n">mango</span> =&gt; <span class="mi">3</span>;
+<span class="nb">say</span> <span class="n">to-json</span>(<span class="nv">%nest</span>, <span class="n">sorter</span> =&gt; <span class="nv">&amp;bykey</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>{
+  "apple" : {
+    "aa" : 2,
+    "zz" : 1
+  },
+  "mango" : 3,
+  "zebra" : 1
+}</code></pre></div>
+<p>The sorter reaches the inner hash too, which is the feature — a single block orders the whole document.</p>
+<h2 id="reading-back">Reading back <a class="anchor" href="#reading-back" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-pretty-sorted/03-read.raku" title="This example as a file: 03-read.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Pretty::Sorted</span>;
+
+<span class="k">my</span> <span class="nv">&amp;safe</span> = { (<span class="nv">$^x</span> ~~ <span class="nb">Pair</span> ?? <span class="nv">$x</span>.<span class="n">key</span> !! <span class="nv">$x</span>) <span class="n">cmp</span> (<span class="nv">$^y</span> ~~ <span class="nb">Pair</span> ?? <span class="nv">$y</span>.<span class="n">key</span> !! <span class="nv">$y</span>) };
+<span class="k">my</span> <span class="nv">$text</span> = <span class="n">to-json</span>({ <span class="n">b</span> =&gt; <span class="mi">1</span>, <span class="n">a</span> =&gt; [<span class="mi">1</span>, <span class="mi">2</span>] }, <span class="n">sorter</span> =&gt; <span class="nv">&amp;safe</span>);
+<span class="k">my</span> <span class="nv">%back</span> = <span class="n">from-json</span>(<span class="nv">$text</span>);
+<span class="nb">say</span> <span class="s">'round trip : '</span>, <span class="nv">%back</span>.<span class="nb">keys</span>.<span class="nb">sort</span>.<span class="nb">map</span>({ <span class="s">&quot;$_=&quot;</span> ~ <span class="nv">%back</span>{<span class="nv">$_</span>}.<span class="nb">raku</span> }).<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'scalars:'</span>;
+<span class="nb">say</span> <span class="s">'  from-json(&quot;123&quot;)  : '</span>, <span class="n">from-json</span>(<span class="s">'123'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  from-json(\'&quot;s&quot;\')  : '</span>, <span class="n">from-json</span>(<span class="s">'&quot;s&quot;'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  from-json(&quot;true&quot;) : '</span>, <span class="n">from-json</span>(<span class="s">'true'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  from-json(&quot;null&quot;) : '</span>, <span class="n">from-json</span>(<span class="s">'null'</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'malformed input throws : '</span>, (<span class="k">try</span> <span class="n">from-json</span>(<span class="s">'{'</span>)).<span class="nb">defined</span> ?? <span class="s">'no'</span> !! <span class="s">'yes'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>round trip : a=$[1, 2] b=1
+
+scalars:
+  from-json("123")  : 123
+  from-json('"s"')  : "s"
+  from-json("true") : Bool::True
+  from-json("null") : Any
+
+malformed input throws : yes</code></pre></div>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Out of the box the module does not sort anything, and the obvious fix crashes on any document containing an array.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/json-pretty-sorted/04-sorter-trap.raku" title="This example as a file: 04-sorter-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">JSON::Pretty::Sorted</span>;
+
+<span class="k">my</span> <span class="nv">%data</span> = <span class="n">zebra</span> =&gt; <span class="mi">1</span>, <span class="n">apple</span> =&gt; <span class="mi">2</span>, <span class="n">mango</span> =&gt; <span class="mi">3</span>;
+<span class="nb">say</span> <span class="s">'with no sorter, the default is { 0 } — a constant key,'</span>;
+<span class="nb">say</span> <span class="s">'so .sort is stable and simply preserves hash order.'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'and a key sorter reaches ARRAY elements too:'</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="n">to-json</span>({ <span class="n">b</span> =&gt; [<span class="mi">3</span>, <span class="mi">1</span>, <span class="mi">2</span>], <span class="n">a</span> =&gt; <span class="s">'x'</span> }, <span class="n">sorter</span> =&gt; { <span class="nv">$^x</span>.<span class="n">key</span> <span class="n">cmp</span> <span class="nv">$^y</span>.<span class="n">key</span> });
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$!</span> ?? <span class="s">'threw '</span> ~ <span class="nv">$!</span>.^<span class="n">name</span> !! <span class="s">'worked'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the sorter has to handle both Pairs and bare elements:'</span>;
+<span class="k">my</span> <span class="nv">&amp;safe</span> = { (<span class="nv">$^x</span> ~~ <span class="nb">Pair</span> ?? <span class="nv">$x</span>.<span class="n">key</span> !! <span class="nv">$x</span>) <span class="n">cmp</span> (<span class="nv">$^y</span> ~~ <span class="nb">Pair</span> ?? <span class="nv">$y</span>.<span class="n">key</span> !! <span class="nv">$y</span>) };
+<span class="nb">say</span> <span class="n">to-json</span>({ <span class="n">b</span> =&gt; [<span class="mi">3</span>, <span class="mi">1</span>, <span class="mi">2</span>], <span class="n">a</span> =&gt; <span class="s">'x'</span> }, <span class="n">sorter</span> =&gt; <span class="nv">&amp;safe</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>with no sorter, the default is { 0 } — a constant key,
+so .sort is stable and simply preserves hash order.
+
+and a key sorter reaches ARRAY elements too:
+  threw X::Method::NotFound
+
+the sorter has to handle both Pairs and bare elements:
+{
+  "a" : "x",
+  "b" : [
+    1,
+    2,
+    3
+  ]
+}</code></pre></div>
+<p>The default is <code>:&amp;sorter = {0}</code> — a block returning a constant — so <code>.sort</code> compares every element as equal and the output comes back in whatever order the hash iterated. The module's name promises sorting; a plain <code>to-json</code> gives you none.</p>
+<p>Then the natural fix, a key comparator, is passed down to the <code>Positional</code> candidate and applied to <strong>array elements</strong>, which have no <code>.key</code>. On a document with any array in it, the call dies.</p>
+<p>And note what the working version above did to the array: it <strong>reordered it</strong>. JSON array order is semantically significant, so a sorter that survives a document may still corrupt it. Write a sorter that leaves non-<code>Pair</code> arguments in place.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>In hash iteration order, which is the whole problem the module exists to solve. With no sorter, Raku++ emits keys in insertion order and Rakudo in a per-process randomised order — both stable within one process, neither sorted, and the two never agreeing.</p>
+<p>That is why every example on this page passes an explicit sorter. With one, the output is identical on both engines.</p>
+<p><code>:indent</code> shifts the closing brace as well as the contents, so the output is not re-indentable by composition. And <code>from-json</code> throws <code>JSON::Tiny::X::JSON::Tiny::Invalid</code> on malformed input, despite the distribution declaring no dependency on JSON::Tiny.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

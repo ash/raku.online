@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Util::Bitfield — The Raku Ecosystem, Working</title>
+<meta name="description" content="Pick apart the sub-byte fields of a packed binary word — extract, insert and mask — with bit positions counted from the most significant end, as protocol diagrams draw them.">
+<link rel="canonical" href="https://raku.online/modules/util-bitfield/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Util::Bitfield — The Raku Ecosystem, Working">
+<meta property="og:description" content="Pick apart the sub-byte fields of a packed binary word — extract, insert and mask — with bit positions counted from the most significant end, as protocol diagrams draw them.">
+<meta property="og:url" content="https://raku.online/modules/util-bitfield/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Util::Bitfield","description":"Pick apart the sub-byte fields of a packed binary word — extract, insert and mask — with bit positions counted from the most significant end, as protocol diagrams draw them.","programmingLanguage":"Raku","version":"0.1.0","url":"https://raku.online/modules/util-bitfield/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"git://github.com/jonathanstowe/Util-Bitfield.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · bit manipulation</div><h1>Util::Bitfield</h1><span class="status st-part">Partial</span></div><p class="summary">Pick apart the sub-byte fields of a packed binary word — extract, insert and mask — with bit positions counted from the most significant end, as protocol diagrams draw them.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.0</code> <span class="fact-sub">zef:jonathanstowe</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:jonathanstowe/Util::Bitfield">raku.land</a> · <a href="git://github.com/jonathanstowe/Util-Bitfield.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Util::Bitfield</code></pre></div><p class="fact-sub"><code>zef install Util::Bitfield</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Network headers, hardware registers and binary file formats pack several fields into one word, and the specification draws them left to right with bit 0 at the most significant end. Translating that diagram into shifts and masks is exactly the kind of arithmetic that is easy to get subtly wrong and hard to spot afterwards.</p>
+<p>This distribution does the arithmetic in the specification's own terms: name the field by its width, its start bit and the containing word size.</p>
+<h2 id="extracting-a-field">Extracting a field <a class="anchor" href="#extracting-a-field" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/util-bitfield/01-extract.raku" title="This example as a file: 01-extract.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Util::Bitfield</span>;
+
+<span class="k">my</span> <span class="nv">$word</span> = <span class="mb">0b1010_1100_0011_0101_1111_0000_1001_0110</span>;
+<span class="nb">say</span> <span class="s">'word = '</span>, <span class="nv">$word</span>.<span class="n">base</span>(<span class="mi">2</span>), <span class="s">' (0x'</span>, <span class="nv">$word</span>.<span class="n">base</span>(<span class="mi">16</span>), <span class="s">')'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+
+<span class="k">for</span> (<span class="mi">4</span>, <span class="mi">0</span>), (<span class="mi">4</span>, <span class="mi">4</span>), (<span class="mi">8</span>, <span class="mi">0</span>), (<span class="mi">8</span>, <span class="mi">8</span>), (<span class="mi">8</span>, <span class="mi">24</span>), (<span class="mi">16</span>, <span class="mi">0</span>), (<span class="mi">16</span>, <span class="mi">16</span>) -&gt; (<span class="nv">$bits</span>, <span class="nv">$start</span>) {
+    <span class="k">my</span> <span class="nv">$x</span> = <span class="n">extract-bits</span>(<span class="nv">$word</span>, <span class="nv">$bits</span>, <span class="nv">$start</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'extract-bits(word, bits=%-2d, start=%-2d) = %-6d 0b%s'</span>,
+        <span class="nv">$bits</span>, <span class="nv">$start</span>, <span class="nv">$x</span>, <span class="nv">$x</span>.<span class="n">base</span>(<span class="mi">2</span>));
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>word = 10101100001101011111000010010110 (0xAC35F096)
+
+extract-bits(word, bits=4 , start=0 ) = 10     0b1010
+extract-bits(word, bits=4 , start=4 ) = 12     0b1100
+extract-bits(word, bits=8 , start=0 ) = 172    0b10101100
+extract-bits(word, bits=8 , start=8 ) = 53     0b110101
+extract-bits(word, bits=8 , start=24) = 150    0b10010110
+extract-bits(word, bits=16, start=0 ) = 44085  0b1010110000110101
+extract-bits(word, bits=16, start=16) = 61590  0b1111000010010110</code></pre></div>
+<p>Bit 0 is the <strong>most significant</strong> bit, so <code>extract-bits($v, 8, 0)</code> is the top byte and <code>extract-bits($v, 8, 24)</code> the bottom one. Everything is relative to <code>$word-size</code>, which defaults to 32 — so a small number has its bits at the far end, and <code>extract-bits(5, 4, 0)</code> is 0 for every word size.</p>
+<h2 id="masks-and-insertion">Masks and insertion <a class="anchor" href="#masks-and-insertion" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/util-bitfield/02-mask.raku" title="This example as a file: 02-mask.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Util::Bitfield</span>;
+
+<span class="k">sub</span> <span class="n">b</span>(<span class="nv">$v</span>, <span class="nv">$w</span> = <span class="mi">32</span>) { <span class="nb">sprintf</span>(<span class="s">'%0*b'</span>, <span class="nv">$w</span>, <span class="nv">$v</span>) }
+
+<span class="k">for</span> (<span class="mi">4</span>, <span class="mi">0</span>), (<span class="mi">4</span>, <span class="mi">4</span>), (<span class="mi">8</span>, <span class="mi">8</span>), (<span class="mi">1</span>, <span class="mi">31</span>) -&gt; (<span class="nv">$bits</span>, <span class="nv">$start</span>) {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'make-mask(bits=%-2d start=%-2d) = %s  (0x%08X)'</span>,
+        <span class="nv">$bits</span>, <span class="nv">$start</span>, <span class="n">b</span>(<span class="n">make-mask</span>(<span class="nv">$bits</span>, <span class="nv">$start</span>)), <span class="n">make-mask</span>(<span class="nv">$bits</span>, <span class="nv">$start</span>));
+}
+<span class="nb">say</span> <span class="s">'make-mask(4, 0, :invert)     = '</span>, <span class="n">b</span>(<span class="n">make-mask</span>(<span class="mi">4</span>, <span class="mi">0</span>, :<span class="nb">invert</span>));
+<span class="nb">say</span> <span class="s">'make-mask(8, 0, 16)          = '</span>, <span class="n">b</span>(<span class="n">make-mask</span>(<span class="mi">8</span>, <span class="mi">0</span>, <span class="mi">16</span>), <span class="mi">16</span>), <span class="s">'  (word-size 16)'</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$word</span> = <span class="mb">0b1010_1100_0011_0101_1111_0000_1001_0110</span>;
+<span class="k">my</span> <span class="nv">$new</span> = <span class="n">insert-bits</span>(<span class="mb">0b101</span>, <span class="nv">$word</span>, <span class="mi">3</span>, <span class="mi">8</span>);
+<span class="nb">say</span> <span class="s">'insert 0b101 at start=8 width=3:'</span>;
+<span class="nb">say</span> <span class="s">'  before : '</span>, <span class="n">b</span>(<span class="nv">$word</span>);
+<span class="nb">say</span> <span class="s">'  after  : '</span>, <span class="n">b</span>(<span class="nv">$new</span>);
+<span class="nb">say</span> <span class="s">'  reads back as : '</span>, <span class="n">extract-bits</span>(<span class="nv">$new</span>, <span class="mi">3</span>, <span class="mi">8</span>).<span class="n">base</span>(<span class="mi">2</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>make-mask(bits=4  start=0 ) = 11110000000000000000000000000000  (0xF0000000)
+make-mask(bits=4  start=4 ) = 00001111000000000000000000000000  (0x0F000000)
+make-mask(bits=8  start=8 ) = 00000000111111110000000000000000  (0x00FF0000)
+make-mask(bits=1  start=31) = 00000000000000000000000000000001  (0x00000001)
+make-mask(4, 0, :invert)     = 00001111111111111111111111111111
+make-mask(8, 0, 16)          = 1111111100000000  (word-size 16)
+
+insert 0b101 at start=8 width=3:
+  before : 10101100001101011111000010010110
+  after  : 10101100101101011111000010010110
+  reads back as : 101</code></pre></div>
+<p><code>insert-bits</code> guards against overflow properly, with a typed <code>Util::Bitfield::X::BitOverflow</code> when the value is wider than the field.</p>
+<h2 id="splitting-a-value-into-bits">Splitting a value into bits <a class="anchor" href="#splitting-a-value-into-bits" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/util-bitfield/03-split.raku" title="This example as a file: 03-split.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Util::Bitfield</span>;
+
+<span class="nb">say</span> <span class="s">'split-bits(8, 255)    : '</span>, <span class="n">split-bits</span>(<span class="mi">8</span>, <span class="mi">255</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'split-bits(8, 0b1010) : '</span>, <span class="n">split-bits</span>(<span class="mi">8</span>, <span class="mb">0b1010</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'split-bits(16, 0xAC35): '</span>, <span class="n">split-bits</span>(<span class="mi">16</span>, <span class="mh">0xAC35</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the value must fit in the width:'</span>;
+<span class="nb">say</span> <span class="s">'  split-bits(8, 256) -&gt; '</span>, (<span class="k">try</span> <span class="n">split-bits</span>(<span class="mi">8</span>, <span class="mi">256</span>)).<span class="nb">defined</span> ?? <span class="s">'accepted'</span> !! <span class="s">'refused'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>split-bits(8, 255)    : (1, 1, 1, 1, 1, 1, 1, 1)
+split-bits(8, 0b1010) : (0, 0, 0, 0, 1, 0, 1, 0)
+split-bits(16, 0xAC35): (1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1)
+
+the value must fit in the width:
+  split-bits(8, 256) -&gt; refused</code></pre></div>
+<p>Most significant bit first, matching the rest of the module.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>extract-bits-list</code> ignores the width you ask for. It always extracts <strong>six-bit fields</strong>; <code>$bits</code> controls only how many values come back.</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/util-bitfield/04-list-trap.raku" title="This example as a file: 04-list-trap.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Util::Bitfield</span>;
+
+<span class="k">my</span> <span class="nv">$word</span> = <span class="mh">0xAC35F096</span>;
+
+<span class="nb">say</span> <span class="s">'extract-bits-list(word, 4) asks for 4-bit fields:'</span>;
+<span class="k">my</span> <span class="nv">@l</span> = <span class="n">extract-bits-list</span>(<span class="nv">$word</span>, <span class="mi">4</span>).<span class="nb">List</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">@l</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">'  largest value : '</span>, <span class="nv">@l</span>.<span class="nb">max</span>, <span class="s">'   but a 4-bit field holds 0..15'</span>;
+<span class="nb">say</span> <span class="s">'  values over 15: '</span>, <span class="nv">@l</span>.<span class="nb">grep</span>(* &gt; <span class="mi">15</span>).<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'every result is really a SIX-bit field, whatever you ask for:'</span>;
+<span class="k">for</span> <span class="mi">4</span>, <span class="mi">8</span>, <span class="mi">16</span> -&gt; <span class="nv">$bits</span> {
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="mi">32</span> <span class="n">div</span> <span class="nv">$bits</span>;
+    <span class="k">my</span> <span class="nv">@pred</span> = (^<span class="nv">$n</span>).<span class="nb">map</span>({ (<span class="nv">$word</span> +&gt; (<span class="mi">32</span> - <span class="nv">$_</span> * <span class="nv">$bits</span> - <span class="mi">6</span>)) +&amp; <span class="mb">0b111111</span> });
+    <span class="k">my</span> <span class="nv">@got</span>  = <span class="n">extract-bits-list</span>(<span class="nv">$word</span>, <span class="nv">$bits</span>).<span class="nb">List</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  bits=%-2d  got=%-30s  six-bit prediction matches: %s'</span>,
+        <span class="nv">$bits</span>, <span class="nv">@got</span>.<span class="nb">raku</span>, <span class="nv">@got</span> <span class="n">eqv</span> <span class="nv">@pred</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'the honest answer, from extract-bits itself:'</span>;
+<span class="k">for</span> <span class="mi">4</span>, <span class="mi">8</span>, <span class="mi">16</span> -&gt; <span class="nv">$bits</span> {
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="mi">32</span> <span class="n">div</span> <span class="nv">$bits</span>;
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'  bits=%-2d  %s'</span>, <span class="nv">$bits</span>,
+        (^<span class="nv">$n</span>).<span class="nb">map</span>({ <span class="n">extract-bits</span>(<span class="nv">$word</span>, <span class="nv">$bits</span>, <span class="nv">$_</span> * <span class="nv">$bits</span>, <span class="mi">32</span>) }).<span class="nb">List</span>.<span class="nb">raku</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>extract-bits-list(word, 4) asks for 4-bit fields:
+  [43, 48, 13, 23, 60, 2, 37, 24]
+  largest value : 60   but a 4-bit field holds 0..15
+  values over 15: (43, 48, 23, 60, 37, 24)
+
+every result is really a SIX-bit field, whatever you ask for:
+  bits=4   got=[43, 48, 13, 23, 60, 2, 37, 24]  six-bit prediction matches: True
+  bits=8   got=[43, 13, 60, 37]                six-bit prediction matches: True
+  bits=16  got=[43, 60]                        six-bit prediction matches: True
+
+the honest answer, from extract-bits itself:
+  bits=4   (10, 12, 3, 5, 15, 0, 9, 6)
+  bits=8   (172, 53, 240, 150)
+  bits=16  (44085, 61590)</code></pre></div>
+<p>Two independent proofs: the values <strong>exceed the requested field width</strong> — 60 does not fit in four bits — and every result matches the closed form <code>($word +&gt; (word-size − start − 6)) +&amp; 0b111111</code> exactly, for three different widths.</p>
+<p>In plain terms, <code>extract-bits-list(0x01020304, 8)</code> returns <code>(0, 0, 0, 1)</code> where the bytes are obviously <code>(1, 2, 3, 4)</code>. The routine silently disagrees with <code>extract-bits</code>, the very sub it is meant to be a convenience wrapper for.</p>
+<p>Build the loop by hand.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every mask, every extraction, every insertion, the overflow guard and the six-bit defect behaved identically on Raku++ and Rakudo.</p>
+<p>Two things to guard at your own call site, since the module does not. <strong>Negative numbers slip through every check</strong>: <code>make-mask(-1, 0)</code> returns a nonsense negative mask and <code>insert-bits(-1, 0, 4, 0)</code> produces garbage with no overflow complaint, while <code>extract-bits(-1, 4, 0)</code> quietly gives 15. And there is <strong>no bounds check against the word size</strong>: <code>extract-bits($word, 8, 28)</code> runs past the end of a 32-bit word and <code>extract-bits($word, 40, 0)</code> asks for a field wider than the word, both without a word of complaint.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

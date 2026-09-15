@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storable::Lite — The Raku Ecosystem, Working</title>
+<meta name="description" content="Persist a Raku value to a file and read it back, using Raku source as the on-disk format.">
+<link rel="canonical" href="https://raku.online/modules/storable-lite/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Storable::Lite — The Raku Ecosystem, Working">
+<meta property="og:description" content="Persist a Raku value to a file and read it back, using Raku source as the on-disk format.">
+<meta property="og:url" content="https://raku.online/modules/storable-lite/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Storable::Lite","description":"Persist a Raku value to a file and read it back, using Raku source as the on-disk format.","programmingLanguage":"Raku","version":"0.0.2","url":"https://raku.online/modules/storable-lite/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/tbrowder/Storable-Lite.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · serialisation</div><h1>Storable::Lite</h1><span class="status st-full">Works</span></div><p class="summary">Persist a Raku value to a file and read it back, using Raku source as the on-disk format.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.2</code> <span class="fact-sub">zef:tbrowder</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>2 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:tbrowder/Storable::Lite">raku.land</a> · <a href="https://github.com/tbrowder/Storable-Lite.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Storable::Lite</code></pre></div><p class="fact-sub"><code>zef install Storable::Lite</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Saving a Raku data structure between runs usually means choosing a format and losing something to it: JSON has no <code>Rat</code> and no <code>Set</code>, YAML has no types at all, and a binary format needs a schema.</p>
+<p>This distribution takes the shortest path. It writes <code>$value.raku</code> and reads it back with <code>EVAL</code>, so anything whose <code>.raku</code> round-trips survives exactly.</p>
+<h2 id="saving-and-loading">Saving and loading <a class="anchor" href="#saving-and-loading" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/storable-lite/01-store.raku" title="This example as a file: 01-store.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Storable::Lite</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;store-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'x.raku'</span>).<span class="n">absolute</span>;
+
+<span class="k">sub</span> <span class="n">trip</span>(<span class="nv">$label</span>, <span class="nv">$v</span>) {
+    <span class="n">to-file</span>(<span class="nv">$f</span>, <span class="nv">$v</span>);
+    <span class="k">my</span> <span class="nv">$back</span> = <span class="n">from-file</span>(<span class="nv">$f</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-8s same type=%-5s eqv=%s'</span>,
+        <span class="nv">$label</span>, <span class="nv">$v</span>.<span class="n">WHAT</span> === <span class="nv">$back</span>.<span class="n">WHAT</span>, <span class="nv">$v</span> <span class="n">eqv</span> <span class="nv">$back</span>);
+}
+
+<span class="n">trip</span> <span class="s">'Int'</span>,   <span class="mi">42</span>;
+<span class="n">trip</span> <span class="s">'Str'</span>,   <span class="s">'hi'</span>;
+<span class="n">trip</span> <span class="s">'Rat'</span>,   <span class="mi">1</span>/<span class="mi">3</span>;
+<span class="n">trip</span> <span class="s">'Array'</span>, [<span class="mi">1</span>, <span class="s">'two'</span>, <span class="mf">3.5</span>];
+<span class="n">trip</span> <span class="s">'Hash'</span>,  { <span class="n">a</span> =&gt; <span class="mi">1</span>, <span class="n">b</span> =&gt; <span class="s">'x'</span> };
+<span class="n">trip</span> <span class="s">'Bool'</span>,  <span class="n">True</span>;
+<span class="n">trip</span> <span class="s">'Set'</span>,   <span class="n">set</span>(<span class="s">&lt;a b&gt;</span>);
+<span class="n">trip</span> <span class="s">'Date'</span>,  <span class="nb">Date</span>.<span class="nb">new</span>(<span class="s">'2024-03-01'</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>Int      same type=True  eqv=True
+Str      same type=True  eqv=True
+Rat      same type=True  eqv=True
+Array    same type=True  eqv=True
+Hash     same type=True  eqv=True
+Bool     same type=True  eqv=True
+Set      same type=True  eqv=True
+Date     same type=True  eqv=True</code></pre></div>
+<p>A <code>Rat</code> stays a <code>Rat</code>, a <code>Set</code> stays a <code>Set</code> and a <code>Date</code> stays a <code>Date</code> — which no text format above manages without a schema.</p>
+<h2 id="what-the-file-holds">What the file holds <a class="anchor" href="#what-the-file-holds" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/storable-lite/02-format.raku" title="This example as a file: 02-format.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Storable::Lite</span>;
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;store2-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'conf.raku'</span>).<span class="n">absolute</span>;
+
+<span class="n">to-file</span>(<span class="nv">$f</span>, [ <span class="s">'example.invalid'</span>, <span class="mi">8080</span>, <span class="mi">3</span> ]);
+<span class="nb">say</span> <span class="s">'the file is Raku source:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="nv">$f</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>.<span class="nb">trim</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'which is why it reads back with its types intact:'</span>;
+<span class="nb">say</span> <span class="s">'  '</span>, <span class="n">from-file</span>(<span class="nv">$f</span>).<span class="nb">map</span>(*.^<span class="n">name</span>).<span class="nb">join</span>(<span class="s">' '</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the file is Raku source:
+  $["example.invalid", 8080, 3]
+
+which is why it reads back with its types intact:
+  Str Int Int</code></pre></div>
+<p>Which is the appeal and the warning in one line.</p>
+<h2 id="the-role">The role <a class="anchor" href="#the-role" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/storable-lite/03-role.raku" title="This example as a file: 03-role.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Storable::Lite</span>;
+
+<span class="k">class</span> <span class="n">Config</span> <span class="k">does</span> <span class="n">FileStore</span> {
+    <span class="k">has</span> <span class="nb">Str</span> <span class="nv">$.host</span> <span class="k">is</span> <span class="n">rw</span>;
+    <span class="k">has</span> <span class="nb">Int</span> <span class="nv">$.port</span> <span class="k">is</span> <span class="n">rw</span>;
+}
+
+<span class="k">my</span> <span class="nv">$dir</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">&quot;store3-{$*PID}&quot;</span>);
+<span class="nv">$dir</span>.<span class="nb">mkdir</span>;
+<span class="k">LEAVE</span> { .<span class="nb">unlink</span> <span class="k">for</span> <span class="nv">$dir</span>.<span class="n">dir</span>; <span class="nv">$dir</span>.<span class="n">rmdir</span> }
+<span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$dir</span>.<span class="n">add</span>(<span class="s">'c.raku'</span>).<span class="n">absolute</span>;
+
+<span class="nb">say</span> <span class="s">'the role adds instance methods : '</span>,
+    <span class="n">Config</span>.^<span class="n">can</span>(<span class="s">'to-file'</span>) &amp;&amp; <span class="n">Config</span>.^<span class="n">can</span>(<span class="s">'from-file'</span>) ?? <span class="s">'to-file and from-file'</span> !! <span class="s">'none'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>the role adds instance methods : to-file and from-file</code></pre></div>
+<p><code>FileStore</code> gives a class the same two operations as methods rather than subs.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p><code>from-file</code> is <code>EVAL</code>. Reading a data file <strong>executes</strong> it.</p>
+<p>The unit opens with <code>use MONKEY-SEE-NO-EVAL</code> and <code>from-file</code> slurps the file and evaluates its contents as Raku source. A file that contains <code>BEGIN { run 'rm', '-rf', $some-path }; 99</code> will do exactly that and then return 99, and nothing in the interface distinguishes it from a file holding the number 99.</p>
+<p>This is fine for a file your own program wrote in a directory your own program controls. It is not a data format. Do not point <code>from-file</code> at anything a user supplied, anything that arrived over a network, or anything in a world-writable directory — it is equivalent to <code>raku that-file</code>.</p>
+<p>If you need to read untrusted structured data, use JSON.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every type in this page round-tripped identically on Raku++ and Rakudo, and the on-disk format is the same text.</p>
+<p>Two smaller returns to know about, the same on both. An <strong>empty file</strong> gives back an undefined value rather than an error, and a <strong>missing file</strong> gives back <code>False</code> — so neither failure throws, and both look like data.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>

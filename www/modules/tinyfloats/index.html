@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TinyFloats — The Raku Ecosystem, Working</title>
+<meta name="description" content="Convert between Raku Nums and the bit patterns of four small floating-point formats — binary16, bfloat16, TensorFloat-32 and E5M2.">
+<link rel="canonical" href="https://raku.online/modules/tinyfloats/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TinyFloats — The Raku Ecosystem, Working">
+<meta property="og:description" content="Convert between Raku Nums and the bit patterns of four small floating-point formats — binary16, bfloat16, TensorFloat-32 and E5M2.">
+<meta property="og:url" content="https://raku.online/modules/tinyfloats/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"TinyFloats","description":"Convert between Raku Nums and the bit patterns of four small floating-point formats — binary16, bfloat16, TensorFloat-32 and E5M2.","programmingLanguage":"Raku","version":"0.0.4","url":"https://raku.online/modules/tinyfloats/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/japhb/TinyFloats.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/eco.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · numeric</div><h1>TinyFloats</h1><span class="status st-div">Divergent</span></div><p class="summary">Convert between Raku Nums and the bit patterns of four small floating-point formats — binary16, bfloat16, TensorFloat-32 and E5M2.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.4</code> <span class="fact-sub">zef:japhb</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>5 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-15 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:japhb/TinyFloats">raku.land</a> · <a href="https://github.com/japhb/TinyFloats.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install TinyFloats</code></pre></div><p class="fact-sub"><code>zef install TinyFloats</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Graphics and machine learning both ran out of memory bandwidth before they ran out of precision, so both moved to smaller floats. Half precision is the GPU texture format; bfloat16 keeps a float32's exponent range in sixteen bits and is what most training hardware uses; TensorFloat-32 is NVIDIA's nineteen-bit compromise; E5M2 is eight bits total.</p>
+<p>Reading or writing any of those from Raku means converting to and from the bit patterns, which is what this distribution does.</p>
+<h2 id="converting">Converting <a class="anchor" href="#converting" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyfloats/01-convert.raku" title="This example as a file: 01-convert.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyFloats</span>;
+
+<span class="k">for</span> <span class="mf">0e0</span>, <span class="mf">1e0</span>, -<span class="mf">1e0</span>, <span class="mf">0.5e0</span>, <span class="mf">3.14e0</span>, <span class="mf">65504e0</span>, <span class="n">Inf</span>, -<span class="n">Inf</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$bits</span> = <span class="n">bin16-from-num</span>(<span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-10s bits=0x%04X  back=%s'</span>, <span class="nv">$n</span>.<span class="nb">gist</span>, <span class="nv">$bits</span>, <span class="n">num-from-bin16</span>(<span class="nv">$bits</span>).<span class="nb">gist</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="k">my</span> <span class="nv">$nan</span> = <span class="n">bin16-from-num</span>(<span class="n">NaN</span>);
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'NaN        bits=0x%04X  back=%s (isNaN=%s)'</span>,
+    <span class="nv">$nan</span>, <span class="n">num-from-bin16</span>(<span class="nv">$nan</span>).<span class="nb">gist</span>, <span class="n">num-from-bin16</span>(<span class="nv">$nan</span>).<span class="n">isNaN</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>0          bits=0x0000  back=0
+1          bits=0x3C00  back=1
+-1         bits=0xBC00  back=-1
+0.5        bits=0x3800  back=0.5
+3.14       bits=0x4247  back=3.138671875
+65504      bits=0x7BFF  back=65504
+Inf        bits=0x7C00  back=Inf
+-Inf       bits=0xFC00  back=-Inf
+
+NaN        bits=0x7E00  back=NaN (isNaN=True)</code></pre></div>
+<p>Zero, one, a half, infinity and NaN all survive exactly. <code>3.14</code> does not, and should not — that is what sixteen bits buys you.</p>
+<h2 id="the-four-formats-side-by-side">The four formats side by side <a class="anchor" href="#the-four-formats-side-by-side" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyfloats/02-formats.raku" title="This example as a file: 02-formats.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyFloats</span>;
+
+<span class="k">for</span> <span class="mf">1e0</span>, <span class="mf">0.1e0</span> -&gt; <span class="nv">$n</span> {
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-6s bin16=0x%04X  bf16=0x%04X  e5m2=0x%02X  tf32=0x%08X'</span>,
+        <span class="nv">$n</span>.<span class="nb">gist</span>, <span class="n">bin16-from-num</span>(<span class="nv">$n</span>), <span class="n">bf16-from-num</span>(<span class="nv">$n</span>), <span class="n">e5m2-from-num</span>(<span class="nv">$n</span>), <span class="n">tf32-from-num</span>(<span class="nv">$n</span>));
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'       back: bin16=%-22s bf16=%-16s e5m2=%-10s tf32=%s'</span>,
+        <span class="n">num-from-bin16</span>(<span class="n">bin16-from-num</span>(<span class="nv">$n</span>)).<span class="nb">gist</span>,
+        <span class="n">num-from-bf16</span>(<span class="n">bf16-from-num</span>(<span class="nv">$n</span>)).<span class="nb">gist</span>,
+        <span class="n">num-from-e5m2</span>(<span class="n">e5m2-from-num</span>(<span class="nv">$n</span>)).<span class="nb">gist</span>,
+        <span class="n">num-from-tf32</span>(<span class="n">tf32-from-num</span>(<span class="nv">$n</span>)).<span class="nb">gist</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>1      bin16=0x3C00  bf16=0x3F80  e5m2=0x3C  tf32=0x0001FC00
+       back: bin16=1                      bf16=1                e5m2=1          tf32=1
+0.1    bin16=0x2E66  bf16=0x3DCC  e5m2=0x2E  tf32=0x0001EE66
+       back: bin16=0.0999755859375        bf16=0.099609375      e5m2=0.09375    tf32=0.0999755859375</code></pre></div>
+<p><code>0.1</code> shows the precision ladder clearly: bfloat16 is the coarsest of the sixteen-bit pair because it spends its bits on exponent range, and E5M2 at eight bits gets nowhere near.</p>
+<h2 id="boundaries">Boundaries <a class="anchor" href="#boundaries" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyfloats/03-boundaries.raku" title="This example as a file: 03-boundaries.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyFloats</span>;
+
+<span class="nb">say</span> <span class="s">'bin16 maximum finite value 65504 : 0x'</span>, <span class="n">bin16-from-num</span>(<span class="mf">65504e0</span>).<span class="n">base</span>(<span class="mi">16</span>);
+<span class="nb">say</span> <span class="s">'bin16 of 70000 overflows to Inf  : '</span>, <span class="n">num-from-bin16</span>(<span class="n">bin16-from-num</span>(<span class="mf">70000e0</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'bin16 of 1e-8 underflows to zero : '</span>, <span class="n">num-from-bin16</span>(<span class="n">bin16-from-num</span>(<span class="mf">1e-8</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'e5m2 maximum finite value 57344  : '</span>, <span class="n">num-from-e5m2</span>(<span class="n">e5m2-from-num</span>(<span class="mf">57344e0</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'e5m2 of 1e6 overflows to Inf     : '</span>, <span class="n">num-from-e5m2</span>(<span class="n">e5m2-from-num</span>(<span class="mf">1e6</span>)).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'negative zero keeps its sign bit : 0x'</span>, <span class="n">bin16-from-num</span>(-<span class="mf">0e0</span>).<span class="n">base</span>(<span class="mi">16</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>bin16 maximum finite value 65504 : 0x7BFF
+bin16 of 70000 overflows to Inf  : Inf
+bin16 of 1e-8 underflows to zero : 0
+
+e5m2 maximum finite value 57344  : 57344
+e5m2 of 1e6 overflows to Inf     : Inf
+
+negative zero keeps its sign bit : 0x8000</code></pre></div>
+<p>Overflow saturates to infinity and underflow flushes to zero, which is what IEEE says should happen.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>The <code>*-from-num</code> subs take an untyped <code>$num</code> and require a real native <code>Num</code>, and the two engines disagree about what happens if you hand them anything else.</p>
+<p><code>bin16-from-num(1)</code> — an <code>Int</code> literal, which is what <code>1</code> is in Raku — returns the perfectly correct <code>15360</code> on Raku++ and <strong>throws</strong> <code>This type cannot unbox to a native number: P6opaque, Int</code> on Rakudo. Same for a <code>Rat</code>, so <code>bin16-from-num(0.5)</code> is Raku++-only too.</p>
+<p>Because the signature is untyped there is no compile-time warning on either engine, and numeric literals in Raku are <code>Int</code> and <code>Rat</code> by default — so <code>bin16-from-num(1)</code> and <code>bin16-from-num(0.5)</code> are the <em>natural</em> things to write and neither is portable.</p>
+<p>Write <code>1e0</code> and <code>0.5e0</code>, or coerce with <code>.Num</code>, as every example on this page does.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>That input-type divergence is the difference, and it is the one that matters. Once the argument is a genuine <code>Num</code>, every conversion in this page is byte-identical on both engines.</p>
+<p>One thing to guard on both: <code>num-from-bin16</code> performs <strong>no range check on its input</strong>. A negative value and a pattern wider than sixteen bits both silently return <code>NaN</code>, so a corrupted or mis-shifted bit pattern is indistinguishable from a genuine NaN payload:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/tinyfloats/04-range.raku" title="This example as a file: 04-range.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">TinyFloats</span>;
+
+<span class="nb">say</span> <span class="s">'num-from-bin16(-1)      : '</span>, <span class="n">num-from-bin16</span>(-<span class="mi">1</span>).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">'num-from-bin16(0x1FFFF) : '</span>, <span class="n">num-from-bin16</span>(<span class="mh">0x1FFFF</span>).<span class="nb">gist</span>, <span class="s">'   (17 bits wide)'</span>;
+<span class="nb">say</span> <span class="s">'a genuine NaN pattern   : '</span>, <span class="n">num-from-bin16</span>(<span class="mh">0x7E00</span>).<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'all three are indistinguishable by their result'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>num-from-bin16(-1)      : NaN
+num-from-bin16(0x1FFFF) : NaN   (17 bits wide)
+a genuine NaN pattern   : NaN
+
+all three are indistinguishable by their result</code></pre></div>
+<p>Mask your input to the format's width before decoding.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+<script src="/theme/copy.js?v=2303be21" defer></script>
+</body>
+</html>
