@@ -124,6 +124,7 @@ says so, and so does the file.
 | [`games-maze/`](games-maze/) | [Games::Maze](https://raku.online/modules/games-maze/) | `rakupp install Games::Maze` |
 | [`geo-ellipsoid/`](geo-ellipsoid/) | [Geo::Ellipsoid](https://raku.online/modules/geo-ellipsoid/) | `rakupp install Geo::Ellipsoid` |
 | [`geo-geometry/`](geo-geometry/) | [Geo::Geometry](https://raku.online/modules/geo-geometry/) | `rakupp install Geo::Geometry` |
+| [`geo-hash/`](geo-hash/) | [Geo::Hash](https://raku.online/modules/geo-hash/) | `rakupp install Geo::Hash` |
 | [`geo-location/`](geo-location/) | [Geo::Location](https://raku.online/modules/geo-location/) | `rakupp install Geo::Location` |
 | [`geo-wellknownbinary/`](geo-wellknownbinary/) | [Geo::WellKnownBinary](https://raku.online/modules/geo-wellknownbinary/) | `rakupp install Geo::WellKnownBinary` |
 | [`getopt-long/`](getopt-long/) | [Getopt::Long](https://raku.online/modules/getopt-long/) | `rakupp install Getopt::Long` |
