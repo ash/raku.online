@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compress::Zlib — The Raku Ecosystem, Working</title>
+<meta name="description" content="compress and uncompress over libz, plus the three framings — raw deflate, a zlib header, a gzip header — and a filehandle wrapper that reads or writes a gzip file as if it were text.">
+<link rel="canonical" href="https://raku.online/modules/compress-zlib/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Compress::Zlib — The Raku Ecosystem, Working">
+<meta property="og:description" content="compress and uncompress over libz, plus the three framings — raw deflate, a zlib header, a gzip header — and a filehandle wrapper that reads or writes a gzip file as if it were text.">
+<meta property="og:url" content="https://raku.online/modules/compress-zlib/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Compress::Zlib","description":"compress and uncompress over libz, plus the three framings — raw deflate, a zlib header, a gzip header — and a filehandle wrapper that reads or writes a gzip file as if it were text.","programmingLanguage":"Raku","version":"1.1.0","url":"https://raku.online/modules/compress-zlib/","license":"https://spdx.org/licenses/(none stated)","codeRepository":"https://github.com/retupmoca/P6-Compress-Zlib.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/eco.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · encoding</div><h1>Compress::Zlib</h1><span class="status st-full">Works</span></div><p class="summary">compress and uncompress over libz, plus the three framings — raw deflate, a zlib header, a gzip header — and a filehandle wrapper that reads or writes a gzip file as if it were text.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>1.1.0</code> <span class="fact-sub">github:retupmoca</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>Compress::Zlib::Raw</code></dd></div><div class="fact"><dt>License</dt><dd>(none stated)</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-16 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/github:retupmoca/Compress::Zlib">raku.land</a> · <a href="https://github.com/retupmoca/P6-Compress-Zlib.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Compress::Zlib</code></pre></div><p class="fact-sub"><code>zef install Compress::Zlib</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Three things share the name "zlib" and they are not interchangeable. There is the DEFLATE algorithm; there is the two-byte zlib framing around it that RFC 1950 describes; and there is the gzip framing of RFC 1952, with its magic number, timestamp and CRC. A library that gives you only one of the three cannot read a <code>.gz</code> file, or cannot write the payload of a PNG chunk.</p>
+<p>This distribution gives you all three, over the real libz through <code>Compress::Zlib::Raw</code>, and it is the reason the eight distributions that depend on it do not each bind their own FFI.</p>
+<h2 id="round-trips-and-levels">Round trips and levels <a class="anchor" href="#round-trips-and-levels" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/compress-zlib/01-zlib.raku" title="This example as a file: 01-zlib.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Compress::Zlib</span>;
+
+<span class="k">my</span> <span class="nv">$text</span> = (<span class="s">'The quick brown fox jumps over the lazy dog. '</span> <span class="n">x</span> <span class="mi">20</span>).<span class="n">encode</span>;
+<span class="nb">say</span> <span class="s">'original      : '</span>, <span class="nv">$text</span>.<span class="nb">bytes</span>, <span class="s">' bytes'</span>;
+
+<span class="k">for</span> <span class="mi">1</span>, <span class="mi">6</span>, <span class="mi">9</span> -&gt; <span class="nv">$level</span> {
+    <span class="k">my</span> <span class="nv">$z</span> = <span class="n">compress</span>(<span class="nv">$text</span>, <span class="nv">$level</span>);
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'level %d       : %4d bytes   round-trips: %s'</span>,
+                <span class="nv">$level</span>, <span class="nv">$z</span>.<span class="nb">bytes</span>, <span class="n">uncompress</span>(<span class="nv">$z</span>).<span class="n">decode</span> <span class="n">eq</span> <span class="nv">$text</span>.<span class="n">decode</span>);
+}
+
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'header of compress() : '</span>, <span class="n">compress</span>(<span class="nv">$text</span>)[<span class="mi">0</span>.<span class="mf">.1</span>]».<span class="n">fmt</span>(<span class="s">'%02x'</span>).<span class="nb">join</span>(<span class="s">' '</span>), <span class="s">'   (zlib)'</span>;
+
+<span class="k">my</span> <span class="nv">$gz</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">'zlib-demo-'</span> ~ <span class="nv">$*PID</span> ~ <span class="s">'.gz'</span>);
+<span class="n">gzspurt</span>(<span class="nv">$gz</span>.<span class="nb">Str</span>, <span class="nv">$text</span>.<span class="n">decode</span>);
+<span class="nb">say</span> <span class="s">'header of a gzspurt  : '</span>, <span class="nv">$gz</span>.<span class="nb">slurp</span>(:<span class="n">bin</span>)[<span class="mi">0</span>.<span class="mf">.2</span>]».<span class="n">fmt</span>(<span class="s">'%02x'</span>).<span class="nb">join</span>(<span class="s">' '</span>), <span class="s">'   (gzip)'</span>;
+<span class="nb">say</span> <span class="s">'gzslurp round-trips  : '</span>, <span class="n">gzslurp</span>(<span class="nv">$gz</span>.<span class="nb">Str</span>) <span class="n">eq</span> <span class="nv">$text</span>.<span class="n">decode</span>;
+<span class="nv">$gz</span>.<span class="nb">unlink</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>original      : 900 bytes
+level 1       :   63 bytes   round-trips: True
+level 6       :   61 bytes   round-trips: True
+level 9       :   61 bytes   round-trips: True
+
+header of compress() : 78 9c   (zlib)
+header of a gzspurt  : 1f 8b 08   (gzip)
+gzslurp round-trips  : True</code></pre></div>
+<p>The level is the usual 1–9 and the usual disappointment: on text this repetitive, level 1 is within two bytes of level 9, and the gap that matters in practice is between compressing and not. <code>compress</code> takes a <code>Blob</code> and returns a <code>Buf</code>, so encoding is your business — the <code>.encode</code> and <code>.decode</code> above are not decoration.</p>
+<p>The headers are the point of the last three lines. <code>compress</code> writes <code>78 9c</code>, the zlib framing. <code>gzspurt</code> writes <code>1f 8b 08</code>, the gzip magic and the deflate method byte, which is what <code>gunzip</code> and every browser expect.</p>
+<h2 id="the-three-framings">The three framings <a class="anchor" href="#the-three-framings" aria-label="link">#</a></h2>
+<p><code>zwrap</code> is the switch between them, and it is the part of the API most likely to surprise: it does <strong>not</strong> return a <code>Buf</code>. It returns a <code>Compress::Zlib::Wrap</code> — a filehandle-like object with <code>.get</code>, <code>.lines</code>, <code>.slurp</code>, <code>.print</code> and <code>.close</code> — because its job is to wrap a <em>stream</em>, not to transform a buffer.</p>
+<div class="native-ex"><pre class="native-code"><code><span class="k">my</span> <span class="nv">$wrapped</span> = <span class="n">zwrap</span>(<span class="nv">$fh</span>, :<span class="n">gzip</span>);   <span class="c1"># a Wrap around a handle, not bytes</span>
+<span class="nv">$wrapped</span>.<span class="nb">print</span>(<span class="s">&quot;...&quot;</span>);             <span class="c1"># goes through the compressor</span>
+<span class="nv">$wrapped</span>.<span class="nb">close</span>;
+
+<span class="n">zwrap</span>(<span class="nv">$blob</span>, :<span class="n">gzip</span>).<span class="nb">bytes</span>          <span class="c1"># No such method 'bytes' — this is the trap</span></code></pre></div>
+<p>So there are two levels to the API. <code>compress</code>/<code>uncompress</code> are buffer-to-buffer and take the zlib framing. <code>zwrap</code> plus <code>gzslurp</code>/<code>gzspurt</code> are the stream level, and <code>:zlib</code>, <code>:deflate</code> and <code>:gzip</code> choose the framing there.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every level, both round trips, both headers and the <code>gzslurp</code> read produced identical output on Raku++ and Rakudo, and the distribution's three test files pass whole on both.</p>
+<p>Two things to know that are not engine-related. The distribution states no license, which matters if you are vendoring it. And <code>uncompress</code> on data that is not valid zlib does not throw a typed exception — it comes back from libz as an error the wrapper turns into a generic failure, so a program reading untrusted bytes should check the result rather than rely on catching something specific.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+<script src="/theme/copy.js?v=76f98739" defer></script>
+</body>
+</html>

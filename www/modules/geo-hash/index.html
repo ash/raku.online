@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geo::Hash — The Raku Ecosystem, Working</title>
+<meta name="description" content="Encodes a latitude and longitude into a geohash string and decodes one back, over a bundled C library — three subs, and the prefix property that makes the format worth using at all.">
+<link rel="canonical" href="https://raku.online/modules/geo-hash/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Geo::Hash — The Raku Ecosystem, Working">
+<meta property="og:description" content="Encodes a latitude and longitude into a geohash string and decodes one back, over a bundled C library — three subs, and the prefix property that makes the format worth using at all.">
+<meta property="og:url" content="https://raku.online/modules/geo-hash/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Geo::Hash","description":"Encodes a latitude and longitude into a geohash string and decodes one back, over a bundled C library — three subs, and the prefix property that makes the format worth using at all.","programmingLanguage":"Raku","version":"0.0.3","url":"https://raku.online/modules/geo-hash/","license":"https://spdx.org/licenses/BSD-3-Clause","codeRepository":"https://github.com/titsuki/raku-Geo-Hash"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/eco.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · geo</div><h1>Geo::Hash</h1><span class="status st-full">Works</span></div><p class="summary">Encodes a latitude and longitude into a geohash string and decodes one back, over a bundled C library — three subs, and the prefix property that makes the format worth using at all.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.0.3</code> <span class="fact-sub">cpan:TITSUKI</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core (it builds and bundles libgeohash)</code></dd></div><div class="fact"><dt>License</dt><dd>BSD-3-Clause</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-16 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/cpan:TITSUKI/Geo::Hash">raku.land</a> · <a href="https://github.com/titsuki/raku-Geo-Hash">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Geo::Hash</code></pre></div><p class="fact-sub"><code>zef install Geo::Hash</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>A geohash turns a point on the globe into a short string. The longer the string, the smaller the box it names — and, crucially, two nearby points share a prefix. That is what makes the format useful: a proximity test becomes a string comparison, and a database index over the strings becomes a spatial index.</p>
+<p>This distribution exposes three subs over a bundled copy of libgeohash. There is no object to construct and nothing to configure.</p>
+<h2 id="encoding-and-decoding">Encoding and decoding <a class="anchor" href="#encoding-and-decoding" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-hash/01-geohash-roundtrip.raku" title="This example as a file: 01-geohash-roundtrip.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::Hash</span>;
+
+<span class="c1"># Tokyo Station, to eight characters</span>
+<span class="k">my</span> <span class="nv">$hash</span> = <span class="n">geo-encode</span>(<span class="mf">35.6812e0</span>, <span class="mf">139.7671e0</span>, <span class="mi">8</span>);
+<span class="nb">say</span> <span class="nv">$hash</span>;
+
+<span class="c1"># …and back. Decoding returns a Coord, not a pair of numbers.</span>
+<span class="k">my</span> <span class="nv">$c</span> = <span class="n">geo-decode</span>(<span class="nv">$hash</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">latitude</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">longitude</span>.<span class="nb">round</span>(<span class="mf">0.0001</span>);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>xn76urx6
+35.6813
+139.7672</code></pre></div>
+<p>The round trip does not return what you put in, and it is not meant to. A geohash names a <em>box</em>, so decoding gives you a point inside the box the original coordinates fell into — here about eleven metres from Tokyo Station, which is what eight characters buys.</p>
+<p>Note the <code>e0</code> on the arguments. <code>geo-encode</code> is declared <code>Num $lat, Num $lng</code>, and a bare <code>35.6812</code> is a <code>Rat</code>: passing one is a type error rather than a silent coercion. Write the literals with an exponent, or call <code>.Num</code> yourself.</p>
+<h2 id="precision-is-the-length-of-the-string">Precision is the length of the string <a class="anchor" href="#precision-is-the-length-of-the-string" aria-label="link">#</a></h2>
+<p>Each character narrows the box, alternating between longitude and latitude, so the height falls by a factor of eight for every two characters:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-hash/02-geohash-precision.raku" title="This example as a file: 02-geohash-precision.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::Hash</span>;
+
+<span class="k">for</span> <span class="mi">1</span>, <span class="mi">3</span>, <span class="mi">5</span>, <span class="mi">7</span> -&gt; <span class="nv">$p</span> {
+    <span class="k">my</span> <span class="nv">$h</span> = <span class="n">geo-encode</span>(<span class="mf">35.6812e0</span>, <span class="mf">139.7671e0</span>, <span class="nv">$p</span>);
+    <span class="k">my</span> <span class="nv">$c</span> = <span class="n">geo-decode</span>(<span class="nv">$h</span>);
+    <span class="nb">say</span> <span class="nv">$h</span>.<span class="n">fmt</span>(<span class="s">'%-8s'</span>), <span class="s">' '</span>, (<span class="nv">$c</span>.<span class="n">north</span> - <span class="nv">$c</span>.<span class="n">south</span>).<span class="nb">round</span>(<span class="mf">0.000001</span>), <span class="s">'° tall'</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>x        45° tall
+xn7      1.40625° tall
+xn76u    0.043945° tall
+xn76urx  0.001373° tall</code></pre></div>
+<p><code>Geo::Hash::Coord</code> carries six accessors — <code>latitude</code>, <code>longitude</code>, and the <code>north</code>, <code>south</code>, <code>east</code>, <code>west</code> edges of the box — all <code>num64</code>. The edges are what you want for anything that has to know how coarse the answer is.</p>
+<h2 id="the-prefix-property">The prefix property <a class="anchor" href="#the-prefix-property" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/geo-hash/03-geohash-prefix.raku" title="This example as a file: 03-geohash-prefix.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Geo::Hash</span>;
+
+<span class="k">my</span> <span class="nv">@hashes</span> = (<span class="mi">4</span>, <span class="mi">6</span>, <span class="mi">8</span>).<span class="nb">map</span>: { <span class="n">geo-encode</span>(<span class="mf">35.6812e0</span>, <span class="mf">139.7671e0</span>, <span class="nv">$_</span>) };
+<span class="nb">say</span> <span class="nv">@hashes</span>.<span class="nb">join</span>(<span class="s">' '</span>);
+<span class="nb">say</span> <span class="nv">@hashes</span>[<span class="mi">2</span>].<span class="n">starts-with</span>(<span class="nv">@hashes</span>[<span class="mi">0</span>]);</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>xn76 xn76ur xn76urx6
+True</code></pre></div>
+<p>A shorter hash for the same point is a prefix of a longer one. Two points in the same <code>xn76</code> box agree on four characters whatever precision you stored them at, so <code>LIKE 'xn76%'</code> is a bounding-box query and <code>.starts-with</code> is a proximity test. The caveat every geohash user learns eventually: the converse does not hold. Two points can be metres apart and share nothing, because a cell boundary runs between them — the Greenwich meridian and the equator are the worst of these. If you need neighbours rather than a containment test, that is what <code>geo-neighbors</code> is for; it returns the eight surrounding cells at the same precision.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere in this distribution's own results: the hashes, the decoded coordinates and the box edges are identical on Raku++ and Rakudo, and the test file passes on both.</p>
+<p>One difference in the surrounding language is worth knowing if you format these numbers, because it will show up the moment you reach for <code>printf</code>. The two engines round a tie differently:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="nb">printf</span>(<span class="s">&quot;%.4f\n&quot;</span>, <span class="mf">1.40625e0</span>);   <span class="c1"># Raku++ 1.4062   ·  Rakudo 1.4063</span>
+<span class="nb">printf</span>(<span class="s">&quot;%.2f\n&quot;</span>, <span class="mf">2.675e0</span>);     <span class="c1"># Raku++ 2.67     ·  Rakudo 2.68</span></code></pre></div>
+<p>Raku++ rounds half to even, as C's <code>printf</code> does; Rakudo rounds half away from zero. The first line is a genuine tie — <code>1.40625</code> is exactly representable, and it is exactly the height of an <code>xn7</code> box — so either answer is defensible. The second is not a tie at all: <code>2.675</code> is stored as <code>2.67499999…</code>, so <code>2.67</code> is the correctly rounded result and <code>2.68</code> is not.</p>
+<p>The practical advice is the same either way: round with <code>.round</code> before you format, rather than leaving the tie to <code>printf</code>.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+<script src="/theme/copy.js?v=76f98739" defer></script>
+</body>
+</html>

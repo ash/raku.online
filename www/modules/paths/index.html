@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paths — The Raku Ecosystem, Working</title>
+<meta name="description" content="A recursive file finder that returns a lazy Seq of absolute paths, with separate matchers for directories and files — and a `:recurse` flag that does not mean what its name suggests.">
+<link rel="canonical" href="https://raku.online/modules/paths/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="paths — The Raku Ecosystem, Working">
+<meta property="og:description" content="A recursive file finder that returns a lazy Seq of absolute paths, with separate matchers for directories and files — and a `:recurse` flag that does not mean what its name suggests.">
+<meta property="og:url" content="https://raku.online/modules/paths/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"paths","description":"A recursive file finder that returns a lazy Seq of absolute paths, with separate matchers for directories and files — and a `:recurse` flag that does not mean what its name suggests.","programmingLanguage":"Raku","version":"10.2","url":"https://raku.online/modules/paths/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/lizmat/paths.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/eco.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · files</div><h1>paths</h1><span class="status st-full">Works</span></div><p class="summary">A recursive file finder that returns a lazy Seq of absolute paths, with separate matchers for directories and files — and a <code>:recurse</code> flag that does not mean what its name suggests.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>10.2</code> <span class="fact-sub">zef:lizmat</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>3 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-16 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:lizmat/paths">raku.land</a> · <a href="https://github.com/lizmat/paths.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install paths</code></pre></div><p class="fact-sub"><code>zef install paths</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>dir</code> is in the core and recurses into nothing. Writing the recursion yourself is six lines and they are the same six lines every time, plus the two you forget: skipping the directories you cannot read, and not following a symlink into a loop.</p>
+<p><code>paths</code> is those lines, as a lazy <code>Seq</code> of absolute path strings. Lazy matters: <code>paths($root).first(*.ends-with('.lock'))</code> stops walking when it finds one.</p>
+<h2 id="walking-a-tree">Walking a tree <a class="anchor" href="#walking-a-tree" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/paths/01-walk.raku" title="This example as a file: 01-walk.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">paths</span>;
+
+<span class="k">my</span> <span class="nv">$root</span> = <span class="nv">$*TMPDIR</span>.<span class="n">add</span>(<span class="s">'paths-demo-'</span> ~ <span class="nv">$*PID</span>);
+<span class="k">for</span> &lt;<span class="n">keep</span>/<span class="n">a</span>.<span class="n">txt</span> <span class="n">keep</span>/<span class="n">inner</span>/<span class="n">b</span>.<span class="n">txt</span> <span class="n">skip</span>/<span class="n">a</span>.<span class="n">txt</span> <span class="n">skip</span>/<span class="n">inner</span>/<span class="n">b</span>.<span class="n">txt</span> <span class="n">root</span>.<span class="n">txt</span>&gt; -&gt; <span class="nv">$rel</span> {
+    <span class="k">my</span> <span class="nv">$f</span> = <span class="nv">$root</span>.<span class="n">add</span>(<span class="nv">$rel</span>);
+    <span class="nv">$f</span>.<span class="n">parent</span>.<span class="nb">mkdir</span>;
+    <span class="nv">$f</span>.<span class="nb">spurt</span>(<span class="s">'x'</span>);
+}
+<span class="k">sub</span> <span class="n">rel</span>(<span class="nv">$p</span>) { <span class="nv">$p</span>.<span class="nb">substr</span>(<span class="nv">$root</span>.<span class="nb">Str</span>.<span class="nb">chars</span> + <span class="mi">1</span>) }
+<span class="k">sub</span> <span class="n">show</span>(<span class="nv">$label</span>, <span class="nv">@found</span>) { <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-26s %s'</span>, <span class="nv">$label</span>, <span class="nv">@found</span>.<span class="nb">map</span>(<span class="nv">&amp;rel</span>).<span class="nb">sort</span>.<span class="nb">join</span>(<span class="s">'  '</span>)) }
+
+<span class="n">show</span> <span class="s">'everything:'</span>,       <span class="n">paths</span>(<span class="nv">$root</span>).<span class="nb">list</span>;
+<span class="n">show</span> <span class="s">'only *.txt:'</span>,       <span class="n">paths</span>(<span class="nv">$root</span>, :<span class="n">file</span>(<span class="sr">/ '.txt' $ /</span>)).<span class="nb">list</span>;
+<span class="n">show</span> <span class="s">':!recurse alone:'</span>,  <span class="n">paths</span>(<span class="nv">$root</span>, :!<span class="n">recurse</span>).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="n">show</span> <span class="s">':dir(keep) :!recurse'</span>, <span class="n">paths</span>(<span class="nv">$root</span>, :<span class="n">dir</span>(<span class="sr">/ keep | inner /</span>), :!<span class="n">recurse</span>).<span class="nb">list</span>;
+<span class="n">show</span> <span class="s">':dir(keep) :recurse'</span>,  <span class="n">paths</span>(<span class="nv">$root</span>, :<span class="n">dir</span>(<span class="sr">/ keep | inner /</span>), :<span class="n">recurse</span>).<span class="nb">list</span>;
+
+<span class="nb">run</span> <span class="s">'rm'</span>, <span class="s">'-rf'</span>, <span class="nv">$root</span>.<span class="nb">Str</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>everything:                keep/a.txt  keep/inner/b.txt  root.txt  skip/a.txt  skip/inner/b.txt
+only *.txt:                keep/a.txt  keep/inner/b.txt  root.txt  skip/a.txt  skip/inner/b.txt
+:!recurse alone:           keep/a.txt  keep/inner/b.txt  root.txt  skip/a.txt  skip/inner/b.txt
+
+:dir(keep) :!recurse       keep/a.txt  keep/inner/b.txt  root.txt
+:dir(keep) :recurse        keep/a.txt  keep/inner/b.txt  root.txt  skip/inner/b.txt</code></pre></div>
+<p><code>:file</code> takes anything that smartmatches — a <code>Regex</code> as here, a <code>Str</code> for an exact name, a <code>Callable</code> for anything else — and so does <code>:dir</code>. The filters are independent: <code>:file</code> decides what is <em>returned</em>, <code>:dir</code> decides what is <em>entered</em>.</p>
+<h2 id="the-one-thing-to-know">The one thing to know <a class="anchor" href="#the-one-thing-to-know" aria-label="link">#</a></h2>
+<p>Look at the third line of output. <code>:!recurse</code> returned the whole tree — the same five files as the default. The flag is not an on/off switch for recursion.</p>
+<p><code>:recurse</code> asks: <em>should the walk descend into directories that do not match <code>:dir</code>?</em> The module's own source says so in a comment — <code># recurse on non-matching dirs?</code> — and with no <code>:dir</code> matcher every directory matches, so the flag has nothing to decide and the walk is fully recursive either way.</p>
+<p>The last two lines are the flag doing its job. With <code>:dir(/ keep | inner /)</code>:</p>
+<ul><li><code>:!recurse</code> visits <code>keep/</code> and <code>keep/inner/</code> and stops at <code>skip/</code>, because <code>skip</code> does not match and descending into non-matching directories is off.</li><li><code>:recurse</code> descends <em>through</em> the non-matching <code>skip/</code> and finds <code>skip/inner/b.txt</code>, because <code>inner</code> matches even though its parent does not.</li></ul>
+<p>So <code>:dir</code> alone prunes, and <code>:recurse</code> says whether the pruning is a wall or a filter. If what you wanted was "this directory only, no subdirectories", that is <code>dir($path)</code> from the core, not this module.</p>
+<p><code>root.txt</code> appears in all of them: files directly in the starting directory are not subject to <code>:dir</code> at all.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every walk above, including both <code>:dir</code>/<code>:recurse</code> combinations, produced identical output on Raku++ and Rakudo, and the three test files pass on both.</p>
+<p>One portability note that is about the shell rather than the engines: the paths come back absolute and unsorted — the order is the filesystem's. Sort them if you are going to print them, which is what the example does and what any test of your own should do.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+<script src="/theme/copy.js?v=76f98739" defer></script>
+</body>
+</html>

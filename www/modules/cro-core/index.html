@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cro::Core — The Raku Ecosystem, Working</title>
+<meta name="description" content="The pieces every Cro library is built from — a URI and IRI parser that implements RFC 3986 resolution, a media-type parser that splits the structured suffix, and the pipeline composer the HTTP and WebSocket libraries plug into.">
+<link rel="canonical" href="https://raku.online/modules/cro-core/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cro::Core — The Raku Ecosystem, Working">
+<meta property="og:description" content="The pieces every Cro library is built from — a URI and IRI parser that implements RFC 3986 resolution, a media-type parser that splits the structured suffix, and the pipeline composer the HTTP and WebSocket libraries plug into.">
+<meta property="og:url" content="https://raku.online/modules/cro-core/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Cro::Core","description":"The pieces every Cro library is built from — a URI and IRI parser that implements RFC 3986 resolution, a media-type parser that splits the structured suffix, and the pipeline composer the HTTP and WebSocket libraries plug into.","programmingLanguage":"Raku","version":"0.8.10","url":"https://raku.online/modules/cro-core/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/croservices/cro-core.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/eco.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · web</div><h1>Cro::Core</h1><span class="status st-full">Works</span></div><p class="summary">The pieces every Cro library is built from — a URI and IRI parser that implements RFC 3986 resolution, a media-type parser that splits the structured suffix, and the pipeline composer the HTTP and WebSocket libraries plug into.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.8.10</code> <span class="fact-sub">zef:cro</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>9 files, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-16 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:cro/Cro::Core">raku.land</a> · <a href="https://github.com/croservices/cro-core.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install Cro::Core</code></pre></div><p class="fact-sub"><code>zef install Cro::Core</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p>Cro is a set of libraries for writing services, and this distribution is the layer underneath all of them: twenty-three units that between them define what a message is, what a connector is, how components are composed into a pipeline, and — the part that is useful entirely on its own — how to parse a URI, an IRI and a media type.</p>
+<p>You do not need to be writing a Cro service to want the last group. <code>Cro::Uri</code> is a complete RFC 3986 implementation with reference resolution, which the core language does not ship, and <code>Cro::MediaType</code> knows about structured suffixes, which is the difference between recognising <code>application/vnd.api+json</code> as JSON and not recognising it at all.</p>
+<h2 id="taking-a-uri-apart">Taking a URI apart <a class="anchor" href="#taking-a-uri-apart" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cro-core/01-uri.raku" title="This example as a file: 01-uri.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cro::Uri</span>;
+
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">Cro::Uri</span>.<span class="n">parse</span>(<span class="s">'https://ash:s3cret@example.com:8443/a/b%20c/d?q=1&amp;r=2#frag'</span>);
+
+<span class="k">for</span> &lt;<span class="n">scheme</span> <span class="n">userinfo</span> <span class="n">user</span> <span class="n">password</span> <span class="n">host</span> <span class="n">port</span> <span class="n">authority</span> <span class="n">path</span> <span class="n">query</span> <span class="n">fragment</span>&gt; -&gt; <span class="nv">$part</span> {
+    <span class="k">my</span> <span class="nv">$v</span> = <span class="nv">$u</span>.<span class="s">&quot;$part&quot;</span>();
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-10s %s'</span>, <span class="nv">$part</span>, <span class="nv">$v</span>.<span class="nb">defined</span> ?? <span class="nv">$v</span>.<span class="nb">Str</span> !! <span class="s">'(Nil)'</span>);
+}
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'path          : '</span>, <span class="nv">$u</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="s">'path-segments : '</span>, <span class="nv">$u</span>.<span class="n">path-segments</span>.<span class="nb">join</span>(<span class="s">' | '</span>);
+<span class="nb">say</span> <span class="s">'round-trip    : '</span>, <span class="nv">$u</span>.<span class="nb">Str</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>scheme     https
+userinfo   ash:s3cret
+user       ash
+password   s3cret
+host       example.com
+port       8443
+authority  ash:s3cret@example.com:8443
+path       /a/b%20c/d
+query      q=1&amp;r=2
+fragment   frag
+
+path          : /a/b%20c/d
+path-segments : a | b c | d
+round-trip    : https://ash:s3cret@example.com:8443/a/b%20c/d?q=1&amp;r=2#frag</code></pre></div>
+<p>Two of those rows are worth pausing on. <code>port</code> answered <code>8443</code> without being asked to coerce, because the parser stores it as an <code>Int</code>. And <code>path</code> keeps the percent-encoding while <code>path-segments</code> does not: the segment list is the decoded form, so <code>b%20c</code> arrives as <code>b c</code>. That is the right split — a path is compared and rebuilt in its encoded form, while a segment is what you match against — but it does mean the two views disagree by design, and joining <code>path-segments</code> back together does not reproduce <code>path</code>.</p>
+<h2 id="resolving-a-relative-reference">Resolving a relative reference <a class="anchor" href="#resolving-a-relative-reference" aria-label="link">#</a></h2>
+<p><code>.add</code> is RFC 3986 section 5.2, the algorithm a browser applies when it sees <code>href="../x"</code> on a page. The specification ships a table of worked examples in section 5.4, and the module gets all of them right:</p>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cro-core/02-relative.raku" title="This example as a file: 02-relative.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cro::Uri</span>;
+
+<span class="k">my</span> <span class="nv">$base</span> = <span class="n">Cro::Uri</span>.<span class="n">parse</span>(<span class="s">'http://a/b/c/d;p?q'</span>);
+
+<span class="c1"># The reference-resolution examples from RFC 3986 section 5.4.</span>
+<span class="k">for</span> &lt;<span class="n">g</span> .<span class="sr">/g g/</span> /<span class="n">g</span> //<span class="n">g</span> ?<span class="n">y</span> <span class="n">g</span>?<span class="n">y</span> <span class="c1">#s g#s . ./ .. ../ ../.. ../../g&gt; -&gt; $ref {</span>
+    <span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">'%-8s -&gt; %s'</span>, <span class="nv">$ref</span>, <span class="nv">$base</span>.<span class="n">add</span>(<span class="nv">$ref</span>).<span class="nb">Str</span>);
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>g        -&gt; http://a/b/c/g
+./g      -&gt; http://a/b/c/g
+g/       -&gt; http://a/b/c/g/
+/g       -&gt; http://a/g
+//g      -&gt; http://g
+?y       -&gt; http://a/b/c/d;p?y
+g?y      -&gt; http://a/b/c/g?y
+#s       -&gt; http://a/b/c/d;p?q#s
+g#s      -&gt; http://a/b/c/g#s
+.        -&gt; http://a/b/c/
+./       -&gt; http://a/b/c/
+..       -&gt; http://a/b/
+../      -&gt; http://a/b/
+../..    -&gt; http://a/
+../../g  -&gt; http://a/g</code></pre></div>
+<p><code>//g</code> losing the path entirely is correct and surprising the first time: a reference beginning with <code>//</code> replaces the whole authority, so the base's host <code>a</code> is discarded along with <code>/b/c/d;p</code>. The dot segments are the other half of the algorithm — <code>..</code> is resolved textually against the base path, never against a filesystem, so it cannot escape past the root.</p>
+<h2 id="media-types-including-the-suffix">Media types, including the suffix <a class="anchor" href="#media-types-including-the-suffix" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/cro-core/03-mediatype.raku" title="This example as a file: 03-mediatype.raku">File</a><pre class="native-code"><code><span class="k">use</span> <span class="n">Cro::MediaType</span>;
+
+<span class="k">for</span> <span class="s">'text/plain; charset=UTF-8'</span>,
+    <span class="s">'application/vnd.api+json'</span>,
+    <span class="s">'image/svg+xml'</span>,
+    <span class="s">'application/x-www-form-urlencoded'</span> -&gt; <span class="nv">$s</span> {
+    <span class="k">my</span> <span class="nv">$m</span> = <span class="n">Cro::MediaType</span>.<span class="n">parse</span>(<span class="nv">$s</span>);
+    <span class="nb">say</span> <span class="nv">$s</span>;
+    <span class="nb">say</span> <span class="s">'   type            '</span>, <span class="nv">$m</span>.<span class="n">type</span>;
+    <span class="nb">say</span> <span class="s">'   tree            '</span>, <span class="nv">$m</span>.<span class="n">tree</span>       || <span class="s">'(none)'</span>;
+    <span class="nb">say</span> <span class="s">'   subtype-name    '</span>, <span class="nv">$m</span>.<span class="n">subtype-name</span>;
+    <span class="nb">say</span> <span class="s">'   suffix          '</span>, <span class="nv">$m</span>.<span class="n">suffix</span>     || <span class="s">'(none)'</span>;
+    <span class="nb">say</span> <span class="s">'   subtype         '</span>, <span class="nv">$m</span>.<span class="n">subtype</span>;
+    <span class="nb">say</span> <span class="s">'   type-and-subtype '</span>, <span class="nv">$m</span>.<span class="n">type-and-subtype</span>;
+    <span class="nb">say</span> <span class="s">'   parameters      '</span>, <span class="nv">$m</span>.<span class="n">parameters</span>.<span class="nb">map</span>({ .<span class="n">key</span> ~ <span class="s">'='</span> ~ .<span class="n">value</span> }).<span class="nb">join</span>(<span class="s">', '</span>) || <span class="s">'(none)'</span>;
+}</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>text/plain; charset=UTF-8
+   type            text
+   tree            (none)
+   subtype-name    plain
+   suffix          (none)
+   subtype         plain
+   type-and-subtype text/plain
+   parameters      charset=UTF-8
+application/vnd.api+json
+   type            application
+   tree            vnd
+   subtype-name    api
+   suffix          json
+   subtype         vnd.api+json
+   type-and-subtype application/vnd.api+json
+   parameters      (none)
+image/svg+xml
+   type            image
+   tree            (none)
+   subtype-name    svg
+   suffix          xml
+   subtype         svg+xml
+   type-and-subtype image/svg+xml
+   parameters      (none)
+application/x-www-form-urlencoded
+   type            application
+   tree            (none)
+   subtype-name    x-www-form-urlencoded
+   suffix          (none)
+   subtype         x-www-form-urlencoded
+   type-and-subtype application/x-www-form-urlencoded
+   parameters      (none)</code></pre></div>
+<p>The four-way split is what the page is here for. <code>type-and-subtype</code> is what you would match on to route a request. <code>subtype</code> is the whole subtype as written. <code>tree</code> is the registration branch — <code>vnd</code> for vendor-registered types, empty for standards-tree ones — and <code>suffix</code> is the <code>+json</code> or <code>+xml</code> tail that says what the format actually <em>is</em>.</p>
+<p>So <code>application/vnd.api+json</code> is a vendor type whose encoding is JSON, and a body parser that checks <code>.suffix eq 'json'</code> handles it, along with every other <code>+json</code> type that will ever be registered, without a list. Checking <code>type-and-subtype eq 'application/json'</code> handles none of them.</p>
+<p><code>tree</code> answers the empty string rather than <code>Nil</code> when there is no tree, so test it with <code>||</code> or <code>.chars</code>, not <code>//</code> — <code>.defined</code> is always <code>True</code>.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Nowhere. Every URI part, all fifteen RFC 3986 resolution cases, and all four media types produced identical output on Raku++ and Rakudo.</p>
+<p>The distribution's own suite is nine files and passes whole on both. That is worth saying explicitly because most of Cro is asynchronous and this layer is where the asynchrony is <em>defined</em> — <code>Cro::Connector</code>, <code>Cro::Transform</code> and <code>Cro.compose</code> are roles built on <code>Supply</code> and <code>Promise</code> — but the parsers themselves are ordinary synchronous code, and it is the parsers that most programs reaching for this distribution actually want.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+<script src="/theme/copy.js?v=76f98739" defer></script>
+</body>
+</html>

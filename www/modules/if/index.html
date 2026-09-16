@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>if — The Raku Ecosystem, Working</title>
+<meta name="description" content="One pragma — `use if CONDITION, 'Module'` — that loads a distribution only when the condition holds, so a platform-only dependency costs nothing on the platforms that do not need it.">
+<link rel="canonical" href="https://raku.online/modules/if/">
+<meta property="og:site_name" content="raku.online">
+<meta property="og:type" content="article">
+<meta property="og:title" content="if — The Raku Ecosystem, Working">
+<meta property="og:description" content="One pragma — `use if CONDITION, 'Module'` — that loads a distribution only when the condition holds, so a platform-only dependency costs nothing on the platforms that do not need it.">
+<meta property="og:url" content="https://raku.online/modules/if/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"if","description":"One pragma — `use if CONDITION, 'Module'` — that loads a distribution only when the condition holds, so a platform-only dependency costs nothing on the platforms that do not need it.","programmingLanguage":"Raku","version":"0.1.5","url":"https://raku.online/modules/if/","license":"https://spdx.org/licenses/Artistic-2.0","codeRepository":"https://github.com/raku-community-modules/if.git"}</script>
+<script>window.__SITE_BASE='/modules';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/eco.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/modules/">← All modules</a></p>
+<div class="page-head"><div class="crumb">Distribution · system</div><h1>if</h1><span class="status st-div">Divergent</span></div><p class="summary">One pragma — <code>use if CONDITION, 'Module'</code> — that loads a distribution only when the condition holds, so a platform-only dependency costs nothing on the platforms that do not need it.</p><dl class="facts"><div class="fact"><dt>Version</dt><dd><code>0.1.5</code> <span class="fact-sub">zef:raku-community-modules</span></dd></div><div class="fact"><dt>Depends</dt><dd><code>none beyond the core</code></dd></div><div class="fact"><dt>License</dt><dd>Artistic-2.0</dd></div><div class="fact"><dt>Its own test suite</dt><dd>1 file, green</dd></div><div class="fact"><dt>Checked</dt><dd>2026-09-16 <span class="fact-sub">against Raku++ 3.28.0 and Rakudo 2026.08</span></dd></div><div class="fact"><dt>Where it lives</dt><dd><a href="https://raku.land/zef:raku-community-modules/if">raku.land</a> · <a href="https://github.com/raku-community-modules/if.git">source</a></dd></div></dl><h2 id="install">Install it <a class="anchor" href="#install" aria-label="link">#</a></h2><div class="native-ex"><pre class="native-code"><code><span class="sh-p">$ </span>rakupp install if</code></pre></div><p class="fact-sub"><code>zef install if</code> writes the same store; either installer leaves the module usable by both engines.</p><h2 id="what-it-is-for">What it is for <a class="anchor" href="#what-it-is-for" aria-label="link">#</a></h2>
+<p><code>use</code> happens at compile time and cannot be put inside an <code>if</code>. That leaves a gap: a module that needs <code>Win32::Registry</code> on Windows and nothing on macOS has no way to say so, and ends up either declaring a dependency that cannot install off-platform or doing the load by hand through <code>require</code>.</p>
+<p>This distribution is the missing spelling, in about twenty lines.</p>
+<h2 id="a-conditional-load">A conditional load <a class="anchor" href="#a-conditional-load" aria-label="link">#</a></h2>
+<div class="native-ex"><a class="ex-src" href="https://github.com/ash/raku.online/blob/main/examples/if/01-ifmod.raku" title="This example as a file: 01-ifmod.raku">File</a><pre class="native-code"><code><span class="c1"># The module named is only looked up when the condition is true. Here it is</span>
+<span class="c1"># false, and the name is a distribution that does not exist anywhere — which</span>
+<span class="c1"># is the whole point: a platform-only dependency costs nothing off-platform.</span>
+<span class="k">use</span> <span class="k">if</span> <span class="nv">$*DISTRO</span>.<span class="n">is-win</span>, <span class="s">'Win32::Only::Thing'</span>;
+
+<span class="nb">say</span> <span class="s">'running on windows : '</span>, <span class="nv">$*DISTRO</span>.<span class="n">is-win</span>;
+<span class="nb">say</span> <span class="s">''</span>;
+<span class="nb">say</span> <span class="s">'The statement above named a distribution that is not installed'</span>;
+<span class="nb">say</span> <span class="s">'and does not exist. With a false condition that is not an error,'</span>;
+<span class="nb">say</span> <span class="s">'not a warning, and not a lookup — the program simply continues.'</span>;</code></pre></div>
+<div class="expected"><span class="expected-label">Output</span><pre class="output"><code>running on windows : False
+
+The statement above named a distribution that is not installed
+and does not exist. With a false condition that is not an error,
+not a warning, and not a lookup — the program simply continues.</code></pre></div>
+<p>The name in the false branch is not installed and does not exist. That is the feature: with a false condition the pragma never resolves the name, so the distribution need not be present, need not be installable, and need not be real.</p>
+<h2 id="it-loads-it-does-not-import">It loads; it does not import <a class="anchor" href="#it-loads-it-does-not-import" aria-label="link">#</a></h2>
+<p>This is the part that catches people, and it is the same on both engines:</p>
+<div class="native-ex"><pre class="native-code"><code><span class="k">use</span> <span class="k">if</span> <span class="n">True</span>, <span class="s">'Compress::Zlib'</span>;
+<span class="n">compress</span>(<span class="nv">$blob</span>);                      <span class="c1"># not imported — this does not resolve</span>
+<span class="n">Compress::Zlib::compress</span>(<span class="nv">$blob</span>);      <span class="c1"># nor this</span></code></pre></div>
+<p><code>use if</code> brings the distribution in, but the exported symbols do not reach your scope. A conditional load is therefore only useful for a module whose effect is <em>not</em> a set of imported names — one that installs a <code>$*</code>-variable, registers a handler, or exists to be reached by fully-qualified class name. For a module you need to call subs from, <code>require</code> with an explicit import list is the tool.</p>
+<h2 id="where-the-two-engines-differ">Where the two engines differ <a class="anchor" href="#where-the-two-engines-differ" aria-label="link">#</a></h2>
+<p>Two, and the first is one where Raku++ is the one that works.</p>
+<p><strong>Two <code>use if</code> statements in the same file do not compile under Rakudo.</strong></p>
+<div class="native-ex"><pre class="native-code"><code><span class="k">use</span> <span class="k">if</span> <span class="n">True</span>,  <span class="s">'Digest'</span>;
+<span class="k">use</span> <span class="k">if</span> <span class="n">False</span>, <span class="s">'Whatever'</span>;
+<span class="c1"># Rakudo 2026.08:  ===SORRY!===</span>
+<span class="c1">#                  Cannot iterate object with P6opaque representation (List)</span>
+<span class="c1"># Raku++:          runs</span></code></pre></div>
+<p>The conditions do not matter — two true, two false, or one of each all fail the same way, at compile time, before the program starts. Since the entire purpose of the pragma is platform branching, and a module that branches on one platform usually branches on two, this is easy to walk into. Raku++ accepts both statements and runs the program.</p>
+<p><strong>The second is about when the missing import is reported.</strong> Given the <code>compress($blob)</code> above, Rakudo refuses at compile time with "Undeclared routine", while Raku++ compiles and the call fails at run time. Rakudo's timing is the better one here — a typo in a name should not wait for the line to be reached — and a program that relies on Raku++'s laziness will not port.</p>
+<p>The distribution's single test file passes on both engines.</p>
+<footer>
+<span>Every example on this site is run under Raku++ 3.28.0 and Rakudo 2026.08 before the page ships; where the two differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+<script src="/theme/copy.js?v=76f98739" defer></script>
+</body>
+</html>
