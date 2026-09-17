@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>raku — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/showcase.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>raku — a grammar of Raku, written in Raku, run by rakupp</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/raku">Source on GitHub ↗</a></p>
+<p>The other showcases parse a language rakupp is not: Lisp, Forth, JavaScript, Python, JSON, Markdown. This one parses the language rakupp <em>is</em>. The precedence ladder, statement forms and term shapes in <a href="https://github.com/ash/rakupp/blob/main/showcase/raku/raku-grammar.raku"><code>raku-grammar.raku</code></a> are the ones in <a href="https://github.com/ash/rakupp/blob/main/src/Parser.cpp"><code>src/Parser.cpp</code></a>, restated as a Raku grammar instead of as a recursive-descent parser — and rakupp runs it, so the compiler ends up parsing its own language with a grammar it executes itself.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/raku/raku-grammar.raku examples/fibonacci.raku
+build/rakupp showcase/raku/raku-grammar.raku --tree examples/hanoi.raku
+build/rakupp showcase/raku/raku-grammar.raku --check=examples</code></pre>
+<p><code>--tree</code> prints the parse tree, collapsing the levels an expression passed straight through, so what is left is the structure the operators imposed:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/raku/raku-grammar.raku --tree /tmp/x.raku
+statementlist  my $x = 1 + 2 * 3; say $x if $x &gt; 5;
+  declaration  my $x = 1 + 2 * 3
+    scope  my
+    assign-expr  $x = 1 + 2 * 3
+      variable  $x
+      assign-op  =
+      additive-expr  1 + 2 * 3
+        number  1
+        additive-op  +
+        multiplicative-expr  2 * 3
+          number  2
+          multiplicative-op  *
+          number  3</code></pre>
+<h2 id="the-ladder-is-the-compiler-s">The ladder is the compiler's</h2>
+<p>The fifteen precedence levels come from <code>classifyInfix</code> in <a href="https://github.com/ash/rakupp/blob/main/src/Parser.cpp"><code>src/Parser.cpp</code></a>, where they are <code>BP_OR</code> through <code>BP_POW</code>. Each level in the grammar is one rule of the form <code>&lt;tighter&gt;+ % &lt;operators at this level&gt;</code>, named after the <code>BP_*</code> constant it mirrors, so the grammar states what the binding-power table states:</p>
+<div class="tablewrap"><table><tr><th>Level</th><th>Operators</th></tr><tr><td><code>BP_OR</code></td><td><code>or</code> <code>xor</code> <code>orelse</code> <code>==&gt;</code> <code>&lt;==</code></td></tr>
+<tr><td><code>BP_AND</code></td><td><code>and</code> <code>andthen</code> <code>notandthen</code></td></tr>
+<tr><td><code>BP_ZIP</code></td><td><code>...</code> <code>...^</code> <code>^...</code> <code>^...^</code> <code>Z</code> <code>X</code> <code>minmax</code></td></tr>
+<tr><td><code>BP_COMMA</code></td><td><code>,</code></td></tr>
+<tr><td><code>BP_ASSIGN</code></td><td><code>=</code> <code>:=</code> <code>.=</code> <code>+=</code> … <code>=&gt;</code></td></tr>
+<tr><td><code>BP_TERNARY</code></td><td><code>?? !!</code>, the eight flip-flops</td></tr>
+<tr><td><code>BP_OROR</code></td><td><code>||</code> <code>//</code> <code>^^</code></td></tr>
+<tr><td><code>BP_ANDAND</code></td><td><code>&amp;&amp;</code></td></tr>
+<tr><td><code>BP_COMPARE</code></td><td><code>==</code> <code>eq</code> <code>~~</code> <code>&lt;=&gt;</code> <code>===</code>, the set relations</td></tr>
+<tr><td><code>BP_RANGE</code></td><td><code>..</code> <code>..^</code> <code>^..</code> <code>^..^</code> <code>o</code> <code>∘</code></td></tr>
+<tr><td><code>BP_CONCAT</code></td><td><code>~</code></td></tr>
+<tr><td><code>BP_REPLICATE</code></td><td><code>x</code> <code>xx</code></td></tr>
+<tr><td><code>BP_ADD</code></td><td><code>+</code> <code>-</code> <code>min</code> <code>max</code>, the set combinators</td></tr>
+<tr><td><code>BP_MUL</code></td><td><code>*</code> <code>/</code> <code>%</code> <code>div</code> <code>mod</code> <code>does</code> <code>but</code></td></tr>
+<tr><td><code>BP_POW</code></td><td><code>**</code> (right-associative)</td></tr></table></div>
+<p>Two consequences fall out of writing it this way. <code>/</code> starting a regex and <code>/</code> meaning division never conflict, because a regex literal is only reachable where a term is expected and the ladder has already taken the infix. And the <code>--tree</code> output above is a direct reading of the table: <code>2 * 3</code> sits under <code>1 + 2 * 3</code> because <code>BP_MUL</code> is tighter than <code>BP_ADD</code>.</p>
+<h2 id="what-it-covers-measured">What it covers, measured</h2>
+<p>Run against the Raku in this repository, comparing with what the compiler accepts:</p>
+<div class="tablewrap"><table><tr><th>Corpus</th><th>Files parsed</th></tr><tr><td><code>examples/</code></td><td>36 / 36</td></tr>
+<tr><td><code>showcase/</code></td><td>25 / 27</td></tr>
+<tr><td><code>tools/</code></td><td>69 / 75</td></tr>
+<tr><td><code>live/</code>, <code>bindings/</code></td><td>6 / 6</td></tr>
+<tr><td><code>t/</code></td><td>280 / 406</td></tr>
+<tr><td><strong>total</strong></td><td><strong>418 / 553</strong></td></tr></table></div>
+<p><code>raku-grammar.raku</code> is one of the 25 in <code>showcase/</code>: the grammar parses itself.</p>
+<p><code>t/</code> is the regression suite, so it is deliberately a catalogue of unusual syntax — atomic operators, <code>%?RESOURCES</code>, binding to hash keys, declarator doc-comments — and it is where the long tail lives.</p>
+<h2 id="what-it-is-not">What it is not</h2>
+<p>Raku is not a context-free language, and this is not a complete grammar of it. Three things in the compiler sit outside any fixed grammar, and they are worth naming because they are the reason a hand-written parser was chosen in the first place (see <a href="https://github.com/ash/rakupp/blob/main/docs/internals/PARSING.md">PARSING.md</a>):</p>
+<ul><li><strong>The terminal alphabet grows during the parse.</strong> <code>sub infix:&lt;◐&gt;</code> adds an operator, and <code>scanOpsIn</code> reads <em>other files</em> on <code>use Foo</code> to register Foo's operators before parsing starts. The grammar can recognise the declaration; it cannot then honour it.</li><li><strong>The precedence relation is computed.</strong> <code>is tighter(&amp;infix:&lt;+&gt;)</code> resolves through <code>infixBpOf</code> at parse time, so the ladder itself is program-dependent.</li><li><strong>Parse-time predicates gate productions.</strong> <code>use MONKEY-TYPING</code> decides whether <code>augment</code> parses at all.</li></ul>
+<p>So this describes one member of a family: Raku with the built-in operator table. Two further boundaries are drawn deliberately rather than forced:</p>
+<ul><li><strong>The regex sublanguage is bracketed, not parsed.</strong> A regex or <code>token</code> body is matched for balance — quotes, character classes and nested assertions are respected so a <code>}</code> inside <code>&lt;-[}]&gt;</code> does not end the block early — but its contents are not described.</li><li><strong>Heredoc bodies are lifted out before parsing.</strong> A heredoc's body begins after the <em>statement</em> that introduces it ends, so its extent is not a function of the text where <code>q:to/END/</code> appears. The driver removes bodies first (replacing them with blank lines, so reported line numbers stay true), which is where rakupp's lexer handles it too.</li></ul>
+<p>It is a recogniser for well-formed Raku, and it errs toward accepting. On a set of eight malformed inputs it agrees with the compiler's accept/reject on six; the two it wrongly accepts are cases where a statement separator is missing (<code>if $x say 1;</code>). Requiring separators strictly was tried and measured: it recovers one of those two, and costs 73 files of real coverage (418 → 345). For a grammar meant to describe the language, wrongly rejecting valid Raku is the worse failure, so the lenient rule is the one that ships.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+</body>
+</html>

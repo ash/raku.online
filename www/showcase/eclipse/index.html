@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eclipse — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/showcase.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>eclipse — predicting solar and lunar eclipses</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/eclipse">Source on GitHub ↗</a></p>
+<p>Given one integer — the number of New Moons since 6 January 2000 — this program will tell you that the Sun goes out over Iceland on 12 August 2026 at 17:46 UT, that the eclipse is total, that its shadow axis passes 5,733 km from the centre of the Earth, and that it belongs to saros series 126, which began in 1179 and will end in 2459.</p>
+<p>No ephemeris file, no table of past eclipses, no network. A few hundred sine terms and some modular arithmetic.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/eclipse/eclipse.raku                 # the next dozen eclipses
+build/rakupp showcase/eclipse/eclipse.raku 2026            # one year
+build/rakupp showcase/eclipse/eclipse.raku --solar 1900 1950
+build/rakupp showcase/eclipse/eclipse.raku --saros=139     # one family, beginning to end
+build/rakupp showcase/eclipse/eclipse.raku --phases=2026-08
+build/rakupp showcase/eclipse/eclipse.raku --seasons 2024 2027
+build/rakupp showcase/eclipse/eclipse.raku --explain=2026-08-12
+build/rakupp showcase/eclipse/eclipse.raku --check</code></pre>
+<p>The same engine also runs in a browser, because <code>rakupp --target=js</code> compiles it to JavaScript — see <a href="#the-book">the interactive book</a> below.</p>
+<h2 id="what-it-prints">What it prints</h2>
+<pre class="native-code"><code>$ build/rakupp showcase/eclipse/eclipse.raku 2026
+date       UT     kind   type                   mag    gamma  saros  notes
+------------------------------------------------------------------------------
+2026-02-17 12:13  solar  annular              1.000  -0.9738    121  central
+2026-03-03 11:34  lunar  total                1.149  -0.3773    133  totality 57m
+2026-08-12 17:46  solar  total                1.000  +0.8989    126  central
+2026-08-28 04:13  lunar  partial              0.925  +0.4990    138  partial 197m</code></pre>
+<p><code>--seasons</code> answers the question the table raises — why only four, and why in those two clusters. Each row is one New Moon; the column is <code>sin F</code>, the Moon's distance from a node, and the bracketed band is the window inside which a shadow can reach anything at all:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/eclipse/eclipse.raku --seasons 2025 2026
+new moon           sin F  node --------------------------+-------------------------- node
+2025-08-23        +0.288                      [          |        . ]
+2025-09-21        -0.241                      [   *      |          ]
+2025-10-21        -0.702           .          [          |          ]
+...
+2026-07-14        +0.634                      [          |          ]        .
+2026-08-12        +0.151                      [          |    #     ]
+2026-09-11        -0.374                     .[          |          ]</code></pre>
+<p><code>--explain</code> walks one prediction from <code>k</code> to the verdict, term by term: the mean phase, each correction in minutes, Delta T, gamma, u, and the comparison that decides between total and annular.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>Four files, and the arithmetic is all in the first one.</p>
+<div class="tablewrap"><table><tr><th>File</th><th>What it is</th></tr><tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/eclipse/lib/Eclipse.rakumod"><code>lib/Eclipse.rakumod</code></a></td><td>the engine — 550 lines, no dependencies</td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/eclipse/eclipse.raku"><code>eclipse.raku</code></a></td><td>the terminal: tables, the ASCII season strip, <code>--explain</code>, <code>--check</code></td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/eclipse/web/api.raku"><code>web/api.raku</code></a></td><td>the same engine's answers as plain data, registered on <code>globalThis</code></td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/eclipse/tools/build.raku"><code>tools/build.raku</code></a></td><td>bundle → <code>rakupp --target=js</code> → one self-contained HTML file</td></tr></table></div>
+<p><strong>Time.</strong> <code>julian-day</code> and <code>calendar-date</code> convert between calendar dates and Julian Days, Gregorian after 1582 October 15 and Julian before it. <code>delta-t</code> is the Espenak &amp; Meeus piecewise fit for TD − UT, the gap between the uniform clock the theory runs on and the rotating Earth's own.</p>
+<p><strong>Phases.</strong> <code>k</code> counts New Moons from the one of 2000 January 6; <code>k + 0.5</code> is a Full Moon. <code>mean-phase</code> is a straight line in <code>k</code>; <code>phase-terms</code> returns the periodic corrections of Meeus chapter 49 as <code>name =&gt; days</code> pairs — 25 lunar and solar terms plus the 14 planetary ones — and <code>phase-jde</code> is simply their sum added to the mean. Handing back the terms rather than a number is what lets the book switch them off one at a time: with none of them the answer is ten hours out, the largest two recover all but twenty minutes of that, and the last dozen are worth seconds each.</p>
+<p><strong>Eclipses.</strong> <code>eclipse-at($k)</code> rejects the month outright when <code>|sin F| &gt; 0.36</code> — five New Moons in six — and otherwise computes two numbers from Meeus chapter 54, then hands them to <code>classify-solar</code> or <code>classify-lunar</code>, which are pure functions of those two numbers and nothing else:</p>
+<ul><li><strong>gamma</strong>, the least distance between the shadow axis and the centre of the Earth, in Earth radii. Under 0.9972 the axis lands on the Earth and the eclipse is central somewhere; past 1.5433 + u nothing reaches us at all.</li><li><strong>u</strong>, the radius of the Moon's umbral cone where it crosses the plane through the Earth's centre. Negative: the cone still has length to spare, and the eclipse is <strong>total</strong>. Positive: it ran out above the ground, and the Sun shows as a ring — <strong>annular</strong>. In the sliver between, the curve of the Earth decides, and the same eclipse is total in the middle of its track and annular at both ends: <strong>hybrid</strong>.</li></ul>
+<p>For lunar eclipses the same two numbers give the umbral and penumbral magnitudes and, from the chord of the Moon's path across each shadow circle, the duration of every phase.</p>
+<p>Because the classifiers take only γ and u, the book can put both on sliders and send hypothetical values through the very same code a real eclipse goes through. That is the difference between reading that the hybrid band is <code>0 &lt; u &lt; 0.0047</code> and finding it by hand.</p>
+<p><strong>Saros.</strong> Eclipses 223 lunations apart form a family; consecutive family numbers are one <em>inex</em> (358 lunations) apart. So <code>k = k0 + 223a + 358b</code> and the series number is <code>s0 + b</code>. Since 358 ≡ 135 (mod 223) and 135 × 38 ≡ 1 (mod 223), the series number is <code>38 × (k − k0) + s0</code> reduced mod 223 — a modular inverse, computed once, in place of a lookup table:</p>
+<pre class="native-code"><code class="lang-raku">sub saros-series($k, Bool :$lunar) is export {
+    my ($k0, $s0) = $lunar ?? (229, 129) !! (218, 145);
+    my $n = (38 * (floor($k) - $k0) + $s0) % 223;
+    $n &lt;= 0 ?? $n + 223 !! $n;
+}</code></pre>
+<p><code>saros-run</code> walks a family from either end, 223 lunations at a time, and stops where <code>eclipse-at</code> stops answering. Series 139 comes out as 71 eclipses from 1501-05-17 to 2763-07-03; series 136 as 71 from 1360-06-14 to 2622-07-30. Both match NASA's catalogue exactly.</p>
+<h2 id="is-it-right">Is it right?</h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/showcase/eclipse/reference/catalogue.tsv"><code>reference/catalogue.tsv</code></a> holds 64 eclipses entered by hand from NASA's <em>Five Millennium Canon</em> — date, kind, type and saros number, none of it produced by this engine. <code>--check</code> reproduces them:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/eclipse/eclipse.raku --check
+near  2015-04-04  catalogue says total, the series says partial (magnitude 0.9956)
+
+63 of 64 catalogued eclipses reproduced exactly (date, type and saros)
+1 marginal case documented in reference/catalogue.tsv</code></pre>
+<p>Phase instants were checked separately against published New and Full Moon times: 1977-02-18 03:37, 2000-01-06 18:14, 2017-08-21 18:30, 2024-04-08 18:21 UT — all to the minute, as are the four phases of March 2025.</p>
+<p>The one disagreement is the point of the exercise. The lunar eclipse of 4 April 2015 was total by 0.0006 of a magnitude, with a totality of four minutes and 43 seconds; the truncated series here calls it partial by 0.004. A series whose stated precision is minutes cannot adjudicate a four-minute totality, and saying so is more useful than printing digits that are not there.</p>
+<p>What is genuinely out of reach is <em>where</em>. A path of totality needs Besselian elements — the shadow axis in Earth-fixed coordinates, sampled through the event, corrected for the observer's height and the flattening of the Earth. This program answers <em>when</em>, and what kind.</p>
+<h2 id="the-book">The book</h2>
+<p><code>web/</code> is the same engine as an interactive textbook, seven chapters with every number computed live in the browser:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/eclipse/tools/build.raku</code></pre>
+<p>Three steps, and the middle one is why this showcase exists:</p>
+<ol><li><strong>bundle</strong> — <code>lib/Eclipse.rakumod</code> and <code>web/api.raku</code> are concatenated into <code>build/engine.raku</code>, with <code>use</code> and <code>unit module</code> stripped, because <code>--target=js</code> takes a single file.</li><li><strong>transpile</strong> — <code>rakupp --target=js --standalone build/engine.raku -o web/engine.js</code>. 690 lines of Raku become 425 KB of JavaScript with the runtime inlined: classes, <code>Rat</code> arithmetic, <code>sprintf</code>, hash slices, <code>%h&lt;…&gt;</code>, <code>sort</code>, <code>sqrt</code>, the lot.</li><li><strong>inline</strong> — <code>web/index.html</code> plus that JavaScript becomes <code>web/eclipse.html</code>, one file with no dependencies that can be opened from disk or dropped on any static host.</li></ol>
+<p><code>web/api.raku</code> is the whole browser-facing surface — a hash of closures, one per widget, published with <code>use JS</code>:</p>
+<pre class="native-code"><code class="lang-raku">JS&lt;eclipse&gt; = %api;</code></pre>
+<p>so the page calls <code>eclipse.list(2001, 2050, 'solar')</code> or <code>eclipse.saros(139, false)</code> and gets plain arrays and objects back. There is no server: opening <code>web/eclipse.html</code> runs Raku.</p>
+<p>The chapters are the derivation in order — the two months and the ±0.36 window; <code>k</code> and the correction terms; gamma on the fundamental plane; the total/annular/hybrid classification as a scatter plot of every eclipse of a century; the Earth's shadow with the Moon's path drawn through it; a whole saros family with gamma drifting from pole to pole across thirteen centuries; and Delta T, the one quantity in the calculation that cannot be computed.</p>
+<p>Most of them are things to move rather than read:</p>
+<div class="tablewrap"><table><tr><th>Chapter</th><th>What you drive</th><th>What it shows</th></tr><tr><td>1</td><td>a scrubber over the window of months</td><td>eclipse seasons arriving 19 days earlier each year</td></tr>
+<tr><td>2</td><td>a checkbox per correction term, all 26</td><td>the series converging — switch one off, watch the error</td></tr>
+<tr><td>3</td><td>γ and u on sliders</td><td>the verdict flipping total → hybrid → annular → partial → nothing</td></tr>
+<tr><td>5</td><td>γ and u again, over the Earth's shadow</td><td>the Moon's path and every duration, recomputed</td></tr>
+<tr><td>6</td><td>a stepper along a saros family</td><td>6585.32 days per step, γ drifting a fixed amount each time</td></tr>
+<tr><td>7</td><td>a year slider from 1000 BC to 2500</td><td>ΔT, and the longitude error it costs</td></tr></table></div>
+<h2 id="what-it-exercised">What it exercised</h2>
+<p>The engine is arithmetic-heavy and object-light, which is a different load from the other showcases: no grammar, no I/O to speak of, and a hard requirement that a <code>Num</code> computed under the interpreter and the same <code>Num</code> computed in a browser agree to the last digit.</p>
+<p>Writing it turned up one <code>--target=js</code> bug — a multi-word hash slice (<code>%a&lt;t e m mp f om&gt;</code>) was emitted as a single item rather than a list, so every angle after the first came out <code>Nil</code> and every trigonometric term silently became zero. The transpiled engine dutifully reported an eclipse every month, all with gamma exactly 0. It is fixed in <code>src/codegen/Js.cpp</code>; the shape of the failure — plausible output, no error — is the argument for checking a transpiler against the interpreter on a program whose answers are independently known.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orbits — Raku++ showcase</title>
+<script>window.__SITE_BASE='/showcase';</script>
+<script src="/theme/boot.js?v=76f98739"></script>
+<link rel="stylesheet" href="/theme/base.css?v=76f98739">
+<link rel="stylesheet" href="/theme/shell.css?v=76f98739">
+<link rel="stylesheet" href="/theme/showcase.css?v=76f98739">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/showcase/">← All showcases</a></p>
+<h1>orbits — where the planets are, and what it costs to go there</h1>
+<p class="sc-actions"><a class="sc-btn ghost" href="https://github.com/ash/rakupp/tree/main/showcase/orbits">Source on GitHub ↗</a></p>
+<p>An orbit is six numbers. Two for the ellipse — how big, how squashed — three angles to hang that ellipse in space, and one to say where the body was at a known moment. That is the entire state of a planet, for ever.</p>
+<p>This is those six numbers made computable: Kepler's equation solved by Newton iteration, the eight planets propagated from Standish's element table, the geometry of what that looks like from the Earth, and what a Hohmann transfer between two of them costs.</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/orbits/orbits.raku                    # the solar system today
+build/rakupp showcase/orbits/orbits.raku 2030-06-01
+build/rakupp showcase/orbits/orbits.raku --map              # an orrery in characters
+build/rakupp showcase/orbits/orbits.raku --map --outer
+build/rakupp showcase/orbits/orbits.raku --planet=Mars
+build/rakupp showcase/orbits/orbits.raku --kepler=0.6       # watch Newton converge
+build/rakupp showcase/orbits/orbits.raku --events=Mars 2020 2035
+build/rakupp showcase/orbits/orbits.raku --transfer=Earth,Mars
+build/rakupp showcase/orbits/orbits.raku --check</code></pre>
+<p>The same engine runs in a browser, because <code>rakupp --target=js</code> compiles it to JavaScript — see <a href="#the-book">the book</a>.</p>
+<h2 id="what-it-prints">What it prints</h2>
+<pre class="native-code"><code>$ build/rakupp showcase/orbits/orbits.raku --transfer=Earth,Mars
+Hohmann transfer, Earth to Mars
+
+  departure orbit speed     29.785 km/s
+  on the transfer ellipse   32.729 km/s        first burn    2.945 km/s
+
+  arriving at               21.480 km/s
+  target orbit speed        24.129 km/s        second burn   2.649 km/s
+
+  total delta-v 5.594 km/s
+  time of flight             258.9 days      0.71 years
+  launch window every        779.9 days      the synodic period
+  target must lead by        +44.3°          at the moment you leave</code></pre>
+<p><code>--map</code> draws an orrery with the orbits to scale, <code>--events</code> lists oppositions, and <code>--kepler</code> shows Newton's method eating the error one digit-doubling at a time:</p>
+<pre class="native-code"><code>     M       steps  convergence, |error| per step
+   30°           5   1e-01  1e-02  9e-05  4e-09  1e-16
+   60°           4   8e-02  2e-03  1e-06  3e-13  2e-16</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<div class="tablewrap"><table><tr><th>File</th><th>What it is</th></tr><tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/orbits/lib/Orbit.rakumod"><code>lib/Orbit.rakumod</code></a></td><td>the engine — 290 lines, no dependencies</td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/orbits/orbits.raku"><code>orbits.raku</code></a></td><td>the terminal: tables, the orrery, <code>--check</code></td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/orbits/reference/known.tsv"><code>reference/known.tsv</code></a></td><td>30 values from the almanacs, none of them ours</td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/orbits/web/api.raku"><code>web/api.raku</code></a></td><td>the same answers as plain data, on <code>globalThis</code></td></tr>
+<tr><td><a href="https://github.com/ash/rakupp/blob/main/showcase/orbits/tools/build.raku"><code>tools/build.raku</code></a></td><td>bundle → <code>rakupp --target=js</code> → one HTML file</td></tr></table></div>
+<p><strong>Kepler's equation</strong> is the whole difficulty. You know the <em>mean anomaly</em> M, which grows linearly with time; you want the <em>eccentric anomaly</em> E, from which the position falls straight out. They are related by</p>
+<pre class="native-code"><code>M = E − e sin E</code></pre>
+<p>and that cannot be inverted in closed form — E is not an elementary function of M. Kepler said so in 1609 and four centuries have agreed. So <code>kepler</code> guesses and corrects, by Newton's method: the error at a guess is <code>E − e sin E − M</code>, the slope is <code>1 − e cos E</code>, and the next guess is the current one minus their ratio. Started at M it converges <em>quadratically</em> — each step roughly doubles the number of correct digits — so five or six steps exhaust a double even at e = 0.95. It returns the iteration trail as well as the answer, so a caller can watch that happen.</p>
+<p><strong>The planets</strong> come from Standish's linear fit (JPL, <em>Approximate Positions of the Major Planets</em>): each element as a value at J2000 plus a rate per century, good to a fraction of an arcminute from 1800 to 2050. <code>position</code> solves Kepler, places the body in its own orbital plane, and rotates that plane into the ecliptic by ω, then i, then Ω — three rotations, always in that order.</p>
+<p><strong>Everything else is geometry.</strong> <code>geocentric</code> subtracts the Earth's position to get what we actually see; <code>oppositions</code> scans for the turning points of the elongation; <code>hohmann</code> applies the vis-viva equation <code>v = √(GM(2/r − 1/a))</code> at each end of a transfer ellipse; <code>synodic</code> is two clock hands, <code>1/S = |1/T₁ − 1/T₂|</code>.</p>
+<h2 id="is-it-right">Is it right?</h2>
+<p><code>reference/known.tsv</code> holds thirty values taken from the almanacs and the textbooks — nothing in it was produced by this engine — and <code>--check</code> measures against them, plus twelve internal consistency checks:</p>
+<pre class="native-code"><code>$ build/rakupp showcase/orbits/orbits.raku --check
+all 42 checks passed</code></pre>
+<p>Those are: the eight sidereal periods, four synodic periods, ten opposition dates, the textbook Hohmann figures for Earth to Mars, escape and low-orbit speeds, Kepler's equation solved to better than 1e−11 at seven eccentricities and twenty-four mean anomalies each, and every planet's radius agreeing with its own coordinates.</p>
+<p>The opposition dates are the sharpest test, because being a day out is visible. All ten land on the almanac date:</p>
+<pre class="native-code"><code>Mars       2020-10-13   2022-12-08   2025-01-16   2027-02-19
+Jupiter    2022-09-26   2023-11-03   2024-12-07
+Saturn     2022-08-14   2023-08-27   2025-09-21</code></pre>
+<h2 id="the-book">The book</h2>
+<p><code>web/</code> is the same engine as an interactive textbook:</p>
+<pre class="native-code"><code class="lang-sh">build/rakupp showcase/orbits/tools/build.raku</code></pre>
+<p>Six chapters, and the controls are the point:</p>
+<div class="tablewrap"><table><tr><th>Chapter</th><th>What you drive</th><th>What it shows</th></tr><tr><td>1</td><td><strong>all six elements, plus a view tilt</strong></td><td>the orbit redrawing; inclination stops being a number when you tip the view</td></tr>
+<tr><td>2</td><td>e and M</td><td>Newton's error collapsing 1e−1 → 1e−3 → 1e−7 → 1e−15; M, E and ν separating as e grows</td></tr>
+<tr><td>3</td><td>a date scrubber, a span, a tilt</td><td>the orrery; the inner planets bolting round while Neptune barely stirs</td></tr>
+<tr><td>4</td><td>a planet, and a range of years</td><td>the distance curve with oppositions marked on it</td></tr>
+<tr><td>5</td><td>departure and destination radii</td><td>Δv and flight time; the Δv flattening past Jupiter while the years do not</td></tr></table></div>
+<p>Chapter 1 is the one to start with. Push <code>e</code> past 0.8 and the two speed readouts separate by a factor of ten: a body on a long ellipse crawls near aphelion and crosses perihelion in a hurry. That is Kepler's second law, and it is why a launch window is a window.</p>
+<h2 id="what-it-does-not-do">What it does not do</h2>
+<p>Every model is a claim about what can be ignored, and this one ignores two big things.</p>
+<p><strong>The planets do not pull on each other here.</strong> Each follows its own ellipse as though the others did not exist, with the drift of the elements standing in for their combined effect. That is why the outer-planet periods come out up to 0.06% from the published ones: Jupiter and Saturn tug on each other hard enough to matter, and a linear element fit cannot express it.</p>
+<p><strong>Transfers assume circular, coplanar orbits.</strong> Real trajectory design solves <em>Lambert's problem</em> — given two positions and a flight time, find the orbit between them — for every pair of dates in a window, and contours the resulting Δv into a porkchop plot. That is what makes a Mars launch window three weeks wide rather than an instant. Mars's 1.85° inclination alone adds a few hundred m/s that chapter 5 does not charge you for.</p>
+<h2 id="what-it-exercised">What it exercised</h2>
+<p>Trigonometry, iteration to convergence, a table of physical constants, and rotations that are wrong if you compose them in the wrong order.</p>
+<p>It found one interpreter bug, in the parser rather than the maths: a bare identifier before a fat arrow was being lexed as a version literal, so</p>
+<pre class="native-code"><code class="lang-raku">my %h = v1 =&gt; $v1, other =&gt; 5;</code></pre>
+<p>made the key <code>"1"</code> instead of <code>"v1"</code> and <code>%h&lt;v1&gt;</code> quietly returned <code>Any</code>. Rakudo lexes it as an identifier, and rakupp now does too. Silent wrong answers from a construct that looks obviously correct are the ones worth catching.</p>
+<footer>
+<span>Every showcase runs under the interpreter and compiles to a standalone native binary with <code>rakupp --exe</code>.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=76f98739" defer></script>
+</body>
+</html>

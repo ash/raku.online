@@ -12,6 +12,7 @@ README below.
 | [**forth/**](forth) | Language power — a stack machine + word dictionary | interpreter that runs Forth files or a REPL |
 | [**perl/**](perl) | Language power — sigil variables, context, regex | interpreter that runs Perl 5 files or a REPL |
 | [**python/**](python) | Language power — the off-side rule, via an INDENT/DEDENT tokenizer | interpreter that runs Python 3 files or a REPL |
+| [**raku/**](raku) | Parsing — a grammar of Raku, so rakupp parses itself | parse-checks Raku files; prints the parse tree |
 | [**markdown/**](markdown) | Parsing — a grammar that emits HTML | converter: Markdown in, a styled page out |
 | [**json/**](json) | Parsing — a grammar that round-trips data | parse, pretty-print / minify, and query JSON |
 | [**pastebin/**](pastebin) | Deployable — a hand-written HTTP server on raw sockets | native binary you point a browser at |
@@ -22,10 +23,38 @@ README below.
 | [**jsonreq/**](jsonreq) | Ecosystem — our own modules composing | curl+jq for JSON APIs: request, query, pretty-print |
 | [**sqlite/**](sqlite) | C libraries — NativeCall and a raw-mode terminal | database client: query, browse, dump; the real libsqlite3 does the work |
 | [**gui/**](gui) | GUI — one program, three backends; `react`/`whenever` as the event loop | native desktop apps: the Counter and a Calculator, Cocoa or GTK |
+| [**eclipse/**](eclipse) | Transpiling — one engine, a terminal and a browser, through `--target=js` | predicts solar and lunar eclipses; builds an interactive textbook |
+| [**fourier/**](fourier) | Numerics — complex arithmetic and a recursive FFT, checked against exact identities | Fourier series and transforms; an oscilloscope in characters |
+| [**orbits/**](orbits) | Numerics — iteration to convergence, checked against the almanacs | where the planets are, and what a transfer to one costs |
+| [**web/**](web) | In the browser — the pure showcases compiled to WebAssembly | three apps that open from a `file://` URL, no server |
 
 All paths below are from the repository root, after building `rakupp` (see the
-top-level [README](../README.md)). Every program also compiles to a standalone
-native binary with `rakupp --exe`.
+top-level [README](../README.md)). Every program also builds a standalone
+binary with `rakupp --exe`, and eleven of the twenty-one entry points compile
+to native code. Where a program uses
+something the native path does not cover yet — a NativeCall shape, a GUI
+binding — `--exe` falls back to bundling the interpreter with the program and
+says so on stderr; the result still runs anywhere, at interpreter speed. See
+[NATIVE.md](../docs/guide/NATIVE.md).
+
+## raku — the self-hosting story
+
+A grammar of Raku, written in Raku, run by rakupp: the fifteen precedence
+levels, statement forms and term shapes of [`src/Parser.cpp`](../src/Parser.cpp)
+restated as grammar rules. It parses `examples/` completely, most of
+`showcase/` — including itself — and prints a parse tree in which `2 * 3` sits
+under `1 + 2 * 3` because `BP_MUL` is tighter than `BP_ADD`.
+
+```sh
+build/rakupp showcase/raku/raku-grammar.raku examples/fibonacci.raku
+build/rakupp showcase/raku/raku-grammar.raku --tree examples/hanoi.raku
+build/rakupp showcase/raku/raku-grammar.raku --check=examples
+```
+
+Raku is not a context-free language, so the grammar is explicit about where it
+stops: custom operators, computed precedence, `use MONKEY-TYPING`, the regex
+sublanguage, and heredoc bodies. [The README](raku) names each one and gives
+the measured coverage.
 
 ## lisp — the language-power story
 
@@ -222,7 +251,7 @@ right `Content-Type` (text and binary), `index.html` or an auto directory listin
 `HEAD`, `301`/`403`/`404`, one thread per connection.
 
 ```sh
-build/rakupp showcase/rakus/rakus.raku              # serves ./public on :8080
+build/rakupp showcase/rakus/rakus.raku              # serves the bundled public/ on :8080
 build/rakupp showcase/rakus/rakus.raku 9000 ~/site  # choose the port and root
 ```
 
@@ -314,7 +343,9 @@ paths are exercised on every run:
 RAKUPP=build/rakupp sh showcase/modinfo/compare.sh
 ```
 
-runs all thirteen commands under Rakudo and under Raku++ and diffs STDOUT —
+runs fifteen invocations covering nine of modinfo's ten commands under Rakudo
+and under Raku++ and diffs STDOUT (`about` is left out on purpose: it reports
+the engine it is running under, so the two runs are supposed to differ) —
 byte-identical, and byte-identical again over the 61 real distributions of the
 module battery. See [`modinfo/README.md`](modinfo/README.md) for the module map
 and what each fixture is for.
@@ -408,6 +439,118 @@ into a Raku closure through a runtime-minted Objective-C class. No NSRect ever
 crosses the FFI — only NSPoint/NSSize, two doubles, which both macOS ABIs pass
 like two `num64`s — so the identical module serves arm64 Raku++ and an x86-64
 Rosetta Rakudo. macOS only, by nature of the backend.
+
+## eclipse — the transpiling story
+
+Where **web/** puts the interpreter itself in a browser as WebAssembly,
+**eclipse** does the other thing: `rakupp --target=js` turns a Raku program
+into JavaScript, and the *same* engine file drives a terminal program and an
+interactive textbook.
+
+The subject is eclipse prediction from first principles — the periodic series
+of Meeus's *Astronomical Algorithms*. One integer, the number of New Moons
+since January 2000, yields the instant of any eclipse to about a minute, its
+type, its magnitude, its durations, and the 1,300-year saros family it belongs
+to. No ephemeris file and no table of past eclipses; the saros number comes out
+of a modular inverse rather than a lookup.
+
+```sh
+build/rakupp showcase/eclipse/eclipse.raku 2026          # a year
+build/rakupp showcase/eclipse/eclipse.raku --saros=139   # a family, 1501 to 2763
+build/rakupp showcase/eclipse/eclipse.raku --seasons 2025 2026
+build/rakupp showcase/eclipse/eclipse.raku --explain=2026-08-12
+build/rakupp showcase/eclipse/eclipse.raku --check        # against NASA's catalogue
+build/rakupp showcase/eclipse/tools/build.raku            # the book, as one HTML file
+```
+
+`--check` reproduces the date, type and saros number of 63 of the 64 eclipses
+hand-entered from NASA's *Five Millennium Canon* in `reference/catalogue.tsv`;
+the 64th was total by 0.0006 of a magnitude and is documented as the limit of a
+truncated series. `tools/build.raku` bundles the engine with `web/api.raku`,
+transpiles it, and inlines the result into a single dependency-free page whose
+seven chapters compute every number live. The controls are the point: γ and u
+go on sliders and run through the same `classify-solar` a real eclipse does, so
+you can hunt the hybrid band by hand; each of the 26 correction terms gets a
+checkbox, so you can watch the series converge from ten hours out to exact.
+
+Writing it found a `--target=js` bug: a multi-word hash slice was emitted as one
+item instead of a list, so the transpiled engine silently predicted an eclipse
+every month with gamma exactly zero. Fixed in `src/codegen/Js.cpp` — and a good
+argument for showcases whose answers are independently known.
+
+See [`eclipse/README.md`](eclipse/README.md) for the derivation, chapter by
+chapter.
+
+## fourier — the numerics story
+
+Any repeating shape is a sum of sine waves. **fourier** is that claim made
+computable, and then held to account: the coefficients of the classic
+waveforms in closed form, the integrals that produce them, the discrete
+transform going the other way, Cooley and Tukey's fast version of it, and
+fifteen exact identities the engine has to satisfy.
+
+```sh
+build/rakupp showcase/fourier/fourier.raku -n=15          # an oscilloscope in characters
+build/rakupp showcase/fourier/fourier.raku --gibbs        # the overshoot that will not go away
+build/rakupp showcase/fourier/fourier.raku --bench=512    # n^2 against n log n
+build/rakupp showcase/fourier/fourier.raku --check        # fifteen identities
+build/rakupp showcase/fourier/tools/build.raku            # the book, as one HTML file
+```
+
+What makes it a useful showcase is that nothing here can be fudged. The FFT
+must equal the DFT to the last bit; the inverse must give the signal back;
+Parseval must balance; the closed forms must equal their numerical integrals;
+and the Gibbs peak must converge to `2·Si(π)/π = 1.178979744…`, with `Si(π)`
+computed rather than quoted. Two of the closed forms were wrong when first
+written, and `--check` said so.
+
+The book is six chapters and all of them move: sixteen sliders, one per
+harmonic, to build any wave you like; a duty-cycle slider that makes the sinc
+envelope breathe; the Gibbs zoom that rescales with the harmonic count so the
+overshoot visibly refuses to shrink; tones buried in noise and found again;
+and the two transforms raced against each other, timed live in the browser.
+
+It found three `--target=js` bugs — a sequence used as a slice index
+(`@x[(0, 2 ...^ $n)]`) treated as one item, a sequence that stepped over its
+endpoint and never terminated, and a missing `Complex.new` — all fixed. See
+[`fourier/README.md`](fourier/README.md).
+
+## orbits — the iteration story
+
+An orbit is six numbers, and **orbits** is what you can do with them: Kepler's
+equation solved by Newton iteration, the eight planets propagated from
+Standish's element table, oppositions found by scanning for turning points,
+and Hohmann transfers priced with the vis-viva equation.
+
+```sh
+build/rakupp showcase/orbits/orbits.raku --map             # an orrery in characters
+build/rakupp showcase/orbits/orbits.raku --kepler=0.6      # watch Newton converge
+build/rakupp showcase/orbits/orbits.raku --events=Mars 2020 2035
+build/rakupp showcase/orbits/orbits.raku --transfer=Earth,Mars
+build/rakupp showcase/orbits/orbits.raku --check           # 42 of them
+build/rakupp showcase/orbits/tools/build.raku              # the book, as one HTML file
+```
+
+`M = E − e sin E` cannot be inverted in closed form, so the engine guesses and
+corrects; started at M, Newton's method converges quadratically and five or
+six steps exhaust a double even at e = 0.95. `--kepler` prints the error after
+each step so the digit-doubling is visible, and the book puts it on a log
+scale where it becomes a staircase.
+
+`reference/known.tsv` holds twenty-seven values from the almanacs — the sidereal and
+synodic periods, ten opposition dates, the textbook Hohmann figures, escape
+and low-orbit speeds — none of them produced by this engine. All ten opposition
+dates land on the day.
+
+The book is six chapters driven by sliders: all six orbital elements plus a
+view tilt that turns inclination from a number into a thing; e and M against
+Newton's collapsing error; a date scrubber over the orrery; a planet's distance
+curve with its oppositions marked; and a transfer whose Δv flattens past
+Jupiter while the flight time does not.
+
+It found a parser bug in the interpreter: a bare identifier before a fat arrow
+(`v1 => $x`) was lexed as a version literal, so the hash key came out `"1"` and
+the lookup silently returned `Any`. See [`orbits/README.md`](orbits/README.md).
 
 ## In the browser — [`web/`](web)
 
