@@ -107,6 +107,29 @@ on the list.
 **Hash iteration order.** Raku++ iterates sorted; Rakudo's order is its own and
 varies. Neither is guaranteed by the language — sort if you depend on it.
 
+**`lib`, `.` and `rakulib` are already on the module search path.** They are
+relative to the directory you run from, so a checkout finds its own `lib/`
+without `-I lib`, and a program finds a module sitting beside it without
+`-I .`. Rakudo has none of the three: there, `-I.` is the explicit opt-in.
+
+```sh
+cd myproject && rakupp app.raku     # finds lib/Helper.rakumod and ./Helper.rakumod
+cd myproject && raku  app.raku      # Could not find Helper
+cd myproject && raku -I. -Ilib app.raku   # …now it does
+```
+
+Two consequences. A program written against Raku++ and never run elsewhere may
+be relying on this without knowing; pass `-I` explicitly in anything meant to
+be portable. And a module file in the directory you happen to be in takes
+precedence over an installed distribution of the same name — convenient when
+that is a working copy you are editing, and worth knowing about when it is not.
+
+Both engines resolve a name to `Foo.rakumod`, `Foo.pm6` or `Foo.pm`, and `.pm`
+goes away under `use v6.e.PREVIEW`. **Neither resolves `Foo.raku`** — `.raku`
+is a program's extension, not a module's — and on both, a distribution that
+does keep a module in a `.raku` file is loaded through the path its META6
+`provides` names.
+
 **`$*RAKU.compiler.version` reports a Rakudo era, not the Raku++ release.**
 It answers `v2026.08` — the Rakudo release Raku++ is verified byte-identical
 against — while the rest of the object says who is actually running:
@@ -117,7 +140,43 @@ say $*RAKU.compiler.version;    # → v2026.08    (the era tracked, not our rele
 say $*RAKU.compiler.release;    # → 3.6.0       (Rakudo leaves this empty)
 say $*RAKU.compiler.id;         # → 3.6.0       (Rakudo: a commit SHA)
 say $*RAKU.compiler.backend;    # → cpp         (Rakudo: moar)
+say $*VM.name;                  # → cpp         (Rakudo: moar)
+say $*RAKU.VMnames;             # → (cpp js)    (Rakudo: (moar jvm js))
 ```
+
+`$*VM.name` names the BACKEND, as Rakudo's does: `cpp` for the interpreter and
+`--exe`, `js` for `--target=js`. The one place Raku++ answers `moar` on its own
+is inside a build hook run by `rakupp install` — the ecosystem's build recipes
+gate on that name and have no other branch — and that dialect is scoped to the
+hook.
+
+**`RAKUPP_VM_NAME` lets you assert the dialect for a whole run.** Some modules
+branch on `$*VM.name` and die on the `else` — `LibraryMake` answers *Unknown VM;
+don't know how to build*, `uniprop` *Unexpected backend name: cpp* — even though
+everything they then reach for works here. The variable makes that your call:
+
+```sh
+rakupp -e 'say $*VM.name'                      # → cpp
+RAKUPP_VM_NAME=moar rakupp -e 'say $*VM.name'  # → moar
+RAKUPP_VM_NAME=moar rakupp test LibraryMake    # passes; without it, does not
+```
+
+It also joins `$*RAKU.VMnames`, so `$*VM.name eq any($*RAKU.VMnames)` still
+holds, and it moves `$*RAKU.compiler.backend` with it — Rakudo answers one
+string in both spellings, and a module reading the other one must not see a
+contradiction. Nothing else changes: `$*VM.config` already carries this
+engine's real toolchain (`cc`, `ldshared`, `obj`), and those values are what
+the recipe actually builds with. Nothing sets the variable for you — not `rakupp install`,
+not the test runner — because the default is the honest answer, and reporting
+`cpp` as `moar` is a claim only the person running the program is entitled to
+make. It is for the case where you have looked at a module and concluded its
+`moar` branch is the right one for this engine; it is not a compatibility mode,
+and a module that genuinely needs MoarVM will fail later rather than sooner.
+
+Raku++ keeps `$*VM`, `$*KERNEL` and `$*DISTRO` in a Hash, so it also accepts
+`$*VM<name>`, where Rakudo dies with `Type VM does not support associative
+indexing`. Raku++ is the permissive one here; `$*VM.name` is the spelling that
+works on both.
 
 Because `.id` is our release rather than Rakudo's per-build hash, two different
 builds of the same release are indistinguishable there. Raku++ adds the missing
