@@ -396,10 +396,22 @@ sub MAIN(Bool :$clean = False) {
     my @files = dir('src/pages').grep({ .IO.f && .Str.ends-with('.md') }).map(*.IO.basename).sort;
     my @slugs = @files.map({ .subst(/ '.md' $ /, '') });
 
-    # configured order first, then anything new that has not been placed yet
-    my @ordered = @(%SITE<order>).grep(-> $s { so @slugs.first(* eq $s) });
-    for @slugs -> $s {
-        @ordered.push($s) unless @ordered.first(* eq $s);
+    # Grouped reading order. Each group becomes a heading on the index; a name
+    # listed with no file is dropped, and a file no group lists still gets built
+    # and lands under the catch-all, so neither side of the sync can break the
+    # other. A group whose every article is missing does not print a heading
+    # over nothing.
+    my @groups;
+    for @(%SITE<groups>) -> $g {
+        my @in = @($g.value).grep(-> $s { so @slugs.first(* eq $s) });
+        @groups.push({ name => $g.key, slugs => @in }) if @in;
+    }
+    my @ordered;
+    for @groups -> %g { @ordered.append(@(%g<slugs>)) }
+    my @loose = @slugs.grep(-> $s { !@ordered.first(* eq $s) });
+    if @loose {
+        @groups.push({ name => %SITE<catch-all> // 'Everything else', slugs => @loose });
+        @ordered.append(@loose);
     }
 
     # Titles first: an article can link to any other, so they must all be known
@@ -408,7 +420,7 @@ sub MAIN(Bool :$clean = False) {
         %TITLES{$slug} = short-title(title-of(slurp("src/pages/$slug.md")));
     }
 
-    my @entries;
+    my %ENTRY;   # slug => the title as the index prints it
     for @ordered -> $slug {
         my $md    = slurp("src/pages/$slug.md");
         my $title = title-of($md);
@@ -422,16 +434,20 @@ sub MAIN(Bool :$clean = False) {
         spurt("out/$slug/index.html",
               page($title, '<h1>' ~ esc(heading-case(short-title($title))) ~ '</h1>' ~ "\n"
                            ~ $toc ~ "\n" ~ $body));
-        @entries.push({ slug => $slug, title => heading-case(short-title($title)) });
+        %ENTRY{$slug} = heading-case(short-title($title));
     }
 
     # One paragraph per article, the blurb on the line below the link: a
     # bulleted list of eight two-line entries is furniture, and a blurb behind
-    # an em dash buries the title it belongs to.
-    my $list = @entries.map(-> %e {
-        my $blurb = %SITE<blurbs>{%e<slug>} // '';
-        '<p class="faq-entry"><a href="' ~ $BASE ~ '/' ~ %e<slug> ~ '/">' ~ esc(%e<title>) ~ '</a>'
-          ~ ($blurb ?? '<br><span class="faq-blurb">' ~ esc($blurb) ~ '</span>' !! '') ~ '</p>'
+    # an em dash buries the title it belongs to. Under a heading per group,
+    # because a column of seventeen is no longer one list.
+    my $list = @groups.map(-> %g {
+        '<h2 class="faq-group">' ~ esc(%g<name>) ~ '</h2>' ~ "\n" ~
+        @(%g<slugs>).map(-> $slug {
+            my $blurb = %SITE<blurbs>{$slug} // '';
+            '<p class="faq-entry"><a href="' ~ $BASE ~ '/' ~ $slug ~ '/">' ~ esc(%ENTRY{$slug}) ~ '</a>'
+              ~ ($blurb ?? '<br><span class="faq-blurb">' ~ esc($blurb) ~ '</span>' !! '') ~ '</p>'
+        }).join("\n")
     }).join("\n");
 
     spurt('out/index.html',
@@ -440,5 +456,5 @@ sub MAIN(Bool :$clean = False) {
                ~ '<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>'
                ~ '<div class="faq-index">' ~ $list ~ '</div>'));
 
-    say "built {@entries.elems} FAQ page(s) + index -> out/";
+    say "built {@ordered.elems} FAQ page(s) in {@groups.elems} group(s) + index -> out/";
 }

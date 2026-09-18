@@ -6,10 +6,23 @@
     tagline    => 'Short, task-shaped answers to questions people actually ask — ' ~
                   'how do I, why does this print twice, does Rakudo do the same.',
 
-    # The articles, in reading order. Anything in src/pages that is not listed
-    # here is still built, but appears after these; a name listed with no file
-    # is skipped, so removing an article upstream does not break the build.
-    order => <shell buffering background-processes http containers modules compiling performance garbage-collection debugging differences 6e>,
+    # The articles, grouped, in reading order. Each group is a heading on the
+    # index and the order inside it is the order they are meant to be read.
+    # Anything in src/pages that no group lists is still built and collected
+    # under a final catch-all heading; a name listed with no file is skipped,
+    # so removing an article upstream does not break the build.
+    #
+    # The split that matters is the last group: everything above it is about
+    # YOUR program, and it is about the engine. A reader arrives as one or the
+    # other.
+    groups => (
+        'Writing Raku'                  => <containers modules l10n 6e>,
+        'Talking to the outside world'  => <shell background-processes http buffering>,
+        'Compiling, and making it fast' => <compiling optimizer performance>,
+        'When something goes wrong'     => <debugging garbage-collection>,
+        'How Raku++ works'              => <what-kind-of-compiler hand-written implementations differences>,
+    ),
+    catch-all => 'Everything else',
 
     # A line of context under each entry on the index. The articles open with a
     # summary of their own, but on an index you want the difference between two
