@@ -31,6 +31,7 @@
         optimizer   => 'Why the optimising code generator is opt-in: what a default owes every program, and where -O loses.',
         implementations => 'Three Rakus in active development — Rakudo, Raku++ and mutsu — and the engineering decisions that separate them.',
         l10n        => 'Writing Raku in German, Japanese or Afrikaans: the L10N modules, why Rakudo needs a flag for them and Raku++ does not, and the one declarator that cannot be translated.',
+        'what-kind-of-compiler' => 'One-pass or multi-pass, LL(1) or LR, is there an IR, a VM, a JIT: the compiler-theory questions, answered one at a time.',
     },
 
     # ../SOMETHING.md in an article points at a doc that lives in the rakupp

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — what kind of compiler is Raku++?</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=2303be21"></script>
+<link rel="stylesheet" href="/theme/base.css?v=2303be21">
+<link rel="stylesheet" href="/theme/shell.css?v=2303be21">
+<link rel="stylesheet" href="/theme/faq.css?v=2303be21">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>What kind of compiler is Raku++?</h1>
+
+<p>The questions every compiler gets asked before any other, answered one at a time: one-pass or multi-pass, LL or LR, is there an IR, is there a VM, is it a tree-walker or a compiler. Short answers here; the long one is the Internals book's <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/03-classification.md">Chapter 3</a>, which is this page with the reasoning left in.</p>
+<p><strong>The one-sentence answer:</strong></p>
+<blockquote class="note"><p>A hand-written, single-pass, syntax-directed <strong>recursive-descent parser with a Pratt (precedence-climbing) expression core and a dynamically extensible operator table</strong>, feeding an <strong>AST tree-walking interpreter</strong>, with an optional <strong>source-to-source back end</strong> that emits C++.</p></blockquote>
+<p>Nothing in that sentence is generated, and every clause in it has a question below.</p>
+<hr>
+<h2 id="passes-and-shape">Passes and shape <a class="anchor" href="#passes-and-shape" aria-label="link">#</a></h2>
+<h3 id="is-it-one-pass-or-multi-pass">Is it one-pass or multi-pass? <a class="anchor" href="#is-it-one-pass-or-multi-pass" aria-label="link">#</a></h3>
+<p>Both, depending on which part you mean. The <strong>parse</strong> is single-pass: the parser walks the token vector once, left to right, and never revisits a node. The <strong>implementation</strong> is a pipeline of separated stages:</p>
+<pre class="native-code"><code>source ─► Lexer ─► Parser ─► AST ─► DeclCheck ─┬─ tree-walk          (default)
+                                               ├─ AST serialised     (--aot)
+                                               ├─ emit C++           (--exe)
+                                               └─ emit JavaScript    (--target=js)
+
+source ───────────────────────────────────────── embed source bytes  (--bundle)</code></pre>
+<p>The lexer runs to completion before a parser exists, so this is not the classic one-pass compiler that emits code as it reads. Three things qualify even the "single-pass parse" claim: the lexer pre-scans the source for quote-word <code>sub</code> declarations before tokenizing; two seams re-lex the unread tail of the unit (after a <code>use</code> that shadows a quote word, or activates a slang); and an active slang runs the user's own code mid-parse. Chapter 3's "The pass structure" has each one.</p>
+<h3 id="is-there-a-front-end-back-end-split">Is there a front end / back end split? <a class="anchor" href="#is-there-a-front-end-back-end-split" aria-label="link">#</a></h3>
+<p>Yes, and it is unusually clean, because everything except the CLI compiles into one static library — <code>librakupp_rt.a</code>. The interpreter and every binary produced by <code>--exe</code>/<code>--aot</code>/<code>--bundle</code> link the <em>same</em> runtime, so <code>Value</code> semantics, built-ins, dispatch, regexes and Unicode have exactly one implementation.</p>
+<h3 id="is-there-a-semantic-analysis-pass">Is there a semantic-analysis pass? <a class="anchor" href="#is-there-a-semantic-analysis-pass" aria-label="link">#</a></h3>
+<p>One, and it is narrow. <code>DeclCheck</code> walks the AST between the parser and every back end and asks whether each variable the unit mentions is declared somewhere in its lexical chain. A program that fails is refused before any of it runs:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="s">&quot;before&quot;</span>;
+<span class="nb">say</span> <span class="nv">$undeclared</span>;</code></pre>
+<pre class="native-code"><code>===SORRY!=== Error while compiling /tmp/decl.raku
+Variable '$undeclared' is not declared
+at /tmp/decl.raku:2
+------&gt; say ⏏$undeclared;</code></pre>
+<p><code>before</code> is never printed. Rakudo refuses the same program with the same <code>===SORRY!===</code> shape (it adds a "Perhaps you forgot a 'sub'" hint and marks the spot with <code>&lt;HERE&gt;</code> instead of <code>⏏</code>).</p>
+<p>That is the whole of semantic analysis. There is no type-checking pass, no control-flow analysis, no data-flow analysis — <code>DeclCheck</code> answers one question and hands the back end nothing to optimise with.</p>
+<hr>
+<h2 id="the-parser">The parser <a class="anchor" href="#the-parser" aria-label="link">#</a></h2>
+<h3 id="recursive-descent-or-table-driven">Recursive descent, or table-driven? <a class="anchor" href="#recursive-descent-or-table-driven" aria-label="link">#</a></h3>
+<p>Recursive descent, hand-written, for statements — a keyword ladder on the leading token. Expressions use a <strong>Pratt</strong> (precedence-climbing) core instead, because Raku's operator table runs to roughly two dozen precedence levels and pure recursive descent would spend a mutually recursive function on each of them.</p>
+<h3 id="is-it-ll-1">Is it LL(1)? <a class="anchor" href="#is-it-ll-1" aria-label="link">#</a></h3>
+<p>No. It is top-down and in the LL family, but neither LL(1) nor any fixed LL(k). The honest description is <em>recursive descent with bounded local backtracking</em>: it rewinds at exactly four places in <code>src/Parser.cpp</code>, each a short speculative probe that restores the position on failure.</p>
+<h3 id="is-it-lr-lalr-or-slr">Is it LR, LALR or SLR? <a class="anchor" href="#is-it-lr-lalr-or-slr" aria-label="link">#</a></h3>
+<p>No. Those are bottom-up and table-driven, and a static table cannot be built for a grammar that changes while it is being parsed — see "extensible" below.</p>
+<h3 id="is-it-a-peg-or-packrat-parser">Is it a PEG or packrat parser? <a class="anchor" href="#is-it-a-peg-or-packrat-parser" aria-label="link">#</a></h3>
+<p>No. It memoizes nothing, so there is no packrat, and there is no ordered-choice formalism. It is not GLR or Earley either: no parse forest is built, and ambiguity is settled where it is met rather than afterwards.</p>
+<h3 id="is-the-grammar-a-cfg-is-there-a-grammar-file">Is the grammar a CFG? Is there a grammar file? <a class="anchor" href="#is-the-grammar-a-cfg-is-there-a-grammar-file" aria-label="link">#</a></h3>
+<p>There is no grammar file, no parser generator, and no state table — the lexer and parser are hand-written C++. And the grammar is not context-free. Declaring <code>sub infix:&lt;…&gt;</code> registers a new operator with its own precedence and associativity, so tokens after that point parse differently from tokens before it. The nearest term in the literature is an <strong>adaptive</strong> (extensible) grammar, which is why top-down parsing is the only tractable choice here — as it is for every language that lets users declare operators.</p>
+<h3 id="is-the-lexer-separate">Is the lexer separate? <a class="anchor" href="#is-the-lexer-separate" aria-label="link">#</a></h3>
+<p>Completely. <code>Lexer::tokenize()</code> is a character-level scanner that runs to completion and returns a flat <code>std::vector&lt;Token&gt;</code>; only then is a parser built over it. There is <strong>no lexer hack</strong> — the lexer never asks the parser anything, because by the time the parser exists the lexer has finished.</p>
+<p>Raku's context-sensitivity still has to go somewhere, and it goes into the lexer's own one-token history: a bare <code>/</code> opens a regex in term position and divides in operator position, decided by inspecting the previous token alone.</p>
+<p>You can see the token stream. Take this two-line program, which the rest of the page reuses:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">1</span> + <span class="mi">2</span>;
+<span class="nb">say</span> <span class="nv">$x</span>;</code></pre>
+<pre class="native-code"><code class="lang-bash">RAKUPP_DUMPTOKENS=1 rakupp prog.raku</code></pre>
+<pre class="native-code"><code>L1 kind=9 [my]
+L1 kind=10 [$x]
+L1 kind=20 [=]
+L1 kind=1 [1]
+L1 kind=20 [+]
+L1 kind=1 [2]
+L1 kind=17 [;]
+L2 kind=9 [say]
+L2 kind=10 [$x]
+L2 kind=17 [;]
+L3 kind=0 []
+3</code></pre>
+<p>The trailing <code>3</code> is the program running afterwards — the dump is a side channel, not a mode.</p>
+<h3 id="is-there-error-recovery">Is there error recovery? <a class="anchor" href="#is-there-error-recovery" aria-label="link">#</a></h3>
+<p>No. The first error ends compilation; the driver prints <code>===SORRY!===</code> and exits 1, matching Rakudo's shape. (The lexer has a tolerant mode, but it defers a lex error to the parser so the message can carry better context — not so that compilation continues.)</p>
+<hr>
+<h2 id="the-middle-is-there-an-ir">The middle: is there an IR? <a class="anchor" href="#the-middle-is-there-an-ir" aria-label="link">#</a></h2>
+<h3 id="is-there-an-intermediate-representation">Is there an intermediate representation? <a class="anchor" href="#is-there-an-intermediate-representation" aria-label="link">#</a></h3>
+<p>No — and this is the single most load-bearing fact about the design. There is no bytecode, no three-address code, no SSA, no control-flow graph, no register allocation and no lowering pass. The AST is the sole representation the whole way through, and one <code>NK</code> enum switch drives both the interpreter's <code>eval</code>/<code>exec</code> and the code generator.</p>
+<h3 id="is-there-a-parse-tree-and-an-ast">Is there a parse tree <em>and</em> an AST? <a class="anchor" href="#is-there-a-parse-tree-and-an-ast" aria-label="link">#</a></h3>
+<p>Just the one tree. <code>rakupp --ast</code> prints it — the same program as above:</p>
+<pre class="native-code"><code class="lang-bash">rakupp --ast prog.raku</code></pre>
+<pre class="native-code"><code>Program
+  Assign      │  =
+    VarExpr   │   $x [decl my]
+    Binary    │   +
+      IntLit  │    1
+      IntLit  │    2
+  Call        │  say
+    VarExpr   │   $x</code></pre>
+<h3 id="is-there-constant-folding">Is there constant folding? <a class="anchor" href="#is-there-constant-folding" aria-label="link">#</a></h3>
+<p>Not yet. Note that <code>1 + 2</code> survives as a <code>Binary</code> node with two <code>IntLit</code> children in the tree above, and reaches the generated C++ unfolded:</p>
+<pre class="native-code"><code class="lang-cpp">v_sx = applyArith("+", Value::integer(1LL), Value::integer(2LL));</code></pre>
+<p><code>constant</code> declarations are not folded at parse time either; they become declaring nodes the interpreter binds.</p>
+<h3 id="what-optimisations-are-there-then">What optimisations are there, then? <a class="anchor" href="#what-optimisations-are-there-then" aria-label="link">#</a></h3>
+<p><code>-O</code> is three passes, all <strong>AST-level pattern matching at emit time</strong>: direct arity calls, inlined <code>int64</code> arithmetic, and guarded native-int expression lanes. Those are local, peephole-class transformations by any standard classification. Everything classical — inlining, constant propagation, loop transforms, instruction scheduling, register allocation — is delegated to the host C++ compiler, which is the point of emitting C++ rather than machine code. <a href="https://github.com/ash/rakupp/blob/main/docs/internals/OPTIMIZATION.md">OPTIMIZATION.md</a> is the detail, and <a href="/faq/optimizer/">why -O is not the default</a> is why <code>-O</code> is not the default.</p>
+<hr>
+<h2 id="execution">Execution <a class="anchor" href="#execution" aria-label="link">#</a></h2>
+<h3 id="tree-walking-interpreter-or-a-compiler">Tree-walking interpreter, or a compiler? <a class="anchor" href="#tree-walking-interpreter-or-a-compiler" aria-label="link">#</a></h3>
+<p>Tree-walking, in three of the five modes. <code>eval(Expr*)</code> returns a <code>Value</code> and <code>exec(Stmt*)</code> runs a statement, straight over the AST. There is no bytecode and no separate operand stack — <strong>the C++ stack is the Raku stack</strong>, which is why the entry point runs your program on a thread with a very large stack.</p>
+<div class="tablewrap"><table><tr><th>Mode</th><th>What it is, taxonomically</th></tr><tr><td>default</td><td>Tree-walking interpreter</td></tr>
+<tr><td><code>--bundle</code></td><td>Source embedded in the binary, parsed at startup</td></tr>
+<tr><td><code>--aot</code></td><td>AST rebuilt at startup, still tree-walked</td></tr>
+<tr><td><code>--exe</code></td><td>Source-to-source compiler — a transpiler to C++</td></tr>
+<tr><td><code>--target=js</code></td><td>Source-to-source compiler — a transpiler to JavaScript</td></tr></table></div>
+<h3 id="is-there-a-vm">Is there a VM? <a class="anchor" href="#is-there-a-vm" aria-label="link">#</a></h3>
+<p>No. No instruction set, no opcode dispatch loop, no operand stack. This is the clearest structural difference from Rakudo, which compiles to bytecode for MoarVM.</p>
+<h3 id="is-there-a-jit">Is there a JIT? <a class="anchor" href="#is-there-a-jit" aria-label="link">#</a></h3>
+<p>No. Nothing is compiled at run time. <code>--exe</code> compiles ahead of time, by emitting C++ and shelling out to a C++ compiler.</p>
+<h3 id="so-what-does-exe-actually-produce">So what does <code>--exe</code> actually produce? <a class="anchor" href="#so-what-does-exe-actually-produce" aria-label="link">#</a></h3>
+<p>A native binary, via C++ source. You can read the intermediate C++ without building it:</p>
+<pre class="native-code"><code class="lang-bash">rakupp --cpp prog.raku</code></pre>
+<p>The emitted code calls into the same <code>librakupp_rt.a</code> the interpreter uses, so compiled and interpreted programs cannot disagree about semantics. <a href="/faq/compiling/">turning a program into a binary</a> is the practical guide to the modes.</p>
+<h3 id="is-node-specialisation-a-compilation-step">Is node specialisation a compilation step? <a class="anchor" href="#is-node-specialisation-a-compilation-step" aria-label="link">#</a></h3>
+<p>No. It caches a decision on the syntactic shape of a node — a fast path on a tree walk. No amount of it produces an instruction stream.</p>
+<hr>
+<h2 id="runtime">Runtime <a class="anchor" href="#runtime" aria-label="link">#</a></h2>
+<h3 id="is-there-a-garbage-collector">Is there a garbage collector? <a class="anchor" href="#is-there-a-garbage-collector" aria-label="link">#</a></h3>
+<p>No. Memory is <code>shared_ptr</code> reference counting, which buys a ~1.5 MB floor and no stop-the-world pause, and costs you unreclaimed reference cycles and a free that lands on your own clock. <a href="/faq/garbage-collection/">the garbage collector</a> is the full trade.</p>
+<h3 id="static-or-dynamic-typing">Static or dynamic typing? <a class="anchor" href="#static-or-dynamic-typing" aria-label="link">#</a></h3>
+<p>Dynamic, as Raku is. Every runtime value is one <code>Value</code> struct with a <code>VT</code> tag; type constraints are checked where they are met — at binding, assignment and dispatch — not by a pass before the program runs. There is no type inference and no static type error. A constraint that cannot possibly hold still gets as far as running:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="s">&quot;before&quot;</span>;
+<span class="k">my</span> <span class="nb">Int</span> <span class="nv">$x</span> = <span class="s">&quot;hello&quot;</span>;</code></pre>
+<pre class="native-code"><code>before
+Type check failed in assignment to $x; expected Int but got Str ("hello")
+  (X::TypeCheck::Assignment)
+  in block &lt;unit&gt; at /tmp/ty.raku line 2</code></pre>
+<p><code>before</code> prints first. Rakudo agrees line for line here, minus the exception name — this is the language's design, not an implementation shortcut. Contrast the undeclared variable further up, which <em>is</em> refused before anything runs.</p>
+<h3 id="lexical-or-dynamic-scoping">Lexical or dynamic scoping? <a class="anchor" href="#lexical-or-dynamic-scoping" aria-label="link">#</a></h3>
+<p>Lexical, through a chain of <code>Env</code> scopes, with Raku's dynamic variables (<code>$*foo</code>) as the deliberate exception that searches the caller chain instead.</p>
+<hr>
+<h2 id="about-the-implementation-itself">About the implementation itself <a class="anchor" href="#about-the-implementation-itself" aria-label="link">#</a></h2>
+<h3 id="is-it-self-hosted-or-bootstrapped">Is it self-hosted or bootstrapped? <a class="anchor" href="#is-it-self-hosted-or-bootstrapped" aria-label="link">#</a></h3>
+<p>No. The compiler is C++17 and is built by a C++ compiler; it does not compile itself. A good deal of the <em>tooling around</em> it is written in Raku and run by <code>rakupp</code> — the Roast harness, the benchmark harness, the Unicode table generators — which is dogfooding rather than bootstrapping. See <a href="https://github.com/ash/rakupp/blob/main/docs/status/DOGFOODING.md">DOGFOODING.md</a>.</p>
+<h3 id="is-it-really-hand-written">Is it really hand-written? <a class="anchor" href="#is-it-really-hand-written" aria-label="link">#</a></h3>
+<p>Yes, in the compiler-writer's sense: no parser generator, no grammar file. That is the same sense GCC, Clang and Go use of their own front ends. <a href="/faq/hand-written/">Hand-written vs. written by hand</a> is the longer answer, including who wrote the code.</p>
+<h3 id="how-big-is-it-and-what-does-it-depend-on">How big is it, and what does it depend on? <a class="anchor" href="#how-big-is-it-and-what-does-it-depend-on" aria-label="link">#</a></h3>
+<p>About 130,000 lines of hand-written C++ in <code>src/</code>, plus about 82,000 lines of generated Unicode tables. The only dependency is a threads library; there is no third-party code in the build.</p>
+<hr>
+<h2 id="see-also">See also <a class="anchor" href="#see-also" aria-label="link">#</a></h2>
+<ul><li><strong><a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/03-classification.md">Chapter 3, Where It Sits in the Taxonomy</a></strong> — this page with the reasoning, the comparison against Rakudo, CPython and Clang, and the limitation list that falls out of the classification.</li><li><strong><a href="https://github.com/ash/rakupp/blob/main/docs/internals/ARCHITECTURE.md">ARCHITECTURE.md</a></strong> — the pipeline and the build layout.</li><li><strong><a href="/faq/implementations/">three ways to build a Raku</a></strong> — Raku++, Rakudo and mutsu compared structurally: tree-walk vs bytecode VM, JIT vs ahead-of-time, refcounting vs a collector.</li><li><strong><a href="https://github.com/ash/rakupp/blob/main/docs/guide/COMPILERS.md">COMPILERS.md</a></strong> — the <em>other</em> compiler question: which C++ compiler to build with, and which one <code>--exe</code> invokes.</li></ul>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=2303be21" defer></script>
+</body>
+</html>
