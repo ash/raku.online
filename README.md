@@ -288,12 +288,14 @@ script tag, then any element with `data-raku` becomes a runnable editor:
 
 Per-element attributes: `data-run` (run once on load), `data-stdin="…"` (preset
 standard input and reveal the input box), `data-rows="N"` (initial height),
-`data-theme="light|dark"` (force a theme; default follows the OS).
+`data-theme="light|dark"` (force a theme; default follows the OS),
+`data-hide="…"` (leave parts of the chrome out — below), `data-playground="…"`
+(where this block's ↗ button goes, or `false` for no button).
 
 Script-tag options: `data-theme="…"` (page-wide theme default), `data-selector`
-(what to enhance, default `[data-raku]`), `data-playground="…"` (where the ↗
-button opens the program — only relevant to a self-hosted copy), and
-`data-auto` — with it, ordinary highlighter code blocks
+(what to enhance, default `[data-raku]`), `data-hide="…"` and
+`data-playground="…"` (the same two, as a default for every block on the page),
+and `data-auto` — with it, ordinary highlighter code blocks
 (`<pre><code class="language-raku">`, what markdown / Prism / highlight.js emit)
 become runnable with no `data-raku`, so authors add the script once and change
 nothing else:
@@ -304,6 +306,34 @@ nothing else:
 
 `data-auto` matches `language-raku` on the `<code>` (highlighters) **or** a
 bare `raku`/`language-raku` class on the `<pre>` itself.
+
+### Showing less of the widget
+
+Every part of the chrome is on by default; `data-hide` names the ones to leave
+out, on a block or on the script tag for the whole page:
+
+```html
+<pre data-raku data-hide="playground exit">say "quietly";</pre>
+```
+
+| Part | What goes |
+|---|---|
+| `run` | the ▶ Run button (pair with `data-run`, or the block only shows code) |
+| `status` | the bar's status line — `running…`, then `exit 0 · 5 ms` |
+| `copy-code` | the Copy button in the bar |
+| `copy-output` | the Copy button on the output pane |
+| `playground` | the ↗ button that hands the program to the playground |
+| `exit` | the `— exit 0 · 5 ms —` footer, and the same report in the bar |
+| `stdin` | the input box — a `data-stdin` preset is still fed to the program |
+| `bar` | the whole top strip: `run status copy-code playground` |
+| `copy` | both Copy buttons |
+
+A block's list is read on top of the page's, and a `-` prefix takes a part back:
+`data-hide="playground"` on the script tag with `data-hide="-playground"` on the
+one block that should still offer it. The ↗ button has a second off switch,
+since it is the one people reach for first — `data-playground="false"`, or
+`off` / `no` / `none` / an empty value. Nothing here changes the default: a
+widget with no new attributes looks exactly as it always has.
 
 The one thing a host page can restyle is the accent — the ▶ Run fill, the ■ Stop
 outline, and error text. `:host { all: initial }` isolates everything else, but
@@ -331,7 +361,7 @@ documents, and what the engine half of `rakujs-<tag>.zip` on each
 [rakupp release](https://github.com/ash/rakupp/releases) is for. The only thing
 that changes for a self-hoster is the ↗ button: with no playground behind their
 copy it opens raku.online, and `data-playground="…"` on the script tag sends it
-somewhere else.
+somewhere else — or removes it, with `false`.
 
 Design points that make it embed-safe:
 

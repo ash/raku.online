@@ -87,6 +87,9 @@ say "sum = ", @squares.sum;</textarea>
   <div class="opts">
     <label class="switch"><input type="checkbox" id="run"><span>Run on load</span></label>
     <label class="switch"><input type="checkbox" id="useStdin"><span>Standard input</span></label>
+    <label class="switch"><input type="checkbox" id="showPg" checked><span>↗ Playground</span></label>
+    <label class="switch"><input type="checkbox" id="showExit" checked><span>Exit line</span></label>
+    <label class="switch"><input type="checkbox" id="showCopy" checked><span>Copy buttons</span></label>
     <div class="field">
       <label for="theme">Theme</label>
       <select id="theme">
@@ -107,6 +110,10 @@ say "sum = ", @squares.sum;</textarea>
       </span>
     </div>
   </div>
+  <p class="note">Turning one of the last three off writes <code>data-hide</code> into the
+     snippet — the widget's general "leave this part out" option, which also covers the
+     Run button, the status line, the input box and the whole top bar.
+     <a href="/embed/#show-less">Every part &rarr;</a></p>
   <div id="stdinWrap" hidden>
     <label for="stdin">Standard input (fed to get / lines / prompt)</label>
     <textarea id="stdin" spellcheck="false"></textarea>
@@ -132,11 +139,12 @@ say "sum = ", @squares.sum;</textarea>
      runs in the visitor's browser.</p>
 </div>
 
-<script src="/raku.js?v=756a1e7a"></script>
+<script src="/raku.js?v=209f7b92"></script>
 <script>
   var $ = function (id) { return document.getElementById(id); };
   var codeEl = $('code'), runEl = $('run'), themeEl = $('theme'), rowsEl = $('rows'),
       useStdinEl = $('useStdin'), stdinWrap = $('stdinWrap'), stdinEl = $('stdin'),
+      showPgEl = $('showPg'), showExitEl = $('showExit'), showCopyEl = $('showCopy'),
       srcEl = $('src'), accentEl = $('accent'), accentResetEl = $('accentReset'),
       previewEl = $('preview'), snippetEl = $('snippet'), copyBtn = $('copyBtn');
 
@@ -145,12 +153,23 @@ say "sum = ", @squares.sum;</textarea>
   var htmlEsc = function (s) { return s.replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
+  // The switches say what to SHOW; the widget's attribute says what to hide, so
+  // the snippet only ever carries the parts that were switched off.
+  function hidden() {
+    var parts = [];
+    if (!showPgEl.checked) parts.push('playground');
+    if (!showExitEl.checked) parts.push('exit');
+    if (!showCopyEl.checked) parts.push('copy');
+    return parts.join(' ');
+  }
+
   function opts() {
     return {
       code: codeEl.value,
       run: runEl.checked,
       theme: themeEl.value,
       rows: rowsEl.value ? parseInt(rowsEl.value, 10) : 0,
+      hide: hidden(),
       stdin: useStdinEl.checked ? stdinEl.value : null,
       src: srcEl.value.trim() || 'https://raku.online/raku.js',
       accent: accentEl.value.toLowerCase() === DEFAULT_ACCENT ? '' : accentEl.value
@@ -162,6 +181,7 @@ say "sum = ", @squares.sum;</textarea>
     if (o.run) attrs += ' data-run';
     if (o.theme) attrs += ' data-theme="' + o.theme + '"';
     if (o.rows) attrs += ' data-rows="' + o.rows + '"';
+    if (o.hide) attrs += ' data-hide="' + o.hide + '"';
     if (o.stdin != null) attrs += ' data-stdin="' + htmlEsc(o.stdin) + '"';
     var block = '<pre data-raku' + attrs + '>' + htmlEsc(o.code) + '</pre>';
     // The accent is a CSS custom property, not an attribute: it inherits into the
@@ -183,14 +203,16 @@ say "sum = ", @squares.sum;</textarea>
     pre.textContent = o.code;
     previewEl.appendChild(pre);
     // Don't auto-run the preview on every keystroke — only when "Run on load" is on.
-    window.RakuEmbed.enhance(pre, { run: o.run, theme: o.theme, rows: o.rows, stdin: o.stdin == null ? undefined : o.stdin });
+    window.RakuEmbed.enhance(pre, { run: o.run, theme: o.theme, rows: o.rows, hide: o.hide,
+                                    stdin: o.stdin == null ? undefined : o.stdin });
   }
 
   var timer = null;
   function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 350); }
 
   [codeEl, stdinEl, srcEl].forEach(function (el) { el.addEventListener('input', schedule); });
-  [runEl, themeEl, rowsEl, accentEl].forEach(function (el) { el.addEventListener('change', rebuild); });
+  [runEl, themeEl, rowsEl, accentEl, showPgEl, showExitEl, showCopyEl]
+    .forEach(function (el) { el.addEventListener('change', rebuild); });
   accentEl.addEventListener('input', schedule);
   accentResetEl.addEventListener('click', function () { accentEl.value = DEFAULT_ACCENT; rebuild(); });
   useStdinEl.addEventListener('change', function () { stdinWrap.hidden = !useStdinEl.checked; rebuild(); });

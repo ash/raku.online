@@ -16,12 +16,28 @@
 //   data-stdin="…"        preset standard input (and reveal the input box)
 //   data-rows="N"         initial editor height in text rows (default: fit code)
 //   data-theme="…"        force light|dark (default: follow the host page)
+//   data-hide="…"         leave parts of the chrome out (see below)
+//   data-playground="…"   where the ↗ button sends THIS block, or "off"
 //
 // Attributes on the script tag (all optional):
 //   data-auto             also enhance ordinary highlighter code blocks
 //   data-selector="…"     what to enhance (default: [data-raku])
 //   data-theme="…"        a page-wide theme default
+//   data-hide="…"         a page-wide chrome default
 //   data-playground="…"   where the ↗ button opens the program (see below)
+//
+// SHOW LESS. Every part of the chrome is on by default; `data-hide` names the
+// ones to leave out — per block, or on the script tag for the whole page:
+//
+//   <pre data-raku data-hide="playground exit">say 42;</pre>
+//
+// The parts are `run`, `status`, `copy-code`, `copy-output`, `playground`,
+// `exit` (the "— exit 0 · 5 ms —" footer and the same report in the bar) and
+// `stdin`, plus two groups: `bar` (the whole top strip) and `copy` (both Copy
+// buttons). A `-` prefix takes one back, so a page that hides the ↗ button
+// everywhere can keep it on one block with data-hide="-playground". Turning
+// the playground off has a second spelling, since it is the one people try
+// first: data-playground="false" (or "off", "none", or an empty value).
 //
 // SELF-HOSTING. Everything is fetched relative to this script's own URL, so a
 // copy of these three files in one directory of your site is a complete,
@@ -51,10 +67,21 @@
   // playground sits right there. A self-hosted copy of this script is a widget
   // with no playground behind it, so it points home instead. Override with
   // <script … data-playground="https://example.com/play/">.
+  //
+  // The same attribute is the button's off switch: "false" / "off" / "no" /
+  // "none" / "0", or an empty value, mean there is no ↗ button at all. An empty
+  // value is what an author reaches for first, and it used to fall through to
+  // the default — the one guess the attribute did not honour.
+  function playgroundOf(v) {
+    if (v == null) return null;                                  // attribute absent
+    v = v.trim();
+    return (!v || /^(?:false|off|no|none|0)$/i.test(v)) ? '' : v;  // '' = no button
+  }
   var HOST = new URL(BASE).hostname;
-  var PLAYGROUND = script.getAttribute('data-playground')
-    || (HOST === 'raku.online' || HOST === 'localhost' || HOST === '127.0.0.1'
-        ? BASE : 'https://raku.online/');
+  var PLAYGROUND = playgroundOf(script.getAttribute('data-playground'));
+  if (PLAYGROUND === null)
+    PLAYGROUND = (HOST === 'raku.online' || HOST === 'localhost' || HOST === '127.0.0.1'
+                  ? BASE : 'https://raku.online/');
 
   // ---- the shared interpreter worker -------------------------------------
   // Built from a Blob so it runs even when raku.js is served cross-origin
@@ -354,9 +381,55 @@
     return new Response(stream).arrayBuffer().then(function (buf) { return b64uEnc(new Uint8Array(buf)); });
   }
 
+  // ---- which parts of the chrome this block draws -------------------------
+  // All of them, unless a page says otherwise: `data-hide` names what to leave
+  // out, on the script tag for every block and/or on a block for itself. The
+  // lists layer — page first, then the block — and a `-` prefix on a name takes
+  // that part back, which is how one block keeps what the page hid.
+  var LEAF = ['run', 'status', 'copy-code', 'copy-output', 'playground', 'exit', 'stdin'];
+  var GROUP = {                      // a name that stands for several leaves
+    bar:  ['run', 'status', 'copy-code', 'playground'],
+    copy: ['copy-code', 'copy-output']
+  };
+  // (list, base) -> { part: true }. `list` is a string, an array, or an already
+  // parsed set; `base` is the layer underneath. Never mutates either.
+  function parseHide(list, base) {
+    var set = {}, k;
+    for (k in (base || {})) if (base[k]) set[k] = true;
+    if (!list) return set;
+    var names = typeof list === 'string' ? list.split(/[\s,]+/)
+              : Array.isArray(list) ? list
+              : Object.keys(list).filter(function (n) { return list[n]; });
+    names.forEach(function (name) {
+      if (!name) return;
+      var back = name.charAt(0) === '-';                 // "-playground": show it after all
+      name = (back ? name.slice(1) : name).toLowerCase();
+      var parts = GROUP[name] || (LEAF.indexOf(name) >= 0 ? [name] : null);
+      // A typo would otherwise be a silent no-op on somebody else's page.
+      if (!parts) {
+        try {
+          console.warn('raku.js: data-hide — no part named "' + name + '". Known: '
+            + LEAF.join(' ') + ' ' + Object.keys(GROUP).join(' '));
+        } catch (e) {}
+        return;
+      }
+      parts.forEach(function (part) { if (back) delete set[part]; else set[part] = true; });
+    });
+    return set;
+  }
+
   var ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 
   function Block(srcEl, opts) {
+    // enhance() hands over a parsed set; a direct RakuEmbed.enhance() call may
+    // pass "playground exit" as it would be written in the attribute.
+    var hide = (opts.hide && typeof opts.hide === 'object' && !Array.isArray(opts.hide))
+             ? opts.hide : parseHide(opts.hide, null);
+    // ↗ — this block's own data-playground decides for this block (a URL, or
+    // "off"); with none of its own it follows the page: its URL and hide list.
+    var ownPg = opts.playground != null ? playgroundOf(opts.playground) : null;
+    var pgUrl = ownPg || PLAYGROUND;
+    var showPg = ownPg !== null ? ownPg !== '' : (!hide.playground && !!PLAYGROUND);
     var code = opts.code != null ? opts.code : srcEl.textContent.replace(/^\n/, '').replace(/\s+$/, '');
     // Highlighting baked at build time by `rakupp --highlight` (Pygments-class
     // spans): keep it for the untouched display, so a page that only SHOWS code
@@ -385,18 +458,25 @@
       if (ht0) wrap.setAttribute('data-theme', ht0);
       FOLLOWERS.push(wrap);
     }
-    wrap.innerHTML =
-      '<div class="bar"><button class="run">▶ Run</button><span class="sp"></span>'
-      + '<span class="st"></span><button class="copy-code" title="Copy the code">Copy</button>'
-      + '<button class="open-ext" title="Open in the raku.online playground" aria-label="Open in the raku.online playground">'
+    // The bar holds whatever this block still shows — and when that is nothing
+    // (data-hide="bar") the strip goes away rather than staying as an empty band.
+    var extBtn =
+      '<button class="open-ext" title="Open in the raku.online playground" aria-label="Open in the raku.online playground">'
       + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" '
       + 'stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v7"/><path d="M10 14 21 3"/>'
-      + '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></button></div>'
+      + '<path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></button>';
+    var barL = hide.run ? '' : '<button class="run">▶ Run</button>';
+    var barR = (hide.status ? '' : '<span class="st"></span>')
+             + (hide['copy-code'] ? '' : '<button class="copy-code" title="Copy the code">Copy</button>')
+             + (showPg ? extBtn : '');
+    wrap.innerHTML =
+      (barL || barR ? '<div class="bar">' + barL + '<span class="sp"></span>' + barR + '</div>' : '')
       + '<div class="ed"><pre class="hl"></pre><textarea spellcheck="false" autocomplete="off" '
       + 'autocapitalize="off" wrap="off"></textarea></div>'
       + '<div class="io in-wrap" hidden><div class="lbl">Standard input</div>'
       + '<textarea class="in" spellcheck="false" autocomplete="off" wrap="off"></textarea></div>'
-      + '<div class="io out-wrap" hidden><div class="lbl">Output<button class="copy">Copy</button></div>'
+      + '<div class="io out-wrap" hidden><div class="lbl">Output'
+      + (hide['copy-output'] ? '' : '<button class="copy">Copy</button>') + '</div>'
       + '<pre class="out"></pre></div>';
 
     var runBtn = wrap.querySelector('.run');
@@ -435,31 +515,36 @@
       else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); requestRun(self); }
     });
 
-    if (opts.stdin != null) { inTa.value = opts.stdin; inWrap.hidden = false; }
-    else if (readsStdin(code)) inWrap.hidden = false;
+    // The input box shows when there is a preset or when the program reads
+    // stdin — unless the page hid it. A preset is still FED to the program when
+    // the box is hidden: that is a block with fixed, invisible input, which is
+    // why what we send is not simply "whatever is in the visible box".
+    var preset = opts.stdin != null;
+    if (preset) inTa.value = opts.stdin;
+    if (!hide.stdin && (preset || readsStdin(code))) inWrap.hidden = false;
 
     // Copy `text` to the clipboard and briefly flash the button that was clicked.
     function copyTo(btn, text) {
       function flash() { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1200); }
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash, flash); else flash();
     }
-    runBtn.addEventListener('click', function () { requestRun(self); });
-    copyCodeBtn.addEventListener('click', function () { copyTo(copyCodeBtn, ta.value); });
+    if (runBtn) runBtn.addEventListener('click', function () { requestRun(self); });
+    if (copyCodeBtn) copyCodeBtn.addEventListener('click', function () { copyTo(copyCodeBtn, ta.value); });
     // Open the current program in the full raku.online playground, in a new tab.
     // The tab is opened synchronously (so pop-up blockers allow it) and its URL
     // filled in once the code is compressed into a #code= link.
-    openExtBtn.addEventListener('click', function () {
+    if (openExtBtn) openExtBtn.addEventListener('click', function () {
       var w = window.open('about:blank', '_blank');
-      var stdinText = inWrap.hidden ? '' : inTa.value;
-      if (!window.CompressionStream) { if (w) w.location = PLAYGROUND; return; }
+      var stdinText = self.getStdin();
+      if (!window.CompressionStream) { if (w) w.location = pgUrl; return; }
       Promise.all([encodeShare(ta.value), stdinText ? encodeShare(stdinText) : Promise.resolve('')])
         .then(function (r) {
-          var url = PLAYGROUND + '#code=' + r[0] + (r[1] ? '&stdin=' + r[1] : '');
+          var url = pgUrl + '#code=' + r[0] + (r[1] ? '&stdin=' + r[1] : '');
           if (w) w.location = url; else window.open(url, '_blank');
         })
-        .catch(function () { if (w) w.location = PLAYGROUND; });
+        .catch(function () { if (w) w.location = pgUrl; });
     });
-    copyBtn.addEventListener('click', function () {
+    if (copyBtn) copyBtn.addEventListener('click', function () {
       copyTo(copyBtn, (self._screen || []).filter(function (p) { return p[1] !== 'meta'; })
         .map(function (p) { return p[0]; }).join(''));
     });
@@ -490,10 +575,11 @@
 
     // ---- run lifecycle hooks the manager calls ----
     var running = false;
-    function setRun(on) { running = on; runBtn.classList.toggle('on', on); runBtn.textContent = on ? '■ Stop' : '▶ Run'; }
+    function setRun(on) { running = on; if (!runBtn) return; runBtn.classList.toggle('on', on); runBtn.textContent = on ? '■ Stop' : '▶ Run'; }
+    function status(s) { if (stEl) stEl.textContent = s; }
     this.getCode = function () { return ta.value; };
-    this.getStdin = function () { return inWrap.hidden ? '' : inTa.value; };
-    this.setStatus = function (s) { stEl.textContent = s; };
+    this.getStdin = function () { return (preset || !inWrap.hidden) ? inTa.value : ''; };
+    this.setStatus = status;
     this.starting = function () {
       // First reveal only: smoothly grow the output pane from 0 to its natural
       // height (measured), then release the inline height so output can stream in.
@@ -510,16 +596,23 @@
           outWrap.style.height = ''; outWrap.style.overflow = ''; outWrap.style.transition = '';
         }, 230);
       }
-      self._clearNext = true; setRun(true); stEl.textContent = 'running…';
+      self._clearNext = true; setRun(true); status('running…');
     };
-    this.finish = function (rc, ms) { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } if (!self._screen.length) push('(no output)', 'meta'); push('\n— exit ' + rc + ' · ' + ms + ' ms —', 'meta'); stEl.textContent = 'exit ' + rc + ' · ' + ms + ' ms'; };
-    this.stopped = function () { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } push('\n— stopped —', 'meta'); stEl.textContent = 'stopped'; };
-    this.reset = function () { setRun(false); stEl.textContent = ''; };
+    // `exit` covers the end-of-run report wherever it appears: the footer line
+    // under the output and the same words in the bar. Hiding it leaves the
+    // output pane holding the program's own output and nothing else.
+    this.finish = function (rc, ms) { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } if (!self._screen.length) push('(no output)', 'meta'); if (!hide.exit) push('\n— exit ' + rc + ' · ' + ms + ' ms —', 'meta'); status(hide.exit ? '' : 'exit ' + rc + ' · ' + ms + ' ms'); };
+    this.stopped = function () { setRun(false); if (self._clearNext) { self._screen = []; chars = 0; self._clearNext = false; } if (!hide.exit) push('\n— stopped —', 'meta'); status(hide.exit ? '' : 'stopped'); };
+    this.reset = function () { setRun(false); status(''); };
   }
 
   // ---- boot -------------------------------------------------------------
   // A page-wide theme default from the script tag: <script … data-theme="dark">.
   var DEFAULT_THEME = script.getAttribute('data-theme') || '';
+
+  // …and a page-wide chrome default: <script … data-hide="playground exit">.
+  // Every block starts from this and may add to it, or undo part of it.
+  var HIDE = parseHide(script.getAttribute('data-hide'), null);
 
   // Follow the host page's active theme when a block doesn't force its own. A host
   // that themes itself can expose the resolved theme as
@@ -545,6 +638,10 @@
     var opts = extra || {};
     if (el.hasAttribute && el.hasAttribute('data-stdin')) opts.stdin = el.getAttribute('data-stdin');
     if (el.hasAttribute && el.hasAttribute('data-rows')) opts.rows = parseInt(el.getAttribute('data-rows'), 10) || 0;
+    if (el.hasAttribute && el.hasAttribute('data-playground')) opts.playground = el.getAttribute('data-playground');
+    // Three layers, in this order: the page's list, anything this call passed,
+    // then the block's own attribute — each adding parts or taking them back.
+    opts.hide = parseHide(el.getAttribute && el.getAttribute('data-hide'), parseHide(opts.hide, HIDE));
     if (opts.theme == null) opts.theme = (el.getAttribute && el.getAttribute('data-theme')) || DEFAULT_THEME;
     var autorun = opts.run || (el.hasAttribute && el.hasAttribute('data-run'));
     var block = new Block(el, opts);
@@ -582,7 +679,10 @@
     if (AUTO) autoTargets(root).forEach(function (el) { enhance(el); });
   }
 
-  // Programmatic API for pages that build editors dynamically.
+  // Programmatic API for pages that build editors dynamically. `opts` takes the
+  // same things the attributes do — { code, run, stdin, rows, theme, hide,
+  // playground } — with `hide` written either as the attribute string
+  // ("playground exit") or as an array of part names.
   window.RakuEmbed = { enhance: enhance, enhanceAll: enhanceAll };
 
   if (document.readyState === 'loading')
