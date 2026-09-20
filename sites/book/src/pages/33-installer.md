@@ -129,39 +129,116 @@ my $repo = CompUnit::RepositoryRegistry.repository-for-spec("inst#$prefix");
 my $dist-id = $repo.install($dist, :force($force));
 ```
 
-**What went wrong.** The first version constructed the repository as
-`CompUnit::Repository::Installation.new(prefix => $to)` — which parses, runs,
-and installs nothing, silently. `.new` does not thread the prefix through to
-the writer, so every file operation targeted `"/sources"` and failed into the
-void. The fix is twofold: `repository-for-spec` is the constructor that
-carries the prefix, and the writer now *refuses loudly* when its prefix is
-empty rather than failing file-by-file in silence. A writer aimed at a shared
-store does not get to guess.
+**What went wrong.** The first version constructed the repository by hand:
 
-## The installer is a shipped Raku program
+```
+CompUnit::Repository::Installation.new(prefix => $to)
+```
 
-`rakupp install` and `rakupp uninstall` are not implemented in the binary.
-`main.cpp` recognises the two words and rewrites its own argument vector:
+which parses, runs, and installs nothing, silently. `.new` does not thread the
+prefix through to the writer, so every file operation targeted `"/sources"` and
+failed into the void. The fix is twofold: `repository-for-spec` is the
+constructor that carries the prefix, and the writer now *refuses loudly* when
+its prefix is empty rather than failing file-by-file in silence. A writer aimed
+at a shared store does not get to guess.
+
+## The installer is a Raku program the binary carries
+
+`rakupp install` and `rakupp uninstall` are not implemented in the binary — not
+in C++, anyway. `main.cpp` recognises the command words and rewrites its own
+argument vector so the command becomes `rakupp install.raku …`:
 
 ```cpp
 // src/main.cpp — the same trick `python -m pip` pulls, with a nicer spelling
+const char* tool = isDocCmd ? "doc.raku" : "install.raku";
+g_embeddedTool = tool;
+g_embeddedSrc  = isDocCmd ? rakupp::docToolSource() : rakupp::installerSource();
+```
+
+Those two functions return the program's text, and the argument scan
+recognises the name and takes the source from there instead of opening a file.
+The text is a byte array in a translation unit that does not exist in the
+repository: `cmake/EmbedTools.cmake` writes it into the **build** tree at build
+time, from `tools/install.raku`, `tools/doc.raku` and the two guides `doc`
+reads, listed as the custom command's `DEPENDS` so editing any of them rebuilds
+exactly that one file.
+
+Three decisions are packed into that sentence, and each one was arrived at the
+long way.
+
+**Bytes, not string literals.** MSVC caps a single string literal at 16 KB, and
+the installer is 85 KB, so a literal would have to be split into chunks — and a
+chunk boundary is a thing to get wrong. `file(READ … HEX)` has no cap, needs no
+escaping, and has no delimiter the content could accidentally contain. It is
+what `src/AstEmit.cpp` has always done with serialized ASTs, for exactly this
+reason.
+
+**CMake, not Raku.** The obvious generator is a Raku program, since everything
+else in `tools/` is one. But generating the blob would then require a working
+`rakupp` — which is the thing being built. That forces the generated file to be
+*committed*, and a committed generated file is a second copy of the installer in
+git: one diff in the `.raku` and one in the `.cpp` for every edit. CMake needs
+nothing but CMake, so the output can live in the build tree and the duplication
+never arises.
+
+**Compiled in, not shipped beside.** Which is the subject of the rest of this
+chapter.
+
+The guides are the one part that is not a straight copy. `docToolSource()`
+splices them into `doc.raku`'s `my %DOCS;` declaration as `Q:to/…/` heredocs —
+`Q` interpolates nothing and unescapes nothing, so Markdown goes in as it is.
+`doc.raku` reads that hash before it goes looking on disk, so a checkout leaves
+it empty and reads files, and a shipped binary answers from itself. The one
+thing that could break it is a line in a guide spelled exactly like the heredoc
+terminator, which would end the heredoc early and produce a doc tool that fails
+to *parse* — at run time, in a binary that compiled perfectly. CMake is in no
+position to check that, so the gate does.
+
+The reasons for Raku-not-C++ are worth spelling out either way, because "write
+the package tool in C++" is the default instinct and it is wrong here:
+
+- It is dogfood: the project's own tooling running on the interpreter it
+  ships, which is the policy everywhere else in the repo. What an installer
+  actually does — parse index JSON, compare version ranges, join paths, run
+  subprocesses, write a store — is the work Raku is short for and C++ is long
+  for.
+- It stays readable as a *program*, which matters for a tool whose failures
+  are all about somebody else's distribution.
+
+What is **not** a reason, though it reads like one: "so that `--exe` binaries
+do not carry an HTTP client". An `--exe` binary is a compiled user program; it
+can never be invoked as `rakupp install`, so its payload has nothing to say
+about how the installer is written. And the size question is settled by where
+the translation unit is linked, not by its language — the generated blob sits
+in the CLI-only group beside `Js.cpp`, and a C++ installer in `main.cpp` would
+have sat there just as well. The engine carries no network code for a
+different and better reason: fetching is `curl` and unpacking is `tar`, both in
+a subprocess, so no HTTP client, TLS stack, tar reader or index parser exists
+in rakupp in *any* language. That is a property of this design, not a
+consequence of choosing Raku.
+
+### It used to be a *sidecar*, and that was the bug
+
+The rewrite above once produced a **path**, looked up beside the executable:
+
+```cpp
 for (const char* rel : {"/../libexec/rakupp/install.raku", "/../tools/install.raku"}) {
     std::string cand = exeDir + rel;
     if (std::ifstream(cand).good()) { script = cand; break; }
 }
 ```
 
-so the command becomes `rakupp <path>/install.raku …` — a Raku program shipped
-with the release (`libexec/rakupp/` in an installed layout, `tools/` in a
-checkout). The reasons are worth spelling out, because "write the package tool
-in C++" is the default instinct and it is wrong here:
+The argument for shipping the file separately was that the installer changes at
+ecosystem speed and the engine at engine speed, so decoupling them would let one
+be fixed without rebuilding the other. In practice they shipped in the same
+release every time, and the decoupling only ever produced its failure mode: a
+binary with no installer. `COPY rakupp` into a container, a bare `rakupp.exe`
+dragged out of the Windows ZIP, a package that installed `bin/` and skipped
+`libexec/` — each one earned "cannot find install.raku beside this binary", and
+the fix was always for the *user* to reassemble a pair the project had split.
 
-- A compiled `--exe` binary and an embedded `librakupp` must not carry an
-  HTTP client, an ecosystem-index parser and a tar reader (Chapter 29 is an
-  entire chapter about removing things from the binary).
-- The installer changes at ecosystem speed, not engine speed.
-- It is dogfood: the project's own tooling running on the interpreter it
-  ships, which is the policy everywhere else in `tools/`.
+A cadence that never materialised is not worth a path the user has to get
+right. Nothing is looked up now, so there is no wrong path to have.
 
 The program is about 1,700 lines and its shape is a pipeline. It has roughly
 tripled since this chapter's first draft, and the additions are worth naming
@@ -183,7 +260,7 @@ reversed at the end so dependencies install before their dependents:
 ```
 $ rakupp install --dry-run JSON::Class
 plan (6 distributions, dependencies first):
-  JSON::Fast:ver<0.20.1>:auth<zef:timo>   https://360.zef.pm/J/SO/JSON_FAST/d5c8426f…be8b.tar.gz
+  JSON::Fast:ver<0.20.1>:auth<zef:timo>   https://360.zef.pm/J/SO/JSON_FAST/…
   JSON::Name:ver<0.0.7>:auth<zef:jonathanstowe>   …
   JSON::OptIn:ver<0.0.2>:auth<zef:jonathanstowe>   …
   JSON::Unmarshal:ver<0.18>:auth<zef:raku-community-modules>   …
@@ -200,6 +277,26 @@ A fetched archive is hashed and refused on mismatch, so a compromised mirror
 or a truncated download cannot become an installed module. When an index
 entry carries no checksum in its path, the installer says so out loud rather
 than pretending the gate applied.
+
+**Three ways in, one path out.** Everything above is what a *name* goes
+through. A directory argument skips resolution entirely — it already is a
+distribution — and a URL is fetched and unpacked into a directory first. All
+three then produce the same entry, so Test and Write below have no idea which
+one they are serving. That is the whole reason `url-dist-entry` ends by calling
+`local-dist-entry` on what it unpacked rather than building an entry itself: a
+second construction of the same thing is a second thing to keep correct.
+
+The URL forms are a `.tar.gz` archive and a github.com repo or `/tree/` page,
+rewritten to the tarball github already serves. `/tree/REF/SUBDIR` reaches a
+distribution inside a monorepo, which is the shape that prompted it — the URL
+someone has is the one from their address bar, not one they would have to
+construct. And the fetch-and-verify paragraph above is exactly where the three
+stop being equivalent: **a URL cannot be verified.** A fez archive's URL carries
+the SHA-1 of its own contents; an arbitrary URL names nothing about the bytes it
+will deliver. So a URL install prints the TLS-only note rather than quietly
+skipping a gate the reader has just been told about. `uninstall` refuses a URL
+for a related reason: the store is keyed by name, and learning the name behind a
+URL would mean fetching it first, which is not a thing an uninstall should do.
 
 **Test.** Before a distribution is installed, its own `t/` suite runs under
 rakupp — dependencies were installed first, so the tests see them. This gate
@@ -285,8 +382,33 @@ store check: 3 distributions, 0 broken, 0 unreferenced blobs
 
 It distinguishes two severities. **Broken** — an unreadable `dist/` record, a
 short entry pointing at a missing dist record, a missing blob behind a live
-entry, a provided module with no index entry — each is a `use` that will fail
-or a record that cannot be trusted, and any of them makes the exit code 1.
+entry, a blob that no longer holds the bytes it was named for, a provided
+module with no index entry — each is a `use` that will fail or a record that
+cannot be trusted, and any of them makes the exit code 1.
+
+That fourth one is why the store being content-addressed is worth the
+indirection it costs: a blob's file name IS the SHA-1 of its content, so
+"still the right bytes" is a question with an exact answer and nothing to
+record alongside. It is asked only of the records this installer wrote — zef
+and Rakudo name their blobs by something else, so hashing theirs would report
+every one of them damaged, and the summary says how many were checked for
+presence only rather than letting `0 broken` imply more than was asked:
+
+```
+$ rakupp install --check
+store: /Users/ash/.raku
+BROKEN: fez (43BE78BF…) lib/Fez/CLI.rakumod: sources/70C8E494… holds different bytes (SHA-1 DA39A3EE…)
+  4 distributions not installed by rakupp: blobs checked for presence, not content
+store check: 135 distributions, 1 broken, 0 unreferenced blobs
+```
+
+A blob truncated to nothing was the case that made presence alone
+insufficient, and it is worse than an absent one: `stat` is satisfied, so the
+record still answers "already installed" to every attempt to repair it, and an
+empty module compiles, so `use` SUCCEEDS and imports nothing. An installed
+`fez` in that state answered every subcommand with silence and exit 0 — its
+script is one `use Fez::CLI`, and an empty `Fez::CLI` left the program with no
+`MAIN` to run. No error anywhere to go on (issue #72).
 **Unreferenced blobs** are wasted disk, reported and exempt: in a shared
 store, a blob this engine cannot account for might be another writer's, and a
 checker that "cleans" what it does not understand is how shared state gets

@@ -56,7 +56,7 @@ a particular design was chosen over the obvious alternative.
 
 ## How to read it {-}
 
-The nine parts are ordered the way a program flows through the system: source
+The ten parts are ordered the way a program flows through the system: source
 text, then the tree, then the values, then execution, then the specialised
 engines, then the back ends, then the boundaries with the outside world. Read
 straight through and it is a narrative. Read a single part and it should still
@@ -76,6 +76,7 @@ If you are here for one thing in particular:
 | Raku in a browser | Chapter 32 |
 | installing modules, and the store zef shares | Chapter 34 |
 | calling C, or being called from it | Chapters 36 and 37 |
+| a loop that compiles itself while it runs | Chapter 44 |
 | a term you have not met before | Appendix D, the glossary |
 
 ## Conventions {-}
@@ -117,7 +118,8 @@ ninety per cent of the declared Roast suite passes. The method resolution order
 is a depth-first walk rather than C3 linearisation. Multiple dispatch resolves
 ties by declaration order instead of raising an ambiguity error. Modules publish
 their whole environment to the global scope rather than only their exports.
-Macros, `RakuAST`, and slangs are not implemented at all.
+Macros are not implemented at all, and slangs only where the lexer has a seam
+to hang a token on.
 
 Every one of those is stated in the chapter where it belongs, under a heading
 that says so. A book about compiler internals that only described the parts

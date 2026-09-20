@@ -33,10 +33,17 @@ reference for the internals; the user-facing command line is documented in
 | `--jupyter FILE` | run as a Jupyter kernel against Jupyter's connection file |
 | `--jupyter-install` | write the kernelspec that lets Jupyter launch this binary |
 | `--ffi-info` | which FFI backend is live, or why none is |
+| `--fmt` | format Raku source to stdout (`--target=raku`); `--check` lists the files that would change, `--diff` shows what |
+| `--rakuast` | print the RakuAST *view* of the program beside the Raku each node renders back to (`--target=rakuast`); `=tree`, `=attrs`, `=compunit` vary it |
+| `--jit-info` | what is in the tier-up kernel cache (Chapter 44) |
+| `--jit-clean` | empty it |
 | `--precomp-info` | what the parse cache holds |
 | `--precomp-clean` | empty it |
 | `--precomp-modules=on\|off`, `--precomp-files=on\|off` | the two cache switches |
-| `--version`, `-V`, `-v`, `--help`, `-h`, `--quiet`, `-q` | as expected |
+| `--version`, `-v` | the release, build and platform, on one line |
+| `-V` | the full report — the split is Rakudo's, but the report is a readable block, not Rakudo's `key=value` config dump |
+| `--info`, `--version-full` | ours; Rakudo spells this `-V` and nothing else |
+| `--help`, `-h`, `--quiet`, `-q` | as expected |
 | `-x` | skip everything before the `#!` line |
 | `--json` | machine-readable `-c` and `--lint` findings |
 | `--ll-exception` | every frame of an uncaught error |
@@ -53,9 +60,10 @@ reference for the internals; the user-facing command line is documented in
 |---|---|
 | `-o FILE` | output file (compile modes, `--target=js`) |
 | `-I DIR` | add a module search directory |
-| `--slim[=safe\|auto\|max\|none\|help\|list\|verify]` | cut unused runtime subsystems from the binary |
+| `--slim[=MODE]` | cut unused runtime subsystems from the binary; MODE is `safe`, `auto`, `max`, `none`, `help`, `list` or `verify` |
 | `--standalone` | a module that cannot be embedded is a build error |
-| `--target=js` | transpile to JavaScript (Chapter 30b) |
+| `--static` | link the C++ runtime into the compiled binary (Linux, MinGW) |
+| `--target=js` | transpile to JavaScript (Chapter 31) |
 | `--verify` | emit JavaScript only if it agrees with the interpreter |
 | `--module` | JavaScript: export the subs, classes and `MAIN` instead of running |
 | `--runtime` | write just the JavaScript runtime |
@@ -65,6 +73,8 @@ reference for the internals; the user-facing command line is documented in
 
 | Flag | Effect |
 |---|---|
+| `--jit[=SPEC]` | **work in progress**: compile hot loops with the machine's C++ compiler while the program runs, off by default. SPEC words: `off`, `on`, `sync`, `verbose`, `stats`, `nocache`, `pch`, `threshold=N` (Chapter 44) |
+| `--cnp[=SPEC]` | **work in progress**: the same by copy-and-patch — no compiler and no cache. SPEC words: `off`, `on`, `verbose`, `stats`, `threshold=N` (Chapter 44) |
 | `--seed` | pin the random generator |
 | `--stack-size` | the stack of the program thread, and so the recursion ceiling |
 | `--env-file FILE` | load `KEY=VALUE` lines into the environment |
@@ -93,6 +103,7 @@ sixty-six flags the binary accepts, including a whole run mode.
 | `ROAST` | adds the specification suite's test-helper library |
 | `RAKUPP_HOME` | where the binary considers itself installed |
 | `RAKUPP_CONFIG` | override the settings file location |
+| `RAKUPP_VM_NAME` | what `$*VM.name` answers instead of `cpp`, for modules that branch on it |
 | `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` | the settings and cache directories |
 
 ### The parse cache
@@ -103,6 +114,16 @@ sixty-six flags the binary accepts, including a whole run mode.
 | `RAKUPP_PRECOMP_FILES` | override the file-cache switch |
 | `RAKUPP_NO_PRECOMP=1` | force both off |
 | `RAKUPP_PRECOMP_DIR` | where cache entries live |
+
+### The tier-up compilers
+
+| Variable | Effect |
+|---|---|
+| `RAKUPP_JIT_THRESHOLD` | iterations before a loop counts as hot, for whichever back end is on |
+| `RAKUPP_JIT_VERBOSE` | narrate every tier-up decision to stderr |
+| `RAKUPP_JIT_DIR` | where `--jit` keeps compiled kernels |
+| `RAKUPP_CNP` | a bundled binary only, which has no option surface of its own: `0` or `off` turns the baked-in back end off for one run, `1` on, anything else is read as a `--cnp` spec |
+| `RAKUPP_CNP_X86=1` | run the unverified x86-64 patcher, which is refused at startup because it gives wrong answers |
 
 ### The foreign-function interface
 
@@ -171,6 +192,14 @@ Two of the variables above change *results* rather than speed: `RAKUPP_LTM` and
 `RAKUPP_PARALLEL`. Both are off by default, and the policy for both is the same:
 the old path stays available for at least one release after the default changes,
 so a regression can be bisected to the switch rather than to the release.
+
+`RAKUPP_VM_NAME` is a third, and a different kind. It changes one answer —
+`$*VM.name`, and the `$*RAKU.VMnames` list it has to stay a member of — so that
+a module which branches on the name and dies on the `else` takes its `moar`
+branch instead. Nothing sets it on your behalf, and no measurement this project
+publishes runs with it set: the default is what this engine is, and asserting a
+dialect is the caller's statement, not the engine's. `$*VM.config` is untouched
+either way, because the toolchain values in it were already real.
 
 Everything else here either reports something or selects a code path that is
 required to produce identical output.
