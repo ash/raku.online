@@ -165,8 +165,15 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # carried nine since the interpreter/native tables were split, and the dashboard
 # was drawing a third of what we measure. A kernel missing from an older release's
 # table is simply absent from that point — bench-at only records what it finds.
+#
+# THIS LIST IS A FILTER, not just an order: bench-json iterates it, so a kernel
+# absent here is dropped from the JSON silently, however well it was measured.
+# It is the third hand-maintained kernel list in the chain — the others are
+# run-bench's @benches and perf-guard's @KERNELS — and `mainwhen` was measured
+# on six refs before anyone noticed it reached no chart. Add a new kernel in
+# all three, plus KERNEL_ORDER in theme/dashboard.js, which is a fourth.
 constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup
-                     sortby textsplit arraypush rats objects multiwhere>;
+                     sortby textsplit arraypush rats objects multiwhere mainwhen>;
 
 #| The revision BENCHMARKS.md says the sitting was taken at, out of its own
 #| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is

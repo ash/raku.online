@@ -234,9 +234,9 @@
       // so that lane is the interpreter plus binary startup. The card title
       // links to the kernel, whose comment says so.
       var KERNEL_ORDER = ['strcat', 'hash', 'sortby', 'bigint', 'sortnums',
-                          'regex', 'textsplit', 'arrayops', 'hashfill',
-                          'arraypush', 'loopsum', 'rats', 'fib', 'streq',
-                          'objects', 'multiwhere', 'startup'];
+                          'regex', 'textsplit', 'arrayops', 'mainwhen',
+                          'hashfill', 'arraypush', 'loopsum', 'rats', 'fib',
+                          'streq', 'objects', 'multiwhere', 'startup'];
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
