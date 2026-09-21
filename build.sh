@@ -243,6 +243,20 @@ stamp_cache_tag() {
         "s|(/theme/[A-Za-z0-9._-]+)(\?v=[0-9a-f]{8})?|\1?v=$ttag|g"
     echo "theme cache tag: ?v=$ttag"
 
+    # The conformance map's DATA, re-tagged after the theme pass above. That pass
+    # gives /theme/conformance.js the theme hash, and conformance.js busts
+    # /spec/roast-map.json with whatever tag it was itself loaded under — so a
+    # run that refreshed only the snapshot left both URLs byte-identical and
+    # every returning visitor kept the PREVIOUS snapshot out of their browser
+    # cache. Deploying a new Roast run then changed nothing for anyone who had
+    # already seen the page. Fold the data into this one script's tag so the tag
+    # follows the bytes it protects; the extra re-fetch of a 4 KB script when the
+    # data moves is the point, not a cost.
+    ctag=$(cat "$WWW"/theme/conformance.js "$WWW"/spec/roast-map.json | md5 -q | cut -c1-8)
+    LC_ALL=C sed -i '' -E "s|(/theme/conformance\.js)(\?v=[0-9a-f]{8})?|\1?v=$ctag|g" \
+        "$WWW"/spec/conformance/index.html
+    echo "conformance data tag: ?v=$ctag"
+
     # raku.js as our own pages load it. The URL itself never changes — other
     # people's pages depend on the bare path — but ours can carry a tag so a new
     # embed script reaches our readers without waiting for a cache to expire.
