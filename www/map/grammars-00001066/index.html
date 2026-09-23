@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grammars and match trees #17 — Rakumap</title>
+<script>window.__SITE_BASE='/map';</script>
+<script src="/theme/boot.js?v=44bd1a70"></script>
+<link rel="stylesheet" href="/theme/base.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/shell.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/map.css?v=44bd1a70">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main><div class="content">
+<p class="crumb"><a href="/map/">← All programs</a> · <a href="/map/#grammars">Grammars and match trees</a></p>
+<h1>Grammars and match trees <span class="map-num">#17</span></h1>
+<div class="map-verdict mv-box-differs"><span class="map-verdict-icon">≠</span><div><strong>Raku++ 4.0.1 prints something different from Rakudo 2026.08</strong><p>Rakudo 2026.08 runs this program cleanly; the lines marked ≠ below are where the answers part. A difference is a lead, not a verdict: sometimes both are valid Raku, and sometimes Rakudo is the one that is wrong. <a href="https://github.com/ash/rakumap/tree/main/fixtures/findings/grammars-00001066">This difference is preserved as a Rakumap finding ↗</a></p></div></div>
+<h2>The program</h2>
+<p>The grammar and its inputs come first. <code>rm-dump</code>, the same in every program of this topic, prints one line for every field of every node of the resulting Match — its text, position, <code>.orig</code>, <code>.prematch</code>, <code>.made</code>, its captures — so a difference in the shape of the match shows as a difference in output.</p>
+<pre data-raku data-rows="28">grammar G {
+    rule TOP { &lt;r1&gt; | &lt;k1=r2&gt;* &lt;r2&gt; &lt;k0=r1&gt; &lt;k1=r2&gt; $ }
+    token r0 { \d }
+    rule r1 { &lt;[a..c]&gt; }
+    rule r2 { [ [ 'a' ] ] }
+}
+sub rm-q($v) { $v.defined ?? $v.raku !! 'Nil' }
+sub rm-dump($m, Str $p) {
+    unless $m.defined { say &quot;$p kind Nil&quot;; return }
+    if $m ~~ Match {
+        say &quot;$p kind Match&quot;;
+        say &quot;$p str {$m.Str.raku}&quot;;
+        say &quot;$p from {$m.from}&quot;;
+        say &quot;$p to {$m.to}&quot;;
+        say &quot;$p orig {rm-q($m.orig)}&quot;;
+        say &quot;$p target {rm-q($m.target)}&quot;;
+        say &quot;$p pre {rm-q($m.prematch)}&quot;;
+        say &quot;$p post {rm-q($m.postmatch)}&quot;;
+        say &quot;$p made {rm-q($m.made)}&quot;;
+        for $m.list.kv -&gt; $i, $c { rm-dump($c, $p ~ '[' ~ $i ~ ']') }
+        for $m.hash.keys.sort -&gt; $k { rm-dump($m.hash{$k}, $p ~ '&lt;' ~ $k ~ '&gt;') }
+        # Captures that start at the same position have no specified order
+        # (rakupp's varies from run to run), so ties are ordered by name.
+        say &quot;$p caps {$m.caps.sort({ .value.from, ~.key }).map({ .key ~ '=' ~ .value.Str.raku }).join(' ')}&quot;;
+    }
+    elsif $m ~~ Positional {
+        say &quot;$p kind List({$m.elems})&quot;;
+        for $m.list.kv -&gt; $i, $c { rm-dump($c, $p ~ '.' ~ $i) }
+    }
+    else { say &quot;$p kind {$m.^name}&quot; }
+}
+my @inputs = &quot;a a a b a &quot;, &quot;a a c a &quot;, &quot;  c a &quot;;
+for @inputs.kv -&gt; $i, $in {
+    say &quot;#$i input {$in.raku}&quot;;
+    rm-dump(G.subparse($in), '@' ~ $i);
+}</pre>
+<p class="map-note">Run executes the program in your browser, with the Raku++ build this site ships. Edit it and try variations.</p>
+<h2>What each compiler printed</h2>
+<div class="map-table-wrap"><table class="map-table map-dump">
+<thead><tr><th></th><th>Rakudo 2026.08</th><th>Raku++ 4.0.1</th></tr></thead><tbody>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;a a a b a &quot;</code></th></tr>
+<tr class="eq"><th><code>$/</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="ne"><th><code>$/</code> str</th><td><code>&quot;a a a b a &quot;</code></td><td><code>&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="ne"><th><code>$/</code> to</th><td><code>10</code></td><td><code>2</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>&quot;a a a b a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>&quot;a a a b a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="ne"><th><code>$/</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;a a b a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> str</th><td><code>&quot;b &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> from</th><td><code>6</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> to</th><td><code>8</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> pre</th><td><code>&quot;a a a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> post</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;</code> kind</th><td><code>List(3)</code></td><td><code>List(0)</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> from</th><td><code>0</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> to</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> pre</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> post</th><td><code>&quot;a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> from</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> to</th><td><code>4</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> pre</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> post</th><td><code>&quot;a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> from</th><td><code>8</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> to</th><td><code>10</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> pre</th><td><code>&quot;a a a b &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> post</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.2</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> str</th><td><code>&quot;b &quot;</code></td><td><code>&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> from</th><td><code>6</code></td><td><code>0</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> to</th><td><code>8</code></td><td><code>2</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>&quot;a a a b a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>&quot;a a a b a &quot;</code></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> pre</th><td><code>&quot;a a a &quot;</code></td><td><code>&quot;&quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> post</th><td><code>&quot;a &quot;</code></td><td><code>&quot;a a b a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> caps</th><td><code></code></td><td><code></code></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;</code> kind</th><td><code>List(4)</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> from</th><td><code>0</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> to</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> pre</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> post</th><td><code>&quot;a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> from</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> to</th><td><code>4</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> pre</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> post</th><td><code>&quot;a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> from</th><td><code>4</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> to</th><td><code>6</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> pre</th><td><code>&quot;a a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> post</th><td><code>&quot;b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> from</th><td><code>8</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> to</th><td><code>10</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> orig</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> target</th><td><code>&quot;a a a b a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> pre</th><td><code>&quot;a a a b &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> post</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.3</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> caps</th><td><code>k1=&quot;a &quot; r2=&quot;a &quot; k1=&quot;a &quot; r2=&quot;a &quot; r2=&quot;a &quot; k0=&quot;b &quot; r1=&quot;b &quot; k1=&quot;a &quot; r2=&quot;a &quot;</code></td><td><code>r1=&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;a a c a &quot;</code></th></tr>
+<tr class="eq"><th><code>$/</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="ne"><th><code>$/</code> str</th><td><code>&quot;a a c a &quot;</code></td><td><code>&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="ne"><th><code>$/</code> to</th><td><code>8</code></td><td><code>2</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>&quot;a a c a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>&quot;a a c a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="ne"><th><code>$/</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;a c a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> str</th><td><code>&quot;c &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> from</th><td><code>4</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> to</th><td><code>6</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> pre</th><td><code>&quot;a a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> post</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k0&gt;</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;</code> kind</th><td><code>List(2)</code></td><td><code>List(0)</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> from</th><td><code>0</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> to</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> pre</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> post</th><td><code>&quot;a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.0</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> from</th><td><code>6</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> to</th><td><code>8</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> pre</th><td><code>&quot;a a c &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> post</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;k1&gt;.1</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> str</th><td><code>&quot;c &quot;</code></td><td><code>&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> from</th><td><code>4</code></td><td><code>0</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> to</th><td><code>6</code></td><td><code>2</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>&quot;a a c a &quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>&quot;a a c a &quot;</code></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> pre</th><td><code>&quot;a a &quot;</code></td><td><code>&quot;&quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r1&gt;</code> post</th><td><code>&quot;a &quot;</code></td><td><code>&quot;a c a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r1&gt;</code> caps</th><td><code></code></td><td><code></code></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;</code> kind</th><td><code>List(3)</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> from</th><td><code>0</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> to</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> pre</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> post</th><td><code>&quot;a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.0</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> from</th><td><code>2</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> to</th><td><code>4</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> pre</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> post</th><td><code>&quot;c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.1</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> kind</th><td><code>Match</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> str</th><td><code>&quot;a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> from</th><td><code>6</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> to</th><td><code>8</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> orig</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> target</th><td><code>&quot;a a c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> pre</th><td><code>&quot;a a c &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> post</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/&lt;r2&gt;.2</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> caps</th><td><code>k1=&quot;a &quot; r2=&quot;a &quot; r2=&quot;a &quot; k0=&quot;c &quot; r1=&quot;c &quot; k1=&quot;a &quot; r2=&quot;a &quot;</code></td><td><code>r1=&quot;a &quot;</code> <span class="map-flag">≠</span></td></tr>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;  c a &quot;</code></th></tr>
+<tr class="ne"><th><code>$/</code> kind</th><td><code>Match</code></td><td><code>Nil</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> str</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> from</th><td><code>0</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> to</th><td><code>-3</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> orig</th><td><code>&quot;  c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> target</th><td><code>&quot;  c a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> pre</th><td><code>&quot;&quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> post</th><td><code>&quot; a &quot;</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> made</th><td><code>Nil</code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+<tr class="ne"><th><code>$/</code> caps</th><td><code></code></td><td><code>—</code> <span class="map-flag">≠</span></td></tr>
+</tbody></table></div>
+<p class="map-links">grammars-v1 · seed 1066 · recorded 2026-09-23 with Rakudo 2026.08 and Raku++ 4.0.1-132-g3e242220-modified · <a href="https://github.com/ash/rakumap/blob/main/fixtures/generated/grammars-v1/grammars-00001066.raku">Source on GitHub ↗</a></p>
+<nav class="map-next"><a href="/map/grammars-00001065/">← Grammars and match trees #16</a> <a class="next" href="/map/grammars-00001082/">Grammars and match trees #18 →</a></nav>
+<footer>
+  <span>Programs are generated deterministically from recorded seeds.</span>
+  <span><a href="https://github.com/ash/rakumap">Rakumap on GitHub ↗</a></span>
+</footer>
+</div></main>
+<script src="/theme/shell.js?v=44bd1a70" defer></script>
+<script src="/raku.js?v=209f7b92"></script>
+</body>
+</html>

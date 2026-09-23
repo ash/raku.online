@@ -7,7 +7,7 @@
     # Topics in reading order — the simplest ideas first. The key is the
     # generator's name without its -vN suffix.
     order   => <literals variables numeric operators control subs signatures containers
-                types methods regex unicode builtins phasers concurrency invalid>,
+                types methods regex grammars unicode builtins phasers concurrency invalid>,
     topics  => {
         literals    => { title => 'Literals',
                          blurb => 'Writing values straight into code: numbers in other bases, rationals, pairs, strings, versions.' },
@@ -31,6 +31,8 @@
                          blurb => 'Attributes, inheritance, roles, private and multi methods, delegation.' },
         regex       => { title => 'Regexes',
                          blurb => 'Matching, captures, quantifiers, comb, split and subst.' },
+        grammars    => { title => 'Grammars and match trees',
+                         blurb => 'Grammars assembled at random from alternations, quantifiers, subrule calls and captures, with every field of the resulting Match printed.' },
         unicode     => { title => 'Unicode',
                          blurb => 'Characters versus codepoints, case mapping and text outside ASCII.' },
         builtins    => { title => 'Built-in functions',

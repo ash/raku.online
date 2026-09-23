@@ -96,7 +96,7 @@ sub snippet(Str $code --> Str) {
             $in-helper = False if $line ~~ / ^ '}' \s* $ /;
             next;
         }
-        if $line ~~ / ^ 'sub safe-str' / {
+        if $line ~~ / ^ 'sub ' [ 'safe-str' | 'rm-q' | 'rm-dump' ] >> / {
             $in-helper = True unless $line ~~ / '}' \s* $ /;
             next;
         }
@@ -108,6 +108,12 @@ sub snippet(Str $code --> Str) {
 
 sub has-harness(Str $code --> Bool) {
     so $code ~~ / 'say "TYPE\t"' /
+}
+
+# The grammars programs carry a Match dumper (rm-dump) instead of the four-line
+# harness: it prints one `PATH FIELD VALUE` line per field of every node.
+sub has-dumper(Str $code --> Bool) {
+    so $code ~~ / ^^ 'sub rm-dump' /
 }
 
 # ---------------------------------------------------------------- recording
@@ -335,6 +341,47 @@ sub index-page(@cases, %res --> Str) {
 
 # ---------------------------------------------------------------- one program
 
+# rm-dump prints `PATH FIELD VALUE` lines (and `#N input "…"` headers). Keyed by
+# `PATH FIELD`, two dumps align row by row even when one side has a node the
+# other lacks; Nil when the output is not a dump.
+sub dump-rows(Str $out) {
+    my @rows;
+    for $out.lines -> $l {
+        if $l ~~ / ^ ('#' \d+) ' input ' (.*) $ / { @rows.push: "$0 input" => ~$1; next }
+        return Nil unless $l ~~ / ^ ('@' \d+ \S*) ' ' (\w+) [ ' ' (.*) ]? $ / ;
+        @rows.push: "$0 $1" => ($2 // '').Str;
+    }
+    @rows ?? @rows !! Nil
+}
+
+sub dump-table(@o, @e, Str $oracle, Str $engine --> Str) {
+    my %o = @o.map({ .key => .value }); my %e = @e.map({ .key => .value });
+    my @keys; my %seen;
+    my ($i, $j) = 0, 0;
+    # Merge the two key sequences, keeping each side's order: take the oracle's
+    # next key unless the engine's next key is one the oracle never prints.
+    while $i < @o.elems || $j < @e.elems {
+        my $k = $i < @o.elems && ($j >= @e.elems || %o{@e[$j].key}:exists) ?? @o[$i++].key !! @e[$j++].key;
+        @keys.push($k) unless %seen{$k}++;
+    }
+    my @h = '<div class="map-table-wrap"><table class="map-table map-dump">',
+        "<thead><tr><th></th><th>{$oracle}</th><th>{$engine}</th></tr></thead><tbody>";
+    for @keys -> $k {
+        if $k ~~ / ^ '#' \d+ ' input' $ / {
+            @h.push: '<tr class="map-dump-input"><th colspan="3">input <code>' ~ esc(%o{$k} // %e{$k}) ~ '</code></th></tr>';
+            next;
+        }
+        my ($path, $field) = $k.split(' ', 2);
+        my $a = %o{$k}; my $b = %e{$k};
+        my $same = $a.defined && $b.defined && $a eq $b;
+        @h.push: '<tr class="' ~ ($same ?? 'eq' !! 'ne') ~ '"><th><code>' ~ esc($path.subst(/ ^ '@' \d+ /, '$/')) ~ '</code> '
+            ~ esc($field) ~ '</th><td><code>' ~ ($a.defined ?? esc($a) !! '—') ~ '</code></td><td><code>'
+            ~ ($b.defined ?? esc($b) !! '—') ~ '</code>' ~ ($same ?? '' !! ' <span class="map-flag">≠</span>') ~ '</td></tr>';
+    }
+    @h.push: '</tbody></table></div>';
+    @h.join("\n")
+}
+
 # The harness prints KEY<tab>value lines; a table reads better than raw text.
 sub fields(Str $out) {
     my @f;
@@ -374,7 +421,12 @@ sub comparison(%case, %res --> Str) {
 
     my $fo = fields($o<out>);
     my $fe = fields($e<out>);
-    if $fo && $fe && $fo.elems == $fe.elems && $fo.map(*.key) eq $fe.map(*.key) {
+    my $do = dump-rows($o<out>);
+    my $de = dump-rows($e<out>);
+    if $do && $de {
+        @h.push: dump-table($do.list, $de.list, $oracle, $engine);
+    }
+    elsif $fo && $fe && $fo.elems == $fe.elems && $fo.map(*.key) eq $fe.map(*.key) {
         @h.push: '<div class="map-table-wrap"><table class="map-table">',
             "<thead><tr><th></th><th>{$oracle}</th><th>{$engine}</th></tr></thead><tbody>";
         for $fo.list Z $fe.list -> ($a, $b) {
@@ -481,6 +533,11 @@ sub case-page(%case, %res, $prev, $next --> Str) {
     @body.push: '<p>The first lines compute <code>$value</code>. The last four lines are the same in every program: '
         ~ 'they print what kind of thing <code>$value</code> is, how it looks as code, as a string, and as true or false.</p>'
         if has-harness(%case<code>);
+    @body.push: '<p>The grammar and its inputs come first. <code>rm-dump</code>, the same in every program '
+        ~ 'of this topic, prints one line for every field of every node of the resulting Match — its text, '
+        ~ 'position, <code>.orig</code>, <code>.prematch</code>, <code>.made</code>, its captures — so a difference '
+        ~ 'in the shape of the match shows as a difference in output.</p>'
+        if has-dumper(%case<code>);
     @body.push: '<pre data-raku data-rows="' ~ $rows ~ '">' ~ esc(%case<code>.chomp) ~ '</pre>',
         '<p class="map-note">Run executes the program in your browser, with the Raku++ build this site ships. '
         ~ 'Edit it and try variations.</p>';

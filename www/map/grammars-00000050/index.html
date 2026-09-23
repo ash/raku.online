@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grammars and match trees #11 — Rakumap</title>
+<script>window.__SITE_BASE='/map';</script>
+<script src="/theme/boot.js?v=44bd1a70"></script>
+<link rel="stylesheet" href="/theme/base.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/shell.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/map.css?v=44bd1a70">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main><div class="content">
+<p class="crumb"><a href="/map/">← All programs</a> · <a href="/map/#grammars">Grammars and match trees</a></p>
+<h1>Grammars and match trees <span class="map-num">#11</span></h1>
+<div class="map-verdict mv-box-same"><span class="map-verdict-icon">✓</span><div><strong>Raku++ 4.0.1 prints exactly what Rakudo 2026.08 prints</strong><p>This is valid Raku: Rakudo 2026.08, the reference compiler, runs it without complaint, and the two outputs match character for character.</p></div></div>
+<h2>The program</h2>
+<p>The grammar and its inputs come first. <code>rm-dump</code>, the same in every program of this topic, prints one line for every field of every node of the resulting Match — its text, position, <code>.orig</code>, <code>.prematch</code>, <code>.made</code>, its captures — so a difference in the shape of the match shows as a difference in output.</p>
+<pre data-raku data-rows="28">grammar G {
+    regex TOP { &lt;r2&gt; }
+    token r0 { &lt;[a..c]&gt; }
+    rule r1 { &lt;[a..c]&gt; ',' \w+ '=' &lt;k1=r0&gt; &lt;?r0&gt; }
+    regex r2 { $&lt;k0&gt;=( &lt;[a..c]&gt; ) }
+}
+sub rm-q($v) { $v.defined ?? $v.raku !! 'Nil' }
+sub rm-dump($m, Str $p) {
+    unless $m.defined { say &quot;$p kind Nil&quot;; return }
+    if $m ~~ Match {
+        say &quot;$p kind Match&quot;;
+        say &quot;$p str {$m.Str.raku}&quot;;
+        say &quot;$p from {$m.from}&quot;;
+        say &quot;$p to {$m.to}&quot;;
+        say &quot;$p orig {rm-q($m.orig)}&quot;;
+        say &quot;$p target {rm-q($m.target)}&quot;;
+        say &quot;$p pre {rm-q($m.prematch)}&quot;;
+        say &quot;$p post {rm-q($m.postmatch)}&quot;;
+        say &quot;$p made {rm-q($m.made)}&quot;;
+        for $m.list.kv -&gt; $i, $c { rm-dump($c, $p ~ '[' ~ $i ~ ']') }
+        for $m.hash.keys.sort -&gt; $k { rm-dump($m.hash{$k}, $p ~ '&lt;' ~ $k ~ '&gt;') }
+        # Captures that start at the same position have no specified order
+        # (rakupp's varies from run to run), so ties are ordered by name.
+        say &quot;$p caps {$m.caps.sort({ .value.from, ~.key }).map({ .key ~ '=' ~ .value.Str.raku }).join(' ')}&quot;;
+    }
+    elsif $m ~~ Positional {
+        say &quot;$p kind List({$m.elems})&quot;;
+        for $m.list.kv -&gt; $i, $c { rm-dump($c, $p ~ '.' ~ $i) }
+    }
+    else { say &quot;$p kind {$m.^name}&quot; }
+}
+my @inputs = &quot;c&quot;, &quot;b&quot;, &quot;(b&quot;;
+for @inputs.kv -&gt; $i, $in {
+    say &quot;#$i input {$in.raku}&quot;;
+    rm-dump(G.parse($in), '@' ~ $i);
+}</pre>
+<p class="map-note">Run executes the program in your browser, with the Raku++ build this site ships. Edit it and try variations.</p>
+<h2>What each compiler printed</h2>
+<div class="map-table-wrap"><table class="map-table map-dump">
+<thead><tr><th></th><th>Rakudo 2026.08</th><th>Raku++ 4.0.1</th></tr></thead><tbody>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;c&quot;</code></th></tr>
+<tr class="eq"><th><code>$/</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/</code> str</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/</code> orig</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> target</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> str</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> orig</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> target</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> str</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> orig</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> target</th><td><code>&quot;c&quot;</code></td><td><code>&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> caps</th><td><code></code></td><td><code></code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> caps</th><td><code>k0=&quot;c&quot;</code></td><td><code>k0=&quot;c&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> caps</th><td><code>r2=&quot;c&quot;</code></td><td><code>r2=&quot;c&quot;</code></td></tr>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;b&quot;</code></th></tr>
+<tr class="eq"><th><code>$/</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/</code> str</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/</code> orig</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> target</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> str</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> orig</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> target</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> kind</th><td><code>Match</code></td><td><code>Match</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> str</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> from</th><td><code>0</code></td><td><code>0</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> to</th><td><code>1</code></td><td><code>1</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> orig</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> target</th><td><code>&quot;b&quot;</code></td><td><code>&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> pre</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> post</th><td><code>&quot;&quot;</code></td><td><code>&quot;&quot;</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> made</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;&lt;k0&gt;</code> caps</th><td><code></code></td><td><code></code></td></tr>
+<tr class="eq"><th><code>$/&lt;r2&gt;</code> caps</th><td><code>k0=&quot;b&quot;</code></td><td><code>k0=&quot;b&quot;</code></td></tr>
+<tr class="eq"><th><code>$/</code> caps</th><td><code>r2=&quot;b&quot;</code></td><td><code>r2=&quot;b&quot;</code></td></tr>
+<tr class="map-dump-input"><th colspan="3">input <code>&quot;(b&quot;</code></th></tr>
+<tr class="eq"><th><code>$/</code> kind</th><td><code>Nil</code></td><td><code>Nil</code></td></tr>
+</tbody></table></div>
+<p class="map-links">grammars-v1 · seed 50 · recorded 2026-09-23 with Rakudo 2026.08 and Raku++ 4.0.1-132-g3e242220-modified · <a href="https://github.com/ash/rakumap/blob/main/fixtures/generated/grammars-v1/grammars-00000050.raku">Source on GitHub ↗</a></p>
+<nav class="map-next"><a href="/map/grammars-00000049/">← Grammars and match trees #10</a> <a class="next" href="/map/grammars-00000051/">Grammars and match trees #12 →</a></nav>
+<footer>
+  <span>Programs are generated deterministically from recorded seeds.</span>
+  <span><a href="https://github.com/ash/rakumap">Rakumap on GitHub ↗</a></span>
+</footer>
+</div></main>
+<script src="/theme/shell.js?v=44bd1a70" defer></script>
+<script src="/raku.js?v=209f7b92"></script>
+</body>
+</html>
