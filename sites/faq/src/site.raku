@@ -20,7 +20,7 @@
         'Talking to the outside world'  => <shell background-processes http buffering>,
         'Compiling, and making it fast' => <compiling optimizer performance>,
         'When something goes wrong'     => <debugging garbage-collection>,
-        'How Raku++ works'              => <what-kind-of-compiler hand-written implementations differences>,
+        'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations differences>,
     ),
     catch-all => 'Everything else',
 
@@ -45,6 +45,7 @@
         implementations => 'Three Rakus in active development — Rakudo, Raku++ and mutsu — and the engineering decisions that separate them.',
         l10n        => 'Writing Raku in German, Japanese or Afrikaans: the L10N modules, why Rakudo needs a flag for them and Raku++ does not, and the one declarator that cannot be translated.',
         'what-kind-of-compiler' => 'One-pass or multi-pass, LL(1) or LR, is there an IR, a VM, a JIT: the compiler-theory questions, answered one at a time.',
+        refcounting => 'How reference counting works, in Raku terms: what is shared and what is copied, what keeps a closure\'s frame alive, why DESTROY waits for a sweep, and the cycles you make without noticing.',
     },
 
     # ../SOMETHING.md in an article points at a doc that lives in the rakupp

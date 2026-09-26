@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — how reference counting works</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=44bd1a70"></script>
+<link rel="stylesheet" href="/theme/base.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/shell.css?v=44bd1a70">
+<link rel="stylesheet" href="/theme/faq.css?v=44bd1a70">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>How reference counting works</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#what-exactly-is-counted">What exactly is counted?</a></li><li><a href="#which-operations-raise-a-count-and-which-lower-it">Which operations raise a count, and which lower it?</a></li><li><a href="#when-exactly-is-memory-freed">When exactly is memory freed?</a></li><li><a href="#does-my-b-a-copy-the-array">Does <code>my @b = @a</code> copy the array?</a></li><li><a href="#is-an-array-copied-when-i-pass-it-to-a-routine">Is an array copied when I pass it to a routine?</a></li><li><a href="#why-is-copying-a-long-string-cheap">Why is copying a long string cheap?</a></li><li><a href="#what-keeps-a-closure-s-variables-alive">What keeps a closure's variables alive?</a></li><li><a href="#why-doesn-t-destroy-run-the-moment-the-count-reaches-zero">Why doesn't <code>DESTROY</code> run the moment the count reaches zero?</a></li><li><a href="#what-happens-with-a-reference-cycle">What happens with a reference cycle?</a></li><li><a href="#which-cycles-do-i-make-without-noticing">Which cycles do I make without noticing?</a></li><li><a href="#can-i-see-a-reference-count-from-raku">Can I see a reference count from Raku?</a></li><li><a href="#is-the-counting-thread-safe">Is the counting thread-safe?</a></li></ul></nav>
+<p>Raku++ frees memory by counting references. Anything a value keeps on the heap (a long string, an array's elements, an object's attributes, a closure's variables) carries a count of how many places point at it. Each new place adds one and each place that lets go takes one away. The drop that takes the count to zero frees it, right there, before the next statement runs.</p>
+<p>This page is about the mechanism: what is counted, which Raku operations move a count, what is shared and what is copied, and the one thing counting cannot see, which is a cycle. <a href="/faq/garbage-collection/">the garbage collector</a> is the companion page about consequences: the memory floor, the absence of pauses, the cost of a big free, and what <code>DESTROY</code> does and does not promise.</p>
+<p>Rakudo counts nothing. MoarVM has a tracing, generational collector that finds unreachable objects by walking from the roots. So the programs below print the same values on both engines, because that is language semantics. Where they differ, it is in <em>when</em> something is freed and how much memory it takes, and the page shows both.</p>
+<p>Memory figures are <strong>peak memory footprint</strong> from <code>/usr/bin/time -l</code>, macOS arm64, 2026-09-26: rakupp 4.0.1 (main) against Rakudo v2026.08 / MoarVM 2026.08. Rakudo starts from a floor of about 92 MB, so its column cannot go below that.</p>
+<h2 id="what-exactly-is-counted">What exactly is counted? <a class="anchor" href="#what-exactly-is-counted" aria-label="link">#</a></h2>
+<p>A variable, an array element, a hash value, an attribute, a parameter: each is a <strong>slot</strong> holding one fixed-size <code>Value</code> (128 bytes). Small things live inside the slot and are copied outright. Everything else lives on the heap behind a counted pointer, and copying the slot copies the pointer and adds one to the count.</p>
+<div class="tablewrap"><table><tr><th>inside the slot, copied</th><th>on the heap, counted</th></tr><tr><td>an <code>Int</code> that fits in 64 bits, a <code>Num</code>, a <code>Bool</code></td><td>a larger <code>Int</code>; a <code>Rat</code>'s numerator and denominator</td></tr>
+<tr><td>a <code>Str</code> shorter than 23 bytes</td><td>a <code>Str</code> of 23 bytes or more</td></tr>
+<tr><td>type objects, enum values</td><td>an <code>Array</code>/<code>List</code>'s elements, a <code>Hash</code>'s table (also <code>Set</code>, <code>Bag</code>, <code>Mix</code>)</td></tr>
+<tr><td></td><td>an object's attributes</td></tr>
+<tr><td></td><td>a routine or closure, and the frame it closes over</td></tr>
+<tr><td></td><td>a <code>Pair</code>'s value, a <code>Match</code></td></tr></table></div>
+<p>A few rarely used extras (a <code>Complex</code>'s imaginary part, a <code>Range</code>'s ends, a shaped array's dimensions) sit in one side block per slot, which is shared between copies and duplicated on the first write.</p>
+<p>In the source, <code>p_</code> and <code>x_</code> in <code>src/Value.h</code> are the two counted pointers on every <code>Value</code>. The counts come from <code>std::shared_ptr</code>, with no hand-written bookkeeping around them.</p>
+<h2 id="which-operations-raise-a-count-and-which-lower-it">Which operations raise a count, and which lower it? <a class="anchor" href="#which-operations-raise-a-count-and-which-lower-it" aria-label="link">#</a></h2>
+<p>A count goes <strong>up</strong> whenever a second slot starts pointing at the same thing: assigning an object to another variable, putting it in an array or hash, passing it as an argument, returning it, or capturing the variable that holds it in a closure.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Point</span> { <span class="k">has</span> <span class="nv">$.x</span> <span class="k">is</span> <span class="n">rw</span>; <span class="k">has</span> <span class="nv">$.y</span> <span class="k">is</span> <span class="n">rw</span> }
+<span class="k">my</span> <span class="nv">$p</span> = <span class="n">Point</span>.<span class="nb">new</span>(<span class="n">x</span> =&gt; <span class="mi">1</span>, <span class="n">y</span> =&gt; <span class="mi">2</span>);
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nv">$p</span>;                 <span class="c1"># a second reference to the same object</span>
+<span class="k">my</span> <span class="nv">@list</span> = <span class="nv">$p</span>, <span class="nv">$p</span>;          <span class="c1"># two more</span>
+<span class="nv">$q</span>.<span class="n">x</span> = <span class="mi">10</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">x</span>;                   <span class="c1"># 10</span>
+<span class="nb">say</span> <span class="nv">@list</span>[<span class="mi">1</span>].<span class="n">x</span>;             <span class="c1"># 10</span>
+<span class="nb">say</span> <span class="nv">$p</span> === <span class="nv">$q</span> === <span class="nv">@list</span>[<span class="mi">0</span>]; <span class="c1"># True</span></code></pre>
+<p>Four slots, one object, count four. Every slot sees the change because there is only one object to change.</p>
+<p>A count goes <strong>down</strong> when a slot stops pointing at it: the slot's scope ends (<code>my</code> variables at the end of a block, parameters when the routine returns), the slot is assigned something else or <code>Nil</code>, or the element is removed (<code>.shift</code>, <code>.pop</code>, <code>.splice</code>, <code>@a[$i]:delete</code>).</p>
+<p><strong>One exception today.</strong> Deleting a key from a hash (<code>%h&lt;k&gt;:delete</code>, <code>.DELETE-KEY</code>) takes the entry out of the hash, but the value stays alive until the hash itself is emptied or freed:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%h</span>;
+<span class="k">for</span> ^<span class="mi">300</span> { <span class="nv">%h</span><span class="s">&lt;k&gt;</span> = <span class="s">'x'</span> <span class="n">x</span> <span class="mi">1_000_000</span>; <span class="nv">%h</span><span class="s">&lt;k&gt;</span>:<span class="n">delete</span> }</code></pre>
+<div class="tablewrap"><table><tr><th></th><th>rakupp</th><th>Rakudo</th></tr><tr><td><code>%h&lt;k&gt;:delete</code></td><td>294 MB</td><td>97 MB</td></tr>
+<tr><td><code>%h&lt;k&gt; = Nil; %h&lt;k&gt;:delete</code></td><td>3 MB</td><td></td></tr>
+<tr><td><code>@a[0]:delete</code> (an array, same loop)</td><td>3 MB</td><td></td></tr></table></div>
+<p>If a long-lived hash churns through large values, assign <code>Nil</code> before deleting, as in the second row. That releases the value at once.</p>
+<h2 id="when-exactly-is-memory-freed">When exactly is memory freed? <a class="anchor" href="#when-exactly-is-memory-freed" aria-label="link">#</a></h2>
+<p>When the count reaches zero, which happens inside the statement that dropped the last reference and on the thread that dropped it. No collector runs later to find it. Freeing then cascades: when an array goes, it lets go of each element, and any element whose count reaches zero goes too.</p>
+<p>So a loop that builds a large temporary on every pass never holds more than one of them:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">for</span> ^<span class="mi">1000</span> { <span class="k">my</span> <span class="nv">@a</span> = ^<span class="mi">100_000</span> }</code></pre>
+<div class="tablewrap"><table><tr><th></th><th>peak</th></tr><tr><td>rakupp</td><td>32 MB</td></tr>
+<tr><td>Rakudo</td><td>137 MB</td></tr></table></div>
+<p>Each <code>@a</code> is freed at the end of its own iteration, before the next one allocates. A tracing collector frees the same arrays in batches, whenever it next runs, so several of them are alive at the peak.</p>
+<p>The flip side is that the work of freeing lands at the drop. <a href="/faq/garbage-collection/">the garbage collector</a> measures what that costs for a two-million-element structure.</p>
+<h2 id="does-my-b-a-copy-the-array">Does <code>my @b = @a</code> copy the array? <a class="anchor" href="#does-my-b-a-copy-the-array" aria-label="link">#</a></h2>
+<p>It copies the <strong>slots</strong>, not what is in them. <code>@b</code> is a new array with its own list of slots, so adding to it leaves <code>@a</code> alone. But a slot that holds something counted (another array, an object, a long string) is copied as a pointer, so both arrays share that thing:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = [<span class="mi">1</span>, <span class="mi">2</span>], [<span class="mi">3</span>, <span class="mi">4</span>];
+<span class="k">my</span> <span class="nv">@b</span> = <span class="nv">@a</span>;          <span class="c1"># a new array ...</span>
+<span class="nv">@b</span>.<span class="nb">push</span>([<span class="mi">5</span>, <span class="mi">6</span>]);     <span class="c1"># ... so this does not touch @a</span>
+<span class="nv">@b</span>[<span class="mi">0</span>].<span class="nb">push</span>(<span class="mi">99</span>);      <span class="c1"># but its elements are the same arrays</span>
+<span class="nb">say</span> <span class="nv">@a</span>;              <span class="c1"># [[1 2 99] [3 4]]</span>
+<span class="nb">say</span> <span class="nv">@b</span>;              <span class="c1"># [[1 2 99] [3 4] [5 6]]</span></code></pre>
+<p>This is ordinary Raku semantics (a shallow copy), and both engines print the same. What refcounting adds is the price: copying costs 128 bytes per slot plus one count increment per counted element. Binding with <code>:=</code> copies nothing. It gives the same array a second name and raises its count by one:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = ^<span class="mi">1_000_000</span>;
+<span class="k">my</span> <span class="nv">@b</span> = <span class="nv">@a</span>;          <span class="c1"># or: my @b := @a</span>
+<span class="nb">say</span> <span class="nv">@b</span>.<span class="nb">elems</span>;        <span class="c1"># 1000000</span></code></pre>
+<div class="tablewrap"><table><tr><th></th><th>rakupp</th><th>Rakudo</th></tr><tr><td><code>@a</code> alone</td><td>252 MB</td><td>241 MB</td></tr>
+<tr><td><code>my @b = @a</code></td><td>374 MB</td><td>306 MB</td></tr>
+<tr><td><code>my @b := @a</code></td><td>252 MB</td><td>247 MB</td></tr></table></div>
+<h2 id="is-an-array-copied-when-i-pass-it-to-a-routine">Is an array copied when I pass it to a routine? <a class="anchor" href="#is-an-array-copied-when-i-pass-it-to-a-routine" aria-label="link">#</a></h2>
+<p>No. The parameter is one more reference to the caller's array: its count goes up for the duration of the call and back down when the routine returns. That is why a routine can change the caller's array. <code>is copy</code> asks for a copy, which works the same way as <code>my @b = @a</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">add-one</span>(<span class="nv">@x</span>)          { <span class="nv">@x</span>.<span class="nb">push</span>(<span class="mi">1</span>) }
+<span class="k">sub</span> <span class="n">add-two</span>(<span class="nv">@x</span> <span class="k">is</span> <span class="n">copy</span>)  { <span class="nv">@x</span>.<span class="nb">push</span>(<span class="mi">2</span>); <span class="nv">@x</span>.<span class="nb">elems</span> }
+<span class="k">my</span> <span class="nv">@a</span> = <span class="mi">7</span>, <span class="mi">8</span>;
+<span class="n">add-one</span>(<span class="nv">@a</span>);
+<span class="nb">say</span> <span class="nv">@a</span>;              <span class="c1"># [7 8 1]</span>
+<span class="nb">say</span> <span class="n">add-two</span>(<span class="nv">@a</span>);     <span class="c1"># 4</span>
+<span class="nb">say</span> <span class="nv">@a</span>;              <span class="c1"># [7 8 1]</span></code></pre>
+<p>The size of the array does not matter: 100,000 calls of a routine that returns <code>@x.elems</code> took 75 ms with a three-element array and 70 ms with a million-element one.</p>
+<h2 id="why-is-copying-a-long-string-cheap">Why is copying a long string cheap? <a class="anchor" href="#why-is-copying-a-long-string-cheap" aria-label="link">#</a></h2>
+<p>A string of 23 bytes or more is stored once, in an immutable shared body. Copying it copies a pointer and raises the count. Changing one copy (<code>~=</code>, <code>s///</code>, <code>.=</code>) gives that copy a body of its own, and the other copies keep sharing the original:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$s</span> = <span class="s">&quot;x&quot;</span> <span class="n">x</span> <span class="mi">10_000_000</span>;           <span class="c1"># one 10 MB string</span>
+<span class="k">my</span> <span class="nv">@many</span> = <span class="nv">$s</span> <span class="n">xx</span> <span class="mi">1000</span>;              <span class="c1"># a thousand references to it</span>
+<span class="nv">@many</span>[<span class="mi">0</span>] ~= <span class="s">&quot;!&quot;</span>;                    <span class="c1"># this one gets its own copy</span>
+<span class="nb">say</span> <span class="nv">@many</span>[<span class="mi">0</span>].<span class="nb">chars</span>, <span class="s">&quot; &quot;</span>, <span class="nv">@many</span>[<span class="mi">1</span>].<span class="nb">chars</span>;   <span class="c1"># 10000001 10000000</span></code></pre>
+<div class="tablewrap"><table><tr><th></th><th>rakupp</th><th>Rakudo</th></tr><tr><td>without the <code>~=</code> line</td><td>13 MB</td><td>96 MB</td></tr>
+<tr><td>with it</td><td>31 MB</td><td>96 MB</td></tr></table></div>
+<p>A thousand 10 MB strings take one string's worth of memory. Strings under 23 bytes are copied whole instead. 23 is where the C++ library on macOS stops keeping a string inside its own object, and <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/09-strings.md">Chapter 9</a> of the Internals book explains the choice.</p>
+<h2 id="what-keeps-a-closure-s-variables-alive">What keeps a closure's variables alive? <a class="anchor" href="#what-keeps-a-closure-s-variables-alive" aria-label="link">#</a></h2>
+<p>A routine's variables live in a <strong>frame</strong>. A closure holds a counted reference to the frame it was created in, so the frame and everything in it live as long as the closure does, after the routine has returned:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">make-counter</span> {
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+    -&gt; { ++<span class="nv">$n</span> }
+}
+<span class="k">my</span> <span class="nv">$c1</span> = <span class="n">make-counter</span>();
+<span class="k">my</span> <span class="nv">$c2</span> = <span class="n">make-counter</span>();
+<span class="nv">$c1</span>(); <span class="nv">$c1</span>();
+<span class="nb">say</span> <span class="nv">$c1</span>();           <span class="c1"># 3</span>
+<span class="nb">say</span> <span class="nv">$c2</span>();           <span class="c1"># 1</span></code></pre>
+<p>Each call made a new frame with its own <code>$n</code>. When the last reference to a closure goes, the frame's count drops too, and it is freed along with whatever it held. With an object in the frame and a <code>DESTROY</code> to show it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Res</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">submethod</span> <span class="n">DESTROY</span> { <span class="nb">say</span> <span class="s">&quot;DESTROY $!name&quot;</span> } }
+<span class="k">sub</span> <span class="n">make-reader</span> {
+    <span class="k">my</span> <span class="nv">$r</span> = <span class="n">Res</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'held by a closure'</span>);
+    -&gt; { <span class="nv">$r</span>.<span class="n">name</span> }
+}
+<span class="k">my</span> <span class="nv">$read</span> = <span class="n">make-reader</span>();
+<span class="nb">say</span> <span class="nv">$read</span>();
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>;
+<span class="nb">say</span> <span class="s">&quot;closure still held&quot;</span>;
+<span class="nv">$read</span> = <span class="nb">Nil</span>;
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>;
+<span class="nb">say</span> <span class="s">&quot;closure dropped&quot;</span>;</code></pre>
+<div class="tablewrap"><table><tr><th>rakupp</th><th>Rakudo</th></tr><tr><td><code>held by a closure</code></td><td><code>held by a closure</code></td></tr>
+<tr><td><code>closure still held</code></td><td><code>closure still held</code></td></tr>
+<tr><td><code>DESTROY held by a closure</code></td><td></td></tr>
+<tr><td><code>closure dropped</code></td><td><code>closure dropped</code></td></tr></table></div>
+<p>Rakudo printed no <code>DESTROY</code> line at all for this program, not even at exit. That is within the language's rules, which promise nothing about when <code>DESTROY</code> runs.</p>
+<h2 id="why-doesn-t-destroy-run-the-moment-the-count-reaches-zero">Why doesn't <code>DESTROY</code> run the moment the count reaches zero? <a class="anchor" href="#why-doesn-t-destroy-run-the-moment-the-count-reaches-zero" aria-label="link">#</a></h2>
+<p>Because the count never reaches zero while the object is waiting for it.</p>
+<p>When a class declares a <code>DESTROY</code> submethod, construction also puts one reference to each new instance in a registry. The program's own references come and go as usual, but the registry's stays. A <strong>sweep</strong> looks for entries whose count is exactly one (the registry alone), which means the program has dropped every reference. For each one it runs <code>DESTROY</code>, child class first, then lets go of the registry's reference, and the object is freed.</p>
+<p>A sweep runs:</p>
+<ul><li>when the program calls <code>$*VM.request-garbage-collection</code>;</li><li>when registrations reach twice the number that survived the previous sweep (at least 1024), so a construct-and-drop loop cannot pile up instances;</li><li>at program end.</li></ul>
+<p>Classes without a <code>DESTROY</code> never enter the registry, and their instances are freed at the drop like everything else.</p>
+<p>This design means <code>DESTROY</code> always runs at one of those points and sees a live <code>self</code>, never inside whatever statement happened to drop the last reference. It has one visible consequence: <strong>a chain of objects that each have a <code>DESTROY</code> is released one link per sweep.</strong> A sweep only takes the entries whose count is one when it looks. The next link down is still referenced by the object in front of it, so it waits for the following sweep:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">R</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">has</span> <span class="nv">$.next</span>; <span class="k">submethod</span> <span class="n">DESTROY</span> { <span class="nb">say</span> <span class="s">&quot;DESTROY $!name&quot;</span> } }
+{ <span class="k">my</span> <span class="nv">$x</span> = <span class="n">R</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'x'</span>, <span class="k">next</span> =&gt; <span class="n">R</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'y'</span>, <span class="k">next</span> =&gt; <span class="n">R</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'z'</span>))) }
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>; <span class="nb">say</span> <span class="s">&quot;sweep 1&quot;</span>;
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>; <span class="nb">say</span> <span class="s">&quot;sweep 2&quot;</span>;
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>; <span class="nb">say</span> <span class="s">&quot;sweep 3&quot;</span>;</code></pre>
+<div class="tablewrap"><table><tr><th>rakupp</th><th>Rakudo</th></tr><tr><td><code>DESTROY x</code></td><td><code>DESTROY x</code></td></tr>
+<tr><td><code>sweep 1</code></td><td><code>DESTROY y</code></td></tr>
+<tr><td><code>DESTROY y</code></td><td><code>DESTROY z</code></td></tr>
+<tr><td><code>sweep 2</code></td><td><code>sweep 1</code></td></tr>
+<tr><td><code>DESTROY z</code></td><td><code>sweep 2</code></td></tr>
+<tr><td><code>sweep 3</code></td><td><code>sweep 3</code></td></tr></table></div>
+<p>The memory itself is not held up the same way: only the objects that have a <code>DESTROY</code> wait for sweeps. <a href="/faq/garbage-collection/">the garbage collector</a> has the rest of the <code>DESTROY</code> story, including why it should never be what closes a file.</p>
+<h2 id="what-happens-with-a-reference-cycle">What happens with a reference cycle? <a class="anchor" href="#what-happens-with-a-reference-cycle" aria-label="link">#</a></h2>
+<p>It is never freed. If two things point at each other, each keeps the other's count at one or more after the program has let go of both. Nothing goes looking for such pairs: there is no cycle collector.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Node</span> {
+    <span class="k">has</span> <span class="nv">$.name</span>;
+    <span class="k">has</span> <span class="nv">$.peer</span> <span class="k">is</span> <span class="n">rw</span>;
+    <span class="k">submethod</span> <span class="n">DESTROY</span> { <span class="nb">say</span> <span class="s">&quot;DESTROY $!name&quot;</span> }
+}
+{
+    <span class="k">my</span> <span class="nv">$plain</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'plain'</span>);
+}
+{
+    <span class="k">my</span> <span class="nv">$a</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'a'</span>);
+    <span class="k">my</span> <span class="nv">$b</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'b'</span>);
+    <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nv">$b</span>;
+    <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nv">$a</span>;
+}
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>;
+<span class="nb">say</span> <span class="s">&quot;after the sweep&quot;</span>;</code></pre>
+<div class="tablewrap"><table><tr><th>rakupp</th><th>Rakudo</th></tr><tr><td></td><td><code>DESTROY b</code></td></tr>
+<tr><td></td><td><code>DESTROY a</code></td></tr>
+<tr><td><code>DESTROY plain</code></td><td><code>DESTROY plain</code></td></tr>
+<tr><td><code>after the sweep</code></td><td><code>after the sweep</code></td></tr></table></div>
+<p>On rakupp, <code>a</code> and <code>b</code> stay in memory until the process exits, and their <code>DESTROY</code> never runs because their count never gets down to the registry's one. Rakudo's collector finds them, because tracing from the roots never reaches them.</p>
+<p>The fix is to cut a link when you are done with the pair, in a <code>LEAVE</code> if the end of a scope is what "done" means:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Node</span> {
+    <span class="k">has</span> <span class="nv">$.name</span>;
+    <span class="k">has</span> <span class="nv">$.peer</span> <span class="k">is</span> <span class="n">rw</span>;
+    <span class="k">submethod</span> <span class="n">DESTROY</span> { <span class="nb">say</span> <span class="s">&quot;DESTROY $!name&quot;</span> }
+}
+<span class="k">sub</span> <span class="n">pair-up</span> {
+    <span class="k">my</span> <span class="nv">$a</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'a'</span>);
+    <span class="k">my</span> <span class="nv">$b</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'b'</span>);
+    <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nv">$b</span>;
+    <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nv">$a</span>;
+    <span class="k">LEAVE</span> { <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nb">Nil</span>; <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nb">Nil</span> }
+    <span class="s">&quot;$a.name() ↔ $b.name()&quot;</span>;
+}
+<span class="nb">say</span> <span class="n">pair-up</span>();
+<span class="nv">$*VM</span>.<span class="n">request-garbage-collection</span>;
+<span class="nb">say</span> <span class="s">&quot;after the sweep&quot;</span>;</code></pre>
+<div class="tablewrap"><table><tr><th>rakupp</th><th>Rakudo</th></tr><tr><td><code>a ↔ b</code></td><td><code>a ↔ b</code></td></tr>
+<tr><td><code>DESTROY a</code></td><td></td></tr>
+<tr><td><code>DESTROY b</code></td><td></td></tr>
+<tr><td><code>after the sweep</code></td><td><code>after the sweep</code></td></tr></table></div>
+<p>Raku has no weak reference, in either engine, so there is no keyword that does this for you. Other ways to break the cycle (point in one direction only, look the parent up by id instead of storing it) are in <a href="/faq/garbage-collection/">the garbage collector</a>.</p>
+<h2 id="which-cycles-do-i-make-without-noticing">Which cycles do I make without noticing? <a class="anchor" href="#which-cycles-do-i-make-without-noticing" aria-label="link">#</a></h2>
+<p>The obvious one is two objects that point at each other. The rest come from closures, because a closure points at its frame:</p>
+<ul><li><strong>An object that stores a callback which uses that same object.</strong> In <code>$obj.on-change = -&gt; { $obj.refresh }</code>, the object holds the block and the block's frame holds <code>$obj</code>.</li><li><strong>A closure kept in a variable of its own frame.</strong> <code>my $cb = -&gt; { … }</code> puts the block in the frame and the block points back at the frame. So does a named <code>my sub</code> declared inside a routine, because the name is a variable in that frame too.</li></ul>
+<p>The second shape is one the language creates for you, so the interpreter tries to break it: when a routine returns and the closure has not escaped, it cuts the closure's link back to the frame (<code>breakSelfClosures</code> in <code>src/Interpreter.cpp</code>). <strong>In 4.0.0 and 4.0.1 that cut is skipped once the inner sub or block has been called.</strong> Each call then retains its frame and everything the frame holds.</p>
+<p>Measured with 300 calls of a routine whose frame holds a 1 MB string:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">outer</span>(<span class="nv">$x</span>) {
+    <span class="k">my</span> <span class="nv">$big</span> = <span class="s">'x'</span> <span class="n">x</span> <span class="mi">1_000_000</span>;
+    <span class="k">my</span> <span class="k">sub</span> <span class="n">helper</span>(<span class="nv">$y</span>) { <span class="nv">$y</span> * <span class="mi">2</span> }
+    <span class="n">helper</span>(<span class="nv">$x</span>) + <span class="mi">1</span>;
+}
+<span class="k">for</span> ^<span class="mi">300</span> { <span class="n">outer</span>(<span class="nv">$_</span>) }</code></pre>
+<div class="tablewrap"><table><tr><th>shape of the routine</th><th>rakupp</th></tr><tr><td><code>my sub helper</code> declared, never called</td><td>3 MB</td></tr>
+<tr><td><code>my sub helper</code> called (above)</td><td>294 MB</td></tr>
+<tr><td><code>my $h = -&gt; $y { … }; $h($x)</code></td><td>294 MB</td></tr>
+<tr><td><code>helper</code> declared at unit scope instead</td><td>4 MB</td></tr>
+<tr><td>a block passed straight to <code>.map</code>, not stored</td><td>3 MB</td></tr>
+<tr><td><code>my $cb = -&gt; { $big.chars }; $cb</code> returned</td><td>294 MB</td></tr>
+<tr><td><code>-&gt; { $big.chars }</code> returned directly</td><td>4 MB</td></tr>
+<tr><td><code>my $cb = …; LEAVE $cb = Nil; $cb</code> returned</td><td>4 MB</td></tr></table></div>
+<p>Rakudo stays at its 96–98 MB floor for every row. The frame does not need anything big in it to add up: an empty one is about 1.5 KB, so a million calls of the routine above without <code>$big</code> reach 1.5 GB. Until the regression is fixed, declare helpers at unit scope, or pass blocks where they are used instead of storing them first.</p>
+<p>The last three rows have nothing to do with the regression. A closure that escapes while it is also stored in its own frame is a real cycle. Return the block directly, or clear the variable in a <code>LEAVE</code> as in the last row.</p>
+<h2 id="can-i-see-a-reference-count-from-raku">Can I see a reference count from Raku? <a class="anchor" href="#can-i-see-a-reference-count-from-raku" aria-label="link">#</a></h2>
+<p>No. Nothing in the language exposes it, and Rakudo has no count to expose. Two things can show you the effect of a count:</p>
+<ul><li><strong>A <code>DESTROY</code> plus <code>$*VM.request-garbage-collection</code></strong>, as in the examples above. It tells you whether an object with a <code>DESTROY</code> has been let go.</li><li><strong>Peak memory footprint.</strong> On macOS that is <code>/usr/bin/time -l rakupp prog.raku 2&gt;&amp;1 | grep "peak memory footprint"</code>. Run the program at two sizes. A leak grows with the iteration count, and a structure you are merely holding grows with the data. <a href="/faq/garbage-collection/">the garbage collector</a> explains why resident set size misleads here.</li></ul>
+<h2 id="is-the-counting-thread-safe">Is the counting thread-safe? <a class="anchor" href="#is-the-counting-thread-safe" aria-label="link">#</a></h2>
+<p>The counts are. Increments and decrements are atomic, and whichever thread drops the last reference frees the value, with no global pause and no collector thread. What you store is a different matter: two <code>start</code> blocks writing the same array without a <code>Lock</code> is a data race here, as it is in Rakudo. See <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>.</p>
+<hr>
+<p>Further reading, from here inwards:</p>
+<ul><li><a href="/faq/garbage-collection/">the garbage collector</a>: what refcounting buys and costs, measured; <code>DESTROY</code> timing on both engines; filehandles.</li><li><a href="/faq/implementations/">three ways to build a Raku</a>: refcounting here, refcounting plus a cycle collector in mutsu, a tracing collector in Rakudo.</li><li><a href="https://github.com/ash/rakupp/blob/main/docs/internals/RUNTIME.md">RUNTIME.md</a>: what a <code>Value</code> is, and where assignment deliberately breaks the sharing.</li><li>The Internals book: <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/08-value.md">Chapter 8</a> on the <code>Value</code> layout, <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/09-strings.md">Chapter 9</a> on shared string bodies, <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/12-containers.md">Chapter 12</a> on containers, and <a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/14-calls.md">Chapter 14</a> on frames.</li></ul>
+<p>Back to the <a href="/faq/">FAQ index</a>.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=44bd1a70" defer></script>
+</body>
+</html>

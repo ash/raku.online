@@ -24,7 +24,7 @@
 <p class="crumb"><a href="/faq/">← All questions</a></p>
 <h1>The garbage collector</h1>
 
-<p>There isn't one. Raku++ has no tracing, generational or incremental collector, no heap to size, no GC knobs and no GC log. Lifetime is <code>shared_ptr</code> reference counting: a value is freed the moment the last reference to it goes away.</p>
+<p>There isn't one. Raku++ has no tracing, generational or incremental collector, no heap to size, no GC knobs and no GC log. Lifetime is <code>shared_ptr</code> reference counting: a value is freed the moment the last reference to it goes away. How the counting itself works, in Raku terms, is <a href="/faq/refcounting/">how reference counting works</a>.</p>
 <p>That answers most of the questions on this page in one line, but the consequences are worth spelling out, because two of them will eventually bite you: <strong>reference cycles are never reclaimed</strong>, and <strong><code>DESTROY</code> still is not a destructor you can schedule</strong>.</p>
 <p>Figures below were measured on macOS arm64 (M-series), 2026-08-30, rakupp 3.23.0 against Rakudo v2026.08 / MoarVM 2026.08, with <code>/usr/bin/time -l</code>.</p>
 <h2 id="what-refcounting-buys">What refcounting buys <a class="anchor" href="#what-refcounting-buys" aria-label="link">#</a></h2>
@@ -91,6 +91,7 @@
     <span class="k">my</span> <span class="k">sub</span> <span class="n">helper</span>(<span class="nv">$y</span>) { <span class="nv">$y</span> * <span class="mi">2</span> }    <span class="c1"># would otherwise retain outer's frame</span>
     <span class="n">helper</span>(<span class="nv">$x</span>) + <span class="mi">1</span>;
 }</code></pre>
+<p><strong>Not in 4.0.0 and 4.0.1:</strong> a regression makes the interpreter skip that cut once <code>helper</code> has been called, so today the routine above keeps every frame it makes: about 1.5 KB per call, 1.5 GB over a million calls. Declaring <code>helper</code> at unit scope avoids it. <a href="/faq/refcounting/">how reference counting works</a> has the shapes affected, measured.</p>
 <p>That is the only cycle handled automatically. Cycles in <em>your</em> data are yours.</p>
 <h2 id="how-do-i-avoid-a-cycle">How do I avoid a cycle? <a class="anchor" href="#how-do-i-avoid-a-cycle" aria-label="link">#</a></h2>
 <p>Raku has no weak reference in either implementation, so the fix is structural, not a keyword:</p>
