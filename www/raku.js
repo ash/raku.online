@@ -59,7 +59,7 @@
   var script = document.currentScript
     || (function () { var s = document.getElementsByTagName('script'); return s[s.length - 1]; })();
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
-  var VER = '?v=b97a1837';                            // cache tag, stamped by build.sh
+  var VER = '?v=29bc140d';                            // cache tag, stamped by build.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
 
   // Where the ↗ button hands the current program: the full playground.
@@ -108,7 +108,7 @@
       '    var t0=performance.now(),rc;inRun=true;',
       '    try{rc=Module.ccall("rakupp_run","number",["string","string"],[e.data.src,e.data.stdin||""]);}',
       '    catch(err){Module=null;ready=make();inRun=false;',
-      '      postMessage({type:"runerror",message:String(err),deep:(err instanceof RangeError)||/call stack/i.test(String(err))});return;}',
+      '      postMessage({type:"runerror",message:String(err),deep:/call stack|too much recursion/i.test(String(err))});return;}',
       '    inRun=false;',
       '    postMessage({type:"done",rc:rc,ms:Math.round(performance.now()-t0)});',
       '  });',
@@ -146,7 +146,8 @@
     var b = queue.shift();
     if (b) { relabel(); startRun(b); }
   }
-  var RECURSION_MSG = 'Recursion too deep for the browser (a few hundred levels) — '
+  // Shown when even the main thread's stack runs out (see "the deeper stack").
+  var RECURSION_MSG = 'Recursion too deep for the browser, even on the page\'s main thread — '
     + 'a WebAssembly stack limit, not a Raku one. Rewrite it iteratively, or run it natively.';
 
   function createWorker() {
@@ -180,9 +181,11 @@
           current = null; next();
           break;
         case 'runerror':
-          if (b) { b.error(m.deep ? RECURSION_MSG : '[host error] ' + m.message); b.finish(1, 0); }
-          current = null;
           // A crashed run left the module unknown; the worker already rebuilt it.
+          // A stack overflow is run again on the page's main thread (below).
+          if (b && m.deep) { runOnMain(b); break; }
+          if (b) { b.error('[host error] ' + m.message); b.finish(1, 0); }
+          current = null;
           next();
           break;
         case 'loaderror':
@@ -202,9 +205,10 @@
     current = null;
   }
   function startRun(block) {
-    ensureWorker();
     current = block;
     block.starting();
+    if (needsMain[block.getCode() + '\0' + block.getStdin()]) { runOnMain(block); return; }
+    ensureWorker();
     worker.postMessage({ type: 'run', src: block.getCode(), stdin: block.getStdin() });
   }
   // Public entry the blocks call. Serialized on the one interpreter: if another
@@ -220,9 +224,70 @@
     if (current !== block) return;
     // The run lives in a synchronous ccall; the only way to stop it is to kill
     // the worker. A fresh one reloads lazily on the next run.
+    mainToken++;     // a main-thread run can only be stopped before it starts
     killWorker();
     block.stopped();
     next();          // stopping one block does not cancel the ones behind it
+  }
+
+  // ---- the deeper stack: the page's main thread ---------------------------
+  // A Web Worker gets a far smaller stack than the page's own main thread, and
+  // in Safari the gap decides whether a program runs at all: a WebKit worker
+  // thread has 512 KB, its main thread about 8 MB, and JavaScriptCore's
+  // baseline WebAssembly tiers spend around a kilobyte on every frame. Each
+  // level of Raku recursion, and each nested rule of a grammar, is several
+  // frames — measured in WebKit, a worker holds 32 levels of plain Raku
+  // recursion and the main thread 419.
+  //
+  // So a run that dies of stack overflow in the worker is run again here, from
+  // the top, on an instance of the engine's own. The page is frozen while it
+  // runs — no streaming, and nothing to press Stop with — which is why only a
+  // run that has already overflowed the worker comes here. A program that
+  // needed it once comes straight here the next time.
+  var needsMain = {};                  // src + '\0' + stdin -> true
+  var mainEngine = null;               // Promise of the main-thread module
+  var mainSink = null;                 // where its output goes during a run
+  var mainToken = 0;                   // stopRun bumps it to cancel a pending run
+  function isDeep(e) { return /call stack|too much recursion/i.test(String(e)); }
+
+  function loadMainEngine() {
+    if (!mainEngine) {
+      mainEngine = loadEngineScript().then(function (RakuJS) {
+        return RakuJS({ locateFile: function (p) { return BASE + p + VER; },
+          print: function (t) { if (mainSink) mainSink(t + '\n', ''); else console.log(t); },
+          printErr: function (t) { if (mainSink) mainSink(t + '\n', 'err'); else console.warn(t); } });
+      });
+      mainEngine.catch(function () { mainEngine = null; });   // a later run may try again
+    }
+    return mainEngine;
+  }
+  function runOnMain(block) {
+    var token = ++mainToken, src = block.getCode(), stdin = block.getStdin();
+    needsMain[src + '\0' + stdin] = true;
+    current = block;
+    block.setStatus('running on the main thread…');
+    loadMainEngine().then(function (m) {
+      // Let the status paint before the page freezes.
+      setTimeout(function () {
+        if (token !== mainToken || current !== block) return;   // stopped meanwhile
+        var out = [], chars = 0, rc, err = null, t0 = performance.now();
+        mainSink = function (t, c) { if (chars <= 200000) { chars += t.length; out.push([t, c]); } };
+        try { rc = m.ccall('rakupp_run', 'number', ['string', 'string'], [src, stdin]); }
+        catch (e) { err = e; mainEngine = null; }             // the instance is in an unknown state
+        mainSink = null;
+        var ms = Math.round(performance.now() - t0);
+        block._clearNext = true;       // what the worker printed before it overflowed goes
+        out.forEach(function (p) { block.feed(p[0], p[1]); });
+        if (err) { block.error(isDeep(err) ? RECURSION_MSG : '[host error] ' + err); block.finish(1, 0); }
+        else block.finish(rc, ms);
+        current = null; next();
+      }, 40);
+    }, function (e) {
+      if (token !== mainToken || current !== block) return;
+      block.error('Could not load the interpreter — ' + ((e && e.message) || e));
+      block.finish(1, 0);
+      current = null; next();
+    });
   }
 
   // ---- one editor -------------------------------------------------------
@@ -343,17 +408,31 @@
   var HL_REPAINT = [];        // per-editor paint() callbacks, upgraded on load
   function loadHighlighter() {
     if (rakuHLTried) return; rakuHLTried = true;
-    if (!window.RakuJS && !document.querySelector('script[data-rakujs]')) {
-      var s = document.createElement('script');
-      s.src = BASE + 'rakujs.js' + VER; s.setAttribute('data-rakujs', '');
-      s.onload = initHighlighter; s.onerror = function () {};
-      document.head.appendChild(s);
-    } else initHighlighter();
+    loadEngineScript().then(initHighlighter, function () {});
   }
-  function initHighlighter() {
-    if (!window.RakuJS) return;
-    window.RakuJS({ locateFile: function (p) { return BASE + p + VER; },
-                   print: function () {}, printErr: function () {} })
+  // The engine's loader script on the page itself, fetched once for the two
+  // main-thread users — this highlighter and the deeper-stack fallback — which
+  // each build their own instance from it.
+  var engineScript = null;
+  function loadEngineScript() {
+    if (!engineScript) {
+      engineScript = new Promise(function (resolve, reject) {
+        if (window.RakuJS) { resolve(window.RakuJS); return; }
+        var s = document.createElement('script');
+        s.src = BASE + 'rakujs.js' + VER; s.setAttribute('data-rakujs', '');
+        s.onload = function () {
+          if (window.RakuJS) resolve(window.RakuJS); else reject(new Error('rakujs.js defined no RakuJS'));
+        };
+        s.onerror = function () { reject(new Error('could not load rakujs.js')); };
+        document.head.appendChild(s);
+      });
+      engineScript.catch(function () { engineScript = null; });   // a later caller may try again
+    }
+    return engineScript;
+  }
+  function initHighlighter(RakuJS) {
+    RakuJS({ locateFile: function (p) { return BASE + p + VER; },
+             print: function () {}, printErr: function () {} })
       .then(function (m) {
         var fn = m.cwrap('rakupp_highlight', 'string', ['string']);
         rakuHL = function (src) {
