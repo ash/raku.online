@@ -42,6 +42,7 @@
       if (document.body.classList.contains('nav-open') && !e.target.closest('nav.toc')) document.body.classList.remove('nav-open');
     });
     document.querySelectorAll('nav.toc a').forEach(function (a) {
+      if (a.parentNode.classList.contains('has-corners')) return;   // folds instead, see below
       a.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
     });
   }
@@ -77,6 +78,11 @@
     whenEmbed(function () {
       var host = document.createElement('div');
       if (pre.hasAttribute('data-stdin')) host.setAttribute('data-stdin', pre.getAttribute('data-stdin'));
+      // Say which engine the reader is now running.
+      var cap = document.createElement('div');
+      cap.className = 'engine-cap';
+      cap.textContent = 'Raku++, running in your browser';
+      box.appendChild(cap);
       box.appendChild(host);
       box.classList.add('live');
       b.remove();
@@ -115,6 +121,15 @@
   }
   if (fold) {
     setFold(load('corners-toc-folded', '0') === '1');
+    // The chapter being read is already open, so its title in the contents
+    // folds and unfolds its corners rather than reloading the page. A
+    // modified click still does what the reader asked for (a new tab).
+    var title = fold.parentNode.querySelector(':scope > a');
+    if (title) title.addEventListener('click', function (e) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      fold.click();
+    });
     fold.addEventListener('click', function (e) {
       e.preventDefault();
       var f = !document.documentElement.classList.contains('toc-folded');
