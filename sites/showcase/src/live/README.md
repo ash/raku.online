@@ -33,8 +33,9 @@ we run somebody else's software; there we run our own, every day.
 Everything above is other people's software running on this engine.
 **[ADOPTIONS.md](ADOPTIONS.md)** is the mirror image: other people's software
 that reached for *the engine* — a Wolfram paclet in Wolfram's own repository, a
-browser playground that offers rakupp as one of four runtimes, a Guix channel, a
-port of the release matrix to somebody else's CI. Nothing to run there and
+browser playground that offers rakupp as one of four runtimes, a course of 105
+Raku koans that Raku.js grades in the browser, a Guix channel, a port of the
+release matrix to somebody else's CI. Nothing to run there and
 nothing checked in there either; it is a record of what other people have done
 with Raku++, links and credits only.
 
@@ -45,7 +46,7 @@ The tool is installed, never checked in: `rakupp install <dist>` or
 small on purpose — it is a harness, not a copy of anything, and updating the
 tool means reinstalling it rather than editing files here.
 
-`compare.sh` is the contract. It takes `rakupp` and `raku` from `PATH` (set
+`compare.sh` is the contract. It takes `rakupp` and `rakudo` from `PATH` (set
 `RAKUPP=` to name a build tree instead), runs the same input under both and
 diffs stdout, normalising only what is *supposed* to differ between
 two runs (a timestamp, a PID). A green `MATCH` is the whole claim: same

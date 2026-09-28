@@ -521,8 +521,9 @@ sub inuse-page(@adoptions, Int $showcases --> Str) {
           <p class="sr-intro">
             Nobody here wrote these, and nobody here was asked: a paclet in
             Wolfram's own repository, a browser playground that offers Raku++ as
-            one runtime among four, a Guix channel, a port of the release matrix
-            to somebody else's CI. Each link goes to whoever built it.
+            one runtime among four, a course of Raku koans that Raku.js grades in
+            the browser, a Guix channel, a port of the release matrix to somebody
+            else's CI. Each link goes to whoever built it.
           </p>
         SHELVES
 
@@ -548,7 +549,7 @@ sub inuse-page(@adoptions, Int $showcases --> Str) {
     page('The Raku language, in use', @body.join("\n"), FOOT-INUSE,
          css => 'showroom', body-class => 'showroom',
          desc => 'Two halves: software other people built on Raku++ — a Wolfram '
-               ~ 'paclet, a browser playground, a Guix channel — and the example '
+               ~ 'paclet, a browser playground, a koans course, a Guix channel — and the example '
                ~ 'programs, showcase projects and ecosystem tools you can run here.')
 }
 
