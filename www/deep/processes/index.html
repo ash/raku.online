@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
-<link rel="stylesheet" href="/deep/assets/book.css?v=mjp0h5mir1">
+<link rel="stylesheet" href="/deep/assets/book.css?v=g5el35n839">
 <script>(function () {
   var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
   function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
@@ -102,6 +102,10 @@
 <li data-slug="promises"><a href="/deep/promises/"><span class="n">21</span><span class="t">Promises, Locks and Awaiting</span></a>
 </li>
 <li data-slug="supplies"><a href="/deep/supplies/"><span class="n">22</span><span class="t">Supplies</span></a>
+</li>
+</ol>
+<div class="toc-part">Appendices</div><ol class="toc-list">
+<li data-slug="probes"><a href="/deep/probes/"><span class="n">A</span><span class="t">Writing a Probe</span></a>
 </li>
 </ol>
 <div class="toc-part">Back matter</div><ol class="toc-list">
@@ -346,7 +350,7 @@ File handle not open, so cannot get native descriptor</pre><button class="reveal
 <p>A file handle given as <code>:in</code> is left open after the program has read it. With <code>:merge</code>, <code>:out($handle)</code> receives both streams.</p>
 </section>
 <section class="corner" id="a-binary-pipe-refuses-text-with-xioclosed" data-tags="quirk"><h2><a class="num" href="#a-binary-pipe-refuses-text-with-xioclosed">20.11</a> <span class="t">A binary pipe refuses text with <code>X::IO::Closed</code></span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
-<p><code>:bin</code> makes every pipe of the Proc binary: <code>.slurp</code> gives a <code>Buf[uint8]</code>, <code>.encoding</code> is <code>Nil</code>, and <code>.in.write</code> sends bytes. The text methods, <code>get</code>, <code>lines</code> and <code>.in.print</code>, throw <code>X::IO::Closed</code> and say the handle is closed, although it is open: a binary pipe has nothing to turn bytes into text, and <code>X::IO::BinaryMode</code> would have been the fitting exception. <code>:enc</code> sets the encoding of every pipe, in both directions, and <code>.encoding</code> reports the canonical name. A text pipe can still give bytes with <code>.slurp(:bin)</code>.</p>
+<p><code>:bin</code> makes every pipe of the Proc binary: <code>.slurp</code> gives a <code>Buf[uint8]</code>, <code>.encoding</code> is <code>Nil</code>, and <code>.in.write</code> sends bytes. The text methods, <code>get</code>, <code>lines</code> and <code>.in.print</code>, throw <code>X::IO::Closed</code> and say the handle is closed, although it is open: a binary pipe has nothing to turn bytes into text. A file handle opened with <code>:bin</code> answers the same calls with <code>X::IO::BinaryMode</code>, which says so. <code>:enc</code> sets the encoding of every pipe, in both directions, and <code>.encoding</code> reports the canonical name. A text pipe can still give bytes with <code>.slurp(:bin)</code>.</p>
 <figure class="ex ex-local" id="ex-20-16">
 <div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$b</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">'caf\303\251'</span>, :<span class="n">out</span>, :<span class="n">bin</span>;
 <span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">encoding</span>.<span class="nb">raku</span>;
@@ -368,8 +372,8 @@ Malformed UTF-8 near bytes 61 66 ff</pre><button class="reveal" type="button">Wh
 </figure>
 <p><code>:bin</code> together with <code>:enc</code> is refused, an unknown encoding name throws <code>X::Encoding::Unknown</code> when the program is started, and bytes that are not valid UTF-8 make <code>slurp</code> and <code>get</code> die (see also <a href="/deep/buffers/#malformed-bytes-die-and-replacement-does-not-rescue-utf-8">Malformed bytes die</a>).</p>
 </section>
-<section class="corner" id="readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is" data-tags="bug unasserted"><h2><a class="num" href="#readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is">20.12</a> <span class="t"><code>read($n)</code> on a binary pipe returns a whole chunk, whatever <code>$n</code> is</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
-<p>The documentation says that <code>read($n)</code> returns at most <code>$n</code> bytes. On a pipe opened with <code>:bin</code>, Rakudo 2026.08 ignores the count and returns everything that has arrived in one piece, which is whatever the program wrote in one go. The next <code>read</code> has nothing left. On a text pipe the count is kept, as it is by <code>readchars</code> and <code>getc</code>, and a <code>read</code> goes on from where they stopped:</p>
+<section class="corner" id="readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is" data-tags="bug unasserted"><h2><a class="num" href="#readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is">20.12</a> <span class="t"><code>read($n)</code> on a binary pipe returns a whole chunk, whatever <code>$n</code> is</span><span class="tags"><span class="tag tag-bug">Rakudo bug?</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>The documentation says that <code>read($n)</code> returns up to <code>$n</code> bytes. On a pipe opened with <code>:bin</code>, Rakudo 2026.08 returns everything that has arrived in one piece, whatever the count, which is whatever the program wrote in one go. The next <code>read</code> has nothing left. On a text pipe the count is kept, as it is by <code>readchars</code> and <code>getc</code>, and a <code>read</code> goes on from where they stopped:</p>
 <figure class="ex ex-local" id="ex-20-17">
 <div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$b</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">&quot;abcdef&quot;</span>, :<span class="n">out</span>, :<span class="n">bin</span>;
 <span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
@@ -469,7 +473,7 @@ True</pre><div class="lbl err">and on standard error</div><pre class="err-text">
 </figure>
 <p><code>spawn</code> and <code>exitcode</code> called on the <code>Proc</code> type object die with <em>Did you forget a '.new'?</em></p>
 </section>
-<section class="corner" id="asking-a-new-proc-for-its-status-fixes-the-status-at-1" data-tags="bug unasserted"><h2><a class="num" href="#asking-a-new-proc-for-its-status-fixes-the-status-at-1">20.17</a> <span class="t">Asking a new <code>Proc</code> for its status fixes the status at 1</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<section class="corner" id="asking-a-new-proc-for-its-status-fixes-the-status-at-1" data-tags="bug unasserted"><h2><a class="num" href="#asking-a-new-proc-for-its-status-fixes-the-status-at-1">20.17</a> <span class="t">Asking a new <code>Proc</code> for its status fixes the status at 1</span><span class="tags"><span class="tag tag-bug">Rakudo bug?</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
 <p>The documentation says that <code>.exitcode</code> is -1 for a program that has not exited yet. On a <code>Proc.new</code> that has not spawned anything, Rakudo 2026.08 answers 1, with signal 0, and the answer sticks: a spawn afterwards runs the program, but the Proc keeps reporting 1. A Proc that spawns a second time keeps the status of its first program, although <code>.command</code> changes:</p>
 <figure class="ex ex-local" id="ex-20-23">
 <div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Proc</span>.<span class="nb">new</span>;
@@ -488,7 +492,7 @@ True</pre><div class="lbl err">and on standard error</div><pre class="err-text">
 7 ("sh", "-c", "exit 8")
 0 ("exit 9",)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 </figure>
-<p>The intended behaviour is -1 before any spawn, and each spawn's own status after it. Use a new Proc for each program.</p>
+<p>Use a new Proc for each program.</p>
 </section>
 <section class="corner" id="procasyncnew-ignores-the-named-arguments-it-does-not-know" data-tags="quirk"><h2><a class="num" href="#procasyncnew-ignores-the-named-arguments-it-does-not-know">20.18</a> <span class="t"><code>Proc::Async.new</code> ignores the named arguments it does not know</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
 <p><code>Proc::Async.new</code> takes the program and its arguments as positionals; a list among them is flattened, and other values are kept as given in <code>.command</code> and made strings when the program starts. Its options are <code>:w</code> (to write to the program), <code>:enc</code> and <code>:translate-nl</code>, which the next sections use, and <code>:arg0</code>, the name the program is told it was called by. Any other named argument is silently ignored, so an <code>:out</code> copied from a <code>run</code> call does nothing. The form with <code>:path</code> and <code>:args</code>, which the documentation lists, does not exist:</p>
@@ -951,7 +955,7 @@ Type check failed for return value; expected Int:D but got Int (Int)
 </main>
 </div>
 <script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
-<script src="/deep/assets/book.js?v=mjp0h5mir1" defer></script>
+<script src="/deep/assets/book.js?v=g5el35n839" defer></script>
 <script src="/theme/shell.js?v=4e7473f5" defer></script>
 </body>
 </html>

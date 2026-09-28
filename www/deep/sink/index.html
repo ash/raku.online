@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
-<link rel="stylesheet" href="/deep/assets/book.css?v=mjp0h5mir1">
+<link rel="stylesheet" href="/deep/assets/book.css?v=g5el35n839">
 <script>(function () {
   var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
   function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
@@ -104,6 +104,10 @@
 <li data-slug="supplies"><a href="/deep/supplies/"><span class="n">22</span><span class="t">Supplies</span></a>
 </li>
 </ol>
+<div class="toc-part">Appendices</div><ol class="toc-list">
+<li data-slug="probes"><a href="/deep/probes/"><span class="n">A</span><span class="t">Writing a Probe</span></a>
+</li>
+</ol>
 <div class="toc-part">Back matter</div><ol class="toc-list">
 <li data-slug="colophon"><a href="/deep/colophon/"><span class="n"></span><span class="t">Colophon</span></a>
 </li>
@@ -112,7 +116,7 @@
 <article class="chapter" data-slug="sink">
 <header class="chapter-head"><div class="kicker">Reading the code · Chapter 4</div><h1>Values Nobody Uses</h1><p class="summary">A value that nothing uses is sunk; the compiler warns about the useless ones, and at run time a sunk Failure, a failed Proc and a Seq each do something of their own.</p><p class="meta">26 corners · 37 examples</p></header>
 <p>A statement like <code>$total + 1;</code> computes a value and throws it away. Raku calls this <em>sink context</em>, and the value is said to be <em>sunk</em>. Sinking is not silent. While it compiles, the compiler looks at every sunk expression and warns about the ones that cannot have any effect. At run time, a sunk value has its <code>sink</code> method called. For most types that method does nothing, but for three built-in types it matters: a <code>Failure</code> throws its exception, a <code>Proc</code> of a failed command throws <code>X::Proc::Unsuccessful</code>, and a <code>Seq</code> runs to the end.</p>
-<p>This chapter is about where sink context reaches, what it does when it gets there, and the few places it does not reach although it should. The last corners are about the other side of the question: the value a block, a routine or a loop gives back when it <em>is</em> used.</p>
+<p>This chapter is about where sink context reaches, what it does when it gets there, and the few places it does not reach although a closely related form does. The last corners are about the other side of the question: the value a block, a routine or a loop gives back when it <em>is</em> used.</p>
 <section class="corner" id="a-value-nobody-uses-has-its-sink-method-called" data-tags=""><h2><a class="num" href="#a-value-nobody-uses-has-its-sink-method-called">4.1</a> <span class="t">A value nobody uses has its <code>sink</code> method called</span></h2>
 <p>Any class can define a <code>sink</code> method, and it runs when an object of the class ends up in sink context. A class that prints when it is sunk makes the rule visible; the examples in this chapter use it.</p>
 <figure class="ex ex-run" id="ex-4-1">
@@ -148,7 +152,7 @@ sunk given
 do try</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk for
 sunk bare block
-do try</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+do try</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>The topic of <code>given</code> is not sunk: <code>given</code> uses it to set <code>$_</code>. The bodies of <code>while</code> and <code>loop</code> are sunk in the same way. The body of <code>for</code> has exceptions, described in <a href="/deep/sink/#the-last-value-of-a-for-body-is-not-always-sunk">The last value of a <code>for</code> body is not always sunk</a>.</p>
 </section>
@@ -165,7 +169,7 @@ do try</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) ar
 <div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk implicit
 sunk explicit
 sunk not last</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
-<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk not last</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk not last</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 </section>
 <section class="corner" id="a-sunk-operator-sinks-its-result-not-its-condition" data-tags=""><h2><a class="num" href="#a-sunk-operator-sinks-its-result-not-its-condition">4.4</a> <span class="t">A sunk operator sinks its result, not its condition</span></h2>
@@ -181,7 +185,7 @@ sunk not last</pre><button class="reveal" type="button">What does it print? <spa
 <div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk branch
 sunk left of ||
 sunk right of andthen</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
-<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>A new object is true, so <code>||</code> returns it and it is sunk, while <code>&amp;&amp;</code> goes on to its right side and returns that instead.</p>
 </section>
@@ -197,7 +201,7 @@ sunk right of andthen</pre><button class="reveal" type="button">What does it pri
 <div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk left of ||
 sunk left of or
 sunk left of orelse</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
-<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>The consequence that matters is for processes: the <code>Proc</code> of a failed command on the left of <code>//</code> goes unchecked (see <a href="/deep/sink/#a-failed-process-throws-when-its-proc-is-sunk">A failed process throws when its <code>Proc</code> is sunk</a>).</p>
 </section>
@@ -213,7 +217,7 @@ sunk second
 sunk modifier
 sunk modifier</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk modifier
-sunk modifier</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+sunk modifier</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 </section>
 <section class="corner" id="the-compiler-reports-sunk-values-that-cannot-matter" data-tags=""><h2><a class="num" href="#the-compiler-reports-sunk-values-that-cannot-matter">4.7</a> <span class="t">The compiler reports sunk values that cannot matter</span></h2>
@@ -303,7 +307,7 @@ Useless use of anonymous sub, did you forget to provide a name? (line 1)</pre><b
 $[2]</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
 Useless use of constant integer 3 in sink context (lines 2, 2)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>[2, 3]
-$[2, 3]</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+$[2, 3]</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>The one <code>3</code> is reported twice. Binding with <code>:=</code> is not assignment, and it takes the whole list. A call without parentheses takes the whole comma list as its arguments, so nothing is left over to sink:</p>
 <figure class="ex ex-run" id="ex-4-14">
@@ -396,7 +400,7 @@ chars: threw</pre><button class="reveal" type="button">What does it print? <span
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>unhandled: threw
 fallback
 4
-cannot parse 'abc'</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+cannot parse 'abc'</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p><code>.lines[0]</code> keeps the first line of the string; the rest is the backtrace. A test that handles the Failure should therefore also supply the value to use instead, as <code>$r // "fallback"</code> does, rather than leave the Failure in place to be computed with.</p>
 </section>
@@ -423,7 +427,7 @@ not reached
 caught: Nil
 fallback
 undefined
-with: Nil</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+with: Nil</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>The same <code>with</code> outside the <code>try</code> would print <code>undefined</code>.</p>
 </section>
@@ -519,7 +523,7 @@ caught: X::Proc::Unsuccessful</pre><button class="reveal" type="button">What doe
 <span class="k">try</span> { <span class="k">for</span> <span class="mi">1</span> { <span class="k">make</span>(<span class="s">&quot;block inside try&quot;</span>) }; <span class="nb">Nil</span> }</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
 <div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk block, sub call
 sunk pointy block, method call</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
-<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk pointy block, method call</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk pointy block, method call</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p><code>run</code> is a sub, so the usual way of running a list of commands ignores their failures, and so does any sub that returns a Failure. A <code>sink</code> prefix on the call restores the check:</p>
 <figure class="ex ex-local" id="ex-4-28">
@@ -553,7 +557,7 @@ sunk pointy block, method call</pre><button class="reveal" type="button">What do
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>3
 3
 3
-3</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+3</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>Turning a Seq into a list with <code>.list</code> or <code>.cache</code> does not run it, and a truth test runs it for one element only:</p>
 <figure class="ex ex-run" id="ex-4-30">
@@ -567,7 +571,7 @@ True
 1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>3
 True
-6</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+6</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>A Seq returned by a sub, with or without <code>return</code>, runs when the call is sunk. A sunk infinite Seq, such as <code>(1..*).map({ … })</code>, never returns. The values the Seq produces are discarded without being sunk themselves, so a <code>map</code> that runs commands ignores their failures, as a <code>for</code> loop with a pointy block does:</p>
 <figure class="ex ex-run" id="ex-4-31">
@@ -611,7 +615,7 @@ Empty
 (0, 1, 2).Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>Nil
 [1, 2]
-(0, 1, 2)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+(0, 1, 2)</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 </section>
 <section class="corner" id="a-given-without-a-matching-when-gives-false-not-nil" data-tags="trap"><h2><a class="num" href="#a-given-without-a-matching-when-gives-false-not-nil">4.24</a> <span class="t">A <code>given</code> without a matching <code>when</code> gives <code>False</code>, not <code>Nil</code></span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
@@ -634,7 +638,7 @@ Bool::False
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>"one"
 Bool::False
 Bool::False
-("one", Bool::False, "two").Seq</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+("one", Bool::False, "two").Seq</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 <p>A <code>default { Nil }</code> at the end makes the no-match case give <code>Nil</code>.</p>
 </section>
@@ -654,7 +658,7 @@ Cannot assign to a readonly variable or a value</pre><button class="reveal" type
 <details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>Int
 Int
 Cannot modify an immutable Int (5)
-Cannot modify an immutable Int (5)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+Cannot modify an immutable Int (5)</pre><p>Measured with Raku++ 4.0.1-245-ge1e6e3a1-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
 </figure>
 </section>
 <section class="corner" id="the-sink-prefix-runs-a-statement-and-gives-nil" data-tags=""><h2><a class="num" href="#the-sink-prefix-runs-a-statement-and-gives-nil">4.26</a> <span class="t">The <code>sink</code> prefix runs a statement and gives <code>Nil</code></span></h2>
@@ -694,7 +698,7 @@ Useless use of constant integer 42 in sink context (line 4)</pre><button class="
 </main>
 </div>
 <script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
-<script src="/deep/assets/book.js?v=mjp0h5mir1" defer></script>
+<script src="/deep/assets/book.js?v=g5el35n839" defer></script>
 <script src="/theme/shell.js?v=4e7473f5" defer></script>
 </body>
 </html>
