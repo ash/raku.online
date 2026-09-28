@@ -103,6 +103,26 @@
   });
   paintDone();
 
+  // ---- fold the current chapter's corners --------------------------------
+  // One choice for the whole book: folded here, folded on the next chapter.
+  var fold = document.querySelector('nav.toc .toc-fold');
+  function setFold(f) {
+    document.documentElement.classList.toggle('toc-folded', f);
+    if (!fold) return;
+    fold.setAttribute('aria-expanded', f ? 'false' : 'true');
+    fold.setAttribute('aria-label', f ? "Show this chapter's corners" : "Hide this chapter's corners");
+    fold.title = f ? 'Show the corners' : 'Hide the corners';
+  }
+  if (fold) {
+    setFold(load('corners-toc-folded', '0') === '1');
+    fold.addEventListener('click', function (e) {
+      e.preventDefault();
+      var f = !document.documentElement.classList.contains('toc-folded');
+      setFold(f);
+      save('corners-toc-folded', f ? '1' : '0');
+    });
+  }
+
   // ---- the corner being read, marked in the contents ---------------------
   var links = {};
   document.querySelectorAll('.toc-corners a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
@@ -114,6 +134,7 @@
         if (!en.isIntersecting) return;
         var a = links[en.target.id];
         if (!a || a === active) return;
+        if (!a.offsetParent) return;
         if (active) active.classList.remove('active');
         active = a; a.classList.add('active');
         // Keep the active entry in view by scrolling the sidebar alone, and
