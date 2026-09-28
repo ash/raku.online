@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Values Nobody Uses — Raku Behind the Docs</title>
+<meta name="description" content="A value that nothing uses is sunk; the compiler warns about the useless ones, and at run time a sunk Failure, a failed Proc and a Seq each do something of their own.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
+<link rel="stylesheet" href="/deep/assets/book.css?v=1d3tw8gi4f">
+<script>(function () {
+  var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function eff(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', eff(s));
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__applyTheme = apply;
+  try { if (localStorage.getItem('corners-predict') === '1') document.documentElement.classList.add('predict-on'); } catch (e) {}
+})();</script>
+</head>
+<body class="is-chapter">
+<header class="top">
+  <button class="nav-toggle" type="button" aria-label="Contents">☰</button>
+  <a class="brand" href="/deep/">Raku Behind the Docs</a>
+  <span class="spacer"></span>
+  <label class="predict" title="Hide every output until you reveal it"><input type="checkbox" id="predict-toggle"> <span>Predict<span class="wide"> mode</span></span></label>
+  <a class="corners-link" href="/deep/corners/">All corners</a>
+  <div class="theme-switch">
+    <button class="theme-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Theme">◐</button>
+    <ul class="theme-menu" role="menu" hidden>
+      <li><button data-theme-set="system">◐ System</button></li>
+      <li><button data-theme-set="light">☀ Light</button></li>
+      <li><button data-theme-set="dark">☾ Dark</button></li>
+    </ul>
+  </div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="Contents"><a class="toc-home" href="/deep/">Contents</a>
+<div class="toc-part">Before you start</div><ol class="toc-list">
+<li data-slug="how-to-read"><a href="/deep/how-to-read/"><span class="n">0</span><span class="t">How to Read This Book</span></a>
+</li>
+</ol>
+<div class="toc-part">Reading the code</div><ol class="toc-list">
+<li data-slug="precedence"><a href="/deep/precedence/"><span class="n">1</span><span class="t">Who Takes the Operand</span></a>
+</li>
+<li data-slug="quotes"><a href="/deep/quotes/"><span class="n">2</span><span class="t">Quotes and Interpolation</span></a>
+</li>
+<li data-slug="whitespace"><a href="/deep/whitespace/"><span class="n">3</span><span class="t">Whitespace, Terms and Blocks</span></a>
+</li>
+<li class="current" data-slug="sink"><a href="/deep/sink/"><span class="n">4</span><span class="t">Values Nobody Uses</span></a>
+<ol class="toc-corners"><li><a href="#a-value-nobody-uses-has-its-sink-method-called"><span class="n">4.1</span><span class="t">A value nobody uses has its <code>sink</code> method called</span></a></li><li><a href="#a-block-whose-value-is-unused-sinks-its-last-statement"><span class="n">4.2</span><span class="t">A block whose value is unused sinks its last statement</span></a></li><li><a href="#a-call-that-stands-alone-sinks-the-value-it-returns"><span class="n">4.3</span><span class="t">A call that stands alone sinks the value it returns</span></a></li><li><a href="#a-sunk-operator-sinks-its-result-not-its-condition"><span class="n">4.4</span><span class="t">A sunk operator sinks its result, not its condition</span></a></li><li><a href="#never-sinks-its-left-side"><span class="n">4.5</span><span class="t"><code>//</code> never sinks its left side</span></a></li><li><a href="#a-sunk-list-sinks-every-element-a-sunk-xx-sinks-none"><span class="n">4.6</span><span class="t">A sunk list sinks every element; a sunk <code>xx</code> sinks none</span></a></li><li><a href="#the-compiler-reports-sunk-values-that-cannot-matter"><span class="n">4.7</span><span class="t">The compiler reports sunk values that cannot matter</span></a></li><li><a href="#calls-method-calls-and-assignments-are-never-reported"><span class="n">4.8</span><span class="t">Calls, method calls and assignments are never reported</span></a></li><li><a href="#each-unused-branch-is-reported-except-the-right-side-of"><span class="n">4.9</span><span class="t">Each unused branch is reported, except the right side of <code>//</code></span></a></li><li><a href="#no-worries-does-not-silence-a-useless-use"><span class="n">4.10</span><span class="t"><code>no worries</code> does not silence a "Useless use"</span></a></li><li><a href="#only-a-bare-block-runs-where-it-stands"><span class="n">4.11</span><span class="t">Only a bare block runs where it stands</span></a></li><li><a href="#everything-after-an-item-assignments-comma-is-sunk"><span class="n">4.12</span><span class="t">Everything after an item assignment's comma is sunk</span></a></li><li><a href="#a-sunk-failure-throws-its-exception"><span class="n">4.13</span><span class="t">A sunk Failure throws its exception</span></a></li><li><a href="#testing-a-failure-marks-it-handled-and-then-it-sinks-quietly"><span class="n">4.14</span><span class="t">Testing a Failure marks it handled, and then it sinks quietly</span></a></li><li><a href="#a-handled-failure-is-nan-as-a-number-and-handled-as-a-string"><span class="n">4.15</span><span class="t">A handled Failure is <code>NaN</code> as a number and "(HANDLED)" as a string</span></a></li><li><a href="#inside-try-a-failure-throws-as-soon-as-a-call-returns-it"><span class="n">4.16</span><span class="t">Inside <code>try</code>, a Failure throws as soon as a call returns it</span></a></li><li><a href="#a-failed-process-throws-when-its-proc-is-sunk"><span class="n">4.17</span><span class="t">A failed process throws when its <code>Proc</code> is sunk</span></a></li><li><a href="#outclose-sinks-the-proc-slurpclose-does-not"><span class="n">4.18</span><span class="t"><code>.out.close</code> sinks the <code>Proc</code>; <code>.slurp(:close)</code> does not</span></a></li><li><a href="#a-proc-stays-armed-however-often-it-is-tested"><span class="n">4.19</span><span class="t">A <code>Proc</code> stays armed however often it is tested</span></a></li><li><a href="#try-run-does-not-catch-a-failed-process"><span class="n">4.20</span><span class="t"><code>try { run … }</code> does not catch a failed process</span></a></li><li><a href="#the-last-value-of-a-for-body-is-not-always-sunk"><span class="n">4.21</span><span class="t">The last value of a <code>for</code> body is not always sunk</span></a></li><li><a href="#a-sunk-seq-runs-to-the-end-even-a-lazy-one"><span class="n">4.22</span><span class="t">A sunk <code>Seq</code> runs to the end, even a lazy one</span></a></li><li><a href="#a-routines-value-is-its-last-statements-and-a-loops-is-nil"><span class="n">4.23</span><span class="t">A routine's value is its last statement's, and a loop's is <code>Nil</code></span></a></li><li><a href="#a-given-without-a-matching-when-gives-false-not-nil"><span class="n">4.24</span><span class="t">A <code>given</code> without a matching <code>when</code> gives <code>False</code>, not <code>Nil</code></span></a></li><li><a href="#return-x-keeps-the-container-that-a-last-statement-drops"><span class="n">4.25</span><span class="t"><code>return $x</code> keeps the container that a last statement drops</span></a></li><li><a href="#the-sink-prefix-runs-a-statement-and-gives-nil"><span class="n">4.26</span><span class="t">The <code>sink</code> prefix runs a statement and gives <code>Nil</code></span></a></li></ol>
+</li>
+<li data-slug="containers"><a href="/deep/containers/"><span class="n">5</span><span class="t">Containers and Binding</span></a>
+</li>
+</ol>
+<div class="toc-part">Nothing and numbers</div><ol class="toc-list">
+<li data-slug="nil-any"><a href="/deep/nil-any/"><span class="n">6</span><span class="t">Nil, Any and the Undefined</span></a>
+</li>
+<li data-slug="numbers"><a href="/deep/numbers/"><span class="n">7</span><span class="t">Numbers</span></a>
+</li>
+<li data-slug="strings"><a href="/deep/strings/"><span class="n">8</span><span class="t">Strings</span></a>
+</li>
+</ol>
+<div class="toc-part">Collections</div><ol class="toc-list">
+<li data-slug="lists"><a href="/deep/lists/"><span class="n">9</span><span class="t">Lists, Arrays, Seqs and Slips</span></a>
+</li>
+<li data-slug="hashes"><a href="/deep/hashes/"><span class="n">10</span><span class="t">Hashes, Maps and Pairs</span></a>
+</li>
+<li data-slug="ranges"><a href="/deep/ranges/"><span class="n">11</span><span class="t">Ranges</span></a>
+</li>
+<li data-slug="sequences"><a href="/deep/sequences/"><span class="n">12</span><span class="t">The Sequence Operator</span></a>
+</li>
+<li data-slug="sets"><a href="/deep/sets/"><span class="n">13</span><span class="t">Sets, Bags and Mixes</span></a>
+</li>
+<li data-slug="buffers"><a href="/deep/buffers/"><span class="n">14</span><span class="t">Blobs and Bufs</span></a>
+</li>
+</ol>
+<div class="toc-part">Code</div><ol class="toc-list">
+<li data-slug="signatures"><a href="/deep/signatures/"><span class="n">15</span><span class="t">Signatures and Introspection</span></a>
+</li>
+<li data-slug="exceptions"><a href="/deep/exceptions/"><span class="n">16</span><span class="t">Exceptions and Failures</span></a>
+</li>
+<li data-slug="regexes"><a href="/deep/regexes/"><span class="n">17</span><span class="t">Regexes and Grammars</span></a>
+</li>
+</ol>
+<div class="toc-part">Time and the outside world</div><ol class="toc-list">
+<li data-slug="dates"><a href="/deep/dates/"><span class="n">18</span><span class="t">Dates and Times</span></a>
+</li>
+</ol>
+<div class="toc-part">Back matter</div><ol class="toc-list">
+<li data-slug="colophon"><a href="/deep/colophon/"><span class="n"></span><span class="t">Colophon</span></a>
+</li>
+</ol></nav>
+<main class="page">
+<article class="chapter" data-slug="sink">
+<header class="chapter-head"><div class="kicker">Reading the code · Chapter 4</div><h1>Values Nobody Uses</h1><p class="summary">A value that nothing uses is sunk; the compiler warns about the useless ones, and at run time a sunk Failure, a failed Proc and a Seq each do something of their own.</p><p class="meta">26 corners · 37 examples</p></header>
+<p>A statement like <code>$total + 1;</code> computes a value and throws it away. Raku calls this <em>sink context</em>, and the value is said to be <em>sunk</em>. Sinking is not silent. While it compiles, the compiler looks at every sunk expression and warns about the ones that cannot have any effect. At run time, a sunk value has its <code>sink</code> method called. For most types that method does nothing, but for three built-in types it matters: a <code>Failure</code> throws its exception, a <code>Proc</code> of a failed command throws <code>X::Proc::Unsuccessful</code>, and a <code>Seq</code> runs to the end.</p>
+<p>This chapter is about where sink context reaches, what it does when it gets there, and the few places it does not reach although it should. The last corners are about the other side of the question: the value a block, a routine or a loop gives back when it <em>is</em> used.</p>
+<section class="corner" id="a-value-nobody-uses-has-its-sink-method-called" data-tags=""><h2><a class="num" href="#a-value-nobody-uses-has-its-sink-method-called">4.1</a> <span class="t">A value nobody uses has its <code>sink</code> method called</span></h2>
+<p>Any class can define a <code>sink</code> method, and it runs when an object of the class ends up in sink context. A class that prints when it is sunk makes the rule visible; the examples in this chapter use it.</p>
+<figure class="ex ex-run" id="ex-4-1">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> {
+    <span class="k">has</span> <span class="nv">$.name</span>;
+    <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> }
+}
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;a&quot;</span>);
+<span class="k">my</span> <span class="nv">$kept</span> = <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;b&quot;</span>);
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;c&quot;</span>).<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">@list</span> = <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;d&quot;</span>);
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;e&quot;</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk a
+sunk e</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Assignment uses a value, so <code>b</code> and <code>d</code> are not sunk. In the third statement the object is the invocant of <code>.name</code>, and the method call uses it; what is sunk is the string the method returns. The last statement of the program is sunk like any other.</p>
+</section>
+<section class="corner" id="a-block-whose-value-is-unused-sinks-its-last-statement" data-tags=""><h2><a class="num" href="#a-block-whose-value-is-unused-sinks-its-last-statement">4.2</a> <span class="t">A block whose value is unused sinks its last statement</span></h2>
+<p>A block's value is the value of its last statement. When nothing uses the block's value, as with the body of <code>if</code>, <code>for</code> or <code>given</code>, or a bare block written as a statement, that last statement is sunk. When the value is kept, as with <code>do</code> or <code>try</code> on the right of an assignment, it is not.</p>
+<figure class="ex ex-run" id="ex-4-2">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">if</span> <span class="n">True</span> { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;if&quot;</span>) }
+<span class="k">for</span> <span class="mi">1</span> { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;for&quot;</span>) }
+{ <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;bare block&quot;</span>) }
+<span class="k">my</span> <span class="nv">$v</span> = <span class="k">do</span> { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;do&quot;</span>) };
+<span class="k">my</span> <span class="nv">$t</span> = <span class="k">try</span> { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;try&quot;</span>) };
+<span class="k">given</span> <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;topic&quot;</span>) { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;given&quot;</span>) }
+<span class="nb">say</span> <span class="nv">$v</span>.<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$t</span>.<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk if
+sunk for
+sunk bare block
+sunk given
+do try</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk for
+sunk bare block
+do try</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The topic of <code>given</code> is not sunk: <code>given</code> uses it to set <code>$_</code>. The bodies of <code>while</code> and <code>loop</code> are sunk in the same way. The body of <code>for</code> has exceptions, described in <a href="/deep/sink/#the-last-value-of-a-for-body-is-not-always-sunk">The last value of a <code>for</code> body is not always sunk</a>.</p>
+</section>
+<section class="corner" id="a-call-that-stands-alone-sinks-the-value-it-returns" data-tags=""><h2><a class="num" href="#a-call-that-stands-alone-sinks-the-value-it-returns">4.3</a> <span class="t">A call that stands alone sinks the value it returns</span></h2>
+<p>A routine hands its value back to the caller, and the caller decides whether to use it. A call written as a statement sinks it, whether the routine returned it as its last statement or with <code>return</code>. Inside the routine, every statement but the last is sunk as usual.</p>
+<figure class="ex ex-run" id="ex-4-3">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">sub</span> <span class="n">make</span>(<span class="nv">$n</span>)  { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="nv">$n</span>) }
+<span class="k">sub</span> <span class="n">early</span>(<span class="nv">$n</span>) { <span class="k">return</span> <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="nv">$n</span>) }
+<span class="k">sub</span> <span class="n">two</span>       { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;not last&quot;</span>); <span class="k">make</span>(<span class="s">&quot;kept&quot;</span>) }
+<span class="k">make</span>(<span class="s">&quot;implicit&quot;</span>);
+<span class="n">early</span>(<span class="s">&quot;explicit&quot;</span>);
+<span class="k">my</span> <span class="nv">$kept</span> = <span class="n">two</span>();</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk implicit
+sunk explicit
+sunk not last</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk not last</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="a-sunk-operator-sinks-its-result-not-its-condition" data-tags=""><h2><a class="num" href="#a-sunk-operator-sinks-its-result-not-its-condition">4.4</a> <span class="t">A sunk operator sinks its result, not its condition</span></h2>
+<p><code>?? !!</code>, <code>||</code>, <code>&amp;&amp;</code> and <code>andthen</code> each return one of their operands. When the whole expression is sunk, the operand that becomes its result is sunk with it. An operand that was only tested is not: the condition of <code>?? !!</code>, the left side of <code>&amp;&amp;</code> when it is true, the left side of <code>andthen</code>.</p>
+<figure class="ex ex-run" id="ex-4-4">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">sub</span> <span class="n">one</span> { <span class="mi">1</span> }
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;condition&quot;</span>) ?? <span class="n">one</span>() !! <span class="n">one</span>();
+<span class="n">one</span>() ?? <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;branch&quot;</span>) !! <span class="n">one</span>();
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of ||&quot;</span>) || <span class="n">one</span>();
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of &amp;&amp;&quot;</span>) &amp;&amp; <span class="n">one</span>();
+<span class="n">one</span>() <span class="k">andthen</span> <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;right of andthen&quot;</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk branch
+sunk left of ||
+sunk right of andthen</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>A new object is true, so <code>||</code> returns it and it is sunk, while <code>&amp;&amp;</code> goes on to its right side and returns that instead.</p>
+</section>
+<section class="corner" id="never-sinks-its-left-side" data-tags="quirk"><h2><a class="num" href="#never-sinks-its-left-side">4.5</a> <span class="t"><code>//</code> never sinks its left side</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>//</code> returns its left side when that side is defined, just as <code>||</code> returns a true one. Rakudo nevertheless leaves the left side of <code>//</code> unsunk, although <code>or</code> and <code>orelse</code>, the loose forms of <code>||</code> and <code>//</code>, both sink theirs:</p>
+<figure class="ex ex-run" id="ex-4-5">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">sub</span> <span class="n">one</span> { <span class="mi">1</span> }
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of ||&quot;</span>) || <span class="n">one</span>();
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of or&quot;</span>) <span class="k">or</span> <span class="n">one</span>();
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of //&quot;</span>) // <span class="n">one</span>();
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;left of orelse&quot;</span>) <span class="k">orelse</span> <span class="n">one</span>();</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk left of ||
+sunk left of or
+sunk left of orelse</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing: Raku++ accepts the program and prints nothing)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The consequence that matters is for processes: the <code>Proc</code> of a failed command on the left of <code>//</code> goes unchecked (see <a href="/deep/sink/#a-failed-process-throws-when-its-proc-is-sunk">A failed process throws when its <code>Proc</code> is sunk</a>).</p>
+</section>
+<section class="corner" id="a-sunk-list-sinks-every-element-a-sunk-xx-sinks-none" data-tags=""><h2><a class="num" href="#a-sunk-list-sinks-every-element-a-sunk-xx-sinks-none">4.6</a> <span class="t">A sunk list sinks every element; a sunk <code>xx</code> sinks none</span></h2>
+<p>A parenthesised list written as a statement sinks each of its elements, and a statement-modifier <code>for</code> sinks its expression once per iteration. <code>xx</code> evaluates its left side once per repetition, but a sunk <code>xx</code> sinks none of the results.</p>
+<figure class="ex ex-run" id="ex-4-6">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+(<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;first&quot;</span>), <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;second&quot;</span>));
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;repeated&quot;</span>) <span class="n">xx</span> <span class="mi">2</span>;
+<span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;modifier&quot;</span>) <span class="k">for</span> <span class="mi">1</span>, <span class="mi">2</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk first
+sunk second
+sunk modifier
+sunk modifier</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk modifier
+sunk modifier</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="the-compiler-reports-sunk-values-that-cannot-matter" data-tags=""><h2><a class="num" href="#the-compiler-reports-sunk-values-that-cannot-matter">4.7</a> <span class="t">The compiler reports sunk values that cannot matter</span></h2>
+<p>Before the program runs, the compiler examines each sunk expression. A literal, a variable or an operator without side effects can do nothing in sink context, so the compiler reports it as <em>useless</em>. The report is a warning, not an error, and the program runs. The typical case is a value that was meant to be returned or assigned:</p>
+<figure class="ex ex-run" id="ex-4-7">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">double</span>(<span class="nv">$x</span>) {
+    <span class="nv">$x</span> * <span class="mi">2</span>;
+    <span class="nb">say</span> <span class="s">&quot;doubled&quot;</span>;
+}
+<span class="n">double</span>(<span class="mi">21</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">doubled</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of "*" in expression "$x * 2" in sink context (line 2)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The reports are collected in one block, headed <code>WARNINGS for</code> and the file name, and each ends with the lines where the expression occurs. When a program earns several different reports, their order changes from one run to the next. The wording names the kind of value that was wasted:</p>
+<div class="table-wrap"><table><thead><tr><th>sunk statement</th><th>reported as "Useless use of … in sink context"</th></tr></thead><tbody><tr><td><code>42;</code></td><td><code>constant integer 42</code></td></tr><tr><td><code>1.5;</code></td><td><code>constant rational 1.5</code></td></tr><tr><td><code>1e0;</code></td><td><code>constant floating-point number 1e0</code></td></tr><tr><td><code>"a";</code></td><td><code>constant string "a"</code></td></tr><tr><td><code>&lt;a b&gt;;</code></td><td><code>constant value a b</code></td></tr><tr><td><code>Empty;</code></td><td><code>constant value Empty</code></td></tr><tr><td><code>True;</code></td><td><code>constant integer True</code></td></tr><tr><td><code>Int;</code></td><td><code>constant integer Int</code></td></tr><tr><td><code>$x;</code> (also <code>@a;</code>, <code>%h;</code>, <code>&amp;f;</code>, <code>$_;</code>)</td><td><code>$x</code></td></tr><tr><td><code>$x + 1;</code></td><td><code>"+" in expression "$x + 1"</code></td></tr><tr><td><code>so 1;</code></td><td><code>"so " in expression "so 1"</code></td></tr><tr><td><code>1 ... 3;</code></td><td><code>...</code></td></tr><tr><td><code>();</code></td><td><code>()</code></td></tr><tr><td><code>now;</code></td><td><code>'now'</code></td></tr><tr><td><code>[+] 1, 2;</code></td><td><code>[+]</code></td></tr></tbody></table></div>
+<p><code>True</code> and the type object <code>Int</code> are both called a "constant integer".</p>
+</section>
+<section class="corner" id="calls-method-calls-and-assignments-are-never-reported" data-tags=""><h2><a class="num" href="#calls-method-calls-and-assignments-are-never-reported">4.8</a> <span class="t">Calls, method calls and assignments are never reported</span></h2>
+<p>The compiler cannot know what a call does, so it never reports one, even when its value is certainly thrown away. Method calls, subscripts, smartmatches, <code>//</code>, <code>Nil</code> and anything that changes a variable are silent too:</p>
+<figure class="ex ex-run" id="ex-4-8">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span>, <span class="mi">2</span>;
+<span class="nv">$x</span>.<span class="nb">abs</span>;
+<span class="nv">@a</span>[<span class="mi">0</span>];
+<span class="nv">$x</span> ~~ <span class="nb">Int</span>;
+<span class="nv">$x</span> // <span class="mi">0</span>;
+<span class="nb">Int</span>.<span class="nb">new</span>;
+<span class="nb">Nil</span>;
+<span class="nv">$x</span>++;
+<span class="nb">say</span> <span class="s">&quot;no warnings&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">no warnings</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A statement modifier behaves unevenly. The expression before a <code>for</code> modifier is never reported, but the expression before an <code>if</code> modifier is:</p>
+<figure class="ex ex-run" id="ex-4-9">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>;
+<span class="nv">$x</span> + <span class="mi">1</span> <span class="k">for</span> <span class="mi">1</span>;
+<span class="nv">$x</span> + <span class="mi">1</span> <span class="k">if</span> <span class="nv">$x</span>;
+<span class="nb">say</span> <span class="nv">$x</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">5</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of "+" in expression "$x + 1" in sink context (line 3)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="each-unused-branch-is-reported-except-the-right-side-of" data-tags=""><h2><a class="num" href="#each-unused-branch-is-reported-except-the-right-side-of">4.9</a> <span class="t">Each unused branch is reported, except the right side of <code>//</code></span></h2>
+<p>A sunk <code>?? !!</code>, <code>||</code>, <code>&amp;&amp;</code>, <code>and</code> or <code>andthen</code> sinks whichever operand it returns, so the compiler checks every operand that could be returned. A literal fallback after <code>||</code> is reported; the same fallback after <code>//</code> is not:</p>
+<figure class="ex ex-run" id="ex-4-10">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">0</span>;
+<span class="nv">$x</span> || <span class="s">&quot;default&quot;</span>;
+<span class="nv">$x</span> // <span class="s">&quot;default&quot;</span>;
+<span class="nb">say</span> <span class="nv">$x</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">0</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of constant string "default" in sink context (line 2)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A ternary with two literal branches gets one report for each branch.</p>
+</section>
+<section class="corner" id="no-worries-does-not-silence-a-useless-use" data-tags="quirk"><h2><a class="num" href="#no-worries-does-not-silence-a-useless-use">4.10</a> <span class="t"><code>no worries</code> does not silence a "Useless use"</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>Rakudo has two kinds of compile-time complaints. <em>Potential difficulties</em>, such as declaring the same variable twice, are worries, and the <code>no worries</code> pragma turns them off. The "Useless use" reports are printed in their own <code>WARNINGS</code> block, and <code>no worries</code> does not reach them:</p>
+<figure class="ex ex-run" id="ex-4-11">
+<div class="code"><pre class="src" data-src><span class="k">no</span> <span class="n">worries</span>;
+<span class="k">my</span> <span class="nv">$a</span> = <span class="mi">1</span>;
+<span class="k">my</span> <span class="nv">$a</span> = <span class="mi">2</span>;
+<span class="mi">42</span>;
+<span class="nb">say</span> <span class="nv">$a</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">2</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of constant integer 42 in sink context (line 4)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The redeclaration on line 3 passes without a word. <code>quietly</code>, which silences warnings issued at run time, does not help either: <code>quietly 42;</code> is still reported. A bare block written as a statement runs at once and its value is unused, so a literal at its end is reported too: <code>{ 42 };</code>.</p>
+</section>
+<section class="corner" id="only-a-bare-block-runs-where-it-stands" data-tags="trap"><h2><a class="num" href="#only-a-bare-block-runs-where-it-stands">4.11</a> <span class="t">Only a bare block runs where it stands</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A bare block written as a statement is executed where it stands. A pointy block and an anonymous sub are values, a <code>Block</code> and a <code>Sub</code>, and a value in sink context is thrown away without being called:</p>
+<figure class="ex ex-run" id="ex-4-12">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> { <span class="nb">say</span> <span class="s">&quot;anonymous&quot;</span> };
+-&gt; { <span class="nb">say</span> <span class="s">&quot;pointy&quot;</span> };
+{ <span class="nb">say</span> <span class="s">&quot;bare&quot;</span> };</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">bare</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of anonymous sub, did you forget to provide a name? (line 1)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The compiler asks about the anonymous sub, but says nothing about the pointy block that never ran.</p>
+</section>
+<section class="corner" id="everything-after-an-item-assignments-comma-is-sunk" data-tags="trap"><h2><a class="num" href="#everything-after-an-item-assignments-comma-is-sunk">4.12</a> <span class="t">Everything after an item assignment's comma is sunk</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>Item assignment, <code>=</code> with a <code>$</code> target, binds tighter than the comma, so the comma list around it is built after the assignment and then sunk (see <a href="/deep/precedence/">Who Takes the Operand</a>). The whole right-hand side of an item assignment is parsed at that tight level. An array assignment nested inside it is therefore not a list assignment, and it does not collect the list either:</p>
+<figure class="ex ex-run" id="ex-4-13">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">@a</span>;
+<span class="k">my</span> <span class="nv">$y</span> = <span class="nv">@a</span> = <span class="mi">2</span>, <span class="mi">3</span>;
+<span class="nb">say</span> <span class="nv">@a</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$y</span>.<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[2]
+$[2]</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of constant integer 3 in sink context (lines 2, 2)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>[2, 3]
+$[2, 3]</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The one <code>3</code> is reported twice. Binding with <code>:=</code> is not assignment, and it takes the whole list. A call without parentheses takes the whole comma list as its arguments, so nothing is left over to sink:</p>
+<figure class="ex ex-run" id="ex-4-14">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> := <span class="mi">1</span>, <span class="mi">2</span>;
+<span class="nb">say</span> <span class="nv">$x</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$y</span>;
+<span class="nb">say</span> <span class="nv">$y</span> = <span class="mi">3</span>, <span class="mi">4</span>;
+<span class="nb">say</span> <span class="nv">$y</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(1, 2)
+34
+3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>When the leftover list feeds a list operator such as <code>Z</code>, the operator is reported, and the expression the report quotes is a fragment of the line rather than the code that was sunk:</p>
+<figure class="ex ex-run" id="ex-4-15">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span>;
+<span class="nv">$x</span> = <span class="mi">10</span>, <span class="mi">20</span> <span class="n">Z</span> <span class="mi">30</span>, <span class="mi">40</span>;
+<span class="nb">say</span> <span class="nv">$x</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">10</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of "Z" in expression ", 20 Z 30," in sink context (line 2)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>What was sunk is <code>(($x = 10), 20) Z (30, 40)</code>.</p>
+</section>
+<section class="corner" id="a-sunk-failure-throws-its-exception" data-tags=""><h2><a class="num" href="#a-sunk-failure-throws-its-exception">4.13</a> <span class="t">A sunk Failure throws its exception</span></h2>
+<p><code>fail</code> returns a <code>Failure</code>: an undefined value that carries an exception. Kept in a variable, it waits. Sunk, it throws, and an uncaught throw ends the program with the message and a backtrace from where <code>fail</code> was called:</p>
+<figure class="ex ex-run" id="ex-4-16">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">parse</span>(<span class="nv">$s</span>) { <span class="nb">fail</span> <span class="s">&quot;cannot parse '$s'&quot;</span> }
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">parse</span>(<span class="s">&quot;abc&quot;</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.^<span class="n">name</span>;
+<span class="n">parse</span>(<span class="s">&quot;xyz&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Failure</pre><div class="lbl err">and on standard error</div><pre class="err-text">cannot parse 'xyz'
+  in sub parse at example.raku line 1
+  in block &lt;unit&gt; at example.raku line 4
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>This is what makes <code>fail</code> safe: a caller that ignores the result by calling the routine as a statement gets the exception, as if the routine had used <code>die</code>. The stored Failure in <code>$r</code> never throws, because it is never sunk.</p>
+</section>
+<section class="corner" id="testing-a-failure-marks-it-handled-and-then-it-sinks-quietly" data-tags=""><h2><a class="num" href="#testing-a-failure-marks-it-handled-and-then-it-sinks-quietly">4.14</a> <span class="t">Testing a Failure marks it handled, and then it sinks quietly</span></h2>
+<p>Asking a Failure whether it is true or defined counts as dealing with it. The Failure becomes <em>handled</em>, and sinking it no longer throws. The <code>.handled</code> method reports the state; it can also be assigned to.</p>
+<figure class="ex ex-run" id="ex-4-17">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">parse</span>(<span class="nv">$s</span>) { <span class="nb">fail</span> <span class="s">&quot;cannot parse '$s'&quot;</span> }
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">parse</span>(<span class="s">&quot;abc&quot;</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">handled</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">defined</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">handled</span>;
+<span class="n">sink</span> <span class="nv">$r</span>;
+<span class="nb">say</span> <span class="s">&quot;sinking a handled Failure is silent&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False
+False
+True
+sinking a handled Failure is silent</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The mark belongs to the Failure object, so a test through another variable that holds the same Failure counts. Looking at a Failure without testing it does not:</p>
+<figure class="ex ex-run" id="ex-4-18">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">parse</span>(<span class="nv">$s</span>) { <span class="nb">fail</span> <span class="s">&quot;cannot parse '$s'&quot;</span> }
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">parse</span>(<span class="s">&quot;abc&quot;</span>);
+<span class="k">my</span> <span class="nv">$alias</span> = <span class="nv">$r</span>;
+<span class="nb">say</span> <span class="nv">$alias</span> ?? <span class="s">&quot;true&quot;</span> !! <span class="s">&quot;false&quot;</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">handled</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">parse</span>(<span class="s">&quot;def&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span> ~~ <span class="nb">Failure</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">exception</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">handled</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">false
+True
+True
+cannot parse 'def'
+False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.so</code>, <code>.Bool</code>, <code>.defined</code>, <code>!</code>, <code>if</code>, <code>with</code>, <code>?? !!</code>, <code>||</code>, <code>//</code>, <code>andthen</code> and <code>orelse</code> all mark a Failure handled. A smartmatch, including a <code>when</code>, and <code>.exception</code>, <code>.^name</code>, <code>.raku</code> and <code>.WHAT</code> do not. A Failure that has thrown once is handled from then on.</p>
+</section>
+<section class="corner" id="a-handled-failure-is-nan-as-a-number-and-handled-as-a-string" data-tags="trap"><h2><a class="num" href="#a-handled-failure-is-nan-as-a-number-and-handled-as-a-string">4.15</a> <span class="t">A handled Failure is <code>NaN</code> as a number and "(HANDLED)" as a string</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>Handling disarms the sink, not the value. An unhandled Failure used as a number or a string throws. A handled one used the same way does not throw: it answers <code>NaN</code> as a number, and as a string its message after <code>(HANDLED)</code>, followed by the backtrace. <code>.Int</code> gives the <code>Int</code> type object. Other uses, such as <code>.chars</code> or <code>.elems</code>, still throw.</p>
+<figure class="ex ex-run" id="ex-4-19">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">parse</span>(<span class="nv">$s</span>) { <span class="nb">fail</span> <span class="s">&quot;cannot parse '$s'&quot;</span> }
+<span class="k">my</span> <span class="nv">$u</span> = <span class="n">parse</span>(<span class="s">&quot;xyz&quot;</span>);
+<span class="nb">say</span> (<span class="k">try</span> { <span class="nv">$u</span> + <span class="mi">1</span> }) // <span class="s">&quot;unhandled: threw&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">parse</span>(<span class="s">&quot;abc&quot;</span>);
+<span class="nb">say</span> <span class="nv">$r</span> // <span class="s">&quot;fallback&quot;</span>;
+<span class="nb">say</span> <span class="nv">$r</span> + <span class="mi">1</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">Str</span>.<span class="nb">lines</span>[<span class="mi">0</span>];
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">Int</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$r</span>.<span class="nb">chars</span>) // <span class="s">&quot;chars: threw&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">unhandled: threw
+fallback
+NaN
+(HANDLED) cannot parse 'abc'
+Int
+chars: threw</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>unhandled: threw
+fallback
+4
+cannot parse 'abc'</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p><code>.lines[0]</code> keeps the first line of the string; the rest is the backtrace. A test that handles the Failure should therefore also supply the value to use instead, as <code>$r // "fallback"</code> does, rather than leave the Failure in place to be computed with.</p>
+</section>
+<section class="corner" id="inside-try-a-failure-throws-as-soon-as-a-call-returns-it" data-tags="trap"><h2><a class="num" href="#inside-try-a-failure-throws-as-soon-as-a-call-returns-it">4.16</a> <span class="t">Inside <code>try</code>, a Failure throws as soon as a call returns it</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A <code>try</code> block turns on the <code>fatal</code> pragma for its body. Under <code>use fatal</code>, a Failure returned by a call throws at once, before it can be stored. Only a boolean test in the same expression gets to it first: <code>//</code>, <code>||</code>, <code>?? !!</code>, <code>if</code> or <code>so</code>. A <code>.defined</code>, a <code>with</code> or an <code>orelse</code> comes too late:</p>
+<figure class="ex ex-run" id="ex-4-20">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">parse</span>(<span class="nv">$s</span>) { <span class="nb">fail</span> <span class="s">&quot;cannot parse '$s'&quot;</span> }
+<span class="k">my</span> <span class="nv">$outside</span> = <span class="n">parse</span>(<span class="s">&quot;a&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;outside: &quot;</span>, <span class="nv">$outside</span>.<span class="nb">defined</span>;
+<span class="k">try</span> {
+    <span class="k">my</span> <span class="nv">$inside</span> = <span class="n">parse</span>(<span class="s">&quot;b&quot;</span>);
+    <span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;
+}
+<span class="nb">say</span> <span class="s">&quot;caught: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="k">try</span> { <span class="n">parse</span>(<span class="s">&quot;c&quot;</span>) // <span class="s">&quot;fallback&quot;</span> };
+<span class="k">try</span> { <span class="k">with</span> <span class="n">parse</span>(<span class="s">&quot;d&quot;</span>) { <span class="nb">say</span> <span class="s">&quot;defined&quot;</span> } <span class="k">else</span> { <span class="nb">say</span> <span class="s">&quot;undefined&quot;</span> } }
+<span class="nb">say</span> <span class="s">&quot;with: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">outside: False
+caught: cannot parse 'b'
+fallback
+with: cannot parse 'd'</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>outside: False
+not reached
+caught: Nil
+fallback
+undefined
+with: Nil</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The same <code>with</code> outside the <code>try</code> would print <code>undefined</code>.</p>
+</section>
+<section class="corner" id="a-failed-process-throws-when-its-proc-is-sunk" data-tags=""><h2><a class="num" href="#a-failed-process-throws-when-its-proc-is-sunk">4.17</a> <span class="t">A failed process throws when its <code>Proc</code> is sunk</span></h2>
+<p><code>run</code> and <code>shell</code> return a <code>Proc</code>. When the command fails, with a non-zero exit code or killed by a signal, sinking its Proc throws <code>X::Proc::Unsuccessful</code>. A Proc kept in a variable can be examined without throwing: <code>.exitcode</code>, <code>.signal</code>, and <code>.so</code>, which is <code>False</code> for a failed command.</p>
+<figure class="ex ex-local" id="ex-4-21">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;false&quot;</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="nb">run</span> <span class="s">&quot;false&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">1
+False</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'false' exited unsuccessfully (exit code: 1, signal: 0)
+  in block &lt;unit&gt; at example.raku line 4
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A command that cannot be started at all counts as failed, with exit code -1. A command killed by a signal has exit code 0 and the signal number in <code>.signal</code>. The exception's <code>.proc</code> is the failed Proc:</p>
+<figure class="ex ex-local" id="ex-4-22">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$missing</span> = <span class="nb">run</span> <span class="s">&quot;no-such-command-here&quot;</span>;
+<span class="nb">say</span> <span class="nv">$missing</span>.<span class="n">exitcode</span>;
+<span class="k">my</span> <span class="nv">$killed</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'kill -9 $$'</span>;
+<span class="nb">say</span> <span class="nv">$killed</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$killed</span>.<span class="nb">signal</span>;
+<span class="k">try</span> <span class="n">sink</span> <span class="nv">$killed</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">proc</span>.<span class="nb">signal</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">-1
+0 9
+X::Proc::Unsuccessful: 9</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A command that exits with 0 is never a problem: its Proc sinks quietly.</p>
+</section>
+<section class="corner" id="outclose-sinks-the-proc-slurpclose-does-not" data-tags="trap"><h2><a class="num" href="#outclose-sinks-the-proc-slurpclose-does-not">4.18</a> <span class="t"><code>.out.close</code> sinks the <code>Proc</code>; <code>.slurp(:close)</code> does not</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>With <code>:out</code>, a command's exit code is known only once its output has been read and the handle closed. <code>.close</code> on that handle returns the Proc, so <code>$p.out.close</code> as a statement sinks it, and a failure throws there. <code>.slurp(:close)</code> closes the handle as well, but it returns the text, and the Proc behind it is never sunk:</p>
+<figure class="ex ex-local" id="ex-4-23">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$text</span> = <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo partial; exit 3&quot;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nv">$text</span>.<span class="nb">trim</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo partial; exit 3&quot;</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>.<span class="nb">trim</span>;
+<span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">partial
+partial</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'sh' exited unsuccessfully (exit code: 3, signal: 0)
+  in block &lt;unit&gt; at example.raku line 5
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The first command failed as well, and nothing said so.</p>
+</section>
+<section class="corner" id="a-proc-stays-armed-however-often-it-is-tested" data-tags=""><h2><a class="num" href="#a-proc-stays-armed-however-often-it-is-tested">4.19</a> <span class="t">A <code>Proc</code> stays armed however often it is tested</span></h2>
+<p>A Proc has no handled state. Reading <code>.exitcode</code> or <code>.so</code> does not disarm it, a first throw does not either, and every later sink throws again. Only an operator that returns something else keeps it out of sink context: <code>||</code> goes on to its right side when the Proc is false, while <code>&amp;&amp;</code> returns the false Proc, which is then sunk.</p>
+<figure class="ex ex-local" id="ex-4-24">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;false&quot;</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="n">sink</span> <span class="nv">$p</span>; <span class="s">&quot;silent&quot;</span> }) // <span class="s">&quot;threw&quot;</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="n">sink</span> <span class="nv">$p</span>; <span class="s">&quot;silent&quot;</span> }) // <span class="s">&quot;threw&quot;</span>;
+<span class="nb">run</span>(<span class="s">&quot;false&quot;</span>) || <span class="nb">say</span> <span class="s">&quot;|| moved on&quot;</span>;
+<span class="nb">say</span> (<span class="k">try</span> { <span class="nb">run</span>(<span class="s">&quot;false&quot;</span>) &amp;&amp; <span class="nb">say</span> <span class="s">&quot;never&quot;</span>; <span class="s">&quot;silent&quot;</span> }) // <span class="s">&quot;&amp;&amp; threw&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False
+threw
+threw
+|| moved on
+&amp;&amp; threw</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="try-run-does-not-catch-a-failed-process" data-tags="trap"><h2><a class="num" href="#try-run-does-not-catch-a-failed-process">4.20</a> <span class="t"><code>try { run … }</code> does not catch a failed process</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>The last statement of a <code>try</code> block is the block's value, and when the <code>try</code> is a statement, that value is sunk after the <code>try</code> has finished, outside its protection. A failed Proc at the end of a <code>try</code> block escapes:</p>
+<figure class="ex ex-local" id="ex-4-25">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="k">try</span> { <span class="nb">run</span> <span class="s">&quot;false&quot;</span> };
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>;
+<span class="k">try</span> { <span class="nb">run</span> <span class="s">&quot;false&quot;</span> }
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">1</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'false' exited unsuccessfully (exit code: 1, signal: 0)
+  in block &lt;unit&gt; at example.raku line 3
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Assigning the result, as on the first line, avoids the sink. To catch the failure instead, sink the Proc inside the <code>try</code>:</p>
+<figure class="ex ex-local" id="ex-4-26">
+<div class="code"><pre class="src"><span class="k">try</span> <span class="n">sink</span> <span class="nb">run</span> <span class="s">&quot;false&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;caught: &quot;</span>, <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> { <span class="nb">run</span> <span class="s">&quot;false&quot;</span>; <span class="nb">Nil</span> }
+<span class="nb">say</span> <span class="s">&quot;caught: &quot;</span>, <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">caught: X::Proc::Unsuccessful
+caught: X::Proc::Unsuccessful</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A Failure at the end of a <code>try</code> block has no such problem, because <code>use fatal</code> throws it inside the block.</p>
+</section>
+<section class="corner" id="the-last-value-of-a-for-body-is-not-always-sunk" data-tags="quirk"><h2><a class="num" href="#the-last-value-of-a-for-body-is-not-always-sunk">4.21</a> <span class="t">The last value of a <code>for</code> body is not always sunk</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>The last statement of a <code>for</code> loop's block is sunk when the block is a plain one. When the block has a signature, <code>-&gt; $x { … }</code>, a method call at its end is sunk but a sub call is not. Inside a <code>try</code> block, or anywhere under <code>use fatal</code>, the plain block's last statement is not sunk either.</p>
+<figure class="ex ex-run" id="ex-4-27">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">sub</span> <span class="n">make</span>(<span class="nv">$name</span>) { <span class="n">Noisy</span>.<span class="nb">new</span>(:<span class="nv">$name</span>) }
+<span class="k">for</span> <span class="mi">1</span> { <span class="k">make</span>(<span class="s">&quot;block, sub call&quot;</span>) }
+<span class="k">for</span> <span class="mi">1</span> -&gt; <span class="nv">$x</span> { <span class="k">make</span>(<span class="s">&quot;pointy block, sub call&quot;</span>) }
+<span class="k">for</span> <span class="mi">1</span> -&gt; <span class="nv">$x</span> { <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;pointy block, method call&quot;</span>) }
+<span class="k">try</span> { <span class="k">for</span> <span class="mi">1</span> { <span class="k">make</span>(<span class="s">&quot;block inside try&quot;</span>) }; <span class="nb">Nil</span> }</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sunk block, sub call
+sunk pointy block, method call</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>sunk pointy block, method call</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p><code>run</code> is a sub, so the usual way of running a list of commands ignores their failures, and so does any sub that returns a Failure. A <code>sink</code> prefix on the call restores the check:</p>
+<figure class="ex ex-local" id="ex-4-28">
+<div class="code"><pre class="src"><span class="k">for</span> &lt;<span class="n">true</span> <span class="n">false</span>&gt; -&gt; <span class="nv">$cmd</span> { <span class="nb">run</span> <span class="nv">$cmd</span> }
+<span class="nb">say</span> <span class="s">&quot;the failure went unnoticed&quot;</span>;
+<span class="k">for</span> &lt;<span class="n">true</span> <span class="n">false</span>&gt; -&gt; <span class="nv">$cmd</span> { <span class="n">sink</span> <span class="nb">run</span> <span class="nv">$cmd</span> }
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">the failure went unnoticed</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'false' exited unsuccessfully (exit code: 1, signal: 0)
+  in block &lt;unit&gt; at example.raku line 3
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-sunk-seq-runs-to-the-end-even-a-lazy-one" data-tags=""><h2><a class="num" href="#a-sunk-seq-runs-to-the-end-even-a-lazy-one">4.22</a> <span class="t">A sunk <code>Seq</code> runs to the end, even a lazy one</span></h2>
+<p>A <code>Seq</code> computes its values only when they are asked for. Sinking one asks for all of them, so a sunk <code>map</code> or <code>gather</code> runs its block for every element, even when the Seq is marked lazy. A stored Seq has not run yet, and sinking it later runs it.</p>
+<figure class="ex ex-run" id="ex-4-29">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+(<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ });
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$s</span> = (<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ });
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="n">sink</span> <span class="nv">$s</span>;
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="n">lazy</span> (<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ });
+<span class="nb">say</span> <span class="nv">$n</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">3
+0
+3
+3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>3
+3
+3
+3</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>Turning a Seq into a list with <code>.list</code> or <code>.cache</code> does not run it, and a truth test runs it for one element only:</p>
+<figure class="ex ex-run" id="ex-4-30">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+(<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ }).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="nb">say</span> <span class="k">so</span> (<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ });
+<span class="nb">say</span> <span class="nv">$n</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">0
+True
+1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>3
+True
+6</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>A Seq returned by a sub, with or without <code>return</code>, runs when the call is sunk. A sunk infinite Seq, such as <code>(1..*).map({ … })</code>, never returns. The values the Seq produces are discarded without being sunk themselves, so a <code>map</code> that runs commands ignores their failures, as a <code>for</code> loop with a pointy block does:</p>
+<figure class="ex ex-run" id="ex-4-31">
+<div class="code"><pre class="src" data-src><span class="k">class</span> <span class="n">Noisy</span> { <span class="k">has</span> <span class="nv">$.name</span>; <span class="k">method</span> <span class="n">sink</span> { <span class="nb">say</span> <span class="s">&quot;sunk $!name&quot;</span> } }
+<span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+(<span class="mi">1</span>, <span class="mi">2</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++; <span class="n">Noisy</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">&quot;element $_&quot;</span>) });
+<span class="nb">say</span> <span class="nv">$n</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">2</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-routines-value-is-its-last-statements-and-a-loops-is-nil" data-tags=""><h2><a class="num" href="#a-routines-value-is-its-last-statements-and-a-loops-is-nil">4.23</a> <span class="t">A routine's value is its last statement's, and a loop's is <code>Nil</code></span></h2>
+<p>A routine without <code>return</code> gives back the value of its last statement. A loop there gives <code>Nil</code>: its body's values are sunk, not collected. <code>do for</code> collects them into a list instead. An <code>if</code> or <code>unless</code> whose block did not run gives <code>Empty</code>, a Slip that vanishes from any list it lands in, while the <code>Nil</code> of a loop stays:</p>
+<figure class="ex ex-run" id="ex-4-32">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">doubled</span> { <span class="k">for</span> <span class="mi">1</span>.<span class="mf">.3</span> { <span class="nv">$_</span> * <span class="mi">2</span> } }
+<span class="k">sub</span> <span class="n">collect</span> { <span class="k">do</span> <span class="k">for</span> <span class="mi">1</span>.<span class="mf">.3</span> { <span class="nv">$_</span> * <span class="mi">2</span> } }
+<span class="k">sub</span> <span class="n">skipped</span> { <span class="k">if</span> <span class="n">False</span> { <span class="mi">1</span> } }
+<span class="k">sub</span> <span class="n">chosen</span>  { <span class="k">if</span> <span class="n">True</span> { <span class="mi">1</span>, <span class="mi">2</span> } }
+<span class="nb">say</span> <span class="n">doubled</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">collect</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">skipped</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">chosen</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="mi">0</span>, <span class="n">doubled</span>(), <span class="mi">9</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="mi">0</span>, <span class="n">skipped</span>(), <span class="mi">9</span>).<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+(2, 4, 6)
+Empty
+(1, 2)
+(0, Nil, 9)
+(0, 9)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>An empty routine gives <code>Nil</code>, a final assignment gives what was assigned, and <code>do while</code> collects into a Seq rather than a list:</p>
+<figure class="ex ex-run" id="ex-4-33">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">nothing</span>  { }
+<span class="k">sub</span> <span class="n">assigned</span> { <span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span>, <span class="mi">2</span> }
+<span class="k">sub</span> <span class="n">counted</span>  { <span class="k">my</span> <span class="nv">$i</span> = <span class="mi">0</span>; <span class="k">do</span> <span class="k">while</span> <span class="nv">$i</span> &lt; <span class="mi">3</span> { <span class="nv">$i</span>++ } }
+<span class="nb">say</span> <span class="n">nothing</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">assigned</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">counted</span>().<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+[1, 2]
+(0, 1, 2).Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>Nil
+[1, 2]
+(0, 1, 2)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="a-given-without-a-matching-when-gives-false-not-nil" data-tags="trap"><h2><a class="num" href="#a-given-without-a-matching-when-gives-false-not-nil">4.24</a> <span class="t">A <code>given</code> without a matching <code>when</code> gives <code>False</code>, not <code>Nil</code></span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A <code>given</code> block as the last statement of a routine is a common way to pick a result. When no <code>when</code> matches and there is no <code>default</code>, the block's value is that of its last statement, the last <code>when</code>, and a <code>when</code> that did not match gives the result of its smartmatch, <code>False</code>. With an undefined topic it gives <code>0</code> instead.</p>
+<figure class="ex ex-run" id="ex-4-34">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">name-of</span>(<span class="nv">$n</span>) {
+    <span class="k">given</span> <span class="nv">$n</span> {
+        <span class="k">when</span> <span class="mi">1</span> { <span class="s">&quot;one&quot;</span> }
+        <span class="k">when</span> <span class="mi">2</span> { <span class="s">&quot;two&quot;</span> }
+    }
+}
+<span class="nb">say</span> <span class="n">name-of</span>(<span class="mi">1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">name-of</span>(<span class="mi">3</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">name-of</span>(<span class="nb">Any</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="mi">1</span>, <span class="mi">5</span>, <span class="mi">2</span>).<span class="nb">map</span>(<span class="nv">&amp;name-of</span>).<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"one"
+Bool::False
+0
+("one", Bool::False, "two").Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>"one"
+Bool::False
+Bool::False
+("one", Bool::False, "two").Seq</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>A <code>default { Nil }</code> at the end makes the no-match case give <code>Nil</code>.</p>
+</section>
+<section class="corner" id="return-x-keeps-the-container-that-a-last-statement-drops" data-tags="quirk"><h2><a class="num" href="#return-x-keeps-the-container-that-a-last-statement-drops">4.25</a> <span class="t"><code>return $x</code> keeps the container that a last statement drops</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>A value that comes from a routine's last statement is decontainerised: <code>.VAR</code> on the result shows the value itself. With <code>return $x</code>, <code>.VAR</code> shows a <code>Scalar</code>. It is a read-only copy, not the variable, so the difference shows only in introspection and in the message when the result is assigned to:</p>
+<figure class="ex ex-run" id="ex-4-35">
+<div class="code"><pre class="src" data-src><span class="k">sub</span> <span class="n">implicit</span> { <span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>; <span class="nv">$x</span> }
+<span class="k">sub</span> <span class="n">explicit</span> { <span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>; <span class="k">return</span> <span class="nv">$x</span> }
+<span class="nb">say</span> <span class="n">implicit</span>().<span class="n">VAR</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="n">explicit</span>().<span class="n">VAR</span>.^<span class="n">name</span>;
+<span class="k">try</span> { <span class="n">implicit</span>() = <span class="mi">6</span> }; <span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">try</span> { <span class="n">explicit</span>() = <span class="mi">6</span> }; <span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Int
+Scalar
+Cannot modify an immutable Int (5)
+Cannot assign to a readonly variable or a value</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>Int
+Int
+Cannot modify an immutable Int (5)
+Cannot modify an immutable Int (5)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="the-sink-prefix-runs-a-statement-and-gives-nil" data-tags=""><h2><a class="num" href="#the-sink-prefix-runs-a-statement-and-gives-nil">4.26</a> <span class="t">The <code>sink</code> prefix runs a statement and gives <code>Nil</code></span></h2>
+<p><code>sink</code> in front of a statement evaluates all of it, sinks the result and returns <code>Nil</code>. It runs a Seq to the end, calls a bare block, and makes a Failure or a failed Proc throw. On an ordinary value the <code>.sink</code> method does nothing and also returns <code>Nil</code>.</p>
+<figure class="ex ex-run" id="ex-4-36">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">sink</span> (<span class="mi">1</span>.<span class="mf">.3</span>).<span class="nb">map</span>({ <span class="nv">$n</span>++ });
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="k">my</span> <span class="nv">$calls</span> = <span class="mi">0</span>;
+<span class="n">sink</span> { <span class="nv">$calls</span>++ };
+<span class="nb">say</span> <span class="nv">$calls</span>;
+<span class="nb">say</span> (<span class="n">sink</span> <span class="mi">2</span> + <span class="mi">3</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="mi">42</span>.<span class="n">sink</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> [<span class="mi">1</span>, <span class="mi">2</span>].<span class="n">sink</span>.<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Any
+3
+1
+Nil
+Nil
+Nil</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>my $r = sink …</code> assigns <code>Nil</code>, which leaves <code>$r</code> holding <code>Any</code>. A routine whose last statement starts with <code>sink</code> returns <code>Nil</code>, whatever the statement computes. The compiler still reports a literal after <code>sink</code>, though not a variable or an operator:</p>
+<figure class="ex ex-run" id="ex-4-37">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>;
+<span class="n">sink</span> <span class="nv">$x</span>;
+<span class="n">sink</span> <span class="nv">$x</span> + <span class="mi">1</span>;
+<span class="n">sink</span> <span class="mi">42</span>;
+<span class="nb">say</span> <span class="s">&quot;end&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">end</pre><div class="lbl err">and on standard error</div><pre class="err-text">WARNINGS for example.raku:
+Useless use of constant integer 42 in sink context (line 4)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<footer class="chapter-foot"><label class="done"><input type="checkbox" data-done="sink"> I have read this chapter</label><nav class="pager"><a class="prev" href="/deep/whitespace/">← 3. Whitespace, Terms and Blocks</a><a class="next" href="/deep/containers/">5. Containers and Binding →</a></nav></footer>
+</article>
+<footer class="site-foot"><p><b>Raku Behind the Docs</b> · The Raku++ project · Edited by Andrew Shitov</p><p>The text was written by Claude, Anthropic’s model, from the Raku++ project’s findings. Every output was printed by Rakudo v2026.08. <a href="/deep/colophon/">Colophon</a> · <a href="https://github.com/ash/raku-behind-the-docs">Source</a></p></footer>
+</main>
+</div>
+<script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
+<script src="/deep/assets/book.js?v=1d3tw8gi4f" defer></script>
+<script src="/theme/shell.js?v=4e7473f5" defer></script>
+</body>
+</html>

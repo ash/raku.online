@@ -35,6 +35,9 @@
     // the long form is the one that pushes it to wrap.
     { href: '/cookbook/', label: 'Cook', hue: 'cook'  },
     { href: '/book/',   label: 'Book',   hue: 'book'   },
+    // Raku Behind the Docs: the verified-behaviour book, built in its own
+    // repository and copied in by `build.sh deep`. Beside Book, the other book.
+    { href: '/deep/',   label: 'Deep',   hue: 'deep'   },
     { href: '/modules/', label: 'Modules', hue: 'eco' }
   ];
 

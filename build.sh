@@ -56,6 +56,21 @@ build_book() {
     cp -R "$ROOT/sites/book/out" "$WWW/book"
 }
 
+# Raku Behind the Docs is built and verified in its own repository
+# (github.com/ash/raku-behind-the-docs): that build runs every example on both
+# Rakudo and Raku++, which this one cannot, so its finished site is only copied
+# in here. Everywhere without that checkout the committed www/deep is the site.
+build_deep() {
+    DEEP_SRC="${RAKU_DEEP:-/Users/ash/Books/All Corners of Raku}"
+    if [ ! -f "$DEEP_SRC/out/index.html" ]; then
+        echo "deep: no built book at $DEEP_SRC/out — keeping the committed www/deep"
+        return 0
+    fi
+    echo "deep -> www/deep"
+    rm -rf "$WWW/deep"
+    cp -R "$DEEP_SRC/out" "$WWW/deep"
+}
+
 # The handbook's examples need the modules they document to be INSTALLED, so
 # --verify is not part of the ordinary build: a machine without the store would
 # fail a build that has nothing wrong with it. Run it before publishing:
@@ -149,6 +164,7 @@ check_shell() {
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
+                "$WWW/deep/index.html" \
                 "$WWW/modules/index.html" "$WWW/grid/index.html" "$WWW/map/index.html" \
                 "$WWW/in-use/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
@@ -169,9 +185,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/modules" "$WWW/grid" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/deep" "$WWW/modules" "$WWW/grid" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|map|faq|cookbook|book|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -196,11 +212,12 @@ case "${1:-all}" in
     faq)       build_faq ;;
     cookbook)  build_cookbook ;;
     book)      build_book ;;
+    deep)      build_deep ;;
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_cookbook; build_book; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|map|faq|cookbook|book|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
