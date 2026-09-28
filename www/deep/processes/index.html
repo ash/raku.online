@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Processes — Raku Behind the Docs</title>
+<meta name="description" content="run and shell wait for a program and return a Proc that holds its status and pipes; Proc::Async reports through supplies and promises, whose rules decide when output arrives and whether the program is ever seen to end.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
+<link rel="stylesheet" href="/deep/assets/book.css?v=mjp0h5mir1">
+<script>(function () {
+  var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function eff(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', eff(s));
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__applyTheme = apply;
+  try { if (localStorage.getItem('corners-predict') === '1') document.documentElement.classList.add('predict-on'); } catch (e) {}
+})();</script>
+</head>
+<body class="is-chapter">
+<header class="top">
+  <button class="nav-toggle" type="button" aria-label="Contents">☰</button>
+  <a class="brand" href="/deep/">Raku Behind the Docs</a>
+  <span class="spacer"></span>
+  <label class="predict" title="Hide every output until you reveal it"><input type="checkbox" id="predict-toggle"> <span>Predict<span class="wide"> mode</span></span></label>
+  <a class="corners-link" href="/deep/corners/">All corners</a>
+  <div class="theme-switch">
+    <button class="theme-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Theme">◐</button>
+    <ul class="theme-menu" role="menu" hidden>
+      <li><button data-theme-set="system">◐ System</button></li>
+      <li><button data-theme-set="light">☀ Light</button></li>
+      <li><button data-theme-set="dark">☾ Dark</button></li>
+    </ul>
+  </div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="Contents"><a class="toc-home" href="/deep/">Contents</a>
+<div class="toc-part">Before you start</div><ol class="toc-list">
+<li data-slug="how-to-read"><a href="/deep/how-to-read/"><span class="n">0</span><span class="t">How to Read This Book</span></a>
+</li>
+</ol>
+<div class="toc-part">Reading the code</div><ol class="toc-list">
+<li data-slug="precedence"><a href="/deep/precedence/"><span class="n">1</span><span class="t">Who Takes the Operand</span></a>
+</li>
+<li data-slug="quotes"><a href="/deep/quotes/"><span class="n">2</span><span class="t">Quotes and Interpolation</span></a>
+</li>
+<li data-slug="whitespace"><a href="/deep/whitespace/"><span class="n">3</span><span class="t">Whitespace, Terms and Blocks</span></a>
+</li>
+<li data-slug="sink"><a href="/deep/sink/"><span class="n">4</span><span class="t">Values Nobody Uses</span></a>
+</li>
+<li data-slug="containers"><a href="/deep/containers/"><span class="n">5</span><span class="t">Containers and Binding</span></a>
+</li>
+</ol>
+<div class="toc-part">Nothing and numbers</div><ol class="toc-list">
+<li data-slug="nil-any"><a href="/deep/nil-any/"><span class="n">6</span><span class="t">Nil, Any and the Undefined</span></a>
+</li>
+<li data-slug="numbers"><a href="/deep/numbers/"><span class="n">7</span><span class="t">Numbers</span></a>
+</li>
+<li data-slug="strings"><a href="/deep/strings/"><span class="n">8</span><span class="t">Strings</span></a>
+</li>
+</ol>
+<div class="toc-part">Collections</div><ol class="toc-list">
+<li data-slug="lists"><a href="/deep/lists/"><span class="n">9</span><span class="t">Lists, Arrays, Seqs and Slips</span></a>
+</li>
+<li data-slug="hashes"><a href="/deep/hashes/"><span class="n">10</span><span class="t">Hashes, Maps and Pairs</span></a>
+</li>
+<li data-slug="ranges"><a href="/deep/ranges/"><span class="n">11</span><span class="t">Ranges</span></a>
+</li>
+<li data-slug="sequences"><a href="/deep/sequences/"><span class="n">12</span><span class="t">The Sequence Operator</span></a>
+</li>
+<li data-slug="sets"><a href="/deep/sets/"><span class="n">13</span><span class="t">Sets, Bags and Mixes</span></a>
+</li>
+<li data-slug="buffers"><a href="/deep/buffers/"><span class="n">14</span><span class="t">Blobs and Bufs</span></a>
+</li>
+</ol>
+<div class="toc-part">Code</div><ol class="toc-list">
+<li data-slug="signatures"><a href="/deep/signatures/"><span class="n">15</span><span class="t">Signatures and Introspection</span></a>
+</li>
+<li data-slug="exceptions"><a href="/deep/exceptions/"><span class="n">16</span><span class="t">Exceptions and Failures</span></a>
+</li>
+<li data-slug="regexes"><a href="/deep/regexes/"><span class="n">17</span><span class="t">Regexes and Grammars</span></a>
+</li>
+</ol>
+<div class="toc-part">Time and the outside world</div><ol class="toc-list">
+<li data-slug="dates"><a href="/deep/dates/"><span class="n">18</span><span class="t">Dates and Times</span></a>
+</li>
+<li data-slug="files"><a href="/deep/files/"><span class="n">19</span><span class="t">Files and Paths</span></a>
+</li>
+<li class="current" data-slug="processes"><a href="/deep/processes/"><span class="n">20</span><span class="t">Processes</span></a>
+<ol class="toc-corners"><li><a href="#run-passes-arguments-as-they-are-shell-hands-one-string-to-binsh"><span class="n">20.1</span><span class="t"><code>run</code> passes arguments as they are; <code>shell</code> hands one string to <code>/bin/sh</code></span></a></li><li><a href="#arguments-are-turned-into-strings-and-lists-are-flattened"><span class="n">20.2</span><span class="t">Arguments are turned into strings, and lists are flattened</span></a></li><li><a href="#a-proc-is-true-only-when-the-exit-code-and-the-signal-are-both-0"><span class="n">20.3</span><span class="t">A <code>Proc</code> is true only when the exit code and the signal are both 0</span></a></li><li><a href="#a-program-that-cannot-start-gives-exit-code-1-signal-254-and-no-pid"><span class="n">20.4</span><span class="t">A program that cannot start gives exit code -1, signal 254 and no pid</span></a></li><li><a href="#out-gives-a-read-only-iopipe-and-closing-it-returns-the-proc"><span class="n">20.5</span><span class="t"><code>:out</code> gives a read-only <code>IO::Pipe</code>, and closing it returns the <code>Proc</code></span></a></li><li><a href="#exitcode-waits-for-the-program-and-so-does-reading-to-the-end"><span class="n">20.6</span><span class="t"><code>.exitcode</code> waits for the program, and so does reading to the end</span></a></li><li><a href="#reading-out-first-can-deadlock-when-err-is-captured-too"><span class="n">20.7</span><span class="t">Reading <code>.out</code> first can deadlock when <code>.err</code> is captured too</span></a></li><li><a href="#merge-puts-both-streams-in-out-but-not-in-the-order-they-were-written"><span class="n">20.8</span><span class="t"><code>:merge</code> puts both streams in <code>.out</code>, but not in the order they were written</span></a></li><li><a href="#in-gives-a-write-only-pipe-without-it-the-program-reads-the-parents-input"><span class="n">20.9</span><span class="t"><code>:in</code> gives a write-only pipe; without it, the program reads the parent's input</span></a></li><li><a href="#an-open-handle-or-another-programs-pipe-can-stand-in-for-a-stream"><span class="n">20.10</span><span class="t">An open handle or another program's pipe can stand in for a stream</span></a></li><li><a href="#a-binary-pipe-refuses-text-with-xioclosed"><span class="n">20.11</span><span class="t">A binary pipe refuses text with <code>X::IO::Closed</code></span></a></li><li><a href="#readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is"><span class="n">20.12</span><span class="t"><code>read($n)</code> on a binary pipe returns a whole chunk, whatever <code>$n</code> is</span></a></li><li><a href="#nl-sets-the-line-separator-both-ways-and-chomp-keeps-it"><span class="n">20.13</span><span class="t"><code>:nl</code> sets the line separator both ways, and <code>:!chomp</code> keeps it</span></a></li><li><a href="#a-text-pipe-turns-rn-into-n-before-nl-sees-it"><span class="n">20.14</span><span class="t">A text pipe turns <code>\r\n</code> into <code>\n</code> before <code>:nl</code> sees it</span></a></li><li><a href="#env-replaces-the-whole-environment-but-the-program-is-found-through-the-parents-path"><span class="n">20.15</span><span class="t"><code>:env</code> replaces the whole environment, but the program is found through the parent's <code>PATH</code></span></a></li><li><a href="#procnew-builds-a-finished-proc-or-one-that-spawns-later"><span class="n">20.16</span><span class="t"><code>Proc.new</code> builds a finished <code>Proc</code>, or one that spawns later</span></a></li><li><a href="#asking-a-new-proc-for-its-status-fixes-the-status-at-1"><span class="n">20.17</span><span class="t">Asking a new <code>Proc</code> for its status fixes the status at 1</span></a></li><li><a href="#procasyncnew-ignores-the-named-arguments-it-does-not-know"><span class="n">20.18</span><span class="t"><code>Proc::Async.new</code> ignores the named arguments it does not know</span></a></li><li><a href="#start-returns-a-promise-of-a-bare-proc-and-await-as-a-statement-checks-it"><span class="n">20.19</span><span class="t"><code>.start</code> returns a promise of a bare <code>Proc</code>, and <code>await</code> as a statement checks it</span></a></li><li><a href="#a-program-that-cannot-start-breaks-the-promise-with-xos"><span class="n">20.20</span><span class="t">A program that cannot start breaks the promise with <code>X::OS</code></span></a></li><li><a href="#start-takes-env-not-env-and-ignores-the-wrong-one"><span class="n">20.21</span><span class="t"><code>.start</code> takes <code>:ENV</code>, not <code>:env</code>, and ignores the wrong one</span></a></li><li><a href="#an-untapped-stdout-holds-back-the-start-promise"><span class="n">20.22</span><span class="t">An untapped <code>.stdout</code> holds back the start promise</span></a></li><li><a href="#output-nobody-captures-can-overtake-the-parents-buffered-output"><span class="n">20.23</span><span class="t">Output nobody captures can overtake the parent's buffered output</span></a></li><li><a href="#a-supply-must-be-chosen-before-start-and-some-choices-exclude-others"><span class="n">20.24</span><span class="t">A Supply must be chosen before <code>.start</code>, and some choices exclude others</span></a></li><li><a href="#a-tap-added-after-the-output-has-ended-receives-nothing-not-even-done"><span class="n">20.25</span><span class="t">A tap added after the output has ended receives nothing, not even <code>done</code></span></a></li><li><a href="#every-chunk-and-every-done-come-before-the-start-promise-is-kept"><span class="n">20.26</span><span class="t">Every chunk and every <code>done</code> come before the start promise is kept</span></a></li><li><a href="#a-chunk-is-not-a-line-and-its-last-character-waits-for-the-next"><span class="n">20.27</span><span class="t">A chunk is not a line, and its last character waits for the next</span></a></li><li><a href="#rn-becomes-n-and-enc-can-be-set-for-each-stream"><span class="n">20.28</span><span class="t"><code>\r\n</code> becomes <code>\n</code>, and <code>:enc</code> can be set for each stream</span></a></li><li><a href="#malformed-input-quits-the-supply-and-the-text-before-it-is-lost"><span class="n">20.29</span><span class="t">Malformed input quits the Supply, and the text before it is lost</span></a></li><li><a href="#the-merged-supply-is-read-from-the-start-and-whenever-proc-taps-it"><span class="n">20.30</span><span class="t">The merged Supply is read from the start, and <code>whenever $proc</code> taps it</span></a></li><li><a href="#bind-stdout-and-bind-stderr-send-a-stream-into-an-open-handle"><span class="n">20.31</span><span class="t"><code>bind-stdout</code> and <code>bind-stderr</code> send a stream into an open handle</span></a></li><li><a href="#bind-stdin-feeds-a-program-from-a-file-or-another-program"><span class="n">20.32</span><span class="t"><code>bind-stdin</code> feeds a program from a file or another program</span></a></li><li><a href="#writing-needs-w-and-the-program-sees-the-end-only-after-close-stdin"><span class="n">20.33</span><span class="t">Writing needs <code>:w</code>, and the program sees the end only after <code>close-stdin</code></span></a></li><li><a href="#kill-sends-sighup-unless-told-otherwise-and-returns-the-number-it-sent"><span class="n">20.34</span><span class="t"><code>.kill</code> sends SIGHUP unless told otherwise, and returns the number it sent</span></a></li></ol>
+</li>
+</ol>
+<div class="toc-part">Concurrency</div><ol class="toc-list">
+<li data-slug="promises"><a href="/deep/promises/"><span class="n">21</span><span class="t">Promises, Locks and Awaiting</span></a>
+</li>
+<li data-slug="supplies"><a href="/deep/supplies/"><span class="n">22</span><span class="t">Supplies</span></a>
+</li>
+</ol>
+<div class="toc-part">Back matter</div><ol class="toc-list">
+<li data-slug="colophon"><a href="/deep/colophon/"><span class="n"></span><span class="t">Colophon</span></a>
+</li>
+</ol></nav>
+<main class="page">
+<article class="chapter" data-slug="processes">
+<header class="chapter-head"><div class="kicker">Time and the outside world · Chapter 20</div><h1>Processes</h1><p class="summary">run and shell wait for a program and return a Proc that holds its status and pipes; Proc::Async reports through supplies and promises, whose rules decide when output arrives and whether the program is ever seen to end.</p><p class="meta">34 corners · 47 examples</p></header>
+<p>Raku starts other programs in two ways. <code>run</code> and <code>shell</code> start a program, wait for it, and return a <code>Proc</code>: an object that holds the exit status and, when asked for, pipes to the program's standard input, output and error. <code>Proc::Async</code> starts a program and returns at once. The program's output arrives through supplies, and a promise is kept when the program ends.</p>
+<p>This chapter goes through both. It shows what a <code>Proc</code> reports for each kind of outcome, how the three streams are captured, fed, bound, decoded and split into lines, and where the parent waits. The second half is about the rules of <code>Proc::Async</code>, including the ones that leave a program's promise unsettled for ever. What happens when a failed <code>Proc</code> is sunk is in <a href="/deep/sink/#a-failed-process-throws-when-its-proc-is-sunk">Values Nobody Uses</a>, and <code>qx</code> and <code>qqx</code> are in <a href="/deep/quotes/#qx-returns-what-the-command-printed-and-never-fails">Quotes and Interpolation</a>. Promises, supplies and <code>react</code> blocks in general are explained in <a href="/deep/promises/">Promises, Locks and Awaiting</a> and <a href="/deep/supplies/">Supplies</a>, and file handles in <a href="/deep/files/">Files and Paths</a>. Every example here starts another program, so none of them can run in the browser.</p>
+<section class="corner" id="run-passes-arguments-as-they-are-shell-hands-one-string-to-binsh" data-tags=""><h2><a class="num" href="#run-passes-arguments-as-they-are-shell-hands-one-string-to-binsh">20.1</a> <span class="t"><code>run</code> passes arguments as they are; <code>shell</code> hands one string to <code>/bin/sh</code></span></h2>
+<p><code>run</code> takes the program and its arguments as separate strings and starts the program directly, with no shell in between. Nothing in an argument is expanded: a <code>$HOME</code>, a <code>*</code> or a space reaches the program exactly as written. <code>shell</code> takes a single string and runs it with <code>/bin/sh -c</code> (on Windows, with the program in <code>%*ENV&lt;ComSpec&gt;</code> and <code>/c</code>), so the shell splits the string into words and expands what it finds first. <code>.command</code> gives back what was asked for:</p>
+<figure class="ex ex-local" id="ex-20-1">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">&quot;&lt;%s&gt;&quot;</span>, <span class="s">'$HOME'</span>, <span class="s">'*'</span>, <span class="s">'a b'</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="k">my</span> <span class="nv">$s</span> = <span class="nb">shell</span> <span class="s">'printf &quot;&lt;%s&gt;&quot; $0 &quot;a  b&quot; *.none'</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;true&quot;</span>).<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">shell</span>(<span class="s">&quot;true; true&quot;</span>).<span class="n">command</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">&lt;$HOME&gt;&lt;*&gt;&lt;a b&gt;
+&lt;/bin/sh&gt;&lt;a  b&gt;&lt;*.none&gt;
+("true",)
+("true; true",)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>printf</code> applies its format to each argument in turn, so every argument appears in its own brackets. Under <code>shell</code>, <code>$0</code> is <code>/bin/sh</code>, and <code>*.none</code> stays as written only because no file matches it. <code>.command</code> of a <code>shell</code> Proc is a list of one element, the whole string.</p>
+</section>
+<section class="corner" id="arguments-are-turned-into-strings-and-lists-are-flattened" data-tags=""><h2><a class="num" href="#arguments-are-turned-into-strings-and-lists-are-flattened">20.2</a> <span class="t">Arguments are turned into strings, and lists are flattened</span></h2>
+<p>Each positional argument of <code>run</code> is made a string: a number becomes its digits and an <code>IO::Path</code> its path. A list or an array among the arguments is flattened into separate arguments, so the program and its first arguments can come as one list, and a named argument such as <code>:out</code> may stand anywhere:</p>
+<figure class="ex ex-local" id="ex-20-2">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">@words</span> = <span class="s">&lt;b c&gt;</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;&lt;%s&gt;&quot;</span>, <span class="mi">42</span>, <span class="mf">1.5</span>, <span class="s">&quot;x&quot;</span>.<span class="nb">IO</span>, <span class="nv">@words</span>, (<span class="mi">1</span>, <span class="mi">2</span>), :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&lt;printf [%s] one&gt;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, :<span class="n">out</span>, <span class="s">&quot;&lt;%s&gt;&quot;</span>, <span class="s">&quot;named anywhere&quot;</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>()) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;&quot;</span>).<span class="n">exitcode</span>;
+<span class="nb">say</span> <span class="nb">shell</span>(<span class="s">&quot;&quot;</span>).<span class="n">exitcode</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">&lt;42&gt;&lt;1.5&gt;&lt;x&gt;&lt;b&gt;&lt;c&gt;&lt;1&gt;&lt;2&gt;
+[one]
+&lt;named anywhere&gt;
+X::Multi::NoMatch
+-1
+0</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>run()</code> with no program at all dies. <code>run("")</code> starts nothing and returns a failed Proc (see <a href="/deep/processes/#a-program-that-cannot-start-gives-exit-code-1-signal-254-and-no-pid">A program that cannot start</a>), while <code>shell("")</code> runs an empty script, which succeeds. An undefined argument becomes an empty string, with the usual "Use of uninitialized value" warning. <code>shell</code> takes exactly one string: <code>shell "exit 1", "extra"</code> is rejected at compile time, with <em>Calling shell(Str, Str) will never work</em>.</p>
+</section>
+<section class="corner" id="a-proc-is-true-only-when-the-exit-code-and-the-signal-are-both-0" data-tags=""><h2><a class="num" href="#a-proc-is-true-only-when-the-exit-code-and-the-signal-are-both-0">20.3</a> <span class="t">A <code>Proc</code> is true only when the exit code and the signal are both 0</span></h2>
+<p>Without pipes, <code>run</code> and <code>shell</code> return after the program has ended. <code>.exitcode</code> is its exit status and <code>.signal</code> the number of the signal that killed it, 0 for a normal exit. A Proc is true only when both are 0, and as a number it is its exit code. A program killed by a signal has exit code 0, so the number alone cannot tell it from success:</p>
+<figure class="ex ex-local" id="ex-20-3">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;exit 3&quot;</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">signal</span>, <span class="s">&quot; &quot;</span>, ?<span class="nv">$p</span>, <span class="s">&quot; &quot;</span>, +<span class="nv">$p</span>;
+<span class="nb">say</span> ?<span class="nb">run</span>(<span class="s">&quot;true&quot;</span>), <span class="s">&quot; &quot;</span>, +<span class="nb">run</span>(<span class="s">&quot;true&quot;</span>);
+<span class="k">my</span> <span class="nv">$k</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'kill -9 $$'</span>;
+<span class="nb">say</span> <span class="nv">$k</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$k</span>.<span class="nb">signal</span>, <span class="s">&quot; &quot;</span>, ?<span class="nv">$k</span>, <span class="s">&quot; &quot;</span>, +<span class="nv">$k</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;exit 256&quot;</span>).<span class="n">exitcode</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">pid</span> ~~ <span class="nb">Int</span> &amp;&amp; <span class="nv">$p</span>.<span class="n">pid</span> &gt; <span class="mi">0</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">os-error</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">3 0 False 3
+True 0
+0 9 False 0
+0
+True
+IO::Pipe Str</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The status a program passes to its parent has eight bits, so <code>exit 256</code> arrives as 0 before Raku sees it. <code>.pid</code> is the program's process id. A pipe that was not asked for, like <code>.out</code> here, is the <code>IO::Pipe</code> type object, and <code>.os-error</code> is the <code>Str</code> type object unless the program could not be started.</p>
+<p>A Proc is otherwise a plain object: <code>say $p</code> prints a <code>Proc.new(…)</code> dump of every attribute, the process id included, two Procs are never <code>eqv</code>, and <code>Proc</code> and <code>Proc::Async</code> are unrelated classes, neither a subtype of the other.</p>
+</section>
+<section class="corner" id="a-program-that-cannot-start-gives-exit-code-1-signal-254-and-no-pid" data-tags="quirk"><h2><a class="num" href="#a-program-that-cannot-start-gives-exit-code-1-signal-254-and-no-pid">20.4</a> <span class="t">A program that cannot start gives exit code -1, signal 254 and no pid</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>When the program cannot be started, because it does not exist, its name is empty or the <code>:cwd</code> directory is missing, <code>run</code> does not throw. It returns a failed Proc with exit code -1, signal 254 and no process id, and <code>.os-error</code> holds the system's explanation. Pipes that were asked for exist and read as empty.</p>
+<figure class="ex ex-local" id="ex-20-4">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;no-such-command-here&quot;</span>, <span class="s">&quot;arg&quot;</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">signal</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">pid</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">os-error</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;true&quot;</span>, :<span class="n">cwd</span><span class="s">&lt;no-such-dir&gt;</span>).<span class="n">os-error</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="nb">shell</span> <span class="s">&quot;no-such-command-here 2&gt;/dev/null&quot;</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$s</span>.<span class="nb">signal</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$s</span>.<span class="n">pid</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">-1 254 Nil False
+Failed to spawn process no-such-command-here: no such file or directory (error code -2)
+""
+Failed to spawn process sh: no such file or directory (error code -2)
+127 0 Int</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The 254 carries no meaning; the documentation promises only the -1. A missing directory is reported as a missing program, <code>sh</code>, which exists. With <code>shell</code> the shell itself starts, and it is the shell that fails to find the command, so the result is an ordinary exit code 127 with a process id. Sunk, a Proc that never started throws like any other failure, and the message gains a second line with the system's explanation:</p>
+<figure class="ex ex-local" id="ex-20-5">
+<div class="code"><pre class="src"><span class="nb">run</span> <span class="s">&quot;no-such-command-here&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text"><span class="empty">(nothing)</span></pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'no-such-command-here' exited unsuccessfully (exit code: -1, signal: 254)
+(OS error = Failed to spawn process no-such-command-here: no such file or directory (error code -2))
+  in block &lt;unit&gt; at example.raku line 1
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="out-gives-a-read-only-iopipe-and-closing-it-returns-the-proc" data-tags=""><h2><a class="num" href="#out-gives-a-read-only-iopipe-and-closing-it-returns-the-proc">20.5</a> <span class="t"><code>:out</code> gives a read-only <code>IO::Pipe</code>, and closing it returns the <code>Proc</code></span></h2>
+<p>With <code>:out</code>, <code>run</code> returns as soon as the program has started, and <code>.out</code> is an <code>IO::Pipe</code>: an <code>IO::Handle</code> opened for reading what the program writes. It reads like a file handle, with <code>.get</code>, <code>.lines</code>, <code>.slurp</code> and <code>.eof</code>. Its line separator, <code>nl-in</code>, is only <code>"\n"</code> (a file's default also has <code>"\r\n"</code>). <code>.close</code> returns the Proc, which is why <code>$p.out.close</code> as a statement throws for a failed program (see <a href="/deep/sink/#outclose-sinks-the-proc-slurpclose-does-not"><code>.out.close</code> sinks the <code>Proc</code></a>), and <code>.proc</code> gives the same Proc.</p>
+<figure class="ex ex-local" id="ex-20-6">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">'a\nb\nc\n'</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">out</span> ~~ <span class="n">IO::Handle</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">nl-in</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">eof</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">print</span>(<span class="s">&quot;x&quot;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">close</span> === <span class="nv">$p</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">out</span>.<span class="n">opened</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Pipe True
+"\n"
+"a" False
+("b", "c").Seq
+Nil True
+This pipe was opened for reading, not writing
+True False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="exitcode-waits-for-the-program-and-so-does-reading-to-the-end" data-tags="unasserted"><h2><a class="num" href="#exitcode-waits-for-the-program-and-so-does-reading-to-the-end">20.6</a> <span class="t"><code>.exitcode</code> waits for the program, and so does reading to the end</span><span class="tags"><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>With a pipe, <code>run</code> returns before the program has ended. <code>.exitcode</code>, <code>.signal</code>, a truth test and a sink wait for it to end, and <code>.out.slurp</code> waits for it to close its output. A program that reads its input to the end, such as <code>cat</code> or <code>sort</code>, cannot end while <code>.in</code> is open, so the wait lasts until the parent closes <code>.in</code>. Here the wait runs in a <code>start</code> block, so that the parent can go on:</p>
+<figure class="ex ex-local" id="ex-20-7">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>, :<span class="n">out</span>;
+<span class="k">my</span> <span class="nv">$status</span> = <span class="k">start</span> { <span class="nv">$p</span>.<span class="n">exitcode</span> };
+<span class="nb">sleep</span> <span class="mi">1</span>;
+<span class="nb">say</span> <span class="nv">$status</span>.<span class="n">status</span>;
+<span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">print</span>(<span class="s">&quot;late&quot;</span>);
+<span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$status</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned
+0
+late</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Without the <code>start</code>, the wait has no end. The next program never returns, because <code>cat</code> waits for its input and the parent waits for <code>cat</code>:</p>
+<figure class="ex ex-nocheck" id="ex-20-8">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>;</pre><span class="local-label">not run</span></div>
+</figure>
+<p>A program that ends on its own, like <code>true</code>, ends whether <code>.in</code> is open or not. While <code>.exitcode</code> waits, it collects the program's output, so the status can be asked for before the output is read, whatever its size, and the output is still there afterwards:</p>
+<figure class="ex ex-local" id="ex-20-9">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;yes | head -c 200000; exit 6&quot;</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">chars</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">6
+200000</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="reading-out-first-can-deadlock-when-err-is-captured-too" data-tags="quirk unasserted"><h2><a class="num" href="#reading-out-first-can-deadlock-when-err-is-captured-too">20.7</a> <span class="t">Reading <code>.out</code> first can deadlock when <code>.err</code> is captured too</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>A pipe holds a limited amount of data, 64 KiB on common systems. A captured stream is only collected once the parent starts reading it or closes it; until then, a program that writes more than a pipe's worth to it stops and waits. With both <code>:out</code> and <code>:err</code>, a program that fills its standard error while the parent reads <code>.out</code> to the end waits for the parent, and the parent waits for the program. This never returns:</p>
+<figure class="ex ex-nocheck" id="ex-20-10">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;yes | head -c 200000 &gt;&amp;2; echo done&quot;</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);</pre><span class="local-label">not run</span></div>
+</figure>
+<p>Reading <code>.err</code> first works when the other stream is small. Closing <code>.err</code> before reading <code>.out</code> collects its data and throws it away. Asking for <code>.exitcode</code> first collects both streams while it waits, and <code>:merge</code> has only one stream to read:</p>
+<figure class="ex ex-local" id="ex-20-11">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$cmd</span> = <span class="s">&quot;yes | head -c 200000 &gt;&amp;2; echo done&quot;</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">err</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nv">$q</span>.<span class="n">err</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">exitcode</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">merge</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">chars</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">200000
+"done\n"
+"done\n"
+0
+"done\n"
+200005</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Reading <code>.err</code> first only moves the problem: a program that fills its standard output deadlocks with it in the same way.</p>
+</section>
+<section class="corner" id="merge-puts-both-streams-in-out-but-not-in-the-order-they-were-written" data-tags=""><h2><a class="num" href="#merge-puts-both-streams-in-out-but-not-in-the-order-they-were-written">20.8</a> <span class="t"><code>:merge</code> puts both streams in <code>.out</code>, but not in the order they were written</span></h2>
+<p><code>:err</code> captures standard error in <code>.err</code>, a pipe like <code>.out</code>. <code>:merge</code> sends both streams into <code>.out</code> and leaves <code>.err</code> the type object, whatever <code>:out</code> and <code>:err</code> say beside it. A stream that is neither captured nor merged is inherited: the program writes straight to the parent's own stream, which is where the <code>err</code> on standard error below comes from. <code>:!err</code>, or <code>:err(False)</code>, discards the stream instead.</p>
+<figure class="ex ex-local" id="ex-20-12">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$cmd</span> = <span class="s">&quot;echo out; echo err &gt;&amp;2&quot;</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">err</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$m</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">merge</span>, :!<span class="n">out</span>, :<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">sort</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">err</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$o</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$o</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="nv">$cmd</span>, :<span class="n">out</span>, :!<span class="n">err</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"out\n" "err\n"
+(err out)
+IO::Pipe
+"out\n"
+"out\n"</pre><div class="lbl err">and on standard error</div><pre class="err-text">err</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The example sorts the merged lines because their order varies. The program's two streams reach the parent through two pipes, and the parent joins them as the data arrives: a program that writes <code>out</code>, then <code>err</code>, then <code>out2</code> usually shows up as <code>out</code>, <code>out2</code>, <code>err</code>, and now and then in its own order.</p>
+</section>
+<section class="corner" id="in-gives-a-write-only-pipe-without-it-the-program-reads-the-parents-input" data-tags=""><h2><a class="num" href="#in-gives-a-write-only-pipe-without-it-the-program-reads-the-parents-input">20.9</a> <span class="t"><code>:in</code> gives a write-only pipe; without it, the program reads the parent's input</span></h2>
+<p>With <code>:in</code>, <code>.in</code> is an <code>IO::Pipe</code> opened for writing to the program's standard input. <code>print</code>, <code>say</code>, <code>put</code> and <code>write</code> (which takes a Blob) return <code>True</code>, <code>spurt</code> with <code>:close</code> writes and closes, and <code>.close</code> returns the Proc. The program sees the end of its input only when <code>.in</code> is closed.</p>
+<figure class="ex ex-local" id="ex-20-13">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">print</span>(<span class="s">&quot;a&quot;</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">say</span>(<span class="s">&quot;b&quot;</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">in</span>.<span class="n">write</span>(<span class="s">&quot;c&quot;</span>.<span class="n">encode</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$p</span>.<span class="n">in</span>.<span class="n">get</span>) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">close</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>, :<span class="n">out</span>;
+<span class="nv">$q</span>.<span class="n">in</span>.<span class="nb">spurt</span>(<span class="s">&quot;spurted&quot;</span>, :<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True True True
+This pipe was opened for writing, not reading
+Proc
+"ab\nc"
+"spurted"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Without <code>:in</code>, the program inherits the parent's standard input and can read all of it. <code>:!in</code> closes the program's input at once, so it reads nothing. This example is given two lines on its standard input:</p>
+<figure class="ex ex-local" id="ex-20-14">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;cat&quot;</span>, :!<span class="n">in</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">get</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="stdin"><span class="lbl">standard input</span><pre>line one
+line two
+</pre></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">""
+"line one\nline two\n"
+Nil</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The second <code>cat</code> read both lines, and nothing was left for the parent.</p>
+</section>
+<section class="corner" id="an-open-handle-or-another-programs-pipe-can-stand-in-for-a-stream" data-tags=""><h2><a class="num" href="#an-open-handle-or-another-programs-pipe-can-stand-in-for-a-stream">20.10</a> <span class="t">An open handle or another program's pipe can stand in for a stream</span></h2>
+<p><code>:in</code>, <code>:out</code> and <code>:err</code> also take an opened handle. <code>:in</code> takes another Proc's <code>.out</code> or <code>.err</code>, which chains the two programs; the pipe is closed when the consuming program ends. <code>:out</code> and <code>:err</code> take a handle opened for writing, and the same handle can take both. A stream sent to a handle is not captured, so <code>.out</code> is then the type object. A handle that is not open is refused when the program is started:</p>
+<figure class="ex ex-local" id="ex-20-15">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$a</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">'b\na\n'</span>, :<span class="n">out</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nb">run</span> <span class="s">&quot;sort&quot;</span>, :<span class="n">in</span>(<span class="nv">$a</span>.<span class="n">out</span>), :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$a</span>.<span class="n">out</span>.<span class="n">opened</span>;
+<span class="k">my</span> <span class="nv">$log</span> = <span class="nb">open</span> <span class="s">&quot;log.txt&quot;</span>, :<span class="n">w</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="nb">run</span> <span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo to-out; echo to-err &gt;&amp;2&quot;</span>, :<span class="n">out</span>(<span class="nv">$log</span>), :<span class="n">err</span>(<span class="nv">$log</span>);
+<span class="nv">$log</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">out</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;log.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>.<span class="nb">sort</span>;
+<span class="nb">unlink</span> <span class="s">&quot;log.txt&quot;</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>(<span class="s">&quot;true&quot;</span>, :<span class="n">out</span>(<span class="n">IO::Handle</span>.<span class="nb">new</span>))) // <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"a\nb\n"
+False
+IO::Pipe
+(to-err to-out)
+File handle not open, so cannot get native descriptor</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A file handle given as <code>:in</code> is left open after the program has read it. With <code>:merge</code>, <code>:out($handle)</code> receives both streams.</p>
+</section>
+<section class="corner" id="a-binary-pipe-refuses-text-with-xioclosed" data-tags="quirk"><h2><a class="num" href="#a-binary-pipe-refuses-text-with-xioclosed">20.11</a> <span class="t">A binary pipe refuses text with <code>X::IO::Closed</code></span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>:bin</code> makes every pipe of the Proc binary: <code>.slurp</code> gives a <code>Buf[uint8]</code>, <code>.encoding</code> is <code>Nil</code>, and <code>.in.write</code> sends bytes. The text methods, <code>get</code>, <code>lines</code> and <code>.in.print</code>, throw <code>X::IO::Closed</code> and say the handle is closed, although it is open: a binary pipe has nothing to turn bytes into text, and <code>X::IO::BinaryMode</code> would have been the fitting exception. <code>:enc</code> sets the encoding of every pipe, in both directions, and <code>.encoding</code> reports the canonical name. A text pipe can still give bytes with <code>.slurp(:bin)</code>.</p>
+<figure class="ex ex-local" id="ex-20-16">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$b</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">'caf\303\251'</span>, :<span class="n">out</span>, :<span class="n">bin</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">encoding</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">get</span>) // <span class="s">&quot;{$!.^name}: {$!.message}&quot;</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'caf\351'</span>, :<span class="n">out</span>, :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'x'</span>, :<span class="n">out</span>, :<span class="n">enc</span><span class="s">&lt;Latin1&gt;</span>).<span class="n">out</span>.<span class="n">encoding</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;ab&quot;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>, :<span class="n">bin</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;x&quot;</span>, :<span class="n">out</span>, :<span class="n">bin</span>, :<span class="n">enc</span><span class="s">&lt;utf8&gt;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'caf\377'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+X::IO::Closed: Cannot do 'get' on a closed handle
+Buf[uint8].new(99,97,102,195,169)
+café
+iso-8859-1
+Buf[uint8].new(97,98)
+X::IO::BinaryAndEncoding
+Malformed UTF-8 near bytes 61 66 ff</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>:bin</code> together with <code>:enc</code> is refused, an unknown encoding name throws <code>X::Encoding::Unknown</code> when the program is started, and bytes that are not valid UTF-8 make <code>slurp</code> and <code>get</code> die (see also <a href="/deep/buffers/#malformed-bytes-die-and-replacement-does-not-rescue-utf-8">Malformed bytes die</a>).</p>
+</section>
+<section class="corner" id="readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is" data-tags="bug unasserted"><h2><a class="num" href="#readn-on-a-binary-pipe-returns-a-whole-chunk-whatever-n-is">20.12</a> <span class="t"><code>read($n)</code> on a binary pipe returns a whole chunk, whatever <code>$n</code> is</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>The documentation says that <code>read($n)</code> returns at most <code>$n</code> bytes. On a pipe opened with <code>:bin</code>, Rakudo 2026.08 ignores the count and returns everything that has arrived in one piece, which is whatever the program wrote in one go. The next <code>read</code> has nothing left. On a text pipe the count is kept, as it is by <code>readchars</code> and <code>getc</code>, and a <code>read</code> goes on from where they stopped:</p>
+<figure class="ex ex-local" id="ex-20-17">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$b</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">&quot;abcdef&quot;</span>, :<span class="n">out</span>, :<span class="n">bin</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">out</span>.<span class="n">eof</span>;
+<span class="k">my</span> <span class="nv">$t</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">&quot;abcdef&quot;</span>, :<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">out</span>.<span class="n">readchars</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">out</span>.<span class="n">getc</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">out</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Buf[uint8].new(97,98,99,100,101,102)
+Buf[uint8].new()
+True
+"ab"
+"c"
+Buf[uint8].new(100,101)
+"f"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A program that writes <code>abc</code>, pauses, and writes <code>def</code> gives two <code>read</code>s of three bytes each on a binary pipe, however small the count.</p>
+</section>
+<section class="corner" id="nl-sets-the-line-separator-both-ways-and-chomp-keeps-it" data-tags=""><h2><a class="num" href="#nl-sets-the-line-separator-both-ways-and-chomp-keeps-it">20.13</a> <span class="t"><code>:nl</code> sets the line separator both ways, and <code>:!chomp</code> keeps it</span></h2>
+<p><code>:nl</code> sets the line separator of the pipes. <code>.lines</code> and <code>.get</code> split on it, and on it alone, so <code>"\n"</code> stops being a separator; <code>.in.say</code> ends each line with it. <code>:!chomp</code> leaves the separator on each line. Neither affects <code>.slurp</code>.</p>
+<figure class="ex ex-local" id="ex-20-18">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a!b\nc!'</span>, :<span class="n">out</span>, :<span class="n">nl</span>&lt;!&gt;).<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\nb\n'</span>, :<span class="n">out</span>, :!<span class="n">chomp</span>).<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>, :<span class="n">out</span>, :<span class="n">nl</span>&lt;!&gt;;
+<span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">say</span>(<span class="s">&quot;x&quot;</span>);
+<span class="nv">$p</span>.<span class="n">in</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("a", "b\nc").Seq
+("a\n", "b\n").Seq
+"x!"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-text-pipe-turns-rn-into-n-before-nl-sees-it" data-tags="quirk unasserted"><h2><a class="num" href="#a-text-pipe-turns-rn-into-n-before-nl-sees-it">20.14</a> <span class="t">A text pipe turns <code>\r\n</code> into <code>\n</code> before <code>:nl</code> sees it</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>Whatever the separator, a <code>\r\n</code> that arrives on a text pipe is turned into <code>\n</code> as it is decoded. That is why <code>.lines</code> splits Windows-style lines, although <code>nl-in</code> holds only <code>"\n"</code>, and why <code>:nl("\r\n")</code> never finds its separator: by the time lines are split, it is gone. A lone <code>\r</code> is kept, and <code>:nl("\r")</code> splits on it. A binary pipe and <code>.slurp(:bin)</code> see the bytes as they came.</p>
+<figure class="ex ex-local" id="ex-20-19">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb\r\n'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb\r\n'</span>, :<span class="n">out</span>, :<span class="n">nl</span>(<span class="s">&quot;\r\n&quot;</span>)).<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\rb\rc'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\rb\rc'</span>, :<span class="n">out</span>, :<span class="n">nl</span>(<span class="s">&quot;\r&quot;</span>)).<span class="n">out</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>, :<span class="n">bin</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("a", "b").Seq
+("a\nb\n",).Seq
+(97 13 98 13 99)
+("a", "b", "c").Seq
+Buf[uint8].new(97,13,10,98)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Under <code>:nl("\r\n")</code> the whole output comes back as a single line, with its <code>\n</code>s in it and nothing chomped.</p>
+</section>
+<section class="corner" id="env-replaces-the-whole-environment-but-the-program-is-found-through-the-parents-path" data-tags="quirk"><h2><a class="num" href="#env-replaces-the-whole-environment-but-the-program-is-found-through-the-parents-path">20.15</a> <span class="t"><code>:env</code> replaces the whole environment, but the program is found through the parent's <code>PATH</code></span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>:cwd</code>, a string or an <code>IO::Path</code>, is the directory the program starts in; a relative one is taken from <code>$*CWD</code>. <code>:env</code> takes a hash that becomes the program's entire environment: <code>HOME</code>, <code>PATH</code> and every other variable are gone unless the hash has them. Without <code>:env</code>, the program gets <code>%*ENV</code>, including a change made with <code>temp</code>. <code>shell</code> takes both options too.</p>
+<figure class="ex ex-local" id="ex-20-20">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">print</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'basename &quot;$PWD&quot;'</span>, :<span class="n">cwd</span><span class="s">&lt;sub&gt;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">print</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'echo &quot;[$GREETING] [$HOME]&quot;'</span>, :<span class="n">env</span>{ <span class="n">GREETING</span> =&gt; <span class="s">&quot;hi&quot;</span> }, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+{
+    <span class="k">temp</span> <span class="nv">%*ENV</span><span class="s">&lt;GREETING&gt;</span> = <span class="s">&quot;from temp&quot;</span>;
+    <span class="nb">print</span> <span class="nb">run</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'echo &quot;[$GREETING]&quot;'</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+}
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sub
+[hi] []
+[from temp]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The second command ran with no <code>PATH</code> in its environment, and <code>sh</code> was found all the same: the program is looked up through the parent's <code>PATH</code>, not through the environment it is given.</p>
+</section>
+<section class="corner" id="procnew-builds-a-finished-proc-or-one-that-spawns-later" data-tags=""><h2><a class="num" href="#procnew-builds-a-finished-proc-or-one-that-spawns-later">20.16</a> <span class="t"><code>Proc.new</code> builds a finished <code>Proc</code>, or one that spawns later</span></h2>
+<p><code>Proc.new</code> takes the pipe options that <code>run</code> takes, and makes a Proc that has not run anything: its <code>.pid</code> is <code>Nil</code> and its <code>.command</code> empty. <code>.spawn</code> then starts a program from a list of arguments, and <code>.shell</code> from a string; both take <code>:cwd</code> and <code>:env</code>. They return <code>True</code> when the program could be started, whatever its exit code, and <code>False</code> when it could not. With <code>:exitcode</code>, <code>:signal</code> and <code>:command</code>, <code>Proc.new</code> makes a Proc for a program that has already ended, and such a Proc throws when sunk like any failed one:</p>
+<figure class="ex ex-local" id="ex-20-21">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Proc</span>.<span class="nb">new</span>(:<span class="n">out</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">pid</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">spawn</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;spawned&quot;</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">Proc</span>.<span class="nb">new</span>.<span class="nb">shell</span>(<span class="s">&quot;exit 5&quot;</span>);
+<span class="nb">say</span> <span class="nb">Proc</span>.<span class="nb">new</span>.<span class="n">spawn</span>(<span class="s">&quot;no-such-command-here&quot;</span>);
+<span class="k">my</span> <span class="nv">$done</span> = <span class="nb">Proc</span>.<span class="nb">new</span>(:<span class="n">exitcode</span>(<span class="mi">3</span>), :<span class="nb">signal</span>(<span class="mi">0</span>), :<span class="n">command</span>&lt;<span class="k">make</span> <span class="n">all</span>&gt;);
+<span class="nb">say</span> <span class="nv">$done</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$done</span>.<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="n">sink</span> <span class="nv">$done</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil []
+True
+spawned 0 ("printf", "spawned")
+True
+False
+False ("make", "all")</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'make' exited unsuccessfully (exit code: 3, signal: 0)
+  in block &lt;unit&gt; at example.raku line 9
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A signal left out of <code>Proc.new</code> is <code>Any</code>, and a truth test then warns:</p>
+<figure class="ex ex-local" id="ex-20-22">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Proc</span>.<span class="nb">new</span>(:<span class="n">exitcode</span>(<span class="mi">0</span>));
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">signal</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">so</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Any
+True</pre><div class="lbl err">and on standard error</div><pre class="err-text">Use of uninitialized value $!signal of type Any in numeric context
+  in block &lt;unit&gt; at example.raku line 3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>spawn</code> and <code>exitcode</code> called on the <code>Proc</code> type object die with <em>Did you forget a '.new'?</em></p>
+</section>
+<section class="corner" id="asking-a-new-proc-for-its-status-fixes-the-status-at-1" data-tags="bug unasserted"><h2><a class="num" href="#asking-a-new-proc-for-its-status-fixes-the-status-at-1">20.17</a> <span class="t">Asking a new <code>Proc</code> for its status fixes the status at 1</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>The documentation says that <code>.exitcode</code> is -1 for a program that has not exited yet. On a <code>Proc.new</code> that has not spawned anything, Rakudo 2026.08 answers 1, with signal 0, and the answer sticks: a spawn afterwards runs the program, but the Proc keeps reporting 1. A Proc that spawns a second time keeps the status of its first program, although <code>.command</code> changes:</p>
+<figure class="ex ex-local" id="ex-20-23">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Proc</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">signal</span>;
+<span class="nv">$p</span>.<span class="n">spawn</span>(<span class="s">&quot;true&quot;</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Proc</span>.<span class="nb">new</span>;
+<span class="nv">$q</span>.<span class="n">spawn</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;exit 7&quot;</span>);
+<span class="nv">$q</span>.<span class="n">spawn</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;exit 8&quot;</span>);
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$q</span>.<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nb">run</span> <span class="s">&quot;true&quot;</span>;
+<span class="nv">$r</span>.<span class="nb">shell</span>(<span class="s">&quot;exit 9&quot;</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">command</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">1 0
+1 False
+7 ("sh", "-c", "exit 8")
+0 ("exit 9",)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The intended behaviour is -1 before any spawn, and each spawn's own status after it. Use a new Proc for each program.</p>
+</section>
+<section class="corner" id="procasyncnew-ignores-the-named-arguments-it-does-not-know" data-tags="quirk"><h2><a class="num" href="#procasyncnew-ignores-the-named-arguments-it-does-not-know">20.18</a> <span class="t"><code>Proc::Async.new</code> ignores the named arguments it does not know</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>Proc::Async.new</code> takes the program and its arguments as positionals; a list among them is flattened, and other values are kept as given in <code>.command</code> and made strings when the program starts. Its options are <code>:w</code> (to write to the program), <code>:enc</code> and <code>:translate-nl</code>, which the next sections use, and <code>:arg0</code>, the name the program is told it was called by. Any other named argument is silently ignored, so an <code>:out</code> copied from a <code>run</code> call does nothing. The form with <code>:path</code> and <code>:args</code>, which the documentation lists, does not exist:</p>
+<figure class="ex ex-local" id="ex-20-24">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&lt;echo a&gt;</span>, <span class="s">&quot;b&quot;</span>, <span class="mi">42</span>, :<span class="n">out</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">command</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">enc</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">translate-nl</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">w</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">started</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">Proc::Async</span>.<span class="nb">new</span>(:<span class="n">path</span><span class="s">&lt;echo&gt;</span>, :<span class="n">args</span><span class="s">&lt;hi&gt;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">enc</span><span class="s">&lt;nope&gt;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>(<span class="s">&quot;true&quot;</span>, :<span class="n">bogus</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("echo", "a", "b", 42)
+utf8 True Any False
+X::Multi::NoMatch
+X::Encoding::Unknown
+X::Multi::NoMatch</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>run</code> refuses a named argument it does not know, as the last line shows. It takes <code>:arg0</code> too: <code>run("sh", "-c", 'echo "$0"', :arg0&lt;kitty&gt;)</code> prints <code>kitty</code>, the name a shell script sees as its own.</p>
+<p><code>:started</code> is a public attribute and not an option, and <code>Proc::Async.new("cat", :started)</code> makes an object that reports itself started and can never start: its <code>.start</code> throws <code>X::Proc::Async::AlreadyStarted</code>. <code>:pty</code>, which runs the program in a pseudo-terminal, must say its size, as in <code>:pty(:cols(80), :rows(24))</code>; without one, <code>.new</code> throws <code>X::Proc::Async::MissingColsRows</code>.</p>
+</section>
+<section class="corner" id="start-returns-a-promise-of-a-bare-proc-and-await-as-a-statement-checks-it" data-tags="trap"><h2><a class="num" href="#start-returns-a-promise-of-a-bare-proc-and-await-as-a-statement-checks-it">20.19</a> <span class="t"><code>.start</code> returns a promise of a bare <code>Proc</code>, and <code>await</code> as a statement checks it</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.start</code> starts the program and returns a Promise; a second <code>.start</code> throws <code>X::Proc::Async::AlreadyStarted</code>. When the program ends, the promise is kept with a Proc that has <code>.exitcode</code>, <code>.signal</code> and <code>.command</code> and nothing else: no pid and no pipes. That Proc throws when sunk if the program failed, so <code>await $promise;</code> written as a statement throws for a non-zero exit, while <code>my $result = await $promise</code> does not:</p>
+<figure class="ex ex-local" id="ex-20-25">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;exit 6&quot;</span>);
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$promise</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="nb">start</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">say</span> <span class="nv">$result</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$result</span>.<span class="n">exitcode</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$result</span>.<span class="nb">so</span>;
+<span class="nb">say</span> <span class="nv">$result</span>.<span class="n">pid</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$result</span>.<span class="n">out</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">pid</span> === <span class="nv">$proc</span>.<span class="n">ready</span>;
+<span class="nb">say</span> (<span class="nb">await</span> <span class="nv">$proc</span>.<span class="n">ready</span>) &gt; <span class="mi">0</span>;
+<span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Promise
+X::Proc::Async::AlreadyStarted
+Proc 6 False
+Nil IO::Pipe
+True
+True</pre><div class="lbl err">and on standard error</div><pre class="err-text">The spawned command 'sh' exited unsuccessfully (exit code: 6, signal: 0)
+  in block &lt;unit&gt; at example.raku line 10
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.ready</code> and <code>.pid</code> return one and the same Promise, kept with the program's process id once it is running, and kept before the start promise is.</p>
+</section>
+<section class="corner" id="a-program-that-cannot-start-breaks-the-promise-with-xos" data-tags=""><h2><a class="num" href="#a-program-that-cannot-start-breaks-the-promise-with-xos">20.20</a> <span class="t">A program that cannot start breaks the promise with <code>X::OS</code></span></h2>
+<p>When the program is missing, or the <code>:cwd</code> given to <code>.start</code> is unusable, the start promise is broken with an <code>X::OS</code>. Its <code>.error-code</code> is the system's error number, negated. <code>.ready</code> is broken with the same exception, and <code>.started</code> is <code>True</code> all the same:</p>
+<figure class="ex ex-local" id="ex-20-26">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;no-such-command-here&quot;</span>);
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">say</span> <span class="nv">$promise</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$promise</span>.<span class="n">cause</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$promise</span>.<span class="n">cause</span>.<span class="n">error-code</span>;
+<span class="nb">say</span> <span class="nv">$promise</span>.<span class="n">cause</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">ready</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$proc</span>.<span class="n">ready</span>.<span class="n">cause</span> === <span class="nv">$promise</span>.<span class="n">cause</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">started</span>;
+<span class="nb">spurt</span> <span class="s">&quot;a-file&quot;</span>, <span class="s">&quot;&quot;</span>;
+<span class="k">my</span> <span class="nv">$f</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;true&quot;</span>).<span class="nb">start</span>(:<span class="n">cwd</span><span class="s">&lt;a-file&gt;</span>);
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$f</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">cause</span>.<span class="n">error-code</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">cause</span>.<span class="n">message</span>;
+<span class="nb">unlink</span> <span class="s">&quot;a-file&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Broken X::OS+{X::Await::Died}
+X::OS -2
+Failed to spawn process no-such-command-here: no such file or directory (error code -2)
+Broken True
+True
+-20 Failed to spawn process true: not a directory (error code -20)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>await</code> rethrows the cause with the role <code>X::Await::Died</code> mixed in, which is why <code>$!</code> has a longer name than <code>.cause</code>. The supplies and the writing methods fail too: every output supply quits, and a write gives a broken promise. <code>.close-stdin</code> and <code>.kill</code> do nothing harmful:</p>
+<figure class="ex ex-local" id="ex-20-27">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;no-such-command-here&quot;</span>, :<span class="n">w</span>);
+<span class="k">my</span> <span class="nv">$quit</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { }, <span class="n">quit</span> =&gt; -&gt; <span class="nv">$e</span> { <span class="nv">$quit</span>.<span class="n">keep</span>(<span class="nv">$e</span>) });
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="k">my</span> <span class="nv">$e</span> = <span class="nb">await</span> <span class="nv">$quit</span>;
+<span class="nb">say</span> <span class="nv">$e</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$e</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$w</span> = <span class="nv">$proc</span>.<span class="nb">print</span>(<span class="s">&quot;x&quot;</span>);
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$w</span>;
+<span class="nb">say</span> <span class="nv">$w</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$w</span>.<span class="n">cause</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">close-stdin</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$proc</span>.<span class="n">kill</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::AdHoc: Failed to spawn process no-such-command-here: no such file or directory (error code -2)
+Broken broken pipe
+True 1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="start-takes-env-not-env-and-ignores-the-wrong-one" data-tags="trap"><h2><a class="num" href="#start-takes-env-not-env-and-ignores-the-wrong-one">20.21</a> <span class="t"><code>.start</code> takes <code>:ENV</code>, not <code>:env</code>, and ignores the wrong one</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.start</code> takes the program's directory as <code>:cwd</code> and its environment as <code>:ENV</code>, in capitals, where <code>run</code> takes <code>:env</code>. Like <code>Proc::Async.new</code>, it ignores named arguments it does not know, so an <code>:env</code> passed to <code>.start</code> is dropped without a word and the program gets the parent's environment:</p>
+<figure class="ex ex-local" id="ex-20-28">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'echo &quot;$(basename &quot;$PWD&quot;) [$GREETING]&quot;'</span>);
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>(:<span class="n">cwd</span><span class="s">&lt;sub&gt;</span>, :<span class="n">ENV</span>{ <span class="n">GREETING</span> =&gt; <span class="s">&quot;hi&quot;</span> });
+<span class="nb">print</span> <span class="nv">$out</span>;
+<span class="k">my</span> <span class="nv">$wrong</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'echo &quot;[$GREETING]&quot;'</span>);
+<span class="k">my</span> <span class="nv">$out2</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$wrong</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out2</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$wrong</span>.<span class="nb">start</span>(:<span class="n">env</span>{ <span class="n">GREETING</span> =&gt; <span class="s">&quot;hi&quot;</span> });
+<span class="nb">print</span> <span class="nv">$out2</span>;
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sub [hi]
+[]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>As with <code>run</code>, <code>:ENV</code> is the whole environment, it defaults to <code>%*ENV</code> with any <code>temp</code> changes, and the program is found through the parent's <code>PATH</code>.</p>
+</section>
+<section class="corner" id="an-untapped-stdout-holds-back-the-start-promise" data-tags="quirk undocumented"><h2><a class="num" href="#an-untapped-stdout-holds-back-the-start-promise">20.22</a> <span class="t">An untapped <code>.stdout</code> holds back the start promise</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>Calling <code>.stdout</code> or <code>.stderr</code> tells the <code>Proc::Async</code> to capture that stream, but the stream is read only once its Supply has a tap. Until then the start promise is not kept, even after the program has ended, and a program that writes more than a pipe holds stops and waits. A tap added later, at any time, releases it, and receives everything the program wrote:</p>
+<figure class="ex ex-local" id="ex-20-29">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;hello&quot;</span>);
+<span class="k">my</span> <span class="nv">$stdout</span> = <span class="nv">$proc</span>.<span class="n">stdout</span>;
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$promise</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">1</span>));
+<span class="nb">say</span> <span class="nv">$promise</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$proc</span>.<span class="n">ready</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">say</span> <span class="nv">$promise</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$out</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned Kept
+Kept "hello\n"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A Supply made from the stream, such as <code>.stdout.lines</code>, is not a tap either. The next program never ends, because its line Supply is never tapped:</p>
+<figure class="ex ex-nocheck" id="ex-20-30">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;hello&quot;</span>);
+<span class="k">my</span> <span class="nv">$lines</span> = <span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="nb">lines</span>;
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="s">&quot;done&quot;</span>;</pre><span class="local-label">not run</span></div>
+</figure>
+<p>Asking the Supply for <code>.native-descriptor</code>, a promise of the pipe's file descriptor, counts as taking the stream over, and the start promise is then kept without a tap. The merged <code>.Supply</code> is read from the start, tapped or not (see <a href="/deep/processes/#the-merged-supply-is-read-from-the-start-and-whenever-proc-taps-it">The merged Supply</a>).</p>
+</section>
+<section class="corner" id="output-nobody-captures-can-overtake-the-parents-buffered-output" data-tags="trap"><h2><a class="num" href="#output-nobody-captures-can-overtake-the-parents-buffered-output">20.23</a> <span class="t">Output nobody captures can overtake the parent's buffered output</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A stream of the program for which no Supply was asked and no handle bound is inherited: the program writes to the parent's own standard output or error. When the parent's standard output is a file or a pipe, as it is for these examples, all but the first write of the parent's own output is buffered. The program's output then overtakes whatever the parent has printed and not yet flushed. <code>$*OUT.flush</code> before starting the program restores the order:</p>
+<figure class="ex ex-local" id="ex-20-31">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;parent 1&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;parent 2&quot;</span>;
+<span class="nb">run</span> <span class="s">&quot;echo&quot;</span>, <span class="s">&quot;child of run&quot;</span>;
+<span class="nv">$*OUT</span>.<span class="n">flush</span>;
+<span class="nb">await</span> <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;child after a flush&quot;</span>).<span class="nb">start</span>;
+<span class="nb">say</span> <span class="s">&quot;parent 3&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">parent 1
+child of run
+parent 2
+child after a flush
+parent 3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>It makes no difference whether <code>run</code>, <code>shell</code> or <code>Proc::Async</code> started the program. At a terminal the parent's output is not buffered, and the lines come in the order they were written. A program started without <code>:w</code> and with no handle bound to its standard input reads the parent's input.</p>
+</section>
+<section class="corner" id="a-supply-must-be-chosen-before-start-and-some-choices-exclude-others" data-tags=""><h2><a class="num" href="#a-supply-must-be-chosen-before-start-and-some-choices-exclude-others">20.24</a> <span class="t">A Supply must be chosen before <code>.start</code>, and some choices exclude others</span></h2>
+<p><code>.stdout</code>, <code>.stderr</code> and the merged <code>.Supply</code> must be called before <code>.start</code>; afterwards they throw <code>X::Proc::Async::TapBeforeSpawn</code>, even for a stream that already has a Supply. Each call returns a new <code>Proc::Async::Pipe</code>, a kind of Supply, over the same stream. A stream is read as text or as bytes, not both, and the merged Supply excludes the separate ones:</p>
+<figure class="ex ex-local" id="ex-20-32">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;hi&quot;</span>);
+<span class="k">my</span> <span class="nv">$a</span> = <span class="nv">$proc</span>.<span class="n">stdout</span>;
+<span class="nb">say</span> <span class="nv">$a</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$a</span> ~~ <span class="nb">Supply</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$a</span> === <span class="nv">$proc</span>.<span class="n">stdout</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="n">stdout</span>(:<span class="n">bin</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="nb">Supply</span>) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$a</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="n">stderr</span>) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">print</span> <span class="nv">$out</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Proc::Async::Pipe True False
+Can only tap one of chars or bytes supply for stdout
+Using .Supply on a Proc::Async implies merging stdout and stderr; .stdout and .stderr cannot therefore be used in combination with it
+To avoid data races, you must tap stderr before running the process
+hi</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The exceptions are <code>X::Proc::Async::CharsOrBytes</code>, <code>SupplyOrStd</code> and <code>TapBeforeSpawn</code>. They and the other exceptions for misusing a <code>Proc::Async</code> (<code>AlreadyStarted</code>, <code>MustBeStarted</code>, <code>OpenForWriting</code>, <code>BindOrUse</code>) all do the role <code>X::Proc::Async</code>, and their <code>.proc</code> is the object. <code>X::Proc::Unsuccessful</code> and <code>X::OS</code> do not do it:</p>
+<figure class="ex ex-local" id="ex-20-33">
+<div class="code"><pre class="src"><span class="k">for</span> <span class="n">X::Proc::Async::AlreadyStarted</span>, <span class="n">X::Proc::Async::TapBeforeSpawn</span>, <span class="n">X::Proc::Unsuccessful</span>, <span class="n">X::OS</span> -&gt; <span class="nv">$type</span> {
+    <span class="nb">say</span> <span class="nv">$type</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$type</span> ~~ <span class="n">X::Proc::Async</span>;
+}</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Proc::Async::AlreadyStarted True
+X::Proc::Async::TapBeforeSpawn True
+X::Proc::Unsuccessful False
+X::OS False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-tap-added-after-the-output-has-ended-receives-nothing-not-even-done" data-tags="quirk undocumented"><h2><a class="num" href="#a-tap-added-after-the-output-has-ended-receives-nothing-not-even-done">20.25</a> <span class="t">A tap added after the output has ended receives nothing, not even <code>done</code></span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>The first tap on a stream receives everything from the start, whenever it comes, as the previous corners showed. Taps added while the program runs receive what arrives after them. A tap added once the stream has ended receives nothing at all, not even the <code>done</code> that would tell it so:</p>
+<figure class="ex ex-local" id="ex-20-34">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;once&quot;</span>);
+<span class="k">my</span> <span class="nv">$stdout</span> = <span class="nv">$proc</span>.<span class="n">stdout</span>;
+<span class="k">my</span> (<span class="nv">$first</span>, <span class="nv">$late</span>) = <span class="s">&quot;&quot;</span>, <span class="s">&quot;&quot;</span>;
+<span class="k">my</span> <span class="nv">$late-done</span> = <span class="n">False</span>;
+<span class="nv">$stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$first</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nv">$stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$late</span> ~= <span class="nv">$chunk</span> }, <span class="n">done</span> =&gt; { <span class="nv">$late-done</span> = <span class="n">True</span> });
+<span class="nb">sleep</span> <span class="mf">0.5</span>;
+<span class="nb">say</span> <span class="nv">$first</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$late</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$late-done</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"once\n"
+"" False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Anything that waits for such a Supply to finish, such as <code>.list</code> on it or a <code>react</code> block with a <code>whenever</code> on it, waits for ever.</p>
+</section>
+<section class="corner" id="every-chunk-and-every-done-come-before-the-start-promise-is-kept" data-tags="undocumented"><h2><a class="num" href="#every-chunk-and-every-done-come-before-the-start-promise-is-kept">20.26</a> <span class="t">Every chunk and every <code>done</code> come before the start promise is kept</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>For a tapped <code>.stdout</code> or <code>.stderr</code>, each chunk arrives before that stream's <code>done</code>, and both <code>done</code>s arrive before the start promise is kept. Code that runs when the promise is kept, after an <code>await</code> or in a <code>.then</code>, therefore sees all the output already delivered. The two streams keep no order between them, so the example shows each stream's events apart:</p>
+<figure class="ex ex-local" id="ex-20-35">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo out; echo err &gt;&amp;2&quot;</span>);
+<span class="k">my</span> <span class="nv">@events</span>;
+<span class="k">my</span> <span class="nv">$lock</span> = <span class="nb">Lock</span>.<span class="nb">new</span>;
+<span class="k">sub</span> <span class="n">log</span>(<span class="nv">$e</span>) { <span class="nv">$lock</span>.<span class="n">protect</span>: { <span class="nv">@events</span>.<span class="nb">push</span>(<span class="nv">$e</span>) } }
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nb">log</span> <span class="s">&quot;stdout chunk&quot;</span> }, <span class="n">done</span> =&gt; { <span class="nb">log</span> <span class="s">&quot;stdout done&quot;</span> });
+<span class="nv">$proc</span>.<span class="n">stderr</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nb">log</span> <span class="s">&quot;stderr chunk&quot;</span> }, <span class="n">done</span> =&gt; { <span class="nb">log</span> <span class="s">&quot;stderr done&quot;</span> });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>.<span class="n">then</span>({ <span class="nb">log</span> <span class="s">&quot;start kept&quot;</span> });
+<span class="nb">say</span> <span class="nv">@events</span>.<span class="nb">tail</span>;
+<span class="nb">say</span> <span class="nv">@events</span>.<span class="nb">grep</span>(<span class="sr">/stdout/</span>).<span class="nb">join</span>(<span class="s">&quot;, &quot;</span>);
+<span class="nb">say</span> <span class="nv">@events</span>.<span class="nb">grep</span>(<span class="sr">/stderr/</span>).<span class="nb">join</span>(<span class="s">&quot;, &quot;</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">start kept
+stdout chunk, stdout done
+stderr chunk, stderr done</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A program that writes nothing emits no chunk, not even an empty one; its Supply is simply done.</p>
+</section>
+<section class="corner" id="a-chunk-is-not-a-line-and-its-last-character-waits-for-the-next" data-tags=""><h2><a class="num" href="#a-chunk-is-not-a-line-and-its-last-character-waits-for-the-next">20.27</a> <span class="t">A chunk is not a line, and its last character waits for the next</span></h2>
+<p>A text Supply emits strings as they arrive, in pieces of any size, never split into lines; <code>.lines</code> on the Supply gives lines. Each piece holds back its last character until more text or the end arrives, because the next bytes could be a combining mark that belongs to it (see <a href="/deep/buffers/#an-encoding-object-makes-encoders-and-incremental-decoders">incremental decoders</a>). So the chunks differ from the program's writes even when the writes are far apart in time:</p>
+<figure class="ex ex-local" id="ex-20-36">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'printf &quot;one\ntw&quot;; sleep 0.5; printf &quot;o\nthree\n&quot;'</span>);
+<span class="k">my</span> (<span class="nv">@chunks</span>, <span class="nv">@lines</span>);
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">@chunks</span>.<span class="nb">push</span>(<span class="nv">$chunk</span>) });
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="nb">lines</span>.<span class="n">tap</span>(-&gt; <span class="nv">$line</span> { <span class="nv">@lines</span>.<span class="nb">push</span>(<span class="nv">$line</span>) });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">@chunks</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">@lines</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">["one\nt", "wo\nthree\n"]
+["one", "two", "three"]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The program wrote <code>one\ntw</code> and later <code>o\nthree\n</code>; the <code>w</code> was held back and arrived with the second write. When the second write starts with a combining mark, the held character takes it. A binary Supply, <code>.stdout(:bin)</code>, emits the bytes of each write untouched:</p>
+<figure class="ex ex-local" id="ex-20-37">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'printf &quot;ab&quot;; sleep 0.5; printf &quot;\314\201c&quot;'</span>);
+<span class="k">my</span> <span class="nv">@chunks</span>;
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">@chunks</span>.<span class="nb">push</span>(<span class="nv">$chunk</span>) });
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">@chunks</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">'printf &quot;ab&quot;; sleep 0.5; printf &quot;cd&quot;'</span>);
+<span class="k">my</span> <span class="nv">@bytes</span>;
+<span class="nv">$b</span>.<span class="n">stdout</span>(:<span class="n">bin</span>).<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">@bytes</span>.<span class="nb">push</span>(<span class="nv">$chunk</span>) });
+<span class="nb">await</span> <span class="nv">$b</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">@bytes</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">["a", "b́", "c"]
+[Buf[uint8].new(97,98), Buf[uint8].new(99,100)]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="rn-becomes-n-and-enc-can-be-set-for-each-stream" data-tags=""><h2><a class="num" href="#rn-becomes-n-and-enc-can-be-set-for-each-stream">20.28</a> <span class="t"><code>\r\n</code> becomes <code>\n</code>, and <code>:enc</code> can be set for each stream</span></h2>
+<p>A text Supply turns <code>\r\n</code> into <code>\n</code> and keeps a lone <code>\r</code>, unless <code>:translate-nl</code> is false, either on <code>Proc::Async.new</code> or on the call to <code>.stdout</code>, <code>.stderr</code> or <code>.Supply</code>. It decodes with the <code>:enc</code> given to <code>.new</code>, UTF-8 by default, and each of those calls can name its own:</p>
+<figure class="ex ex-local" id="ex-20-38">
+<div class="code"><pre class="src"><span class="k">sub</span> <span class="n">capture</span>(<span class="n">Proc::Async</span> <span class="nv">$proc</span>, *<span class="nv">%opts</span>) {
+    <span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+    <span class="nv">$proc</span>.<span class="n">stdout</span>(|<span class="nv">%opts</span>).<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+    <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+    <span class="nv">$out</span>
+}
+<span class="nb">say</span> <span class="n">capture</span>(<span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb\rc'</span>)).<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="n">capture</span>(<span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb'</span>), :!<span class="n">translate-nl</span>).<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="n">capture</span>(<span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'a\r\nb'</span>, :!<span class="n">translate-nl</span>)).<span class="nb">ords</span>;
+<span class="nb">say</span> <span class="n">capture</span>(<span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'caf\351'</span>, :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>));
+<span class="nb">say</span> <span class="n">capture</span>(<span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'caf\351'</span>), :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(97 10 98 13 99)
+(97 13 10 98)
+(97 13 10 98)
+café
+café</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="malformed-input-quits-the-supply-and-the-text-before-it-is-lost" data-tags="undocumented"><h2><a class="num" href="#malformed-input-quits-the-supply-and-the-text-before-it-is-lost">20.29</a> <span class="t">Malformed input quits the Supply, and the text before it is lost</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>Bytes that are not valid in the stream's encoding make the text Supply quit with an <code>X::AdHoc</code>. The valid text before them is not emitted. The program itself is unaffected, and so are the other stream and the start promise. A binary Supply delivers the same bytes whole:</p>
+<figure class="ex ex-local" id="ex-20-39">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'good \377 bad'</span>);
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="k">my</span> <span class="nv">$quit</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> }, <span class="n">quit</span> =&gt; -&gt; <span class="nv">$e</span> { <span class="nv">$quit</span> = <span class="s">&quot;{$e.^name}: {$e.message}&quot;</span> });
+<span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$out</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$quit</span>;
+<span class="nb">say</span> <span class="nv">$result</span>.<span class="n">exitcode</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'good \377 bad'</span>);
+<span class="k">my</span> <span class="nv">$buf</span> = <span class="nb">Buf</span>.<span class="nb">new</span>;
+<span class="nv">$b</span>.<span class="n">stdout</span>(:<span class="n">bin</span>).<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$buf</span>.<span class="nb">append</span>(<span class="nv">$chunk</span>) });
+<span class="nb">await</span> <span class="nv">$b</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$buf</span>.<span class="nb">elems</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">""
+X::AdHoc: Malformed UTF-8 near bytes 64 20 ff
+0
+10</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>An unknown encoding name given to <code>.stdout</code>, <code>.stderr</code> or <code>.Supply</code> is accepted, and the Supply quits with <code>X::Encoding::Unknown</code> once the program starts; given to <code>Proc::Async.new</code>, it throws at once. A quit that nobody handles inside a <code>react</code> block ends the block, and the program, with the exception:</p>
+<figure class="ex ex-local" id="ex-20-40">
+<div class="code"><pre class="src"><span class="k">react</span> {
+    <span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'\377'</span>);
+    <span class="k">whenever</span> <span class="nv">$proc</span>.<span class="n">stdout</span> { }
+    <span class="k">whenever</span> <span class="nv">$proc</span>.<span class="nb">start</span> { }
+}</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text"><span class="empty">(nothing)</span></pre><div class="lbl err">and on standard error</div><pre class="err-text">A react block:
+  in block &lt;unit&gt; at example.raku line 1
+
+Died because of the exception:
+    Malformed UTF-8
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="the-merged-supply-is-read-from-the-start-and-whenever-proc-taps-it" data-tags=""><h2><a class="num" href="#the-merged-supply-is-read-from-the-start-and-whenever-proc-taps-it">20.30</a> <span class="t">The merged Supply is read from the start, and <code>whenever $proc</code> taps it</span></h2>
+<p><code>.Supply</code> carries standard output and standard error together, as text or, with <code>:bin</code>, as bytes, in the order the parent receives them. A <code>whenever</code> given the <code>Proc::Async</code> object itself taps its merged Supply. Unlike <code>.stdout</code> and <code>.stderr</code>, the merged Supply is read from the start, tapped or not: the start promise is kept without a tap, and a first tap after the end receives everything at once.</p>
+<figure class="ex ex-local" id="ex-20-41">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo out; echo err &gt;&amp;2&quot;</span>);
+<span class="k">my</span> <span class="nv">$all</span> = <span class="s">&quot;&quot;</span>;
+<span class="k">react</span> {
+    <span class="k">whenever</span> <span class="nv">$proc</span> { <span class="nv">$all</span> ~= <span class="nv">$_</span> }
+    <span class="k">whenever</span> <span class="nv">$proc</span>.<span class="nb">start</span> { <span class="nb">say</span> <span class="s">&quot;exit code &quot;</span>, .<span class="n">exitcode</span> }
+}
+<span class="nb">say</span> <span class="nv">$all</span>.<span class="nb">lines</span>.<span class="nb">sort</span>;
+<span class="k">my</span> <span class="nv">$late</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;echo&quot;</span>, <span class="s">&quot;merged&quot;</span>);
+<span class="k">my</span> <span class="nv">$supply</span> = <span class="nv">$late</span>.<span class="nb">Supply</span>;
+<span class="nb">await</span> <span class="nv">$late</span>.<span class="nb">start</span>;
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$supply</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">say</span> <span class="nv">$out</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">exit code 0
+(err out)
+"merged\n"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>As with <code>:merge</code>, the lines of the two streams do not keep the program's order, so the example sorts them.</p>
+</section>
+<section class="corner" id="bind-stdout-and-bind-stderr-send-a-stream-into-an-open-handle" data-tags=""><h2><a class="num" href="#bind-stdout-and-bind-stderr-send-a-stream-into-an-open-handle">20.31</a> <span class="t"><code>bind-stdout</code> and <code>bind-stderr</code> send a stream into an open handle</span></h2>
+<p>Instead of a Supply, a stream can be bound to an opened <code>IO::Handle</code>, and the program's output goes straight into it. <code>.bind-stdout</code> and <code>.bind-stderr</code> return <code>Nil</code>, the same handle may take both streams, binding again replaces the handle, and the handle is left open when the program ends. A bound stream has no Supply, and the merged <code>.Supply</code> cannot be used while either stream is bound; both mistakes throw <code>X::Proc::Async::BindOrUse</code>.</p>
+<figure class="ex ex-local" id="ex-20-42">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$log</span> = <span class="nb">open</span> <span class="s">&quot;log.txt&quot;</span>, :<span class="n">w</span>;
+<span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sh&quot;</span>, <span class="s">&quot;-c&quot;</span>, <span class="s">&quot;echo out; echo err &gt;&amp;2&quot;</span>);
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">bind-stdout</span>(<span class="nv">$log</span>).<span class="nb">raku</span>;
+<span class="nv">$proc</span>.<span class="n">bind-stderr</span>(<span class="nv">$log</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="n">stdout</span>) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$log</span>.<span class="n">opened</span>;
+<span class="nv">$log</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="s">&quot;log.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>.<span class="nb">sort</span>;
+<span class="nb">unlink</span> <span class="s">&quot;log.txt&quot;</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;true&quot;</span>).<span class="n">bind-stdout</span>(<span class="s">&quot;log.txt&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+Cannot both bind stdout to a handle and also get the stdout Supply
+True
+(err out)
+X::TypeCheck::Binding::Parameter</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="bind-stdin-feeds-a-program-from-a-file-or-another-program" data-tags=""><h2><a class="num" href="#bind-stdin-feeds-a-program-from-a-file-or-another-program">20.32</a> <span class="t"><code>bind-stdin</code> feeds a program from a file or another program</span></h2>
+<p><code>.bind-stdin</code> takes an opened handle to read from, the <code>.stdout</code> or <code>.stderr</code> Supply of another <code>Proc::Async</code>, which chains the two programs, or the <code>.out</code> pipe of a <code>run</code>. Both programs of a chain must be started, in either order. A pipe from <code>run</code> is closed when the program has read it; a file handle is left open. A <code>:w</code> object writes its own input and refuses the binding:</p>
+<figure class="ex ex-local" id="ex-20-43">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$producer</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">'b\na\nc\n'</span>);
+<span class="k">my</span> <span class="nv">$consumer</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sort&quot;</span>);
+<span class="nv">$consumer</span>.<span class="n">bind-stdin</span>(<span class="nv">$producer</span>.<span class="n">stdout</span>);
+<span class="k">my</span> <span class="nv">$sorted</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$consumer</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$sorted</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$producer</span>.<span class="nb">start</span>, <span class="nv">$consumer</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$sorted</span>.<span class="nb">lines</span>;
+<span class="k">my</span> <span class="nv">$pipe</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">&quot;via run&quot;</span>, :<span class="n">out</span>;
+<span class="k">my</span> <span class="nv">$cat</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>);
+<span class="nv">$cat</span>.<span class="n">bind-stdin</span>(<span class="nv">$pipe</span>.<span class="n">out</span>);
+<span class="k">my</span> <span class="nv">$got</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$cat</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$got</span> ~= <span class="nv">$chunk</span> });
+<span class="nb">await</span> <span class="nv">$cat</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nv">$got</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$pipe</span>.<span class="n">out</span>.<span class="n">opened</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">w</span>).<span class="n">bind-stdin</span>(<span class="nv">$*IN</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(a b c)
+via run False
+X::Proc::Async::BindOrUse</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="writing-needs-w-and-the-program-sees-the-end-only-after-close-stdin" data-tags="quirk"><h2><a class="num" href="#writing-needs-w-and-the-program-sees-the-end-only-after-close-stdin">20.33</a> <span class="t">Writing needs <code>:w</code>, and the program sees the end only after <code>close-stdin</code></span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>A <code>Proc::Async</code> made with <code>:w</code> can write to the program once it is started. <code>.write</code> sends a Blob, <code>.print</code> a string in the object's encoding, <code>.say</code> the <code>.gist</code> of its argument and a newline, and <code>.put</code> the argument joined without separators and a newline. Each returns a Promise kept with the number of bytes sent. The program sees the end of its input only after <code>.close-stdin</code>, and a program that reads to the end, like <code>cat</code>, cannot end before it:</p>
+<figure class="ex ex-local" id="ex-20-44">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">w</span>);
+<span class="k">my</span> <span class="nv">$out</span> = <span class="s">&quot;&quot;</span>;
+<span class="nv">$proc</span>.<span class="n">stdout</span>.<span class="n">tap</span>(-&gt; <span class="nv">$chunk</span> { <span class="nv">$out</span> ~= <span class="nv">$chunk</span> });
+<span class="k">my</span> <span class="nv">$done</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$proc</span>.<span class="n">write</span>(<span class="s">&quot;ab&quot;</span>.<span class="n">encode</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">print</span>(<span class="s">&quot;cd&quot;</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">say</span>(<span class="s">&lt;e f&gt;</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$proc</span>.<span class="nb">put</span>(<span class="s">&lt;g h&gt;</span>);
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$done</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">1</span>));
+<span class="nb">say</span> <span class="nv">$done</span>.<span class="n">status</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">close-stdin</span>;
+<span class="nb">await</span> <span class="nv">$done</span>;
+<span class="nb">say</span> <span class="nv">$out</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">2
+2
+6
+3
+Planned
+True
+"abcd(e f)\ngh\n"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Before <code>.start</code>, these four methods and <code>.close-stdin</code> throw <code>X::Proc::Async::MustBeStarted</code>, and without <code>:w</code>, <code>X::Proc::Async::OpenForWriting</code>. Each exception names the method in <code>.method</code>, except that <code>put</code> reports itself as <code>say</code>:</p>
+<figure class="ex ex-local" id="ex-20-45">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$unstarted</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">w</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$unstarted</span>.<span class="nb">print</span>(<span class="s">&quot;x&quot;</span>)) // <span class="s">&quot;{$!.^name} {$!.method}&quot;</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$unstarted</span>.<span class="nb">put</span>(<span class="s">&quot;x&quot;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$readonly</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;true&quot;</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nv">$readonly</span>.<span class="nb">start</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$readonly</span>.<span class="nb">put</span>(<span class="s">&quot;x&quot;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">await</span> <span class="nv">$r</span>;
+<span class="k">my</span> <span class="nv">$w</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;cat&quot;</span>, :<span class="n">w</span>);
+<span class="k">my</span> <span class="nv">$wp</span> = <span class="nv">$w</span>.<span class="nb">start</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$w</span>.<span class="n">write</span>(<span class="s">&quot;text&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nv">$w</span>.<span class="n">close-stdin</span>;
+<span class="nb">await</span> <span class="nv">$wp</span>;
+<span class="k">my</span> <span class="nv">$late</span> = <span class="nv">$w</span>.<span class="n">write</span>(<span class="s">&quot;z&quot;</span>.<span class="n">encode</span>);
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$late</span>;
+<span class="nb">say</span> <span class="nv">$late</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$late</span>.<span class="n">cause</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$w</span>.<span class="n">close-stdin</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Proc::Async::MustBeStarted print
+Process must be started first before calling 'say'
+Process must be opened for writing with :w to call 'say'
+X::TypeCheck::Binding::Parameter
+Broken Cannot write to process that has already terminated
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.write</code> takes only a Blob. A write after the program has ended gives a broken promise, while <code>.close-stdin</code> can be called again at any time.</p>
+</section>
+<section class="corner" id="kill-sends-sighup-unless-told-otherwise-and-returns-the-number-it-sent" data-tags="quirk"><h2><a class="num" href="#kill-sends-sighup-unless-told-otherwise-and-returns-the-number-it-sent">20.34</a> <span class="t"><code>.kill</code> sends SIGHUP unless told otherwise, and returns the number it sent</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>.kill</code> sends a signal to a started program: SIGHUP by default, or the one given as a <code>Signal</code> value, a number, or a name with or without its <code>SIG</code> prefix. It returns the number it sent. The program ends with exit code 0 and the signal in <code>.signal</code>, and the Proc it delivers is false:</p>
+<figure class="ex ex-local" id="ex-20-46">
+<div class="code"><pre class="src"><span class="k">sub</span> <span class="n">killed-by</span>(<span class="nv">$signal</span>?) {
+    <span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sleep&quot;</span>, <span class="s">&quot;5&quot;</span>);
+    <span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+    <span class="nb">await</span> <span class="nv">$proc</span>.<span class="n">ready</span>;
+    <span class="k">my</span> <span class="nv">$sent</span> = <span class="nv">$signal</span>.<span class="nb">defined</span> ?? <span class="nv">$proc</span>.<span class="n">kill</span>(<span class="nv">$signal</span>) !! <span class="nv">$proc</span>.<span class="n">kill</span>;
+    <span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$promise</span>;
+    <span class="s">&quot;sent $sent, exit code {$result.exitcode}, signal {$result.signal}, {$result.so}&quot;</span>
+}
+<span class="nb">say</span> <span class="n">killed-by</span>();
+<span class="nb">say</span> <span class="n">killed-by</span>(<span class="n">SIGTERM</span>);
+<span class="nb">say</span> <span class="n">killed-by</span>(<span class="s">&quot;INT&quot;</span>);
+<span class="nb">say</span> <span class="n">killed-by</span>(<span class="s">&quot;SIGKILL&quot;</span>);
+<span class="nb">say</span> <span class="n">killed-by</span>(<span class="mi">9</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sent 1, exit code 0, signal 1, False
+sent 15, exit code 0, signal 15, False
+sent 2, exit code 0, signal 2, False
+sent 9, exit code 0, signal 9, False
+sent 9, exit code 0, signal 9, False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.kill</code> before <code>.start</code> throws <code>X::Proc::Async::MustBeStarted</code>; after the program has ended it does nothing. A name that is not a signal's throws <code>X::TypeCheck::Return</code>, a complaint about a return value, because the lookup through <code>$*KERNEL.signal</code> finds no number for it:</p>
+<figure class="ex ex-local" id="ex-20-47">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$proc</span> = <span class="n">Proc::Async</span>.<span class="nb">new</span>(<span class="s">&quot;sleep&quot;</span>, <span class="s">&quot;5&quot;</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="n">kill</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$promise</span> = <span class="nv">$proc</span>.<span class="nb">start</span>;
+<span class="nb">await</span> <span class="nv">$proc</span>.<span class="n">ready</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$proc</span>.<span class="n">kill</span>(<span class="s">&quot;NOPE&quot;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">kill</span>(<span class="s">&quot;TERM&quot;</span>);
+<span class="k">my</span> <span class="nv">$result</span> = <span class="nb">await</span> <span class="nv">$promise</span>;
+<span class="nb">say</span> <span class="nv">$proc</span>.<span class="n">kill</span>;
+<span class="nb">say</span> <span class="nv">$*KERNEL</span>.<span class="nb">signal</span>(<span class="s">&quot;TERM&quot;</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$*KERNEL</span>.<span class="nb">signal</span>(<span class="n">SIGINT</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Proc::Async::MustBeStarted
+Type check failed for return value; expected Int:D but got Int (Int)
+15
+1
+15 2</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<footer class="chapter-foot"><label class="done"><input type="checkbox" data-done="processes"> I have read this chapter</label><nav class="pager"><a class="prev" href="/deep/files/">← 19. Files and Paths</a><a class="next" href="/deep/promises/">21. Promises, Locks and Awaiting →</a></nav></footer>
+</article>
+<footer class="site-foot"><p><b>Raku Behind the Docs</b> · The Raku++ project · Edited by Andrew Shitov</p><p>The text was written by Claude, Anthropic’s model, from the Raku++ project’s findings. Every output was printed by Rakudo v2026.08. <a href="/deep/colophon/">Colophon</a> · <a href="https://github.com/ash/raku-behind-the-docs">Source</a></p></footer>
+</main>
+</div>
+<script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
+<script src="/deep/assets/book.js?v=mjp0h5mir1" defer></script>
+<script src="/theme/shell.js?v=4e7473f5" defer></script>
+</body>
+</html>

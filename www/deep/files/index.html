@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files and Paths — Raku Behind the Docs</title>
+<meta name="description" content="An IO::Path is text until something touches the disk; from there each file operation either fails or throws by its own rule, and handles translate newlines, share one position and keep their own separators.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
+<link rel="stylesheet" href="/deep/assets/book.css?v=mjp0h5mir1">
+<script>(function () {
+  var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function eff(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', eff(s));
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__applyTheme = apply;
+  try { if (localStorage.getItem('corners-predict') === '1') document.documentElement.classList.add('predict-on'); } catch (e) {}
+})();</script>
+</head>
+<body class="is-chapter">
+<header class="top">
+  <button class="nav-toggle" type="button" aria-label="Contents">☰</button>
+  <a class="brand" href="/deep/">Raku Behind the Docs</a>
+  <span class="spacer"></span>
+  <label class="predict" title="Hide every output until you reveal it"><input type="checkbox" id="predict-toggle"> <span>Predict<span class="wide"> mode</span></span></label>
+  <a class="corners-link" href="/deep/corners/">All corners</a>
+  <div class="theme-switch">
+    <button class="theme-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Theme">◐</button>
+    <ul class="theme-menu" role="menu" hidden>
+      <li><button data-theme-set="system">◐ System</button></li>
+      <li><button data-theme-set="light">☀ Light</button></li>
+      <li><button data-theme-set="dark">☾ Dark</button></li>
+    </ul>
+  </div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="Contents"><a class="toc-home" href="/deep/">Contents</a>
+<div class="toc-part">Before you start</div><ol class="toc-list">
+<li data-slug="how-to-read"><a href="/deep/how-to-read/"><span class="n">0</span><span class="t">How to Read This Book</span></a>
+</li>
+</ol>
+<div class="toc-part">Reading the code</div><ol class="toc-list">
+<li data-slug="precedence"><a href="/deep/precedence/"><span class="n">1</span><span class="t">Who Takes the Operand</span></a>
+</li>
+<li data-slug="quotes"><a href="/deep/quotes/"><span class="n">2</span><span class="t">Quotes and Interpolation</span></a>
+</li>
+<li data-slug="whitespace"><a href="/deep/whitespace/"><span class="n">3</span><span class="t">Whitespace, Terms and Blocks</span></a>
+</li>
+<li data-slug="sink"><a href="/deep/sink/"><span class="n">4</span><span class="t">Values Nobody Uses</span></a>
+</li>
+<li data-slug="containers"><a href="/deep/containers/"><span class="n">5</span><span class="t">Containers and Binding</span></a>
+</li>
+</ol>
+<div class="toc-part">Nothing and numbers</div><ol class="toc-list">
+<li data-slug="nil-any"><a href="/deep/nil-any/"><span class="n">6</span><span class="t">Nil, Any and the Undefined</span></a>
+</li>
+<li data-slug="numbers"><a href="/deep/numbers/"><span class="n">7</span><span class="t">Numbers</span></a>
+</li>
+<li data-slug="strings"><a href="/deep/strings/"><span class="n">8</span><span class="t">Strings</span></a>
+</li>
+</ol>
+<div class="toc-part">Collections</div><ol class="toc-list">
+<li data-slug="lists"><a href="/deep/lists/"><span class="n">9</span><span class="t">Lists, Arrays, Seqs and Slips</span></a>
+</li>
+<li data-slug="hashes"><a href="/deep/hashes/"><span class="n">10</span><span class="t">Hashes, Maps and Pairs</span></a>
+</li>
+<li data-slug="ranges"><a href="/deep/ranges/"><span class="n">11</span><span class="t">Ranges</span></a>
+</li>
+<li data-slug="sequences"><a href="/deep/sequences/"><span class="n">12</span><span class="t">The Sequence Operator</span></a>
+</li>
+<li data-slug="sets"><a href="/deep/sets/"><span class="n">13</span><span class="t">Sets, Bags and Mixes</span></a>
+</li>
+<li data-slug="buffers"><a href="/deep/buffers/"><span class="n">14</span><span class="t">Blobs and Bufs</span></a>
+</li>
+</ol>
+<div class="toc-part">Code</div><ol class="toc-list">
+<li data-slug="signatures"><a href="/deep/signatures/"><span class="n">15</span><span class="t">Signatures and Introspection</span></a>
+</li>
+<li data-slug="exceptions"><a href="/deep/exceptions/"><span class="n">16</span><span class="t">Exceptions and Failures</span></a>
+</li>
+<li data-slug="regexes"><a href="/deep/regexes/"><span class="n">17</span><span class="t">Regexes and Grammars</span></a>
+</li>
+</ol>
+<div class="toc-part">Time and the outside world</div><ol class="toc-list">
+<li data-slug="dates"><a href="/deep/dates/"><span class="n">18</span><span class="t">Dates and Times</span></a>
+</li>
+<li class="current" data-slug="files"><a href="/deep/files/"><span class="n">19</span><span class="t">Files and Paths</span></a>
+<ol class="toc-corners"><li><a href="#io-keeps-the-path-exactly-as-written"><span class="n">19.1</span><span class="t"><code>.IO</code> keeps the path exactly as written</span></a></li><li><a href="#an-empty-path-throws-at-once"><span class="n">19.2</span><span class="t">An empty path throws at once</span></a></li><li><a href="#dirname-and-basename-split-the-text-at-the-last-slash"><span class="n">19.3</span><span class="t"><code>dirname</code> and <code>basename</code> split the text at the last slash</span></a></li><li><a href="#cleanup-tidies-the-text-and-keeps-every"><span class="n">19.4</span><span class="t"><code>.cleanup</code> tidies the text and keeps every <code>..</code></span></a></li><li><a href="#absolute-is-canonical-a-and-a-are-the-same-path"><span class="n">19.5</span><span class="t"><code>.absolute</code> is canonical: <code>./a</code> and <code>a/</code> are the same path</span></a></li><li><a href="#resolve-removes-only-where-the-directory-exists"><span class="n">19.6</span><span class="t"><code>.resolve</code> removes <code>..</code> only where the directory exists</span></a></li><li><a href="#a-relative-path-remembers-the-directory-it-was-made-in"><span class="n">19.7</span><span class="t">A relative path remembers the directory it was made in</span></a></li><li><a href="#parent-is-textual-so-a-has-the-parent-a"><span class="n">19.8</span><span class="t"><code>.parent</code> is textual, so <code>a/..</code> has the parent <code>a</code></span></a></li><li><a href="#child-add-and-sibling-join-text-with-one-slash"><span class="n">19.9</span><span class="t"><code>.child</code>, <code>.add</code> and <code>.sibling</code> join text with one slash</span></a></li><li><a href="#extension-counts-dot-parts-from-the-right"><span class="n">19.10</span><span class="t"><code>.extension</code> counts dot-parts from the right</span></a></li><li><a href="#extension-with-a-value-makes-a-path-with-a-new-extension"><span class="n">19.11</span><span class="t"><code>.extension</code> with a value makes a path with a new extension</span></a></li><li><a href="#an-explicit-parts1-does-not-add-a-missing-extension"><span class="n">19.12</span><span class="t">An explicit <code>:parts(1)</code> does not add a missing extension</span></a></li><li><a href="#succ-on-a-path-increments-the-text-before-its-first-dot"><span class="n">19.13</span><span class="t"><code>.succ</code> on a path increments the text before its first dot</span></a></li><li><a href="#a-smartmatch-with-a-path-compares-paths-with-a-string-text"><span class="n">19.14</span><span class="t">A smartmatch with a path compares paths; with a string, text</span></a></li><li><a href="#two-paths-with-the-same-text-are-two-values"><span class="n">19.15</span><span class="t">Two paths with the same text are two values</span></a></li><li><a href="#e-is-a-bool-the-other-tests-of-a-missing-file-fail"><span class="n">19.16</span><span class="t"><code>.e</code> is a Bool; the other tests of a missing file fail</span></a></li><li><a href="#s-is-a-size-mode-an-intstr-and-the-times-are-instants"><span class="n">19.17</span><span class="t"><code>.s</code> is a size, <code>.mode</code> an IntStr, and the times are Instants</span></a></li><li><a href="#the-standard-handles-paths-are-iospecial-values"><span class="n">19.18</span><span class="t">The standard handles' paths are IO::Special values</span></a></li><li><a href="#mkdir-creates-the-parents-and-passes-over-an-existing-directory"><span class="n">19.19</span><span class="t"><code>mkdir</code> creates the parents and passes over an existing directory</span></a></li><li><a href="#unlink-of-a-missing-file-is-true"><span class="n">19.20</span><span class="t"><code>unlink</code> of a missing file is True</span></a></li><li><a href="#the-sub-forms-of-unlink-rmdir-and-chmod-return-what-worked"><span class="n">19.21</span><span class="t">The sub forms of <code>unlink</code>, <code>rmdir</code> and <code>chmod</code> return what worked</span></a></li><li><a href="#copy-rename-and-move-give-the-reason-in-os-error"><span class="n">19.22</span><span class="t"><code>copy</code>, <code>rename</code> and <code>move</code> give the reason in <code>.os-error</code></span></a></li><li><a href="#a-second-symlink-fails-a-dangling-one-does-not"><span class="n">19.23</span><span class="t">A second <code>symlink</code> fails; a dangling one does not</span></a></li><li><a href="#symlink-stores-an-absolute-target-unless-told-otherwise"><span class="n">19.24</span><span class="t"><code>symlink</code> stores an absolute target unless told otherwise</span></a></li><li><a href="#dir-lists-paths-that-start-with-the-directory-as-written"><span class="n">19.25</span><span class="t"><code>dir</code> lists paths that start with the directory as written</span></a></li><li><a href="#dirs-test-sees-the-bare-name-and-can-let-and-in"><span class="n">19.26</span><span class="t"><code>dir</code>'s test sees the bare name, and can let <code>.</code> and <code>..</code> in</span></a></li><li><a href="#spurt-writes-replaces-or-appends-and-returns-true"><span class="n">19.27</span><span class="t"><code>spurt</code> writes, replaces or appends, and returns True</span></a></li><li><a href="#slurp-of-a-missing-file-throws-while-open-fails"><span class="n">19.28</span><span class="t"><code>slurp</code> of a missing file throws, while <code>open</code> fails</span></a></li><li><a href="#reading-turns-rn-into-n"><span class="n">19.29</span><span class="t">Reading turns <code>\r\n</code> into <code>\n</code></span></a></li><li><a href="#lines-splits-on-nl-in-and-chomp-keeps-the-separators"><span class="n">19.30</span><span class="t"><code>.lines</code> splits on <code>nl-in</code>, and <code>:!chomp</code> keeps the separators</span></a></li><li><a href="#words-comb-and-split-on-a-path-read-the-file"><span class="n">19.31</span><span class="t"><code>.words</code>, <code>.comb</code> and <code>.split</code> on a path read the file</span></a></li><li><a href="#the-lines-sub-reads-a-file-only-when-given-a-path"><span class="n">19.32</span><span class="t">The <code>lines</code> sub reads a file only when given a path</span></a></li><li><a href="#a-utf-16-file-begins-with-a-byte-order-mark"><span class="n">19.33</span><span class="t">A UTF-16 file begins with a byte-order mark</span></a></li><li><a href="#every-output-method-returns-true-and-tell-counts-bytes"><span class="n">19.34</span><span class="t">Every output method returns True, and <code>.tell</code> counts bytes</span></a></li><li><a href="#a-closed-handle-refuses-with-two-kinds-of-exception"><span class="n">19.35</span><span class="t">A closed handle refuses with two kinds of exception</span></a></li><li><a href="#eof-is-true-before-get-returns-nil"><span class="n">19.36</span><span class="t"><code>.eof</code> is True before <code>get</code> returns Nil</span></a></li><li><a href="#linesn-stops-after-n-lines-and-leaves-the-handle-open"><span class="n">19.37</span><span class="t"><code>lines($n)</code> stops after n lines and leaves the handle open</span></a></li><li><a href="#on-a-handle-lineschomp-keeps-every-line-end-but-the-first"><span class="n">19.38</span><span class="t">On a handle, <code>.lines(:!chomp)</code> keeps every line end but the first</span></a></li><li><a href="#a-handles-nl-inrn-never-sees-a-rn"><span class="n">19.39</span><span class="t">A handle's <code>:nl-in("\r\n")</code> never sees a <code>\r\n</code></span></a></li><li><a href="#read-readchars-and-slurp-go-on-from-the-current-position"><span class="n">19.40</span><span class="t"><code>read</code>, <code>readchars</code> and <code>slurp</code> go on from the current position</span></a></li><li><a href="#a-bin-handle-reads-bytes-and-refuses-lines"><span class="n">19.41</span><span class="t">A <code>:bin</code> handle reads bytes and refuses lines</span></a></li><li><a href="#open-fails-when-the-system-refuses-and-throws-on-a-bad-argument"><span class="n">19.42</span><span class="t"><code>open</code> fails when the system refuses, and throws on a bad argument</span></a></li><li><a href="#rw-creates-without-emptying-update-does-not-create"><span class="n">19.43</span><span class="t"><code>:rw</code> creates without emptying; <code>:update</code> does not create</span></a></li><li><a href="#encoding-names-are-normalised-and-encoding-switches-in-mid-file"><span class="n">19.44</span><span class="t">Encoding names are normalised, and <code>.encoding</code> switches in mid-file</span></a></li><li><a href="#prompt-returns-an-allomorph-and-nil-at-the-end-of-input"><span class="n">19.45</span><span class="t"><code>prompt</code> returns an allomorph, and Nil at the end of input</span></a></li><li><a href="#inlinesn-leaves-the-rest-of-the-input-unread"><span class="n">19.46</span><span class="t"><code>$*IN.lines($n)</code> leaves the rest of the input unread</span></a></li><li><a href="#indir-runs-a-block-in-another-directory-or-fails"><span class="n">19.47</span><span class="t"><code>indir</code> runs a block in another directory, or fails</span></a></li><li><a href="#chdir-changes-cwd-not-the-processs-directory"><span class="n">19.48</span><span class="t"><code>chdir</code> changes <code>$*CWD</code>, not the process's directory</span></a></li><li><a href="#iopathchdir-only-computes-a-path"><span class="n">19.49</span><span class="t"><code>IO::Path.chdir</code> only computes a path</span></a></li><li><a href="#iospecunix-does-the-text-work-and-its-parent-removes-x"><span class="n">19.50</span><span class="t">IO::Spec::Unix does the text work, and its <code>:parent</code> removes <code>x/..</code></span></a></li><li><a href="#say-prints-a-junction-put-and-print-print-each-value"><span class="n">19.51</span><span class="t"><code>say</code> prints a Junction; <code>put</code> and <code>print</code> print each value</span></a></li><li><a href="#nl-out-is-what-say-put-and-print-nl-add"><span class="n">19.52</span><span class="t"><code>nl-out</code> is what <code>say</code>, <code>put</code> and <code>print-nl</code> add</span></a></li><li><a href="#iohandlenew-makes-a-closed-handle"><span class="n">19.53</span><span class="t"><code>IO::Handle.new</code> makes a closed handle</span></a></li><li><a href="#lock-and-flush-return-a-failure-when-they-cannot"><span class="n">19.54</span><span class="t"><code>lock</code> and <code>flush</code> return a Failure when they cannot</span></a></li><li><a href="#a-commands-output-is-an-iopipe-whose-close-returns-the-proc"><span class="n">19.55</span><span class="t">A command's output is an IO::Pipe whose <code>close</code> returns the Proc</span></a></li><li><a href="#iocathandle-reads-several-files-as-one"><span class="n">19.56</span><span class="t">IO::CatHandle reads several files as one</span></a></li><li><a href="#a-cathandles-on-switch-runs-per-file-and-once-more-with-nil"><span class="n">19.57</span><span class="t">A CatHandle's on-switch runs per file, and once more with Nil</span></a></li></ol>
+</li>
+<li data-slug="processes"><a href="/deep/processes/"><span class="n">20</span><span class="t">Processes</span></a>
+</li>
+</ol>
+<div class="toc-part">Concurrency</div><ol class="toc-list">
+<li data-slug="promises"><a href="/deep/promises/"><span class="n">21</span><span class="t">Promises, Locks and Awaiting</span></a>
+</li>
+<li data-slug="supplies"><a href="/deep/supplies/"><span class="n">22</span><span class="t">Supplies</span></a>
+</li>
+</ol>
+<div class="toc-part">Back matter</div><ol class="toc-list">
+<li data-slug="colophon"><a href="/deep/colophon/"><span class="n"></span><span class="t">Colophon</span></a>
+</li>
+</ol></nav>
+<main class="page">
+<article class="chapter" data-slug="files">
+<header class="chapter-head"><div class="kicker">Time and the outside world · Chapter 19</div><h1>Files and Paths</h1><p class="summary">An IO::Path is text until something touches the disk; from there each file operation either fails or throws by its own rule, and handles translate newlines, share one position and keep their own separators.</p><p class="meta">57 corners · 69 examples</p></header>
+<p>An <code>IO::Path</code> is a name for a file, not the file. Most of its methods work on the text of the name and never look at the disk: splitting, joining, climbing to the parent, changing the extension. The disk is consulted by the file tests, by the operations that create, copy and remove, and by reading and writing.</p>
+<p>Those operations report trouble in one of two ways. Most return a <code>Failure</code>, an undefined value that throws only when it is used without being tested (see <a href="/deep/exceptions/">Exceptions and Failures</a>). A few throw at once, and which ones do is not always what the documentation says. Reading has rules of its own: line endings are translated as the bytes are decoded, a handle has one position shared by every kind of read, and a handle's separators decide what a line is.</p>
+<p>Every example that touches the disk or reads standard input is marked "run it locally", because the editor in the page has no file system. Each one creates its files in the current directory and deletes them before it ends, so an empty directory is the place to try it. The examples never print a full path, which would differ from machine to machine: they print relative paths, base names or comparisons instead.</p>
+<section class="corner" id="io-keeps-the-path-exactly-as-written" data-tags=""><h2><a class="num" href="#io-keeps-the-path-exactly-as-written">19.1</a> <span class="t"><code>.IO</code> keeps the path exactly as written</span></h2>
+<p><code>.IO</code> on a string, or on any other <code>Cool</code> value, makes an <code>IO::Path</code>. It checks nothing and normalises nothing: the path keeps the text it was given, doubled slashes and <code>./</code> included, and <code>.Str</code> gives that text back. The gist puts it in quotes followed by <code>.IO</code>. <code>.raku</code> adds the rules of the platform, <code>:SPEC</code>, and the current directory at the moment the path was made, <code>:CWD</code>.</p>
+<figure class="ex ex-run" id="ex-19-1">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="s">&quot;docs//./notes.txt&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="mi">42</span>.<span class="nb">IO</span>.<span class="nb">Str</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">IO::Path</span>.<span class="nb">new</span>(<span class="n">basename</span> =&gt; <span class="s">&quot;notes.txt&quot;</span>, <span class="n">dirname</span> =&gt; <span class="s">&quot;/docs&quot;</span>).<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="n">IO::Path</span>.<span class="nb">new</span>(<span class="s">&quot;a/b.txt&quot;</span>, :<span class="n">CWD</span>(<span class="s">&quot;/home/ada&quot;</span>)).<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Path
+docs//./notes.txt
+"docs//./notes.txt".IO
+"42"
+/docs/notes.txt
+IO::Path.new("a/b.txt", :SPEC(IO::Spec::Unix), :CWD("/home/ada"))</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The named form of <code>IO::Path.new</code> joins a <code>dirname</code> and a <code>basename</code> with one separator. The <code>:CWD</code> a path remembers matters later, in <a href="/deep/files/#a-relative-path-remembers-the-directory-it-was-made-in">A relative path remembers the directory it was made in</a>.</p>
+</section>
+<section class="corner" id="an-empty-path-throws-at-once" data-tags="trap"><h2><a class="num" href="#an-empty-path-throws-at-once">19.2</a> <span class="t">An empty path throws at once</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>An empty string is not a path. <code>.IO</code> on <code>""</code> throws <code>X::AdHoc</code>, and it throws there and then: it does not return a Failure, nor a path that happens not to exist. A NUL character in the text throws <code>X::IO::Null</code>, and <code>Any</code> has no <code>.IO</code> method at all.</p>
+<figure class="ex ex-run" id="ex-19-2">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> (<span class="k">try</span> <span class="s">&quot;a\0b&quot;</span>.<span class="nb">IO</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">Any</span>.<span class="nb">IO</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="s">&quot;&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::IO::Null
+X::Method::NotFound</pre><div class="lbl err">and on standard error</div><pre class="err-text">Must specify a non-empty string as a path
+  in block &lt;unit&gt; at example.raku line 3
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A program that builds a path from an optional argument, as in <code>(@*ARGS[0] // "").IO.e</code>, therefore dies on the missing argument instead of reporting a file that does not exist.</p>
+</section>
+<section class="corner" id="dirname-and-basename-split-the-text-at-the-last-slash" data-tags=""><h2><a class="num" href="#dirname-and-basename-split-the-text-at-the-last-slash">19.3</a> <span class="t"><code>dirname</code> and <code>basename</code> split the text at the last slash</span></h2>
+<p>A path is split into its directory and its last part without looking at the disk. A trailing slash is removed first, so <code>/usr/lib/</code> has the basename <code>lib</code>. The root is its own dirname and basename, a name without a slash has the dirname <code>.</code>, and <code>.</code> and <code>..</code> are their own basenames.</p>
+<figure class="ex ex-run" id="ex-19-3">
+<div class="code"><pre class="src" data-src><span class="k">for</span> &lt;<span class="sr">/usr/</span><span class="n">lib</span>/ <span class="n">bar</span>.<span class="n">txt</span> / . .. <span class="n">a</span>/<span class="n">b</span>/<span class="n">c</span>.<span class="n">d</span>.<span class="n">e</span>&gt; -&gt; <span class="nv">$p</span> {
+    <span class="nb">say</span> <span class="s">&quot;$p: dirname {$p.IO.dirname}, basename {$p.IO.basename}&quot;</span>;
+}</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">/usr/lib/: dirname /usr, basename lib
+bar.txt: dirname ., basename bar.txt
+/: dirname /, basename /
+.: dirname ., basename .
+..: dirname ., basename ..
+a/b/c.d.e: dirname a/b, basename c.d.e</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.parts</code> returns the three parts together, the volume (always empty on Unix), the dirname and the basename, as an <code>IO::Path::Parts</code>. It answers a subscript by name, like a hash, and a subscript by position with a Pair. Iterating it gives the three Pairs in order:</p>
+<figure class="ex ex-run" id="ex-19-4">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$parts</span> = <span class="s">&quot;/a/b.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">parts</span>;
+<span class="nb">say</span> <span class="nv">$parts</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$parts</span><span class="s">&lt;dirname&gt;</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$parts</span><span class="s">&lt;basename&gt;</span>;
+<span class="nb">say</span> <span class="nv">$parts</span>[<span class="mi">2</span>].<span class="nb">raku</span>;
+.<span class="nb">raku</span>.<span class="nb">say</span> <span class="k">for</span> <span class="s">&quot;/a/b.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">parts</span>;
+<span class="nb">say</span> <span class="s">&quot;/a/b.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">volume</span>.<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Path::Parts
+/a b.txt
+:basename("b.txt")
+:volume("")
+:dirname("/a")
+:basename("b.txt")
+""</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>IO::Path::Parts
+/a b.txt
+:basename("b.txt")
+IO::Path::Parts.new("","/a","b.txt")
+""</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="cleanup-tidies-the-text-and-keeps-every" data-tags=""><h2><a class="num" href="#cleanup-tidies-the-text-and-keeps-every">19.4</a> <span class="t"><code>.cleanup</code> tidies the text and keeps every <code>..</code></span></h2>
+<p><code>.cleanup</code> returns a new path without doubled slashes, <code>/./</code>, a leading <code>./</code> or a trailing slash. It works on the text alone, and the only <code>..</code> it removes is one directly under the root, where <code>..</code> is the root itself. Any other <code>..</code> stays: when <code>a</code> is a symbolic link, <code>a/..</code> is not the current directory, and only the disk can tell.</p>
+<figure class="ex ex-run" id="ex-19-5">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;a//b/./c/&quot;</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;
+<span class="nb">put</span> <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;
+<span class="nb">put</span> <span class="s">&quot;/../a&quot;</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;
+<span class="nb">put</span> <span class="s">&quot;a/../b&quot;</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;
+<span class="nb">put</span> <span class="s">&quot;../a&quot;</span>.<span class="nb">IO</span>.<span class="n">cleanup</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">a/b/c
+a
+/a
+a/../b
+../a</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="absolute-is-canonical-a-and-a-are-the-same-path" data-tags=""><h2><a class="num" href="#absolute-is-canonical-a-and-a-are-the-same-path">19.5</a> <span class="t"><code>.absolute</code> is canonical: <code>./a</code> and <code>a/</code> are the same path</span></h2>
+<p>For a relative path, <code>.absolute</code> prepends the directory the path was made in, and it cleans the result up as <code>.cleanup</code> does. Two spellings of one path therefore have the same absolute form, while <code>x/../a</code> keeps its <code>..</code> and stays different from <code>a</code>. The result is a <code>Str</code>. With an argument, <code>.absolute</code> resolves against that directory instead of the current one.</p>
+<figure class="ex ex-local" id="ex-19-6">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span> <span class="n">eq</span> <span class="nv">$*CWD</span> ~ <span class="s">&quot;/a&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span> <span class="n">eq</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;a/&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span> <span class="n">eq</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;x/../a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span> <span class="n">eq</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;/a/./b//&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;/../etc&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;../a&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>(<span class="s">&quot;/x/y&quot;</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+True
+True
+False
+/a/b
+/etc
+/x/y/../a</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.relative</code> goes the other way. It gives the path relative to the current directory, or to the directory it is given, climbing with <code>..</code> as far as needed, and <code>.</code> for the directory itself:</p>
+<figure class="ex ex-local" id="ex-19-7">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="n">relative</span>(<span class="s">&quot;/a&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="n">relative</span>(<span class="s">&quot;/x/y&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="n">relative</span>(<span class="s">&quot;/a/b&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;./sub//f&quot;</span>.<span class="nb">IO</span>.<span class="n">relative</span>;
+<span class="nb">say</span> <span class="s">&quot;sub/f&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>.<span class="nb">IO</span>.<span class="n">relative</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">b
+../../a/b
+.
+sub/f
+sub/f</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="resolve-removes-only-where-the-directory-exists" data-tags=""><h2><a class="num" href="#resolve-removes-only-where-the-directory-exists">19.6</a> <span class="t"><code>.resolve</code> removes <code>..</code> only where the directory exists</span></h2>
+<p><code>.resolve</code> asks the file system. It follows symbolic links and removes an <code>x/..</code> where <code>x</code> is a real directory. Where <code>x</code> does not exist, <code>x/..</code> stays and the result is still a path. With <code>:completely</code>, a part of the path that cannot be resolved makes it return a Failure of type <code>X::IO::Resolve</code> instead; only the last part may be missing. The example prints each result relative to the current directory.</p>
+<figure class="ex ex-local" id="ex-19-8">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;x/../a&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">relative</span>;
+<span class="nb">mkdir</span> <span class="s">&quot;x&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;x/../a&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">relative</span>;
+<span class="nb">say</span> <span class="s">&quot;x/./../a/&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">relative</span>;
+<span class="n">rmdir</span> <span class="s">&quot;x&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="s">&quot;x/../a&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>(:<span class="n">completely</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">defined</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">x/../a
+a
+a
+False X::IO::Resolve</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-relative-path-remembers-the-directory-it-was-made-in" data-tags="trap"><h2><a class="num" href="#a-relative-path-remembers-the-directory-it-was-made-in">19.7</a> <span class="t">A relative path remembers the directory it was made in</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>An <code>IO::Path</code> keeps the value <code>$*CWD</code> had when the path was created, and every file operation on it resolves the relative text against that directory, even after <code>$*CWD</code> has changed. Its string remembers nothing: turned back into text, it names a file relative to wherever the program is now.</p>
+<figure class="ex ex-local" id="ex-19-9">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;here.txt&quot;</span>, <span class="s">&quot;found&quot;</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="s">&quot;here.txt&quot;</span>.<span class="nb">IO</span>;
+<span class="n">indir</span> <span class="s">&quot;sub&quot;</span>, {
+    <span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">slurp</span>;
+    <span class="nb">say</span> <span class="s">&quot;here.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+    <span class="nb">say</span> (<span class="k">try</span> <span class="nb">slurp</span> ~<span class="nv">$p</span>) // <span class="s">&quot;the string: &quot;</span> ~ <span class="nv">$!</span>.^<span class="n">name</span>;
+};
+<span class="nb">unlink</span> <span class="s">&quot;here.txt&quot;</span>;
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">found
+False
+the string: X::AdHoc</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Inside <code>indir</code> the path object still finds <code>here.txt</code> one level up, while a new <code>"here.txt".IO</code> and the plain string look in <code>sub</code>. A path passed to another program through <code>run</code> is passed as its string, and the program looks in <code>$*CWD</code>, not where the path was made.</p>
+</section>
+<section class="corner" id="parent-is-textual-so-a-has-the-parent-a" data-tags="trap"><h2><a class="num" href="#parent-is-textual-so-a-has-the-parent-a">19.8</a> <span class="t"><code>.parent</code> is textual, so <code>a/..</code> has the parent <code>a</code></span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.parent</code> removes the last part of the text. It never looks at the disk, and it drops a final <code>.</code> or <code>..</code> like any other name. Only a path made of nothing but <code>.</code> and <code>..</code> grows instead: the parent of <code>.</code> is <code>..</code>, and the parent of <code>..</code> is <code>../..</code>. A bare name's parent is <code>.</code>, and the root is its own parent. <code>.parent(n)</code> climbs n times, and a negative count throws <code>X::OutOfRange</code>.</p>
+<figure class="ex ex-run" id="ex-19-10">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;/usr/lib&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;/&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;notes.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;.&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;..&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;a/..&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>;
+<span class="nb">put</span> <span class="s">&quot;/a/b/c&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>(<span class="mi">2</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="s">&quot;/a&quot;</span>.<span class="nb">IO</span>.<span class="n">parent</span>(-<span class="mi">1</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">/usr
+/
+.
+..
+../..
+a
+/a
+X::OutOfRange</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>a/..</code> is the current directory, whose parent is <code>..</code>, but <code>.parent</code> drops the <code>..</code> and answers <code>a</code>. When a path may contain <code>..</code>, <code>.resolve</code> it first.</p>
+</section>
+<section class="corner" id="child-add-and-sibling-join-text-with-one-slash" data-tags=""><h2><a class="num" href="#child-add-and-sibling-join-text-with-one-slash">19.9</a> <span class="t"><code>.child</code>, <code>.add</code> and <code>.sibling</code> join text with one slash</span></h2>
+<p><code>.add</code> appends one or more parts with a single separator, whatever slashes are already there. A part that starts with <code>/</code> is still appended, not taken as an absolute path. <code>.child</code> does the same with one part, and it does not check it either: a <code>..</code> climbs out of the directory. <code>.sibling</code> replaces the basename. A path that is just <code>.</code> disappears from the result.</p>
+<figure class="ex ex-run" id="ex-19-11">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">child</span>(<span class="s">&quot;x&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a/&quot;</span>.<span class="nb">IO</span>.<span class="n">child</span>(<span class="s">&quot;x&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">add</span>(<span class="s">&quot;x&quot;</span>, <span class="s">&quot;y&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">add</span>(<span class="s">&quot;/x&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">child</span>(<span class="s">&quot;../x&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a/b&quot;</span>.<span class="nb">IO</span>.<span class="n">sibling</span>(<span class="s">&quot;z&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;.&quot;</span>.<span class="nb">IO</span>.<span class="n">child</span>(<span class="s">&quot;x&quot;</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">a/x
+a/x
+a/x/y
+a/x
+a/../x
+a/z
+x</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="extension-counts-dot-parts-from-the-right" data-tags=""><h2><a class="num" href="#extension-counts-dot-parts-from-the-right">19.10</a> <span class="t"><code>.extension</code> counts dot-parts from the right</span></h2>
+<p>The extension is the text after the last dot of the basename. <code>:parts(n)</code> asks for the last n dot-separated parts, and a Range for as many as there are within it. When there are fewer parts than asked for, the answer is the empty string. A dotfile such as <code>.bashrc</code> has everything after its dot as the extension, and a dot in a directory name does not count.</p>
+<figure class="ex ex-run" id="ex-19-12">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>;
+<span class="nb">say</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(:<span class="n">parts</span>(<span class="mi">2</span>));
+<span class="nb">say</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(:<span class="n">parts</span>(<span class="mi">1</span>.<span class="mf">.5</span>));
+<span class="nb">say</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(:<span class="n">parts</span>(<span class="mi">3</span>)).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;README&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;.bashrc&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>;
+<span class="nb">say</span> <span class="s">&quot;a.&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;v1.2/notes&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>.<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">gz
+tar.gz
+tar.gz
+""
+""
+bashrc
+""
+""</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="extension-with-a-value-makes-a-path-with-a-new-extension" data-tags=""><h2><a class="num" href="#extension-with-a-value-makes-a-path-with-a-new-extension">19.11</a> <span class="t"><code>.extension</code> with a value makes a path with a new extension</span></h2>
+<p>Given a string, <code>.extension</code> returns a new path with the extension replaced and the directory kept. An empty string removes the extension together with its dot. <code>:parts</code> says how many parts to replace, so <code>:parts(0)</code> appends; <code>:joiner</code> puts something other than a dot in front of the new extension.</p>
+<figure class="ex ex-run" id="ex-19-13">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;d/a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;txt&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;zip&quot;</span>, :<span class="n">parts</span>(<span class="mi">2</span>));
+<span class="nb">put</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;bak&quot;</span>, :<span class="n">parts</span>(<span class="mi">0</span>));
+<span class="nb">put</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;bak&quot;</span>, :<span class="n">joiner</span>(<span class="s">&quot;~&quot;</span>));
+<span class="nb">put</span> <span class="s">&quot;.bashrc&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;old&quot;</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">d/a.tar.txt
+a.zip
+a.tar
+a.tar.gz.bak
+a.tar~bak
+.old</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="an-explicit-parts1-does-not-add-a-missing-extension" data-tags="trap"><h2><a class="num" href="#an-explicit-parts1-does-not-add-a-missing-extension">19.12</a> <span class="t">An explicit <code>:parts(1)</code> does not add a missing extension</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>When the basename has fewer dot-parts than <code>:parts</code> asks for, a replacement changes nothing. The documentation gives 1 as the default number of parts, but without <code>:parts</code> the replacement behaves as if it were <code>0..1</code>: a name without an extension gets one appended. Writing <code>:parts(1)</code> out leaves such a name as it was.</p>
+<figure class="ex ex-run" id="ex-19-14">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;README&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;md&quot;</span>);
+<span class="nb">put</span> <span class="s">&quot;README&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;md&quot;</span>, :<span class="n">parts</span>(<span class="mi">1</span>));
+<span class="nb">put</span> <span class="s">&quot;README&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;md&quot;</span>, :<span class="n">parts</span>(<span class="mi">0</span>.<span class="mf">.1</span>));
+<span class="nb">put</span> <span class="s">&quot;a.tar.gz&quot;</span>.<span class="nb">IO</span>.<span class="n">extension</span>(<span class="s">&quot;x&quot;</span>, :<span class="n">parts</span>(<span class="mi">3</span>));</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">README.md
+README
+README.md
+a.tar.gz</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="succ-on-a-path-increments-the-text-before-its-first-dot" data-tags="trap"><h2><a class="num" href="#succ-on-a-path-increments-the-text-before-its-first-dot">19.13</a> <span class="t"><code>.succ</code> on a path increments the text before its first dot</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.succ</code> and <code>.pred</code> on a path apply the string versions to the whole path and make a path of the result. String <code>succ</code> leaves everything from the first dot onwards alone, taking it for an extension (see <a href="/deep/strings/#succ-increments-the-last-run-of-letters-or-digits">Strings</a>), so <code>file1.txt</code> becomes <code>file2.txt</code>. In a path, the first dot may belong to a directory, and then the directory's name is incremented instead of the file's. <code>.Numeric</code> numifies the basename.</p>
+<figure class="ex ex-run" id="ex-19-15">
+<div class="code"><pre class="src" data-src><span class="nb">put</span> <span class="s">&quot;file1.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">succ</span>;
+<span class="nb">put</span> <span class="s">&quot;file1.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">pred</span>;
+<span class="nb">put</span> <span class="s">&quot;img/photo9.jpg&quot;</span>.<span class="nb">IO</span>.<span class="n">succ</span>;
+<span class="nb">put</span> <span class="s">&quot;v1.2/notes&quot;</span>.<span class="nb">IO</span>.<span class="n">succ</span>;
+<span class="nb">say</span> <span class="s">&quot;data/42&quot;</span>.<span class="nb">IO</span> + <span class="mi">1</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">file2.txt
+file0.txt
+img/photp0.jpg
+v2.2/notes
+43</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>file2.txt
+file0.txt
+img/photp0.jpg
+v1.2/notet</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p><code>photo9</code> carries into <code>photp0</code>, as the string would.</p>
+</section>
+<section class="corner" id="a-smartmatch-with-a-path-compares-paths-with-a-string-text" data-tags="trap"><h2><a class="num" href="#a-smartmatch-with-a-path-compares-paths-with-a-string-text">19.14</a> <span class="t">A smartmatch with a path compares paths; with a string, text</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>With an <code>IO::Path</code> on the right, <code>~~</code> compares the two canonical absolute paths, so different spellings of one path match; a string on the left is made into a path first. With a string on the right, the smartmatch is the string's: the path on the left is compared as text, and <code>./a</code> does not match <code>a</code>. A <code>when</code> with a string literal compares text in the same way.</p>
+<figure class="ex ex-run" id="ex-19-16">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span> ~~ <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;a/&quot;</span>.<span class="nb">IO</span> ~~ <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;/../etc&quot;</span>.<span class="nb">IO</span> ~~ <span class="s">&quot;/etc&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;x/../a&quot;</span>.<span class="nb">IO</span> ~~ <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span> ~~ <span class="s">&quot;a&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;./a&quot;</span> ~~ <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+True
+True
+False
+False
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="two-paths-with-the-same-text-are-two-values" data-tags="trap"><h2><a class="num" href="#two-paths-with-the-same-text-are-two-values">19.15</a> <span class="t">Two paths with the same text are two values</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>eqv</code> compares the text and the directory each path was made in, so <code>./a</code> and <code>a</code> differ. <code>===</code> compares identity, and every <code>.IO</code> makes a new object: two paths are never <code>===</code>, however equal their text. <code>unique</code> and <code>Set</code> compare by identity, so they keep both copies of one path. A <code>:with</code> or <code>:as</code> function makes <code>unique</code> compare values again.</p>
+<figure class="ex ex-run" id="ex-19-17">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span> <span class="n">eqv</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span> <span class="n">eqv</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span> === <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> (<span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>, <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>).<span class="nb">unique</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="n">set</span>(<span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>, <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> (<span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>, <span class="s">&quot;./a&quot;</span>.<span class="nb">IO</span>).<span class="nb">unique</span>(<span class="k">with</span> =&gt; &amp;[~~]).<span class="nb">elems</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+False
+False
+2
+2
+1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>True
+False
+True
+1
+1
+1</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="e-is-a-bool-the-other-tests-of-a-missing-file-fail" data-tags=""><h2><a class="num" href="#e-is-a-bool-the-other-tests-of-a-missing-file-fail">19.16</a> <span class="t"><code>.e</code> is a Bool; the other tests of a missing file fail</span></h2>
+<p><code>.e</code> answers with a plain <code>True</code> or <code>False</code>. Every other test, <code>.f</code>, <code>.d</code>, <code>.s</code>, <code>.z</code>, <code>.l</code>, <code>.r</code>, <code>.w</code>, <code>.x</code>, <code>.rw</code> and <code>.rwx</code>, and every other query about the file, <code>.modified</code>, <code>.accessed</code>, <code>.changed</code>, <code>.mode</code>, <code>.user</code>, <code>.group</code> and <code>.inode</code>, returns a Failure for a path that does not exist. Its exception is <code>X::IO::DoesNotExist</code>: <code>.trying</code> names the test, and <code>.path</code> holds the absolute path.</p>
+<figure class="ex ex-local" id="ex-19-18">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$m</span> = <span class="s">&quot;missing.txt&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">e</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nv">$m</span>.<span class="n">d</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$d</span>.<span class="nb">so</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$d</span>.<span class="n">exception</span>.<span class="n">trying</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">exception</span>.<span class="n">path</span>.<span class="nb">IO</span>.<span class="n">basename</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">s</span> // <span class="mi">0</span>;
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">f</span> ?? <span class="s">&quot;a file&quot;</span> !! <span class="s">&quot;not a file&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False
+Failure False
+X::IO::DoesNotExist d
+missing.txt
+0
+not a file</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A Failure is false and undefined, so <code>if $path.f</code> and <code>$path.s // 0</code> do the expected thing. Only code that uses the answer without testing it, such as <code>$path.s + 1</code>, meets the exception.</p>
+</section>
+<section class="corner" id="s-is-a-size-mode-an-intstr-and-the-times-are-instants" data-tags=""><h2><a class="num" href="#s-is-a-size-mode-an-intstr-and-the-times-are-instants">19.17</a> <span class="t"><code>.s</code> is a size, <code>.mode</code> an IntStr, and the times are Instants</span></h2>
+<p>On an existing file the tests answer Bools, <code>.s</code> the size in bytes, and <code>.z</code> whether that size is zero. <code>.mode</code> is an <code>IntStr</code>: a number whose string is four octal digits, such as <code>0644</code>. <code>.modified</code>, <code>.accessed</code> and <code>.changed</code> are <code>Instant</code>s (see <a href="/deep/dates/">Dates and Times</a>).</p>
+<figure class="ex ex-local" id="ex-19-19">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;data.txt&quot;</span>, <span class="s">&quot;abc&quot;</span>;
+<span class="k">my</span> <span class="nv">$f</span> = <span class="s">&quot;data.txt&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">f</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">d</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">s</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">z</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">r</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">w</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">x</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">mode</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">mode</span>.<span class="nb">Str</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">modified</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">modified</span> &lt;= <span class="nb">now</span>;
+<span class="nb">unlink</span> <span class="s">&quot;data.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True False 3 False
+True True False
+IntStr 4
+Instant True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="the-standard-handles-paths-are-iospecial-values" data-tags=""><h2><a class="num" href="#the-standard-handles-paths-are-iospecial-values">19.18</a> <span class="t">The standard handles' paths are IO::Special values</span></h2>
+<p><code>$*IN</code>, <code>$*OUT</code> and <code>$*ERR</code> are ordinary <code>IO::Handle</code>s, but their <code>.path</code> is an <code>IO::Special</code> named <code>&lt;STDIN&gt;</code>, <code>&lt;STDOUT&gt;</code> or <code>&lt;STDERR&gt;</code>. It exists, is neither a file nor a directory, has size 0, and is readable for standard input and writable for the other two. It has no mode, and its timestamps are the <code>Instant</code> type object. Two <code>IO::Special</code>s with the same name are <code>===</code>.</p>
+<figure class="ex ex-local" id="ex-19-20">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$in</span> = <span class="nv">$*IN</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="nv">$in</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="nv">$in</span>.<span class="n">e</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="n">f</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="n">d</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="n">s</span>;
+<span class="nb">say</span> <span class="nv">$in</span>.<span class="n">r</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="n">w</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*OUT</span>.<span class="n">path</span>.<span class="n">w</span>;
+<span class="nb">say</span> <span class="nv">$in</span>.<span class="n">mode</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$in</span>.<span class="n">modified</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$in</span> === <span class="n">IO::Special</span>.<span class="nb">new</span>(<span class="s">&quot;&lt;STDIN&gt;&quot;</span>);
+<span class="nb">say</span> <span class="nv">$*OUT</span>.<span class="nb">gist</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Special &lt;STDIN&gt;
+True False False 0
+True False True
+Nil Instant
+True
+IO::Handle&lt;IO::Special.new("&lt;STDOUT&gt;")&gt;(opened)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The handles start opened, in UTF-8, with chomping on, <code>\n</code> and <code>\r\n</code> as the line separators, <code>\n</code> as the line ending they write, and the native descriptors 0, 1 and 2. <code>.t</code> says whether a handle is a terminal:</p>
+<figure class="ex ex-local" id="ex-19-21">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">opened</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*IN</span>.<span class="n">encoding</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*IN</span>.<span class="n">chomp</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">nl-in</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*OUT</span>.<span class="n">nl-out</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*OUT</span>.<span class="n">t</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">native-descriptor</span>, <span class="nv">$*OUT</span>.<span class="n">native-descriptor</span>, <span class="nv">$*ERR</span>.<span class="n">native-descriptor</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True utf8 True
+$["\n", "\r\n"]
+"\n"
+False
+012</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="mkdir-creates-the-parents-and-passes-over-an-existing-directory" data-tags=""><h2><a class="num" href="#mkdir-creates-the-parents-and-passes-over-an-existing-directory">19.19</a> <span class="t"><code>mkdir</code> creates the parents and passes over an existing directory</span></h2>
+<p><code>mkdir</code> returns the path, creating every missing directory on the way. On a directory that already exists it does nothing and succeeds, and the mode it is given is ignored. Where a file is in the way, it returns a Failure of type <code>X::IO::Mkdir</code>, whose <code>.path</code> names the directory it could not make.</p>
+<figure class="ex ex-local" id="ex-19-22">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;d/x/y&quot;</span>.<span class="nb">IO</span>.<span class="nb">mkdir</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">&quot;d/x/y&quot;</span>.<span class="nb">IO</span>.<span class="n">d</span>;
+<span class="k">my</span> <span class="nv">$mode</span> = <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="n">mode</span>;
+<span class="nb">say</span> <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="nb">mkdir</span>(<span class="mo">0o700</span>) ?? <span class="s">&quot;no-op&quot;</span> !! <span class="s">&quot;failed&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="n">mode</span> <span class="n">eq</span> <span class="nv">$mode</span>;
+<span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="s">&quot;f&quot;</span>.<span class="nb">IO</span>.<span class="nb">mkdir</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.<span class="n">path</span>.<span class="nb">IO</span>.<span class="n">basename</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>;
+<span class="n">rmdir</span> <span class="s">&quot;d/x/y&quot;</span>, <span class="s">&quot;d/x&quot;</span>, <span class="s">&quot;d&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Path
+True
+no-op
+True
+False X::IO::Mkdir f</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="unlink-of-a-missing-file-is-true" data-tags="trap"><h2><a class="num" href="#unlink-of-a-missing-file-is-true">19.20</a> <span class="t"><code>unlink</code> of a missing file is True</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>unlink</code> succeeds when the file is gone afterwards, so a path that never existed answers <code>True</code>. A directory cannot be unlinked: the Failure is <code>X::IO::Unlink</code>. <code>rmdir</code> is stricter. It fails with <code>X::IO::Rmdir</code> on a directory that is not empty, on a path that does not exist, and on a file.</p>
+<figure class="ex ex-local" id="ex-19-23">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;never-was.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">unlink</span>;
+<span class="nb">mkdir</span> <span class="s">&quot;d&quot;</span>;
+<span class="k">my</span> <span class="nv">$u</span> = <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="nb">unlink</span>;
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$u</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">spurt</span> <span class="s">&quot;d/f&quot;</span>, <span class="s">&quot;x&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="n">rmdir</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">unlink</span> <span class="s">&quot;d/f&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="n">rmdir</span>;
+<span class="k">my</span> <span class="nv">$again</span> = <span class="s">&quot;d&quot;</span>.<span class="nb">IO</span>.<span class="n">rmdir</span>;
+<span class="nb">say</span> <span class="nv">$again</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$again</span>.<span class="n">exception</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+False X::IO::Unlink
+False X::IO::Rmdir
+True
+False X::IO::Rmdir</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="the-sub-forms-of-unlink-rmdir-and-chmod-return-what-worked" data-tags=""><h2><a class="num" href="#the-sub-forms-of-unlink-rmdir-and-chmod-return-what-worked">19.21</a> <span class="t">The sub forms of <code>unlink</code>, <code>rmdir</code> and <code>chmod</code> return what worked</span></h2>
+<p>As subs, <code>unlink</code>, <code>rmdir</code> and <code>chmod</code> take a list of names and return an Array of the names they succeeded on; a failure only leaves its name out. <code>unlink</code> lists <code>never-was</code>, since removing a missing file succeeds. <code>rmdir</code> leaves out the file and the missing name, <code>chmod</code> the missing name. With no names at all, <code>unlink</code> and <code>rmdir</code> throw <code>X::NoZeroArgMeaning</code>.</p>
+<figure class="ex ex-local" id="ex-19-24">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="nv">$_</span>, <span class="s">&quot;&quot;</span> <span class="k">for</span> &lt;<span class="n">a</span> <span class="n">b</span> <span class="n">f</span>&gt;;
+<span class="nb">mkdir</span> <span class="s">&quot;d&quot;</span>;
+<span class="nb">say</span> <span class="nb">unlink</span>(<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>, <span class="s">&quot;never-was&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">rmdir</span>(<span class="s">&quot;f&quot;</span>, <span class="s">&quot;d&quot;</span>, <span class="s">&quot;never-was&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">chmod</span>(<span class="mo">0o600</span>, <span class="s">&quot;f&quot;</span>, <span class="s">&quot;never-was&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;f&quot;</span>.<span class="nb">IO</span>.<span class="n">mode</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">unlink</span>()) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">["a", "b", "never-was"]
+["d"]
+["f"]
+0600
+X::NoZeroArgMeaning</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="copy-rename-and-move-give-the-reason-in-os-error" data-tags=""><h2><a class="num" href="#copy-rename-and-move-give-the-reason-in-os-error">19.22</a> <span class="t"><code>copy</code>, <code>rename</code> and <code>move</code> give the reason in <code>.os-error</code></span></h2>
+<p>The three methods return <code>True</code>, or a Failure whose exception, <code>X::IO::Copy</code>, <code>X::IO::Rename</code> or <code>X::IO::Move</code>, carries the reason in <code>.os-error</code>. A copy onto the source itself is refused, and so is overwriting with <code>:createonly</code>. When the source is missing, the target is not created.</p>
+<figure class="ex ex-local" id="ex-19-25">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;src&quot;</span>, <span class="s">&quot;text&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;src&quot;</span>.<span class="nb">IO</span>.<span class="n">copy</span>(<span class="s">&quot;dst&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;dst&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="k">for</span> <span class="s">&quot;src&quot;</span>.<span class="nb">IO</span>.<span class="n">copy</span>(<span class="s">&quot;src&quot;</span>),
+    <span class="s">&quot;src&quot;</span>.<span class="nb">IO</span>.<span class="n">copy</span>(<span class="s">&quot;dst&quot;</span>, :<span class="n">createonly</span>),
+    <span class="s">&quot;missing&quot;</span>.<span class="nb">IO</span>.<span class="n">copy</span>(<span class="s">&quot;new&quot;</span>) -&gt; <span class="nv">$r</span> {
+    <span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.<span class="n">os-error</span>;
+}
+<span class="nb">say</span> <span class="s">&quot;new&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="nb">unlink</span> <span class="s">&quot;src&quot;</span>, <span class="s">&quot;dst&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+text
+False X::IO::Copy: source and target are the same
+False X::IO::Copy: :createonly specified and destination exists
+False X::IO::Copy: Failed to copy file: no such file or directory
+False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>rename</code> overwrites an existing target unless it is given <code>:createonly</code>. <code>move</code> is a copy followed by an unlink of the source. Moving a file onto itself fails and leaves the file as it was:</p>
+<figure class="ex ex-local" id="ex-19-26">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;a&quot;</span>, <span class="s">&quot;A&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;b&quot;</span>, <span class="s">&quot;B&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">rename</span>(<span class="s">&quot;c&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;a&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;c&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="s">&quot;c&quot;</span>.<span class="nb">IO</span>.<span class="n">rename</span>(<span class="s">&quot;b&quot;</span>, :<span class="n">createonly</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.<span class="n">os-error</span>;
+<span class="nb">say</span> <span class="s">&quot;c&quot;</span>.<span class="nb">IO</span>.<span class="n">move</span>(<span class="s">&quot;m&quot;</span>);
+<span class="k">my</span> <span class="nv">$self</span> = <span class="s">&quot;m&quot;</span>.<span class="nb">IO</span>.<span class="n">move</span>(<span class="s">&quot;m&quot;</span>);
+<span class="nb">say</span> <span class="nv">$self</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$self</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$self</span>.<span class="n">exception</span>.<span class="n">os-error</span>;
+<span class="nb">say</span> <span class="s">&quot;m&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="nb">say</span> <span class="s">&quot;b&quot;</span>.<span class="nb">IO</span>.<span class="n">rename</span>(<span class="s">&quot;m&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;m&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="nb">unlink</span> <span class="s">&quot;m&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+False True
+False :createonly specified and destination exists
+True
+False X::IO::Move: source and target are the same
+A
+True
+B</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-second-symlink-fails-a-dangling-one-does-not" data-tags=""><h2><a class="num" href="#a-second-symlink-fails-a-dangling-one-does-not">19.23</a> <span class="t">A second <code>symlink</code> fails; a dangling one does not</span></h2>
+<p><code>symlink</code> and <code>link</code> return <code>True</code>, or a Failure of type <code>X::IO::Symlink</code> or <code>X::IO::Link</code>. Both fail when the new name is taken. A symbolic link to a target that does not exist is made all the same: it is a dangling link, which answers <code>.l</code> but not <code>.e</code>. A hard link needs its target.</p>
+<figure class="ex ex-local" id="ex-19-27">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;target&quot;</span>, <span class="s">&quot;contents&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;target&quot;</span>.<span class="nb">IO</span>.<span class="n">symlink</span>(<span class="s">&quot;link&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;link&quot;</span>.<span class="nb">IO</span>.<span class="n">l</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;link&quot;</span>.<span class="nb">IO</span>.<span class="n">f</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;link&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="k">my</span> <span class="nv">$again</span> = <span class="s">&quot;target&quot;</span>.<span class="nb">IO</span>.<span class="n">symlink</span>(<span class="s">&quot;link&quot;</span>);
+<span class="nb">say</span> <span class="nv">$again</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$again</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="s">&quot;gone&quot;</span>.<span class="nb">IO</span>.<span class="n">symlink</span>(<span class="s">&quot;dangling&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;dangling&quot;</span>.<span class="nb">IO</span>.<span class="n">l</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;dangling&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="nb">say</span> <span class="s">&quot;target&quot;</span>.<span class="nb">IO</span>.<span class="n">link</span>(<span class="s">&quot;hard&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;hard&quot;</span>.<span class="nb">IO</span>.<span class="n">l</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;hard&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="k">my</span> <span class="nv">$l</span> = <span class="s">&quot;gone&quot;</span>.<span class="nb">IO</span>.<span class="n">link</span>(<span class="s">&quot;hard2&quot;</span>);
+<span class="nb">say</span> <span class="nv">$l</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$l</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">unlink</span> <span class="s">&quot;target&quot;</span>, <span class="s">&quot;link&quot;</span>, <span class="s">&quot;dangling&quot;</span>, <span class="s">&quot;hard&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+True True contents
+False X::IO::Symlink
+True
+True False
+True
+False contents
+False X::IO::Link</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A symbolic link reads through to its target, so <code>.f</code> and <code>.slurp</code> answer for the target; a hard link is the file itself and is not <code>.l</code>.</p>
+</section>
+<section class="corner" id="symlink-stores-an-absolute-target-unless-told-otherwise" data-tags=""><h2><a class="num" href="#symlink-stores-an-absolute-target-unless-told-otherwise">19.24</a> <span class="t"><code>symlink</code> stores an absolute target unless told otherwise</span></h2>
+<p><code>$target.symlink($name)</code> makes the target absolute before it stores it, so the link still points at the same file when it is moved elsewhere. <code>:!absolute</code> stores the target as written, relative to the link's own directory. <code>.readlink</code> returns the stored target, and <code>.resolve</code> follows the link to the file:</p>
+<figure class="ex ex-local" id="ex-19-28">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;target&quot;</span>, <span class="s">&quot;x&quot;</span>;
+<span class="s">&quot;target&quot;</span>.<span class="nb">IO</span>.<span class="n">symlink</span>(<span class="s">&quot;abs&quot;</span>);
+<span class="s">&quot;target&quot;</span>.<span class="nb">IO</span>.<span class="n">symlink</span>(<span class="s">&quot;rel&quot;</span>, :!<span class="n">absolute</span>);
+<span class="nb">say</span> <span class="s">&quot;rel&quot;</span>.<span class="nb">IO</span>.<span class="n">readlink</span>.<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">&quot;abs&quot;</span>.<span class="nb">IO</span>.<span class="n">readlink</span>.<span class="n">is-absolute</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;abs&quot;</span>.<span class="nb">IO</span>.<span class="n">readlink</span>.<span class="n">basename</span>;
+<span class="nb">say</span> <span class="s">&quot;abs&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">relative</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;rel&quot;</span>.<span class="nb">IO</span>.<span class="n">resolve</span>.<span class="n">relative</span>;
+<span class="nb">say</span> <span class="s">&quot;abs&quot;</span>.<span class="nb">IO</span>.<span class="n">basename</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;abs&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>;
+<span class="nb">unlink</span> <span class="s">&quot;target&quot;</span>, <span class="s">&quot;abs&quot;</span>, <span class="s">&quot;rel&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">target
+True target
+target target
+abs x</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="dir-lists-paths-that-start-with-the-directory-as-written" data-tags=""><h2><a class="num" href="#dir-lists-paths-that-start-with-the-directory-as-written">19.25</a> <span class="t"><code>dir</code> lists paths that start with the directory as written</span></h2>
+<p><code>dir</code> returns a Seq of <code>IO::Path</code>s. Each entry is the directory as it was written joined to the entry's name, so <code>./box</code> gives <code>./box/a.raku</code>; with no argument, inside the directory, the entries are bare names. <code>.</code> and <code>..</code> are left out and hidden files are included. The order is the file system's, which is why the examples sort. A missing directory throws <code>X::IO::Dir</code> at once, and <code>dir-with-entries</code> answers whether a directory has any entries.</p>
+<figure class="ex ex-local" id="ex-19-29">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;box/sub&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;box/$_&quot;</span>, <span class="s">&quot;&quot;</span> <span class="k">for</span> &lt;<span class="n">b</span>.<span class="n">txt</span> <span class="n">a</span>.<span class="nb">raku</span> .<span class="n">hidden</span>&gt;;
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box/&quot;</span>).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;./box&quot;</span>).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">indir</span>(<span class="s">&quot;box&quot;</span>, { <span class="n">dir</span>.<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>) });
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>).<span class="nb">head</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;box/sub&quot;</span>.<span class="nb">IO</span>.<span class="n">dir-with-entries</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">dir</span>(<span class="s">&quot;missing&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">unlink</span> <span class="s">&quot;box/$_&quot;</span> <span class="k">for</span> &lt;<span class="n">b</span>.<span class="n">txt</span> <span class="n">a</span>.<span class="nb">raku</span> .<span class="n">hidden</span>&gt;;
+<span class="n">rmdir</span> <span class="s">&quot;box/sub&quot;</span>, <span class="s">&quot;box&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(box/.hidden box/a.raku box/b.txt box/sub)
+(box/.hidden box/a.raku box/b.txt box/sub)
+(./box/.hidden ./box/a.raku ./box/b.txt ./box/sub)
+(.hidden a.raku b.txt sub)
+IO::Path False
+X::IO::Dir</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="dirs-test-sees-the-bare-name-and-can-let-and-in" data-tags="trap"><h2><a class="num" href="#dirs-test-sees-the-bare-name-and-can-let-and-in">19.26</a> <span class="t"><code>dir</code>'s test sees the bare name, and can let <code>.</code> and <code>..</code> in</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>dir</code> smartmatches its <code>:test</code> against each entry's name as a string, before the directory is joined to it. A regex or a string method works as expected. A test that asks the file system, such as <code>.IO.d</code>, examines the name relative to the current directory, not to the one being listed. The default test is what hides <code>.</code> and <code>..</code>, so a test of one's own lets them through whenever it accepts them.</p>
+<figure class="ex ex-local" id="ex-19-30">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;box/sub&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;box/$_&quot;</span>, <span class="s">&quot;&quot;</span> <span class="k">for</span> &lt;<span class="n">b</span>.<span class="n">txt</span> <span class="n">a</span>.<span class="nb">raku</span> .<span class="n">hidden</span>&gt;;
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>, <span class="n">test</span> =&gt; <span class="sr">/'.raku' $/</span>).<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>, <span class="n">test</span> =&gt; *.<span class="n">starts-with</span>(<span class="s">&quot;s&quot;</span>)).<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>, <span class="n">test</span> =&gt; { .<span class="nb">IO</span>.<span class="n">d</span> }).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>, <span class="n">test</span> =&gt; { <span class="s">&quot;box/$_&quot;</span>.<span class="nb">IO</span>.<span class="n">d</span> }).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">say</span> <span class="n">dir</span>(<span class="s">&quot;box&quot;</span>, <span class="n">test</span> =&gt; <span class="sr">/^ '.'/</span>).<span class="nb">sort</span>.<span class="nb">map</span>(*.<span class="nb">Str</span>);
+<span class="nb">unlink</span> <span class="s">&quot;box/$_&quot;</span> <span class="k">for</span> &lt;<span class="n">b</span>.<span class="n">txt</span> <span class="n">a</span>.<span class="nb">raku</span> .<span class="n">hidden</span>&gt;;
+<span class="n">rmdir</span> <span class="s">&quot;box/sub&quot;</span>, <span class="s">&quot;box&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(box/a.raku)
+(box/sub)
+(box/. box/..)
+(box/. box/.. box/sub)
+(box/. box/.. box/.hidden)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The third line found <code>.</code> and <code>..</code>, which are directories wherever they are looked up, but not <code>sub</code>, which is a directory only inside <code>box</code>.</p>
+</section>
+<section class="corner" id="spurt-writes-replaces-or-appends-and-returns-true" data-tags=""><h2><a class="num" href="#spurt-writes-replaces-or-appends-and-returns-true">19.27</a> <span class="t"><code>spurt</code> writes, replaces or appends, and returns True</span></h2>
+<p><code>spurt</code> creates or overwrites a file and returns <code>True</code>. With <code>:append</code> it adds to the end, and with <code>:createonly</code> it refuses an existing file with a Failure of type <code>X::AdHoc</code>. Without any data it creates an empty file. A number is written as its string and a <code>Blob</code> as its bytes. <code>slurp</code> reads the whole file back as a Str, or as a <code>Buf[uint8]</code> with <code>:bin</code>.</p>
+<figure class="ex ex-local" id="ex-19-31">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">spurt</span>(<span class="s">&quot;f&quot;</span>, <span class="s">&quot;x&quot;</span>);
+<span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;y&quot;</span>, :<span class="nb">append</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;f&quot;</span>);
+<span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;z&quot;</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;f&quot;</span>);
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nb">spurt</span>(<span class="s">&quot;f&quot;</span>, <span class="s">&quot;q&quot;</span>, :<span class="n">createonly</span>);
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">exception</span>.<span class="n">message</span>.<span class="n">ends-with</span>(<span class="s">&quot;File exists&quot;</span>);
+<span class="s">&quot;empty&quot;</span>.<span class="nb">IO</span>.<span class="nb">spurt</span>;
+<span class="nb">say</span> <span class="s">&quot;empty&quot;</span>.<span class="nb">IO</span>.<span class="n">s</span>;
+<span class="nb">spurt</span> <span class="s">&quot;n&quot;</span>, <span class="mi">42</span>;
+<span class="nb">spurt</span> <span class="s">&quot;b&quot;</span>, <span class="nb">Blob</span>.<span class="nb">new</span>(<span class="mi">65</span>, <span class="mi">66</span>);
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;n&quot;</span>), <span class="s">&quot; &quot;</span>, <span class="nb">slurp</span>(<span class="s">&quot;b&quot;</span>);
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;b&quot;</span>, :<span class="n">bin</span>).<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;empty&quot;</span>, <span class="s">&quot;n&quot;</span>, <span class="s">&quot;b&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+xy
+z
+False X::AdHoc
+True
+0
+42 AB
+Buf[uint8].new(65,66)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="slurp-of-a-missing-file-throws-while-open-fails" data-tags="quirk"><h2><a class="num" href="#slurp-of-a-missing-file-throws-while-open-fails">19.28</a> <span class="t"><code>slurp</code> of a missing file throws, while <code>open</code> fails</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>open</code> on a missing file returns a Failure, like the other operations in this chapter. <code>slurp</code> does not: on a missing file or on a directory it throws <code>X::AdHoc</code> at once, as a sub and as a method, although the documentation says it fails. The path methods that read a whole file on their own, such as <code>.lines</code> and <code>.words</code>, throw in the same way.</p>
+<figure class="ex ex-local" id="ex-19-32">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$h</span> = <span class="nb">open</span>(<span class="s">&quot;missing.txt&quot;</span>);
+<span class="nb">say</span> <span class="s">&quot;open: &quot;</span>, <span class="nv">$h</span>.^<span class="n">name</span>, <span class="s">&quot;, defined: &quot;</span>, <span class="nv">$h</span>.<span class="nb">defined</span>;
+{
+    <span class="k">my</span> <span class="nv">$s</span> = <span class="nb">slurp</span>(<span class="s">&quot;missing.txt&quot;</span>);
+    <span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> <span class="s">&quot;slurp threw &quot;</span>, .^<span class="n">name</span> } }
+}
+{
+    <span class="k">my</span> <span class="nv">@l</span> = <span class="s">&quot;missing.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>;
+    <span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> <span class="s">&quot;lines threw &quot;</span>, .^<span class="n">name</span> } }
+}</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">open: Failure, defined: False
+slurp threw X::AdHoc
+lines threw X::AdHoc</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A default after <code>//</code>, as in <code>$path.slurp // ""</code>, is therefore never reached. Test <code>.e</code> first, or wrap the read in <code>try</code>.</p>
+</section>
+<section class="corner" id="reading-turns-rn-into-n" data-tags=""><h2><a class="num" href="#reading-turns-rn-into-n">19.29</a> <span class="t">Reading turns <code>\r\n</code> into <code>\n</code></span></h2>
+<p>Text read from a file has every <code>\r\n</code> translated into <code>\n</code>, while a lone <code>\r</code> is kept. The bytes on the disk are not touched, as <code>:bin</code> shows, and nothing is translated on the way out. <code>IO::Path.slurp</code> keeps the <code>\r\n</code> when it is given <code>:!translate-nl</code>; <code>open</code> accepts the same option and ignores it.</p>
+<figure class="ex ex-local" id="ex-19-33">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;crlf.txt&quot;</span>, <span class="s">&quot;a\r\nb\rc\n&quot;</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;crlf.txt&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;crlf.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="s">&quot;crlf.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">slurp</span>(:!<span class="n">translate-nl</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;crlf.txt&quot;</span>, :!<span class="n">translate-nl</span>).<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;crlf.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"a\nb\rc\n"
+7
+"a\r\nb\rc\n"
+"a\nb\rc\n"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="lines-splits-on-nl-in-and-chomp-keeps-the-separators" data-tags=""><h2><a class="num" href="#lines-splits-on-nl-in-and-chomp-keeps-the-separators">19.30</a> <span class="t"><code>.lines</code> splits on <code>nl-in</code>, and <code>:!chomp</code> keeps the separators</span></h2>
+<p><code>.lines</code> cuts the text at each of the separators in <code>nl-in</code>, <code>\n</code> and <code>\r\n</code> by default, and removes the separator from each line (it <em>chomps</em>) unless it is given <code>:!chomp</code>. A lone <code>\r</code> does not end a line. <code>:nl-in</code> names other separators, one string or several, and then <code>\n</code> is no longer one of them.</p>
+<figure class="ex ex-local" id="ex-19-34">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;crlf.txt&quot;</span>, <span class="s">&quot;a\r\nb\rc\n&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;crlf.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;crlf.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>(:!<span class="n">chomp</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;crlf.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>(:<span class="n">nl-in</span>(<span class="s">&quot;\r&quot;</span>)).<span class="nb">raku</span>;
+<span class="nb">spurt</span> <span class="s">&quot;list.txt&quot;</span>, <span class="s">&quot;a;b,c\nd&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;list.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>(:<span class="n">nl-in</span>(<span class="s">&quot;;&quot;</span>, <span class="s">&quot;,&quot;</span>)).<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;crlf.txt&quot;</span>, <span class="s">&quot;list.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("a", "b\rc").Seq
+("a\n", "b\rc\n").Seq
+("a\nb", "c\n").Seq
+("a", "b", "c\nd").Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>With <code>:nl-in("\r")</code> the <code>\r\n</code> has already become <code>\n</code> by the time the text is split, so the one cut is at the lone <code>\r</code>, and the <code>\n</code> at the end stays.</p>
+</section>
+<section class="corner" id="words-comb-and-split-on-a-path-read-the-file" data-tags="trap"><h2><a class="num" href="#words-comb-and-split-on-a-path-read-the-file">19.31</a> <span class="t"><code>.words</code>, <code>.comb</code> and <code>.split</code> on a path read the file</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>IO::Path</code> has its own <code>.lines</code>, <code>.words</code>, <code>.comb</code>, <code>.split</code> and <code>.slurp</code>, and these read the file. The string methods it does not define itself work on the path's name, because a path is <code>Cool</code> and turns into its string: <code>.chars</code>, <code>.contains</code>, <code>.uc</code>, <code>.subst</code>, and a regex match with <code>~~</code>.</p>
+<figure class="ex ex-local" id="ex-19-35">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;notes.txt&quot;</span>, <span class="s">&quot;one two\nthree\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="s">&quot;notes.txt&quot;</span>.<span class="nb">IO</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">words</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">split</span>(<span class="s">&quot;\n&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">comb</span>.<span class="nb">elems</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">chars</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">contains</span>(<span class="s">&quot;two&quot;</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">contains</span>(<span class="s">&quot;notes&quot;</span>);
+<span class="nb">say</span> <span class="k">so</span> <span class="nv">$p</span> ~~ <span class="sr">/three/</span>;
+<span class="nb">unlink</span> <span class="s">&quot;notes.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("one", "two", "three").Seq
+("one two", "three", "").Seq
+14
+9
+False True
+False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.comb</code> counted the 14 characters of the file, <code>.chars</code> the 9 of its name. <code>.split("\n")</code> keeps the empty piece after the final newline, as it would on a string.</p>
+</section>
+<section class="corner" id="the-lines-sub-reads-a-file-only-when-given-a-path" data-tags="trap"><h2><a class="num" href="#the-lines-sub-reads-a-file-only-when-given-a-path">19.32</a> <span class="t">The <code>lines</code> sub reads a file only when given a path</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>The subs <code>lines</code> and <code>words</code> call the method of the same name on their argument. Given a string, they split the string, so <code>lines("notes.txt")</code> is a single line of text: the name. Only an <code>IO::Path</code> or a handle makes them read.</p>
+<figure class="ex ex-local" id="ex-19-36">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;notes.txt&quot;</span>, <span class="s">&quot;one\ntwo\n&quot;</span>;
+<span class="nb">say</span> <span class="nb">lines</span>(<span class="s">&quot;notes.txt&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">lines</span>(<span class="s">&quot;notes.txt&quot;</span>.<span class="nb">IO</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">words</span>(<span class="s">&quot;notes.txt&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="s">&quot;notes.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;notes.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("notes.txt",).Seq
+("one", "two").Seq
+("notes.txt",).Seq
+("one", "two").Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-utf-16-file-begins-with-a-byte-order-mark" data-tags=""><h2><a class="num" href="#a-utf-16-file-begins-with-a-byte-order-mark">19.33</a> <span class="t">A UTF-16 file begins with a byte-order mark</span></h2>
+<p>Writing with <code>:enc&lt;utf16&gt;</code> puts the byte-order mark <code>FF FE</code> in front of the text, and appending to a file that already has content does not add another one. Reading with <code>:enc&lt;utf16&gt;</code> consumes the mark. <code>encode("utf16")</code> gives no mark, and neither does <code>:enc&lt;utf16le&gt;</code> (see <a href="/deep/buffers/#utf-16-follows-a-byte-order-mark-utf-8-drops-one">Blobs and Bufs</a>).</p>
+<figure class="ex ex-local" id="ex-19-37">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;u16.txt&quot;</span>, <span class="s">&quot;é&quot;</span>, :<span class="n">enc</span><span class="s">&lt;utf16&gt;</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;u16.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">list</span>;
+<span class="nb">spurt</span> <span class="s">&quot;u16.txt&quot;</span>, <span class="s">&quot;e&quot;</span>, :<span class="n">enc</span><span class="s">&lt;utf16&gt;</span>, :<span class="nb">append</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;u16.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;u16.txt&quot;</span>, :<span class="n">enc</span><span class="s">&lt;utf16&gt;</span>);
+<span class="nb">say</span> <span class="s">&quot;é&quot;</span>.<span class="n">encode</span>(<span class="s">&quot;utf16&quot;</span>).<span class="nb">list</span>;
+<span class="nb">spurt</span> <span class="s">&quot;le.txt&quot;</span>, <span class="s">&quot;é&quot;</span>, :<span class="n">enc</span><span class="s">&lt;utf16le&gt;</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;le.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">list</span>;
+<span class="nb">unlink</span> <span class="s">&quot;u16.txt&quot;</span>, <span class="s">&quot;le.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(255 254 233 0)
+(255 254 233 0 101 0)
+ée
+(233)
+(233 0)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>encode("utf16")</code> returns a buffer of 16-bit elements, so <code>é</code> is the single element 233. Latin-1 writes one byte per character, and reading those bytes without an encoding, as UTF-8, throws:</p>
+<figure class="ex ex-local" id="ex-19-38">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;l1.txt&quot;</span>, <span class="s">&quot;é&quot;</span>, :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;l1.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">list</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;l1.txt&quot;</span>, :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>);
+{
+    <span class="k">my</span> <span class="nv">$s</span> = <span class="nb">slurp</span>(<span class="s">&quot;l1.txt&quot;</span>);
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> .^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, .<span class="n">message</span> } }
+}
+<span class="nb">unlink</span> <span class="s">&quot;l1.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(233)
+é
+X::AdHoc: Malformed termination of UTF-8 string</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="every-output-method-returns-true-and-tell-counts-bytes" data-tags=""><h2><a class="num" href="#every-output-method-returns-true-and-tell-counts-bytes">19.34</a> <span class="t">Every output method returns True, and <code>.tell</code> counts bytes</span></h2>
+<p>On a handle opened for writing, <code>print</code>, <code>say</code>, <code>put</code>, <code>printf</code>, <code>print-nl</code> and <code>write</code> return <code>True</code>. <code>say</code> and <code>put</code> with several arguments join them without a separator. <code>.tell</code> is the number of bytes written so far. The gist shows the path and whether the handle is open, and <code>close</code> returns <code>True</code>, even on a handle that is already closed.</p>
+<figure class="ex ex-local" id="ex-19-39">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;log.txt&quot;</span>, :<span class="n">w</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">print</span>(<span class="s">&quot;a&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">say</span>(<span class="s">&quot;b&quot;</span>, <span class="s">&quot;c&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">put</span>(<span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">printf</span>(<span class="s">&quot;%03d&quot;</span>, <span class="mi">7</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">write</span>(<span class="nb">Blob</span>.<span class="nb">new</span>(<span class="mi">88</span>));
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">tell</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">close</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;log.txt&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;log.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+True
+True
+True
+True
+11
+IO::Handle&lt;"log.txt".IO&gt;(opened)
+True True
+IO::Handle&lt;"log.txt".IO&gt;(closed)
+"abc\n12\n007X"</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-closed-handle-refuses-with-two-kinds-of-exception" data-tags=""><h2><a class="num" href="#a-closed-handle-refuses-with-two-kinds-of-exception">19.35</a> <span class="t">A closed handle refuses with two kinds of exception</span></h2>
+<p>After <code>close</code>, <code>print</code>, <code>get</code> and <code>lines</code> throw <code>X::IO::Closed</code>, whose message names the operation. <code>tell</code>, <code>seek</code>, <code>read</code>, <code>slurp</code> and <code>native-descriptor</code> throw an <code>X::AdHoc</code> instead, and for all but the last the message comes from the virtual machine underneath. <code>.eof</code> answers <code>True</code>.</p>
+<figure class="ex ex-local" id="ex-19-40">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;log.txt&quot;</span>, :<span class="n">w</span>);
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="k">for</span> { <span class="nv">$fh</span>.<span class="nb">print</span>(<span class="s">&quot;x&quot;</span>) }, { <span class="nv">$fh</span>.<span class="n">get</span> }, { <span class="nv">$fh</span>.<span class="nb">lines</span> }, { <span class="nv">$fh</span>.<span class="n">tell</span> }, { <span class="nv">$fh</span>.<span class="nb">slurp</span> } -&gt; <span class="nv">&amp;op</span> {
+    <span class="n">op</span>();
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> .^<span class="n">name</span> } }
+}
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$fh</span>.<span class="n">tell</span>) // <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">eof</span>;
+<span class="nb">unlink</span> <span class="s">&quot;log.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::IO::Closed
+X::IO::Closed
+X::IO::Closed
+X::AdHoc
+X::AdHoc
+tell requires an object with REPR MVMOSHandle (got VMNull with REPR Null)
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="eof-is-true-before-get-returns-nil" data-tags=""><h2><a class="num" href="#eof-is-true-before-get-returns-nil">19.36</a> <span class="t"><code>.eof</code> is True before <code>get</code> returns Nil</span></h2>
+<p><code>get</code> reads one line, chomped, and returns <code>Nil</code> when nothing is left. <code>.tell</code> after it counts the bytes consumed, newline included. <code>getc</code> reads a single character. <code>.eof</code> becomes <code>True</code> as soon as the last line has been read, before any <code>get</code> has returned <code>Nil</code>.</p>
+<figure class="ex ex-local" id="ex-19-41">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\r\nl3&quot;</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">tell</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">getc</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">get</span>.<span class="nb">raku</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">"l1" 3
+"l"
+"2" False
+"l3" True
+Nil</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The <code>\r\n</code> after <code>l2</code> is removed like a <code>\n</code>: it was translated before the line was chomped.</p>
+</section>
+<section class="corner" id="linesn-stops-after-n-lines-and-leaves-the-handle-open" data-tags=""><h2><a class="num" href="#linesn-stops-after-n-lines-and-leaves-the-handle-open">19.37</a> <span class="t"><code>lines($n)</code> stops after n lines and leaves the handle open</span></h2>
+<p>With a count, <code>.lines</code> reads that many lines and leaves the handle positioned after them, so a following <code>get</code> goes on from there. With <code>:close</code> it closes the handle once the count is reached.</p>
+<figure class="ex ex-local" id="ex-19-42">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\nl3\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="k">my</span> <span class="nv">@two</span> = <span class="nv">$fh</span>.<span class="nb">lines</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">@two</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">opened</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">get</span>.<span class="nb">raku</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">lines</span>(<span class="mi">2</span>, :<span class="nb">close</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">opened</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">["l1", "l2"]
+True "l3"
+("l1", "l2").Seq
+False</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.lines</code> returns a lazy Seq, and it reads a line only when the Seq is asked for one. A <code>get</code> made before the Seq is read takes the line the Seq would have had:</p>
+<figure class="ex ex-local" id="ex-19-43">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\nl3\n&quot;</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="k">my</span> <span class="nv">$seq</span> = <span class="nv">$fh</span>.<span class="nb">lines</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">get</span>;
+<span class="nb">say</span> <span class="nv">$seq</span>.<span class="nb">List</span>.<span class="nb">raku</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">l1
+("l2", "l3")</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="on-a-handle-lineschomp-keeps-every-line-end-but-the-first" data-tags="quirk"><h2><a class="num" href="#on-a-handle-lineschomp-keeps-every-line-end-but-the-first">19.38</a> <span class="t">On a handle, <code>.lines(:!chomp)</code> keeps every line end but the first</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p>The documented ways to keep line ends while reading a handle are <code>open(:!chomp)</code> and assigning <code>False</code> to its <code>.chomp</code>. <code>.lines</code> on a handle lists no <code>:chomp</code> argument, yet it accepts one, and it applies it only from the second line on: the first line is still chomped.</p>
+<figure class="ex ex-local" id="ex-19-44">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\nl3\n&quot;</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>).<span class="nb">lines</span>(:!<span class="n">chomp</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :!<span class="n">chomp</span>).<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="nv">$fh</span>.<span class="n">chomp</span> = <span class="n">False</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("l1", "l2\n", "l3\n").Seq
+("l1\n", "l2\n", "l3\n").Seq
+("l1\n", "l2\n", "l3\n").Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>.lines(:!chomp)</code> on an <code>IO::Path</code>, where the argument is documented, keeps every line end.</p>
+</section>
+<section class="corner" id="a-handles-nl-inrn-never-sees-a-rn" data-tags="trap"><h2><a class="num" href="#a-handles-nl-inrn-never-sees-a-rn">19.39</a> <span class="t">A handle's <code>:nl-in("\r\n")</code> never sees a <code>\r\n</code></span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>Line ends are translated while the bytes are decoded, before <code>nl-in</code> is consulted. A handle opened with <code>:nl-in("\r")</code> or <code>:nl-in("\r\n")</code> therefore never meets a <code>\r\n</code>: it has become <code>\n</code>, which is no longer a separator, and the whole file is one line. Passed to <code>.lines</code> on a handle instead of to <code>open</code>, <code>:nl-in</code> is ignored.</p>
+<figure class="ex ex-local" id="ex-19-45">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\r\nl3&quot;</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">nl-in</span>(<span class="s">&quot;\r&quot;</span>)).<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">nl-in</span>(<span class="s">&quot;\r\n&quot;</span>)).<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>).<span class="nb">lines</span>(:<span class="n">nl-in</span>(<span class="s">&quot;\r&quot;</span>)).<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("l1\nl2\nl3",).Seq
+("l1\nl2\nl3",).Seq
+("l1", "l2", "l3").Seq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="read-readchars-and-slurp-go-on-from-the-current-position" data-tags=""><h2><a class="num" href="#read-readchars-and-slurp-go-on-from-the-current-position">19.40</a> <span class="t"><code>read</code>, <code>readchars</code> and <code>slurp</code> go on from the current position</span></h2>
+<p>A handle has one position, shared by every way of reading it. <code>read</code> takes bytes and returns a <code>Buf</code>, <code>readchars</code> takes characters, and <code>slurp</code> takes the rest, after which <code>.eof</code> is <code>True</code>. <code>seek</code> moves the position, counting from the beginning, the current position or the end, and returns <code>True</code>.</p>
+<figure class="ex ex-local" id="ex-19-46">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;abcdef\nghi&quot;</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">readchars</span>(<span class="mi">3</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">seek</span>(-<span class="mi">3</span>, <span class="n">SeekFromEnd</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="nb">slurp</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">seek</span>(<span class="mi">0</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">tell</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">readchars</span>(<span class="mi">1</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">seek</span>(<span class="mi">2</span>, <span class="n">SeekFromCurrent</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">get</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Buf[uint8].new(97,98)
+cde
+"f\nghi"
+True
+True
+ghi
+True 0
+a True def</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>In the last line <code>readchars(1)</code> leaves the position at 1, and a relative <code>seek</code> of 2 lands on <code>d</code>. <code>.tell</code> reports the bytes the decoder has taken, which can be more than the characters it has returned: after <code>l2</code>, it has already taken the <code>\r</code> of the <code>\r\n</code> that follows.</p>
+<figure class="ex ex-local" id="ex-19-47">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2\r\nl3&quot;</span>;
+<span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">read</span>(<span class="mi">3</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$fh</span>.<span class="n">readchars</span>(<span class="mi">2</span>), <span class="s">&quot; &quot;</span>, <span class="nv">$fh</span>.<span class="n">tell</span>;
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Buf[uint8].new(108,49,10)
+l2 6</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-bin-handle-reads-bytes-and-refuses-lines" data-tags=""><h2><a class="num" href="#a-bin-handle-reads-bytes-and-refuses-lines">19.41</a> <span class="t">A <code>:bin</code> handle reads bytes and refuses lines</span></h2>
+<p>Opened with <code>:bin</code>, a handle has no encoding: <code>.encoding</code> is <code>Nil</code>. <code>read</code> and <code>slurp</code> give <code>Buf</code>s, and every method that needs characters, <code>get</code>, <code>lines</code> and <code>readchars</code>, throws <code>X::IO::BinaryMode</code>. A text handle gives bytes too when asked with <code>.slurp(:bin)</code>. <code>.Supply(:size(n))</code> emits chunks of n bytes from a binary handle and of n characters from a text one.</p>
+<figure class="ex ex-local" id="ex-19-48">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;r.txt&quot;</span>, <span class="s">&quot;l1\nl2&quot;</span>;
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">bin</span>);
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">encoding</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nv">$b</span>.<span class="nb">close</span>;
+<span class="k">for</span> { <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">bin</span>).<span class="n">get</span> }, { <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">lines</span>.<span class="n">eager</span> }, { <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">bin</span>).<span class="n">readchars</span>(<span class="mi">1</span>) } -&gt; <span class="nv">&amp;op</span> {
+    <span class="n">op</span>();
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> .^<span class="n">name</span> } }
+}
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>).<span class="nb">slurp</span>(:<span class="n">bin</span>).^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">Supply</span>(:<span class="n">size</span>(<span class="mi">2</span>)).<span class="nb">list</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;r.txt&quot;</span>).<span class="nb">Supply</span>(:<span class="n">size</span>(<span class="mi">2</span>)).<span class="nb">list</span>.<span class="nb">raku</span>;
+<span class="nb">unlink</span> <span class="s">&quot;r.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+Buf[uint8].new(108,49)
+Buf[uint8].new(10,108,50)
+X::IO::BinaryMode
+X::IO::BinaryMode
+X::IO::BinaryMode
+Buf[uint8]
+(Buf[uint8].new(108,49), Buf[uint8].new(10,108), Buf[uint8].new(50))
+("l1", "\nl", "2")</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="open-fails-when-the-system-refuses-and-throws-on-a-bad-argument" data-tags=""><h2><a class="num" href="#open-fails-when-the-system-refuses-and-throws-on-a-bad-argument">19.42</a> <span class="t"><code>open</code> fails when the system refuses, and throws on a bad argument</span></h2>
+<p><code>open</code> returns a Failure when the operating system says no: for a missing file (<code>X::AdHoc</code>), for a directory (<code>X::IO::Directory</code>, whose <code>.trying</code> is <code>open</code>), and for an existing file opened with <code>:x</code> (<code>X::AdHoc</code>). A mistake in the arguments throws instead: an unknown encoding throws <code>X::Encoding::Unknown</code>, and <code>:bin</code> together with an encoding throws <code>X::IO::BinaryAndEncoding</code>.</p>
+<figure class="ex ex-local" id="ex-19-49">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;d&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;old&quot;</span>;
+<span class="k">for</span> <span class="nb">open</span>(<span class="s">&quot;missing&quot;</span>), <span class="nb">open</span>(<span class="s">&quot;d&quot;</span>), <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">x</span>) -&gt; <span class="nv">$h</span> {
+    <span class="nb">say</span> <span class="nv">$h</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$h</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+}
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">open</span>(<span class="s">&quot;d&quot;</span>);
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$d</span>.<span class="n">exception</span>.<span class="n">trying</span>;
+<span class="k">for</span> { <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">enc</span><span class="s">&lt;klingon&gt;</span>) }, { <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">bin</span>, :<span class="n">enc</span><span class="s">&lt;utf8&gt;</span>) } -&gt; <span class="nv">&amp;bad</span> {
+    <span class="k">my</span> <span class="nv">$h</span> = <span class="n">bad</span>();
+    <span class="nb">say</span> <span class="s">&quot;not reached&quot;</span>;
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> <span class="s">&quot;threw &quot;</span>, .^<span class="n">name</span> } }
+}
+<span class="n">rmdir</span> <span class="s">&quot;d&quot;</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False X::AdHoc
+False X::IO::Directory
+False X::AdHoc
+False open
+threw X::Encoding::Unknown
+threw X::IO::BinaryAndEncoding</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="rw-creates-without-emptying-update-does-not-create" data-tags=""><h2><a class="num" href="#rw-creates-without-emptying-update-does-not-create">19.43</a> <span class="t"><code>:rw</code> creates without emptying; <code>:update</code> does not create</span></h2>
+<p><code>open</code> reads by default. The other modes write, and they differ in what they do with a missing file and with an existing one:</p>
+<div class="table-wrap"><table><thead><tr><th>mode</th><th>reads</th><th>a missing file</th><th>an existing file</th><th>writes at</th></tr></thead><tbody><tr><td><code>:r</code> or nothing</td><td>yes</td><td>fails</td><td>kept</td><td>—</td></tr><tr><td><code>:w</code></td><td>no</td><td>created</td><td>emptied</td><td>the start</td></tr><tr><td><code>:a</code></td><td>no</td><td>created</td><td>kept</td><td>the end</td></tr><tr><td><code>:x</code></td><td>no</td><td>created</td><td>fails</td><td>the start</td></tr><tr><td><code>:rw</code></td><td>yes</td><td>created</td><td>kept</td><td>the start</td></tr><tr><td><code>:update</code></td><td>yes</td><td>fails</td><td>kept</td><td>the start</td></tr></tbody></table></div>
+<figure class="ex ex-local" id="ex-19-50">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;old&quot;</span>;
+<span class="k">given</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">a</span>) { .<span class="nb">print</span>(<span class="s">&quot;+new&quot;</span>); .<span class="nb">close</span> }
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;f&quot;</span>);
+<span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">w</span>).<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;f&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;abc&quot;</span>;
+<span class="k">given</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">rw</span>) { .<span class="nb">print</span>(<span class="s">&quot;X&quot;</span>); .<span class="n">seek</span>(<span class="mi">0</span>); <span class="nb">say</span> .<span class="n">get</span>; .<span class="nb">close</span> }
+<span class="k">given</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">update</span>) { .<span class="nb">print</span>(<span class="s">&quot;Y&quot;</span>); .<span class="nb">close</span> }
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;f&quot;</span>);
+<span class="k">my</span> <span class="nv">$u</span> = <span class="nb">open</span>(<span class="s">&quot;new&quot;</span>, :<span class="n">update</span>);
+<span class="nb">say</span> <span class="nv">$u</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;new&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="nb">open</span>(<span class="s">&quot;new&quot;</span>, :<span class="n">x</span>).<span class="nb">close</span>;
+<span class="nb">say</span> <span class="s">&quot;new&quot;</span>.<span class="nb">IO</span>.<span class="n">e</span>;
+<span class="k">given</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>) { <span class="nb">say</span> (<span class="k">try</span> .<span class="nb">print</span>(<span class="s">&quot;z&quot;</span>)) // <span class="nv">$!</span>.<span class="n">message</span>; .<span class="nb">close</span> }
+<span class="k">given</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">a</span>) { <span class="nb">say</span> (<span class="k">try</span> .<span class="n">get</span>) // <span class="nv">$!</span>.<span class="n">message</span>; .<span class="nb">close</span> }
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;new&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">old+new
+""
+Xbc
+Ybc
+False False
+True
+Failed to write 1 bytes to filehandle: Bad file descriptor
+Reading from filehandle failed: Bad file descriptor</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>:rw</code> and <code>:update</code> overwrite from the start without emptying the file, so <code>abc</code> became <code>Xbc</code> and then <code>Ybc</code>. Writing to a handle opened for reading, or reading from one opened for writing, throws <code>X::AdHoc</code> with the operating system's complaint.</p>
+</section>
+<section class="corner" id="encoding-names-are-normalised-and-encoding-switches-in-mid-file" data-tags=""><h2><a class="num" href="#encoding-names-are-normalised-and-encoding-switches-in-mid-file">19.44</a> <span class="t">Encoding names are normalised, and <code>.encoding</code> switches in mid-file</span></h2>
+<p><code>:enc</code> accepts the usual spellings of an encoding's name and reports it in one form: <code>latin1</code> becomes <code>iso-8859-1</code>, <code>UTF-8</code> becomes <code>utf8</code>. Calling <code>.encoding</code> with a name changes how the rest of the handle is decoded and returns the normalised name. <code>.encoding("bin")</code> switches the handle to binary mode and returns <code>Nil</code>.</p>
+<figure class="ex ex-local" id="ex-19-51">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;é&quot;</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>).<span class="n">encoding</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">enc</span><span class="s">&lt;latin1&gt;</span>).<span class="n">encoding</span>;
+<span class="nb">say</span> <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">enc</span><span class="s">&lt;UTF-8&gt;</span>).<span class="n">encoding</span>;
+<span class="k">my</span> <span class="nv">$h</span> = <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>);
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="n">encoding</span>(<span class="s">&quot;latin1&quot;</span>);
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nv">$h</span>.<span class="nb">close</span>;
+<span class="nv">$h</span> = <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>);
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="n">encoding</span>(<span class="s">&quot;bin&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nv">$h</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">utf8
+iso-8859-1
+utf8
+iso-8859-1
+"Ã©"
+Nil
+Buf[uint8].new(195,169)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>"Ã©"</code> is the two UTF-8 bytes of <code>é</code> read as Latin-1 characters.</p>
+</section>
+<section class="corner" id="prompt-returns-an-allomorph-and-nil-at-the-end-of-input" data-tags=""><h2><a class="num" href="#prompt-returns-an-allomorph-and-nil-at-the-end-of-input">19.45</a> <span class="t"><code>prompt</code> returns an allomorph, and Nil at the end of input</span></h2>
+<p><code>prompt</code> prints its message without a newline, flushes it, and reads one line of standard input. The line is chomped and passed through <code>val</code>, so a line of digits comes back as an <code>IntStr</code> (see <a href="/deep/strings/#val-makes-an-allomorph-and-keeps-the-exact-text">Strings</a>). At the end of the input <code>prompt</code> returns <code>Nil</code>, and so does <code>$*IN.get</code>; <code>.lines</code> is then empty and <code>.slurp</code> the empty string.</p>
+<figure class="ex ex-local" id="ex-19-52">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$name</span> = <span class="nb">prompt</span> <span class="s">&quot;Name? &quot;</span>;
+<span class="k">my</span> <span class="nv">$age</span> = <span class="nb">prompt</span> <span class="s">&quot;Age? &quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;|&quot;</span>;
+<span class="nb">say</span> <span class="nv">$name</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$age</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">prompt</span>(<span class="s">&quot;More? &quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*IN</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="nb">lines</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*IN</span>.<span class="nb">slurp</span>.<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="stdin"><span class="lbl">standard input</span><pre>Ada
+36</pre></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Name? Age? |
+"Ada"
+IntStr.new(36, "36")
+More? Nil
+Nil True
+().Seq ""</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The messages share a line because standard input here is a file; at a terminal, the reader's Enter key would end each line.</p>
+</section>
+<section class="corner" id="inlinesn-leaves-the-rest-of-the-input-unread" data-tags=""><h2><a class="num" href="#inlinesn-leaves-the-rest-of-the-input-unread">19.46</a> <span class="t"><code>$*IN.lines($n)</code> leaves the rest of the input unread</span></h2>
+<p>Standard input is an ordinary handle, and its methods read only as much as they need. <code>$*IN.lines(1)</code> takes the first line and leaves the rest for the next reader, here <code>.words</code>. With no file names on the command line, <code>$*ARGFILES</code> is <code>$*IN</code> itself, and it is what <code>lines()</code>, <code>words()</code> and <code>slurp()</code> read when they are called without an argument.</p>
+<figure class="ex ex-local" id="ex-19-53">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">@header</span> = <span class="nv">$*IN</span>.<span class="nb">lines</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">@header</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="nb">words</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*IN</span>.<span class="n">eof</span>, <span class="s">&quot; &quot;</span>, <span class="nb">slurp</span>().<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*ARGFILES</span> === <span class="nv">$*IN</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="stdin"><span class="lbl">standard input</span><pre>name age
+Ada 36
+Alan 41
+</pre></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">["name age"]
+("Ada", "36", "Alan", "41").Seq
+True ""
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="indir-runs-a-block-in-another-directory-or-fails" data-tags=""><h2><a class="num" href="#indir-runs-a-block-in-another-directory-or-fails">19.47</a> <span class="t"><code>indir</code> runs a block in another directory, or fails</span></h2>
+<p><code>indir</code> sets <code>$*CWD</code> to the directory for the duration of the block and returns the block's value. Paths made inside the block resolve there, and <code>$*CWD</code> outside it is unchanged. A missing directory, or a file, is a Failure of type <code>X::IO::Chdir</code> whose <code>.os-error</code> says which, and the block does not run.</p>
+<figure class="ex ex-local" id="ex-19-54">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">say</span> <span class="n">indir</span>(<span class="s">&quot;sub&quot;</span>, { <span class="nv">$*CWD</span>.<span class="n">basename</span> });
+<span class="nb">say</span> <span class="n">indir</span>(<span class="s">&quot;sub&quot;</span>, { <span class="s">&quot;f&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>.<span class="n">ends-with</span>(<span class="s">&quot;/sub/f&quot;</span>) });
+<span class="nb">say</span> <span class="n">indir</span>(<span class="s">&quot;sub&quot;</span>, { <span class="mi">42</span> });
+<span class="nb">say</span> <span class="nv">$*CWD</span>.<span class="n">basename</span> <span class="n">ne</span> <span class="s">&quot;sub&quot;</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">indir</span>(<span class="s">&quot;missing&quot;</span>, { <span class="nb">say</span> <span class="s">&quot;never runs&quot;</span> });
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$r</span>.<span class="n">exception</span>.<span class="n">os-error</span>;
+<span class="nb">spurt</span> <span class="s">&quot;file&quot;</span>, <span class="s">&quot;&quot;</span>;
+<span class="k">my</span> <span class="nv">$f</span> = <span class="n">indir</span>(<span class="s">&quot;file&quot;</span>, {;});
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$f</span>.<span class="n">exception</span>.<span class="n">os-error</span>;
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">unlink</span> <span class="s">&quot;file&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sub
+True
+42
+True
+False X::IO::Chdir: does not exist
+False is not a directory</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="chdir-changes-cwd-not-the-processs-directory" data-tags=""><h2><a class="num" href="#chdir-changes-cwd-not-the-processs-directory">19.48</a> <span class="t"><code>chdir</code> changes <code>$*CWD</code>, not the process's directory</span></h2>
+<p><code>chdir</code> sets <code>$*CWD</code> and returns it as an absolute <code>IO::Path</code>. From then on relative paths resolve against the new directory. A directory that does not exist gives a Failure and leaves <code>$*CWD</code> where it was.</p>
+<figure class="ex ex-local" id="ex-19-55">
+<div class="code"><pre class="src"><span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="k">my</span> <span class="nv">$start</span> = <span class="nv">$*CWD</span>;
+<span class="k">my</span> <span class="nv">$new</span> = <span class="nb">chdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">say</span> <span class="nv">$new</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$new</span>.<span class="n">basename</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$new</span>.<span class="n">is-absolute</span>;
+<span class="nb">say</span> <span class="s">&quot;f&quot;</span>.<span class="nb">IO</span>.<span class="n">absolute</span>.<span class="n">ends-with</span>(<span class="s">&quot;/sub/f&quot;</span>);
+<span class="k">my</span> <span class="nv">$bad</span> = <span class="nb">chdir</span> <span class="s">&quot;missing&quot;</span>;
+<span class="nb">say</span> <span class="nv">$bad</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$bad</span>.<span class="n">exception</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$*CWD</span>.<span class="n">basename</span>;
+<span class="nb">chdir</span> <span class="s">&quot;..&quot;</span>;
+<span class="nb">say</span> <span class="nv">$*CWD</span> <span class="n">eq</span> <span class="nv">$start</span>;
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Path sub True
+True
+False X::IO::Chdir sub
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The process itself stays where it was. Raku's own file operations, and the programs started with <code>run</code>, go by <code>$*CWD</code>, but a native library asks the operating system. <code>&amp;*chdir</code> changes both. Here the C library's <code>getcwd</code> reports the process's directory:</p>
+<figure class="ex ex-local" id="ex-19-56">
+<div class="code"><pre class="src"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">getcwd</span>(<span class="nb">Buf</span>, <span class="n">size_t</span> --&gt; <span class="n">Pointer</span>) <span class="k">is</span> <span class="n">native</span> {*}
+<span class="k">sub</span> <span class="n">process-dir</span> { <span class="k">my</span> <span class="nv">$b</span> = <span class="nb">Buf</span>.<span class="n">allocate</span>(<span class="mi">4096</span>); <span class="n">getcwd</span>(<span class="nv">$b</span>, <span class="mi">4096</span>); <span class="nv">$b</span>.<span class="n">decode</span>.<span class="n">subst</span>(<span class="sr">/\0.*/</span>, <span class="s">&quot;&quot;</span>) }
+<span class="nb">mkdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">chdir</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">say</span> <span class="nv">$*CWD</span>.<span class="n">basename</span>, <span class="s">&quot; &quot;</span>, <span class="n">process-dir</span>().<span class="nb">IO</span>.<span class="n">basename</span> <span class="n">eq</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nb">chdir</span> <span class="s">&quot;..&quot;</span>;
+<span class="nv">&amp;*chdir</span>(<span class="s">&quot;sub&quot;</span>);
+<span class="nb">say</span> <span class="nv">$*CWD</span>.<span class="n">basename</span>, <span class="s">&quot; &quot;</span>, <span class="n">process-dir</span>().<span class="nb">IO</span>.<span class="n">basename</span> <span class="n">eq</span> <span class="s">&quot;sub&quot;</span>;
+<span class="nv">&amp;*chdir</span>(<span class="s">&quot;..&quot;</span>);
+<span class="n">rmdir</span> <span class="s">&quot;sub&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">sub False
+sub True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="iopathchdir-only-computes-a-path" data-tags=""><h2><a class="num" href="#iopathchdir-only-computes-a-path">19.49</a> <span class="t"><code>IO::Path.chdir</code> only computes a path</span></h2>
+<p>The method <code>.chdir</code> on a path changes nothing. It returns a new path: the argument joined to the path, or the argument alone when it is absolute, with a leading <code>..</code> applied to the text. By default it checks that the result is a directory and fails with <code>X::IO::Chdir</code> when it is not; <code>:!d</code> skips the check.</p>
+<figure class="ex ex-local" id="ex-19-57">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="nb">chdir</span>(<span class="s">&quot;../c&quot;</span>, :!<span class="n">d</span>).<span class="nb">Str</span>;
+<span class="nb">say</span> <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="nb">chdir</span>(<span class="s">&quot;/x&quot;</span>, :!<span class="n">d</span>).<span class="nb">Str</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="s">&quot;/a/b&quot;</span>.<span class="nb">IO</span>.<span class="nb">chdir</span>(<span class="s">&quot;c&quot;</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">exception</span>.<span class="n">os-error</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">/a/c
+/x
+False does not exist</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="iospecunix-does-the-text-work-and-its-parent-removes-x" data-tags=""><h2><a class="num" href="#iospecunix-does-the-text-work-and-its-parent-removes-x">19.50</a> <span class="t">IO::Spec::Unix does the text work, and its <code>:parent</code> removes <code>x/..</code></span></h2>
+<p>The string operations behind <code>IO::Path</code> live in <code>$*SPEC</code>, which is <code>IO::Spec::Unix</code> on Unix-like systems, and they can be called directly. <code>canonpath</code> is <code>.cleanup</code> for strings; with <code>:parent</code> it also removes every <code>x/..</code> pair, which <code>.cleanup</code> refuses to do. <code>catdir</code> joins with single separators, and <code>rel2abs</code> and <code>abs2rel</code> are <code>.absolute</code> and <code>.relative</code> on strings, leaving <code>..</code> alone. Its <code>basename</code> does not drop a trailing slash, unlike the method of <code>IO::Path</code>.</p>
+<figure class="ex ex-run" id="ex-19-58">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$s</span> = <span class="n">IO::Spec::Unix</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">canonpath</span>(<span class="s">&quot;a//b/./c/&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">canonpath</span>(<span class="s">&quot;a/../b&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">canonpath</span>(<span class="s">&quot;a/../b&quot;</span>, :<span class="n">parent</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">catdir</span>(<span class="s">&quot;a/&quot;</span>, <span class="s">&quot;/b&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">rel2abs</span>(<span class="s">&quot;a/../b&quot;</span>, <span class="s">&quot;/x&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">abs2rel</span>(<span class="s">&quot;/y&quot;</span>, <span class="s">&quot;/x/a&quot;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">basename</span>(<span class="s">&quot;/a/b/&quot;</span>).<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="s">&quot;/a/b/&quot;</span>.<span class="nb">IO</span>.<span class="n">basename</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">splitdir</span>(<span class="s">&quot;/a/b&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$*SPEC</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">a/b/c
+a/../b
+b
+a/b
+/x/a/../b
+../../y
+"" b
+("", "a", "b")
+IO::Spec::Unix</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="say-prints-a-junction-put-and-print-print-each-value" data-tags=""><h2><a class="num" href="#say-prints-a-junction-put-and-print-print-each-value">19.51</a> <span class="t"><code>say</code> prints a Junction; <code>put</code> and <code>print</code> print each value</span></h2>
+<p><code>say</code> prints the gist of its arguments, and the gist of a Junction is the whole junction. <code>put</code> and <code>print</code> want strings, so they autothread: each eigenstate is printed by a call of its own, and the result is a junction of the calls' return values.</p>
+<figure class="ex ex-run" id="ex-19-59">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> <span class="n">any</span>(<span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">put</span> <span class="n">any</span>(<span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">print</span> <span class="n">any</span>(<span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">print</span> <span class="s">&quot;\n&quot;</span>;
+<span class="nb">say</span> (<span class="nb">put</span> <span class="s">&quot;x&quot;</span> | <span class="s">&quot;y&quot;</span>).<span class="nb">raku</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">any(1, 2)
+1
+2
+12
+x
+y
+any(Bool::True, Bool::True)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>any(1, 2)
+1
+2
+12
+x
+y
+Bool::True</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The methods of a handle behave the same way:</p>
+<figure class="ex ex-local" id="ex-19-60">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;j.txt&quot;</span>, :<span class="n">w</span>);
+<span class="nv">$fh</span>.<span class="nb">say</span>(<span class="n">any</span>(<span class="mi">1</span>, <span class="mi">2</span>));
+<span class="nv">$fh</span>.<span class="nb">put</span>(<span class="n">any</span>(<span class="mi">1</span>, <span class="mi">2</span>));
+<span class="nv">$fh</span>.<span class="nb">say</span>((<span class="mi">1</span>, <span class="mi">2</span>));
+<span class="nv">$fh</span>.<span class="nb">put</span>((<span class="mi">1</span>, <span class="mi">2</span>));
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+.<span class="nb">say</span> <span class="k">for</span> <span class="s">&quot;j.txt&quot;</span>.<span class="nb">IO</span>.<span class="nb">lines</span>;
+<span class="nb">unlink</span> <span class="s">&quot;j.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">any(1, 2)
+1
+2
+(1 2)
+1 2</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="nl-out-is-what-say-put-and-print-nl-add" data-tags=""><h2><a class="num" href="#nl-out-is-what-say-put-and-print-nl-add">19.52</a> <span class="t"><code>nl-out</code> is what <code>say</code>, <code>put</code> and <code>print-nl</code> add</span></h2>
+<p>Each handle has an <code>nl-out</code>, <code>\n</code> unless <code>open</code> was given another, and <code>say</code>, <code>put</code> and <code>print-nl</code> end their output with it. A <code>\n</code> inside the text is written as it is. <code>nl-out</code> can be assigned at any time.</p>
+<figure class="ex ex-local" id="ex-19-61">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$fh</span> = <span class="nb">open</span>(<span class="s">&quot;crlf.txt&quot;</span>, :<span class="n">w</span>, :<span class="n">nl-out</span>(<span class="s">&quot;\r\n&quot;</span>));
+<span class="nv">$fh</span>.<span class="nb">say</span>(<span class="s">&quot;a&quot;</span>);
+<span class="nv">$fh</span>.<span class="nb">put</span>(<span class="s">&quot;b&quot;</span>);
+<span class="nv">$fh</span>.<span class="nb">print</span>(<span class="s">&quot;c\n&quot;</span>);
+<span class="nv">$fh</span>.<span class="n">print-nl</span>;
+<span class="nv">$fh</span>.<span class="n">nl-out</span> = <span class="s">&quot;!&quot;</span>;
+<span class="nv">$fh</span>.<span class="nb">say</span>(<span class="s">&quot;z&quot;</span>);
+<span class="nv">$fh</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nb">slurp</span>(<span class="s">&quot;crlf.txt&quot;</span>, :<span class="n">bin</span>).<span class="nb">list</span>;
+<span class="nb">unlink</span> <span class="s">&quot;crlf.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(97 13 10 98 13 10 99 10 13 10 122 33)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>That includes <code>$*OUT</code>, and the other handles keep their own:</p>
+<figure class="ex ex-run" id="ex-19-62">
+<div class="code"><pre class="src" data-src><span class="nv">$*OUT</span>.<span class="n">nl-out</span> = <span class="s">&quot; &lt;end&gt;\n&quot;</span>;
+<span class="nb">say</span> <span class="s">&quot;one&quot;</span>;
+<span class="nb">put</span> <span class="s">&quot;two&quot;</span>;
+<span class="nb">print</span> <span class="s">&quot;three\n&quot;</span>;
+<span class="nb">note</span> <span class="s">&quot;four&quot;</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">one &lt;end&gt;
+two &lt;end&gt;
+three</pre><div class="lbl err">and on standard error</div><pre class="err-text">four</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>one
+two
+three</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="iohandlenew-makes-a-closed-handle" data-tags=""><h2><a class="num" href="#iohandlenew-makes-a-closed-handle">19.53</a> <span class="t"><code>IO::Handle.new</code> makes a closed handle</span></h2>
+<p>A handle made with <code>IO::Handle.new</code> is not open: its gist says <code>(closed)</code>, reading throws <code>X::IO::Closed</code>, and <code>close</code> returns <code>True</code>. Its encoding is already <code>utf8</code>. The <code>.open</code> method opens it, with the same mode arguments as the <code>open</code> sub.</p>
+<figure class="ex ex-local" id="ex-19-63">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$h</span> = <span class="n">IO::Handle</span>.<span class="nb">new</span>(<span class="n">path</span> =&gt; <span class="s">&quot;notes.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="n">opened</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$h</span>.<span class="nb">gist</span>;
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="n">encoding</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$h</span>.<span class="n">eof</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$h</span>.<span class="nb">close</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$h</span>.<span class="n">get</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nv">$h</span>.<span class="nb">open</span>(:<span class="n">w</span>);
+<span class="nv">$h</span>.<span class="nb">say</span>(<span class="s">&quot;hello&quot;</span>);
+<span class="nv">$h</span>.<span class="nb">close</span>;
+<span class="nb">print</span> <span class="nb">slurp</span> <span class="s">&quot;notes.txt&quot;</span>;
+<span class="nb">unlink</span> <span class="s">&quot;notes.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False IO::Handle&lt;"notes.txt".IO&gt;(closed)
+utf8 True True
+X::IO::Closed
+hello</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="lock-and-flush-return-a-failure-when-they-cannot" data-tags=""><h2><a class="num" href="#lock-and-flush-return-a-failure-when-they-cannot">19.54</a> <span class="t"><code>lock</code> and <code>flush</code> return a Failure when they cannot</span></h2>
+<p><code>lock</code>, <code>unlock</code> and <code>flush</code> return <code>True</code> on an open handle. <code>lock</code> takes an exclusive lock, which a handle opened for reading cannot hold: it returns a Failure of type <code>X::IO::Lock</code>, while <code>lock(:shared)</code> succeeds. <code>flush</code> on a closed handle fails with <code>X::IO::Flush</code>.</p>
+<figure class="ex ex-local" id="ex-19-64">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;f&quot;</span>, <span class="s">&quot;x&quot;</span>;
+<span class="k">my</span> <span class="nv">$w</span> = <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>, :<span class="n">a</span>);
+<span class="nb">say</span> <span class="nv">$w</span>.<span class="n">lock</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$w</span>.<span class="n">unlock</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$w</span>.<span class="n">flush</span>;
+<span class="nv">$w</span>.<span class="nb">close</span>;
+<span class="k">my</span> <span class="nv">$fl</span> = <span class="nv">$w</span>.<span class="n">flush</span>;
+<span class="nb">say</span> <span class="nv">$fl</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$fl</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$ro</span> = <span class="nb">open</span>(<span class="s">&quot;f&quot;</span>);
+<span class="k">my</span> <span class="nv">$ex</span> = <span class="nv">$ro</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nv">$ex</span>.<span class="nb">so</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$ex</span>.<span class="n">exception</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$ro</span>.<span class="n">lock</span>(:<span class="n">shared</span>);
+<span class="nv">$ro</span>.<span class="nb">close</span>;
+<span class="nb">unlink</span> <span class="s">&quot;f&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True True True
+False X::IO::Flush
+False X::IO::Lock
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-commands-output-is-an-iopipe-whose-close-returns-the-proc" data-tags=""><h2><a class="num" href="#a-commands-output-is-an-iopipe-whose-close-returns-the-proc">19.55</a> <span class="t">A command's output is an IO::Pipe whose <code>close</code> returns the Proc</span></h2>
+<p><code>run</code> with <code>:out</code> connects the command's standard output to an <code>IO::Pipe</code>, a kind of <code>IO::Handle</code> with <code>get</code>, <code>lines</code>, <code>slurp</code> and <code>eof</code>. Its <code>close</code> waits for the command and returns the <code>Proc</code>, which <code>.proc</code> also gives. A pipe has no path: <code>.path</code> is the <code>IO::Path</code> type object. Running commands is the subject of <a href="/deep/processes/">Processes</a>.</p>
+<figure class="ex ex-local" id="ex-19-65">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">run</span> <span class="s">&quot;printf&quot;</span>, <span class="s">'hi\nthere\n'</span>, :<span class="n">out</span>;
+<span class="k">my</span> <span class="nv">$pipe</span> = <span class="nv">$p</span>.<span class="n">out</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$pipe</span> ~~ <span class="n">IO::Handle</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="n">get</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$pipe</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="nb">close</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$pipe</span>.<span class="n">proc</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="n">path</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$pipe</span>.<span class="nb">gist</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">IO::Pipe True
+hi
+("there",).Seq
+Nil True
+Proc Proc
+IO::Path
+IO::Pipe&lt;(IO)&gt;(closed)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A pipe made with <code>:in</code> is written with <code>print</code> and closed to end the command's input. Printing to an output pipe throws <code>X::AdHoc</code>, and with <code>:bin</code> an output pipe gives bytes:</p>
+<figure class="ex ex-local" id="ex-19-66">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$q</span> = <span class="nb">run</span> <span class="s">&quot;cat&quot;</span>, :<span class="n">in</span>, :<span class="n">out</span>;
+<span class="nv">$q</span>.<span class="n">in</span>.<span class="nb">print</span>(<span class="s">&quot;via a pipe&quot;</span>);
+<span class="nv">$q</span>.<span class="n">in</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;x&quot;</span>, :<span class="n">out</span>).<span class="n">out</span>.<span class="nb">print</span>(<span class="s">&quot;y&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nb">run</span>(<span class="s">&quot;printf&quot;</span>, <span class="s">&quot;AB&quot;</span>, :<span class="n">out</span>, :<span class="n">bin</span>).<span class="n">out</span>.<span class="n">read</span>(<span class="mi">2</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">via a pipe
+X::AdHoc
+Buf[uint8].new(65,66)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="iocathandle-reads-several-files-as-one" data-tags=""><h2><a class="num" href="#iocathandle-reads-several-files-as-one">19.56</a> <span class="t">IO::CatHandle reads several files as one</span></h2>
+<p>An <code>IO::CatHandle</code> reads its sources one after another, as if they were a single file: <code>lines</code>, <code>slurp</code>, <code>readchars</code> and <code>read</code> all run across the boundary between two files. A CatHandle without sources is at its end from the start.</p>
+<figure class="ex ex-local" id="ex-19-67">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;a1\na2\n&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;b.txt&quot;</span>, <span class="s">&quot;b1&quot;</span>;
+<span class="nb">say</span> <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>).<span class="nb">lines</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>).<span class="nb">slurp</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>).<span class="n">readchars</span>(<span class="mi">4</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>).<span class="n">read</span>(<span class="mi">4</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$empty</span> = <span class="n">IO::CatHandle</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$empty</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$empty</span>.<span class="n">eof</span>;
+<span class="nb">unlink</span> <span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("a1", "a2", "b1").Seq
+"a1\na2\nb1"
+"a1\na"
+Buf[uint8].new(97,49,10,97)
+Nil True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-cathandles-on-switch-runs-per-file-and-once-more-with-nil" data-tags=""><h2><a class="num" href="#a-cathandles-on-switch-runs-per-file-and-once-more-with-nil">19.57</a> <span class="t">A CatHandle's on-switch runs per file, and once more with Nil</span></h2>
+<p>A CatHandle opens its first source as soon as it is made, so <code>.path</code> names that file before anything has been read. <code>.path</code> then follows the reading from file to file, and becomes <code>Nil</code> when the last one is used up. The <code>:on-switch</code> code runs at every change: once when the first file is opened, once for each file after it, and a last time with <code>Nil</code> when the sources run out.</p>
+<figure class="ex ex-local" id="ex-19-68">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;a1\na2\n&quot;</span>;
+<span class="nb">spurt</span> <span class="s">&quot;b.txt&quot;</span>, <span class="s">&quot;b1&quot;</span>;
+<span class="k">my</span> <span class="nv">@seen</span>;
+<span class="k">my</span> <span class="nv">$cat</span> = <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>,
+    <span class="n">on-switch</span> =&gt; { <span class="nv">@seen</span>.<span class="nb">push</span>: .<span class="nb">defined</span> ?? .<span class="n">path</span>.<span class="nb">Str</span> !! .<span class="nb">raku</span> });
+<span class="nb">say</span> <span class="nv">@seen</span>;
+<span class="nb">say</span> <span class="nv">$cat</span>.<span class="n">get</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$cat</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="nv">$cat</span>.<span class="n">get</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$cat</span>.<span class="n">get</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$cat</span>.<span class="n">path</span>;
+<span class="nb">say</span> <span class="nv">$cat</span>.<span class="n">get</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$cat</span>.<span class="n">path</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$cat</span>.<span class="n">eof</span>;
+<span class="nb">say</span> <span class="nv">@seen</span>;
+<span class="nb">unlink</span> <span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;b.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[a.txt]
+a1 "a.txt".IO
+a2 b1 "b.txt".IO
+Nil Nil True
+[a.txt b.txt Nil]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Because the first source is opened by <code>new</code>, a missing first file throws there; a missing later file throws when the reading reaches it. <code>next-handle</code> abandons the current file and returns the handle of the next:</p>
+<figure class="ex ex-local" id="ex-19-69">
+<div class="code"><pre class="src"><span class="nb">spurt</span> <span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;a1&quot;</span>;
+<span class="k">my</span> <span class="nv">$m</span> = <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;missing.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$m</span>.<span class="n">get</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$m</span>.<span class="n">get</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> (<span class="k">try</span> <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;missing.txt&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="n">IO::CatHandle</span>.<span class="nb">new</span>(<span class="s">&quot;a.txt&quot;</span>, <span class="s">&quot;a.txt&quot;</span>);
+<span class="nb">say</span> <span class="nv">$n</span>.<span class="n">next-handle</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$n</span>.<span class="n">get</span>;
+<span class="nb">unlink</span> <span class="s">&quot;a.txt&quot;</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">a1
+X::AdHoc
+X::AdHoc
+IO::Handle a1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<footer class="chapter-foot"><label class="done"><input type="checkbox" data-done="files"> I have read this chapter</label><nav class="pager"><a class="prev" href="/deep/dates/">← 18. Dates and Times</a><a class="next" href="/deep/processes/">20. Processes →</a></nav></footer>
+</article>
+<footer class="site-foot"><p><b>Raku Behind the Docs</b> · The Raku++ project · Edited by Andrew Shitov</p><p>The text was written by Claude, Anthropic’s model, from the Raku++ project’s findings. Every output was printed by Rakudo v2026.08. <a href="/deep/colophon/">Colophon</a> · <a href="https://github.com/ash/raku-behind-the-docs">Source</a></p></footer>
+</main>
+</div>
+<script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
+<script src="/deep/assets/book.js?v=mjp0h5mir1" defer></script>
+<script src="/theme/shell.js?v=4e7473f5" defer></script>
+</body>
+</html>

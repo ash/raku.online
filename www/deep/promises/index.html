@@ -1,0 +1,1241 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promises, Locks and Awaiting — Raku Behind the Docs</title>
+<meta name="description" content="What keeps and breaks a Promise, what `start`, `then` and `await` hand on and throw, how Channels, locks and semaphores behave between threads, and what `sleep` answers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/theme/shell.css?v=4e7473f5">
+<link rel="stylesheet" href="/deep/assets/book.css?v=mjp0h5mir1">
+<script>(function () {
+  var KEY = 'raku-theme', mql = window.matchMedia('(prefers-color-scheme: dark)');
+  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  function eff(s) { return (s === 'dark' || (s === 'system' && mql.matches)) ? 'dark' : 'light'; }
+  function apply(s) {
+    var d = document.documentElement;
+    d.setAttribute('data-theme', s);
+    d.setAttribute('data-theme-active', eff(s));
+  }
+  apply(stored());
+  mql.addEventListener('change', function () { if (stored() === 'system') apply('system'); });
+  window.__applyTheme = apply;
+  try { if (localStorage.getItem('corners-predict') === '1') document.documentElement.classList.add('predict-on'); } catch (e) {}
+})();</script>
+</head>
+<body class="is-chapter">
+<header class="top">
+  <button class="nav-toggle" type="button" aria-label="Contents">☰</button>
+  <a class="brand" href="/deep/">Raku Behind the Docs</a>
+  <span class="spacer"></span>
+  <label class="predict" title="Hide every output until you reveal it"><input type="checkbox" id="predict-toggle"> <span>Predict<span class="wide"> mode</span></span></label>
+  <a class="corners-link" href="/deep/corners/">All corners</a>
+  <div class="theme-switch">
+    <button class="theme-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Theme">◐</button>
+    <ul class="theme-menu" role="menu" hidden>
+      <li><button data-theme-set="system">◐ System</button></li>
+      <li><button data-theme-set="light">☀ Light</button></li>
+      <li><button data-theme-set="dark">☾ Dark</button></li>
+    </ul>
+  </div>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="Contents"><a class="toc-home" href="/deep/">Contents</a>
+<div class="toc-part">Before you start</div><ol class="toc-list">
+<li data-slug="how-to-read"><a href="/deep/how-to-read/"><span class="n">0</span><span class="t">How to Read This Book</span></a>
+</li>
+</ol>
+<div class="toc-part">Reading the code</div><ol class="toc-list">
+<li data-slug="precedence"><a href="/deep/precedence/"><span class="n">1</span><span class="t">Who Takes the Operand</span></a>
+</li>
+<li data-slug="quotes"><a href="/deep/quotes/"><span class="n">2</span><span class="t">Quotes and Interpolation</span></a>
+</li>
+<li data-slug="whitespace"><a href="/deep/whitespace/"><span class="n">3</span><span class="t">Whitespace, Terms and Blocks</span></a>
+</li>
+<li data-slug="sink"><a href="/deep/sink/"><span class="n">4</span><span class="t">Values Nobody Uses</span></a>
+</li>
+<li data-slug="containers"><a href="/deep/containers/"><span class="n">5</span><span class="t">Containers and Binding</span></a>
+</li>
+</ol>
+<div class="toc-part">Nothing and numbers</div><ol class="toc-list">
+<li data-slug="nil-any"><a href="/deep/nil-any/"><span class="n">6</span><span class="t">Nil, Any and the Undefined</span></a>
+</li>
+<li data-slug="numbers"><a href="/deep/numbers/"><span class="n">7</span><span class="t">Numbers</span></a>
+</li>
+<li data-slug="strings"><a href="/deep/strings/"><span class="n">8</span><span class="t">Strings</span></a>
+</li>
+</ol>
+<div class="toc-part">Collections</div><ol class="toc-list">
+<li data-slug="lists"><a href="/deep/lists/"><span class="n">9</span><span class="t">Lists, Arrays, Seqs and Slips</span></a>
+</li>
+<li data-slug="hashes"><a href="/deep/hashes/"><span class="n">10</span><span class="t">Hashes, Maps and Pairs</span></a>
+</li>
+<li data-slug="ranges"><a href="/deep/ranges/"><span class="n">11</span><span class="t">Ranges</span></a>
+</li>
+<li data-slug="sequences"><a href="/deep/sequences/"><span class="n">12</span><span class="t">The Sequence Operator</span></a>
+</li>
+<li data-slug="sets"><a href="/deep/sets/"><span class="n">13</span><span class="t">Sets, Bags and Mixes</span></a>
+</li>
+<li data-slug="buffers"><a href="/deep/buffers/"><span class="n">14</span><span class="t">Blobs and Bufs</span></a>
+</li>
+</ol>
+<div class="toc-part">Code</div><ol class="toc-list">
+<li data-slug="signatures"><a href="/deep/signatures/"><span class="n">15</span><span class="t">Signatures and Introspection</span></a>
+</li>
+<li data-slug="exceptions"><a href="/deep/exceptions/"><span class="n">16</span><span class="t">Exceptions and Failures</span></a>
+</li>
+<li data-slug="regexes"><a href="/deep/regexes/"><span class="n">17</span><span class="t">Regexes and Grammars</span></a>
+</li>
+</ol>
+<div class="toc-part">Time and the outside world</div><ol class="toc-list">
+<li data-slug="dates"><a href="/deep/dates/"><span class="n">18</span><span class="t">Dates and Times</span></a>
+</li>
+<li data-slug="files"><a href="/deep/files/"><span class="n">19</span><span class="t">Files and Paths</span></a>
+</li>
+<li data-slug="processes"><a href="/deep/processes/"><span class="n">20</span><span class="t">Processes</span></a>
+</li>
+</ol>
+<div class="toc-part">Concurrency</div><ol class="toc-list">
+<li class="current" data-slug="promises"><a href="/deep/promises/"><span class="n">21</span><span class="t">Promises, Locks and Awaiting</span></a>
+<ol class="toc-corners"><li><a href="#a-promise-is-false-until-it-is-kept-or-broken"><span class="n">21.1</span><span class="t">A Promise is false until it is kept or broken</span></a></li><li><a href="#say-on-a-promise-shows-its-status-not-its-value"><span class="n">21.2</span><span class="t"><code>say</code> on a Promise shows its status, not its value</span></a></li><li><a href="#keep-stores-exactly-its-argument-and-true-when-there-is-none"><span class="n">21.3</span><span class="t"><code>keep</code> stores exactly its argument, and <code>True</code> when there is none</span></a></li><li><a href="#break-without-a-cause-breaks-with-died-not-false"><span class="n">21.4</span><span class="t"><code>break</code> without a cause breaks with "Died", not False</span></a></li><li><a href="#cause-refuses-a-promise-that-is-not-broken"><span class="n">21.5</span><span class="t"><code>.cause</code> refuses a promise that is not broken</span></a></li><li><a href="#result-waits-then-rethrows-a-copy-of-the-cause"><span class="n">21.6</span><span class="t"><code>.result</code> waits, then rethrows a copy of the cause</span></a></li><li><a href="#a-promise-is-resolved-once-and-the-refusal-names-a-vow"><span class="n">21.7</span><span class="t">A promise is resolved once, and the refusal names a vow</span></a></li><li><a href="#keep-holds-on-to-the-variable-not-its-value"><span class="n">21.8</span><span class="t"><code>keep</code> holds on to the variable, not its value</span></a></li><li><a href="#eqv-compares-results-so-it-waits-for-them"><span class="n">21.9</span><span class="t"><code>eqv</code> compares results, so it waits for them</span></a></li><li><a href="#a-then-block-receives-the-promise-not-its-result"><span class="n">21.10</span><span class="t">A <code>then</code> block receives the promise, not its result</span></a></li><li><a href="#each-then-makes-a-new-promise-and-one-promise-can-have-many"><span class="n">21.11</span><span class="t">Each <code>then</code> makes a new promise, and one promise can have many</span></a></li><li><a href="#thensynchronous-runs-inside-keep-and-may-return-a-plain-value"><span class="n">21.12</span><span class="t"><code>then(:synchronous)</code> runs inside <code>keep</code>, and may return a plain value</span></a></li><li><a href="#a-dying-synchronous-then-makes-keep-throw-a-wrong-error"><span class="n">21.13</span><span class="t">A dying synchronous <code>then</code> makes <code>keep</code> throw a wrong error</span></a></li><li><a href="#andthen-and-orelse-pick-the-outcome-they-handle"><span class="n">21.14</span><span class="t"><code>andthen</code> and <code>orelse</code> pick the outcome they handle</span></a></li><li><a href="#a-start-block-sees-the-outer-but-fresh-and"><span class="n">21.15</span><span class="t">A <code>start</code> block sees the outer <code>$_</code>, but fresh <code>$/</code> and <code>$!</code></span></a></li><li><a href="#start-and-then-see-the-dynamic-variables-of-their-creator"><span class="n">21.16</span><span class="t"><code>start</code> and <code>then</code> see the dynamic variables of their creator</span></a></li><li><a href="#start-takes-an-expression-and-a-dying-block-breaks-its-promise"><span class="n">21.17</span><span class="t"><code>start</code> takes an expression, and a dying block breaks its promise</span></a></li><li><a href="#a-dying-start-whose-promise-is-sunk-ends-the-program"><span class="n">21.18</span><span class="t">A dying <code>start</code> whose promise is sunk ends the program</span></a></li><li><a href="#promisein-keeps-with-true-after-a-delay-inf-never-does"><span class="n">21.19</span><span class="t"><code>Promise.in</code> keeps with True after a delay; <code>Inf</code> never does</span></a></li><li><a href="#anyof-and-allof-count-a-broken-promise-as-done"><span class="n">21.20</span><span class="t"><code>anyof</code> and <code>allof</code> count a broken promise as done</span></a></li><li><a href="#await-and-result-rethrow-with-different-roles"><span class="n">21.21</span><span class="t"><code>await</code> and <code>.result</code> rethrow with different roles</span></a></li><li><a href="#await-on-several-promises-returns-their-results-in-argument-order"><span class="n">21.22</span><span class="t"><code>await</code> on several promises returns their results in argument order</span></a></li><li><a href="#await-is-an-empty-list-await-is-an-error"><span class="n">21.23</span><span class="t"><code>await ()</code> is an empty list; <code>await()</code> is an error</span></a></li><li><a href="#await-on-the-thread-pool-does-not-hold-on-to-its-thread"><span class="n">21.24</span><span class="t"><code>await</code> on the thread pool does not hold on to its thread</span></a></li><li><a href="#await-refuses-a-junction-and-break-autothreads-over-one"><span class="n">21.25</span><span class="t"><code>await</code> refuses a Junction, and <code>break</code> autothreads over one</span></a></li><li><a href="#a-channel-queues-values-until-they-are-received"><span class="n">21.26</span><span class="t">A Channel queues values until they are received</span></a></li><li><a href="#a-channels-closed-promise-waits-until-the-queue-is-empty"><span class="n">21.27</span><span class="t">A Channel's <code>closed</code> promise waits until the queue is empty</span></a></li><li><a href="#a-channel-passes-values-between-threads-and-await-receives-one"><span class="n">21.28</span><span class="t">A Channel passes values between threads, and <code>await</code> receives one</span></a></li><li><a href="#await-on-a-channel-takes-a-nil-value-for-no-value"><span class="n">21.29</span><span class="t"><code>await</code> on a Channel takes a Nil value for no value</span></a></li><li><a href="#sleep-returns-nil-and-some-arguments-mean-never"><span class="n">21.30</span><span class="t"><code>sleep</code> returns Nil, and some arguments mean never</span></a></li><li><a href="#sleep-timer-returns-what-it-did-not-sleep-sleep-until-a-bool"><span class="n">21.31</span><span class="t"><code>sleep-timer</code> returns what it did not sleep; <code>sleep-until</code> a Bool</span></a></li><li><a href="#lockprotect-returns-what-its-block-returns-container-and-all"><span class="n">21.32</span><span class="t"><code>Lock.protect</code> returns what its block returns, container and all</span></a></li><li><a href="#a-lock-is-re-entrant-and-only-its-holder-may-unlock-it"><span class="n">21.33</span><span class="t">A Lock is re-entrant, and only its holder may unlock it</span></a></li><li><a href="#every-call-of-condition-makes-a-new-condition-variable"><span class="n">21.34</span><span class="t">Every call of <code>.condition</code> makes a new condition variable</span></a></li><li><a href="#locksoft-is-a-lock-whose-misuse-has-typed-exceptions"><span class="n">21.35</span><span class="t"><code>Lock::Soft</code> is a Lock whose misuse has typed exceptions</span></a></li><li><a href="#lockasynclock-returns-a-promise-and-the-lock-is-not-re-entrant"><span class="n">21.36</span><span class="t"><code>Lock::Async.lock</code> returns a promise, and the lock is not re-entrant</span></a></li><li><a href="#protect-or-queue-on-recursion-defers-the-inner-call-instead-of-waiting"><span class="n">21.37</span><span class="t"><code>protect-or-queue-on-recursion</code> defers the inner call instead of waiting</span></a></li><li><a href="#a-semaphore-hands-out-permits-and-release-has-no-ceiling"><span class="n">21.38</span><span class="t">A Semaphore hands out permits, and <code>release</code> has no ceiling</span></a></li><li><a href="#a-semaphores-permit-count-wraps-at-32-bits"><span class="n">21.39</span><span class="t">A Semaphore's permit count wraps at 32 bits</span></a></li><li><a href="#cue-returns-nil-and-a-cancellation-only-with-a-timer"><span class="n">21.40</span><span class="t"><code>cue</code> returns Nil, and a Cancellation only with a timer</span></a></li><li><a href="#a-currentthreadscheduler-runs-everything-at-once-in-the-caller"><span class="n">21.41</span><span class="t">A CurrentThreadScheduler runs everything at once, in the caller</span></a></li><li><a href="#hyper-keeps-the-order-of-the-elements-race-does-not"><span class="n">21.42</span><span class="t"><code>hyper</code> keeps the order of the elements, <code>race</code> does not</span></a></li><li><a href="#an-exception-in-a-hyper-worker-surfaces-where-the-values-are-read"><span class="n">21.43</span><span class="t">An exception in a <code>hyper</code> worker surfaces where the values are read</span></a></li><li><a href="#a-promise-becomes-a-supply-of-its-one-value"><span class="n">21.44</span><span class="t">A Promise becomes a Supply of its one value</span></a></li></ol>
+</li>
+<li data-slug="supplies"><a href="/deep/supplies/"><span class="n">22</span><span class="t">Supplies</span></a>
+</li>
+</ol>
+<div class="toc-part">Back matter</div><ol class="toc-list">
+<li data-slug="colophon"><a href="/deep/colophon/"><span class="n"></span><span class="t">Colophon</span></a>
+</li>
+</ol></nav>
+<main class="page">
+<article class="chapter" data-slug="promises">
+<header class="chapter-head"><div class="kicker">Concurrency · Chapter 21</div><h1>Promises, Locks and Awaiting</h1><p class="summary">What keeps and breaks a Promise, what <code>start</code>, <code>then</code> and <code>await</code> hand on and throw, how Channels, locks and semaphores behave between threads, and what <code>sleep</code> answers.</p><p class="meta">44 corners · 56 examples</p></header>
+<p>A <code>Promise</code> is a value that is not there yet. It starts out <em>Planned</em>, and later somebody either <em>keeps</em> it with a result or <em>breaks</em> it with a cause, once. <code>start</code> runs a block on Rakudo's thread pool and returns a Promise for the block's value; <code>await</code> waits for a Promise and hands over its result, or throws when it was broken. Around those two sit the tools for code that runs on several threads at once: <code>then</code> to chain work, <code>Channel</code> to pass values from thread to thread, <code>Lock</code>, <code>Lock::Async</code> and <code>Semaphore</code> to take turns, and the scheduler that runs it all.</p>
+<p>Most examples in this chapter start threads, sleep or use timers, so they are marked to be run locally. Their output does not depend on timing: where threads race, the example waits in a fixed order or sorts what it collects. Everything is Raku 6.d, the default; where a <code>use v6.c</code> file behaves differently, the corner says so. Supplies, <code>react</code> and <code>whenever</code> are in <a href="/deep/supplies/">Supplies</a>, <code>Proc::Async</code> in <a href="/deep/processes/">Processes</a>, and exceptions in general in <a href="/deep/exceptions/">Exceptions and Failures</a>.</p>
+<section class="corner" id="a-promise-is-false-until-it-is-kept-or-broken" data-tags=""><h2><a class="num" href="#a-promise-is-false-until-it-is-kept-or-broken">21.1</a> <span class="t">A Promise is false until it is kept or broken</span></h2>
+<p>A new Promise has the status <code>Planned</code>. <code>.status</code> returns a value of the enumeration <code>PromiseStatus</code>: <code>Planned</code>, <code>Kept</code> or <code>Broken</code>, numbered 0, 1 and 2. The Promise itself is false while it is Planned and true once it is resolved, kept or broken, whatever the result. <code>Planned</code> is false as well, because its number is 0.</p>
+<figure class="ex ex-run" id="ex-21-1">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">0</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="nb">so</span>;
+<span class="nb">say</span> ?<span class="n">Planned</span>, <span class="s">&quot; &quot;</span>, ?<span class="n">Kept</span>, <span class="s">&quot; &quot;</span>, ?<span class="n">Broken</span>;
+<span class="nb">say</span> <span class="nv">$p</span> ~~ <span class="n">Kept</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span> ~~ <span class="n">Kept</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned False
+Kept True
+False True True
+False
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A smartmatch against a status must be given the status: the Promise itself never matches <code>Kept</code>.</p>
+</section>
+<section class="corner" id="say-on-a-promise-shows-its-status-not-its-value" data-tags="trap"><h2><a class="num" href="#say-on-a-promise-shows-its-status-not-its-value">21.2</a> <span class="t"><code>say</code> on a Promise shows its status, not its value</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>The gist of a Promise names its scheduler and its status. The result is not part of it, so printing a Promise never shows what it holds; <code>.result</code> does.</p>
+<figure class="ex ex-run" id="ex-21-2">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">42</span>);
+<span class="nb">say</span> <span class="nv">$p</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="n">PromiseStatus</span>.<span class="n">enums</span>;
+<span class="nb">say</span> <span class="n">PromiseStatus</span>(<span class="mi">2</span>);</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Promise.new(scheduler =&gt; ThreadPoolScheduler.new(uncaught_handler =&gt; Callable), status =&gt; PromiseStatus::Kept)
+42
+Map.new((Broken =&gt; 2, Kept =&gt; 1, Planned =&gt; 0))
+Broken</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>result	42
+status	Kept
+42</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p><code>PromiseStatus(2)</code> turns a number into a status; a name, as in <code>PromiseStatus("Kept")</code>, is refused with <code>X::Enum::NoValue</code>.</p>
+</section>
+<section class="corner" id="keep-stores-exactly-its-argument-and-true-when-there-is-none" data-tags=""><h2><a class="num" href="#keep-stores-exactly-its-argument-and-true-when-there-is-none">21.3</a> <span class="t"><code>keep</code> stores exactly its argument, and <code>True</code> when there is none</span></h2>
+<p><code>keep</code> with no argument keeps the promise with <code>True</code>. With an argument it stores that value as it is: Nil stays Nil, a type object stays a type object, a Slip stays a Slip. <code>keep</code> itself returns Nil. <code>Promise.kept</code> builds a promise that is kept already, with <code>True</code> or with its argument.</p>
+<figure class="ex ex-run" id="ex-21-3">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">keep</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">result</span>.<span class="nb">raku</span>;
+<span class="k">sub</span> <span class="n">kept-with</span>(\<span class="n">value</span>) { <span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="nb">new</span>; <span class="nv">$q</span>.<span class="n">keep</span>(<span class="n">value</span>); <span class="nv">$q</span>.<span class="n">result</span> }
+<span class="nb">say</span> <span class="n">kept-with</span>(<span class="nb">Nil</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">kept-with</span>(<span class="nb">Int</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">kept-with</span>((<span class="mi">1</span>, <span class="mi">2</span>).<span class="nb">Slip</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>.<span class="n">result</span>, <span class="s">&quot; &quot;</span>, <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="s">&quot;value&quot;</span>).<span class="n">result</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="n">False</span>).<span class="nb">so</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+Bool::True
+Nil
+Int
+slip(1, 2)
+True value
+True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>${:result(Bool::True), :status("Kept"), :vowed(Bool::True)}
+Bool::True
+Nil
+Int
+slip(1, 2)
+True value
+True</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The last line is the rule of the first corner again: a promise kept with <code>False</code> is a true Promise.</p>
+</section>
+<section class="corner" id="break-without-a-cause-breaks-with-died-not-false" data-tags="undocumented"><h2><a class="num" href="#break-without-a-cause-breaks-with-died-not-false">21.4</a> <span class="t"><code>break</code> without a cause breaks with "Died", not False</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>docs.raku.org says that a <code>break</code> without an argument leaves the cause <code>False</code>. Rakudo, and the tests of the language, give an <code>X::AdHoc</code> whose message is "Died". Any cause that is not an exception is wrapped in an <code>X::AdHoc</code>, with the value as its payload, so an explicit <code>False</code> is not stored as <code>False</code> either. An exception object is stored as it is.</p>
+<figure class="ex ex-run" id="ex-21-4">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">break</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">cause</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$p</span>.<span class="n">cause</span>.<span class="n">message</span>;
+<span class="k">sub</span> <span class="n">broken-with</span>(\<span class="n">cause</span>) { <span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="nb">new</span>; <span class="nv">$q</span>.<span class="n">break</span>(<span class="n">cause</span>); <span class="nv">$q</span>.<span class="n">cause</span> }
+<span class="nb">say</span> <span class="n">broken-with</span>(<span class="s">&quot;glass&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="n">broken-with</span>(<span class="n">False</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$e</span> = <span class="n">X::NYI</span>.<span class="nb">new</span>(<span class="n">feature</span> =&gt; <span class="s">&quot;flight&quot;</span>);
+<span class="nb">say</span> <span class="n">broken-with</span>(<span class="nv">$e</span>) === <span class="nv">$e</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">broken</span>.<span class="n">cause</span>.<span class="n">message</span>, <span class="s">&quot; &quot;</span>, <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;glass&quot;</span>).<span class="n">cause</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+X::AdHoc: Died
+X::AdHoc.new(payload =&gt; "glass")
+X::AdHoc.new(payload =&gt; Bool::False)
+True
+Died glass</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>${:cause(X::AdHoc.new(payload =&gt; "Died")), :status("Broken"), :vowed(Bool::True)}
+X::AdHoc: Died
+X::AdHoc.new(payload =&gt; "glass")
+X::AdHoc.new(payload =&gt; Bool::False)
+True
+Died glass</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>An exception <em>type</em> is stored as it is too, which leaves a cause that is undefined. Asking such a promise for its result then fails inside Rakudo, with an error about <code>but</code> that has nothing to do with the promise:</p>
+<figure class="ex ex-run" id="ex-21-5">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$t</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="n">X::NYI</span>);
+<span class="nb">say</span> <span class="nv">$t</span>.<span class="n">cause</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$t</span>.<span class="n">cause</span>.<span class="nb">defined</span>;
+<span class="k">try</span> <span class="nv">$t</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::NYI False
+X::Multi::NoMatch</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>X::AdHoc.new(payload =&gt; X::NYI) True
+X::AdHoc</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="cause-refuses-a-promise-that-is-not-broken" data-tags=""><h2><a class="num" href="#cause-refuses-a-promise-that-is-not-broken">21.5</a> <span class="t"><code>.cause</code> refuses a promise that is not broken</span></h2>
+<p>Only a broken promise has a cause. Asking a Planned or a kept one throws <code>X::Promise::CauseOnlyValidOnBroken</code>, whose <code>.status</code> says what the promise was instead. It does not wait for the promise to be resolved.</p>
+<figure class="ex ex-run" id="ex-21-6">
+<div class="code"><pre class="src" data-src><span class="k">try</span> <span class="nb">Promise</span>.<span class="nb">new</span>.<span class="n">cause</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">cause</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">status</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Promise::CauseOnlyValidOnBroken
+Can only call cause on a broken promise (status: Planned)
+Kept</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="result-waits-then-rethrows-a-copy-of-the-cause" data-tags=""><h2><a class="num" href="#result-waits-then-rethrows-a-copy-of-the-cause">21.6</a> <span class="t"><code>.result</code> waits, then rethrows a copy of the cause</span></h2>
+<p><code>.result</code> blocks until the promise is resolved. For a kept promise it returns the result. For a broken one it throws, but not the cause itself: it throws a copy with the role <code>X::Promise::Broken</code> mixed in. The copy still matches the original type, keeps the message and the type's own attributes, and adds a <code>.result-backtrace</code>. The cause in the promise stays a plain exception, and every <code>.result</code> makes a new copy.</p>
+<figure class="ex ex-run" id="ex-21-7">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;oh no&quot;</span>);
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$!</span> ~~ <span class="n">X::AdHoc</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$!</span> === <span class="nv">$p</span>.<span class="n">cause</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">cause</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">result-backtrace</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$copy</span> = <span class="nv">$!</span>;
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$!</span> === <span class="nv">$copy</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="n">X::NYI</span>.<span class="nb">new</span>(<span class="n">feature</span> =&gt; <span class="s">&quot;levitation&quot;</span>));
+<span class="k">try</span> <span class="nv">$q</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">feature</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::AdHoc+{X::Promise::Broken}
+True oh no
+False X::AdHoc
+Backtrace
+False
+X::NYI+{X::Promise::Broken}: levitation</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>X::AdHoc
+True oh no
+True X::AdHoc</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>Uncaught, the role changes the report: it says where the result was asked for, then gives the original exception with the backtrace of the thread where it was thrown.</p>
+<figure class="ex ex-local" id="ex-21-8">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="k">start</span> { <span class="nb">die</span> <span class="s">&quot;in the thread&quot;</span> };
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">result</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text"><span class="empty">(nothing)</span></pre><div class="lbl err">and on standard error</div><pre class="err-text">Tried to get the result of a broken Promise
+  in block &lt;unit&gt; at example.raku line 2
+
+Original exception:
+    in the thread
+      in block  at example.raku line 1
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>await</code> wears a different role; see <a href="/deep/promises/#await-and-result-rethrow-with-different-roles"><code>await</code> and <code>.result</code> rethrow with different roles</a>.</p>
+</section>
+<section class="corner" id="a-promise-is-resolved-once-and-the-refusal-names-a-vow" data-tags=""><h2><a class="num" href="#a-promise-is-resolved-once-and-the-refusal-names-a-vow">21.7</a> <span class="t">A promise is resolved once, and the refusal names a vow</span></h2>
+<p>Whoever keeps or breaks a promise first takes its <em>vow</em>, the sole right to resolve it. A second <code>keep</code> or <code>break</code> is refused with <code>X::Promise::Vowed</code>, even when the program never asked for a vow. <code>.vow</code> takes the vow explicitly and returns a <code>Promise::Vow</code>, an object with <code>.keep</code>, <code>.break</code> and <code>.promise</code>; the promise's own methods are refused from then on. Keeping through the vow a second time throws <code>X::Promise::Resolved</code>.</p>
+<figure class="ex ex-run" id="ex-21-9">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">1</span>);
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$vow</span> = <span class="nv">$q</span>.<span class="n">vow</span>;
+<span class="nb">say</span> <span class="nv">$vow</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$vow</span>.<span class="n">promise</span> === <span class="nv">$q</span>;
+<span class="k">try</span> <span class="nv">$q</span>.<span class="n">keep</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nv">$vow</span>.<span class="n">keep</span>(<span class="mi">42</span>);
+<span class="k">try</span> <span class="nv">$vow</span>.<span class="n">keep</span>(<span class="mi">43</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">result</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="nb">new</span>.<span class="n">vow</span>.<span class="n">keep</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Promise::Vowed: Access denied to keep/break this Promise; already vowed
+Promise::Vow True
+X::Promise::Vowed
+X::Promise::Resolved: Cannot keep/break a Promise more than once (status: Kept)
+42
+Too few positionals passed; expected 2 arguments but got 1</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>X::Promise::Vowed: Access denied to keep/break this Promise; already vowed</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>The last line is a trap of its own: the promise's <code>keep</code> has a default value, the vow's <code>keep</code> does not. <code>Promise::Vow</code> is a lexical class, not reachable by that name.</p>
+<p>Which exception a late <code>keep</code> gets shows who holds the vow. <code>Promise.kept</code> and <code>Promise.broken</code> take none, so they answer <code>X::Promise::Resolved</code>. Every promise that Rakudo resolves itself, from <code>Promise.in</code>, <code>start</code>, <code>then</code>, <code>anyof</code> or <code>allof</code>, has its vow taken at birth:</p>
+<figure class="ex ex-local" id="ex-21-10">
+<div class="code"><pre class="src"><span class="k">for</span> <span class="nb">Promise</span>.<span class="n">kept</span>, <span class="nb">Promise</span>.<span class="n">broken</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mi">5</span>), (<span class="k">start</span> { <span class="mi">1</span> }),
+    <span class="nb">Promise</span>.<span class="n">kept</span>.<span class="n">then</span>({ <span class="mi">1</span> }), <span class="nb">Promise</span>.<span class="n">allof</span>() -&gt; <span class="nv">$p</span> {
+    <span class="k">try</span> <span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">1</span>);
+    <span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+}</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::Promise::Resolved
+X::Promise::Resolved
+X::Promise::Vowed
+X::Promise::Vowed
+X::Promise::Vowed
+X::Promise::Vowed</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="keep-holds-on-to-the-variable-not-its-value" data-tags="quirk unasserted"><h2><a class="num" href="#keep-holds-on-to-the-variable-not-its-value">21.8</a> <span class="t"><code>keep</code> holds on to the variable, not its value</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p><code>keep</code>, <code>Promise.kept</code> and the value of a <code>start</code> block store the container they are given, not the value in it. Assigning to the variable after the promise is kept changes what <code>.result</code> returns afterwards. A value made from the variable, such as <code>+$v</code>, is safe. The result itself is read-only.</p>
+<figure class="ex ex-run" id="ex-21-11">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$p</span>.<span class="n">keep</span>(<span class="nv">$x</span>);
+<span class="nv">$x</span> = <span class="mi">6</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="k">my</span> <span class="nv">$z</span> = <span class="mi">9</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="nv">$z</span>);
+<span class="nv">$z</span> = <span class="mi">10</span>;
+<span class="nb">say</span> <span class="nv">$q</span>.<span class="n">result</span>;
+<span class="k">my</span> <span class="nv">$v</span> = <span class="mi">1</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(+<span class="nv">$v</span>);
+<span class="nv">$v</span> = <span class="mi">2</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">result</span>;
+<span class="k">try</span> { <span class="nv">$p</span>.<span class="n">result</span> = <span class="mi">1</span> };
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">6
+10
+1
+X::Assignment::RO</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>5
+9
+1
+X::Assignment::RO</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>A <code>start</code> block that ends with a variable does the same, even after it has finished:</p>
+<figure class="ex ex-local" id="ex-21-12">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$y</span> = <span class="mi">7</span>;
+<span class="k">my</span> <span class="nv">$s</span> = <span class="k">start</span> { <span class="nv">$y</span> };
+<span class="nb">await</span> <span class="nv">$s</span>;
+<span class="nv">$y</span> = <span class="mi">8</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$s</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">8</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="eqv-compares-results-so-it-waits-for-them" data-tags="quirk undocumented"><h2><a class="num" href="#eqv-compares-results-so-it-waits-for-them">21.9</a> <span class="t"><code>eqv</code> compares results, so it waits for them</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p><code>===</code> on two promises asks whether they are the same object. <code>eqv</code> compares their results instead: two different promises kept with equal values are <code>eqv</code>. To get the results it has to wait for them, so <code>eqv</code> on a Planned promise blocks, and a broken one makes it throw.</p>
+<figure class="ex ex-local" id="ex-21-13">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>) <span class="n">eqv</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>) === <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>) <span class="n">eqv</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="s">&quot;1&quot;</span>);
+<span class="nb">say</span> (<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>) <span class="n">eqv</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;x&quot;</span>)) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">my</span> (<span class="nv">$p</span>, <span class="nv">$q</span>) = <span class="nb">Promise</span>.<span class="nb">new</span>, <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$compare</span> = <span class="k">start</span> { <span class="nv">$p</span> <span class="n">eqv</span> <span class="nv">$q</span> };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$compare</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$compare</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+False
+False
+X::AdHoc+{X::Promise::Broken}
+Planned</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The comparison in the <code>start</code> block never returns, because nobody keeps <code>$p</code> or <code>$q</code>.</p>
+</section>
+<section class="corner" id="a-then-block-receives-the-promise-not-its-result" data-tags="trap"><h2><a class="num" href="#a-then-block-receives-the-promise-not-its-result">21.10</a> <span class="t">A <code>then</code> block receives the promise, not its result</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.then</code> registers code to run once the promise is resolved, and returns a new promise for that code's value. The code gets the <em>original promise</em> as its argument, so in a bare block <code>$_</code> is a Promise and the value is <code>.result</code>. The code runs for a broken promise too, where <code>.result</code> would throw and <code>.cause</code> is what it can read. Code that dies breaks the new promise, with the exception as a plain <code>.cause</code>.</p>
+<figure class="ex ex-local" id="ex-21-14">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">42</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$p</span>.<span class="n">then</span>({ .^<span class="n">name</span> });
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$p</span>.<span class="n">then</span>(-&gt; <span class="nv">$promise</span> { <span class="nv">$promise</span>.<span class="n">result</span> + <span class="mi">1</span> });
+<span class="nb">say</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;bad input&quot;</span>).<span class="n">then</span>({ .<span class="n">status</span> ~ <span class="s">&quot;: &quot;</span> ~ .<span class="n">cause</span>.<span class="n">message</span> });
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ <span class="nb">die</span> <span class="s">&quot;the then died&quot;</span> });
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$d</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$d</span>.<span class="n">cause</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Promise
+43
+Broken: bad input
+Broken X::AdHoc the then died</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="each-then-makes-a-new-promise-and-one-promise-can-have-many" data-tags=""><h2><a class="num" href="#each-then-makes-a-new-promise-and-one-promise-can-have-many">21.11</a> <span class="t">Each <code>then</code> makes a new promise, and one promise can have many</span></h2>
+<p><code>.then</code> never returns the promise it was called on. Several <code>then</code> blocks on one promise all run when it is resolved, and a <code>then</code> on a <code>then</code> makes a chain. The value of the code keeps the new promise as it is, a List included. Code that cannot take one argument breaks the new promise; a value that is not code is refused at once.</p>
+<figure class="ex ex-local" id="ex-21-15">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$t</span> = <span class="nv">$p</span>.<span class="n">then</span>({ .<span class="n">result</span> + <span class="mi">1</span> });
+<span class="k">my</span> <span class="nv">$u</span> = <span class="nv">$p</span>.<span class="n">then</span>({ .<span class="n">result</span> * <span class="mi">10</span> });
+<span class="nb">say</span> <span class="nv">$t</span> === <span class="nv">$p</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$t</span>.<span class="n">status</span>;
+<span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">5</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$t</span>, <span class="nv">$u</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ .<span class="n">result</span> + <span class="mi">1</span> }).<span class="n">then</span>({ .<span class="n">result</span> * <span class="mi">10</span> });
+<span class="nb">say</span> (<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ (<span class="mi">1</span>, <span class="mi">2</span>) })).<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>(-&gt; <span class="nv">$a</span>, <span class="nv">$b</span> { <span class="mi">1</span> });
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>(<span class="mi">42</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False Planned
+(6 50)
+20
+(1, 2)
+Too few positionals passed; expected 2 arguments but got 1
+X::TypeCheck::Binding::Parameter</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The <code>then</code> blocks run on the thread pool, in no promised order; <code>await</code> collects their results in the order it is given.</p>
+</section>
+<section class="corner" id="thensynchronous-runs-inside-keep-and-may-return-a-plain-value" data-tags="undocumented unasserted"><h2><a class="num" href="#thensynchronous-runs-inside-keep-and-may-return-a-plain-value">21.12</a> <span class="t"><code>then(:synchronous)</code> runs inside <code>keep</code>, and may return a plain value</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>With <code>:synchronous</code>, the code of a <code>then</code> does not go to the thread pool. It runs on the thread that resolves the promise, inside the call to <code>keep</code> or <code>break</code>, in the order the <code>then</code> blocks were added. On a promise that is resolved already, the code runs at once, and <code>.then</code> returns the code's value itself instead of a Promise.</p>
+<figure class="ex ex-local" id="ex-21-16">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">@log</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$p</span>.<span class="n">then</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;first then&quot;</span>) }, :<span class="n">synchronous</span>);
+<span class="nv">$p</span>.<span class="n">then</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;second then&quot;</span>) }, :<span class="n">synchronous</span>);
+<span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;before keep&quot;</span>);
+<span class="nv">$p</span>.<span class="n">keep</span>;
+<span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;after keep&quot;</span>);
+<span class="nb">say</span> <span class="nv">@log</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ .<span class="n">result</span> + <span class="mi">1</span> }).^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ .<span class="n">result</span> + <span class="mi">1</span> }, :<span class="n">synchronous</span>).<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">then</span>({ <span class="nb">die</span> <span class="s">&quot;at once&quot;</span> }, :<span class="n">synchronous</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[before keep first then second then after keep]
+Promise
+2
+X::AdHoc: at once</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>On a resolved promise, code that dies throws straight to the caller of <code>.then</code>.</p>
+</section>
+<section class="corner" id="a-dying-synchronous-then-makes-keep-throw-a-wrong-error" data-tags="bug"><h2><a class="num" href="#a-dying-synchronous-then-makes-keep-throw-a-wrong-error">21.13</a> <span class="t">A dying synchronous <code>then</code> makes <code>keep</code> throw a wrong error</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span></span></h2>
+<p>When the code of a synchronous <code>then</code> dies while the promise is being kept, the new promise should be broken with that exception. In Rakudo 2026.08 the <code>keep</code> call itself throws an unrelated "Too few positionals" error. The original promise is kept all the same, the <code>then</code> promise stays Planned for ever, and the synchronous <code>then</code> blocks registered after the dying one never run.</p>
+<figure class="ex ex-local" id="ex-21-17">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$dies</span>  = <span class="nv">$p</span>.<span class="n">then</span>({ <span class="nb">die</span> <span class="s">&quot;in a synchronous then&quot;</span> }, :<span class="n">synchronous</span>);
+<span class="k">my</span> <span class="nv">$later</span> = <span class="nv">$p</span>.<span class="n">then</span>({ <span class="s">&quot;never runs&quot;</span> }, :<span class="n">synchronous</span>);
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">keep</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span>;
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$dies</span>, <span class="nv">$later</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$dies</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$later</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$q</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$reader</span> = <span class="nv">$q</span>.<span class="n">then</span>({ .<span class="n">result</span> }, :<span class="n">synchronous</span>);
+<span class="k">try</span> <span class="nv">$q</span>.<span class="n">break</span>(<span class="s">&quot;bad&quot;</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>, <span class="s">&quot; / &quot;</span>, <span class="nv">$q</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$reader</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Too few positionals passed; expected 1 argument but got 0
+Kept
+Planned Planned
+Too few positionals passed; expected 1 argument but got 0 / Broken Planned</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The second case is an ordinary pattern: a <code>then</code> that reads <code>.result</code> dies whenever the promise turns out broken.</p>
+</section>
+<section class="corner" id="andthen-and-orelse-pick-the-outcome-they-handle" data-tags="undocumented"><h2><a class="num" href="#andthen-and-orelse-pick-the-outcome-they-handle">21.14</a> <span class="t"><code>andthen</code> and <code>orelse</code> pick the outcome they handle</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>A Promise has methods <code>andthen</code> and <code>orelse</code>, besides the operators of the same names. <code>.andthen(&amp;code)</code> runs the code only for a kept promise; for a broken one the new promise is broken with the very same cause object. <code>.orelse(&amp;code)</code> runs the code only for a broken promise; a kept one passes its result on. Chains of them work like chains of <code>then</code>.</p>
+<figure class="ex ex-local" id="ex-21-18">
+<div class="code"><pre class="src"><span class="k">sub</span> <span class="n">show</span>(<span class="nv">$p</span>) {
+    <span class="k">try</span> <span class="nv">$p</span>.<span class="n">result</span>;
+    <span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span> ~~ <span class="n">Kept</span> ?? <span class="s">&quot;kept: &quot;</span> ~ <span class="nv">$p</span>.<span class="n">result</span> !! <span class="s">&quot;broken: &quot;</span> ~ <span class="nv">$p</span>.<span class="n">cause</span>.<span class="n">message</span>;
+}
+<span class="n">show</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">2</span>).<span class="n">andthen</span>({ .<span class="n">result</span> * <span class="mi">10</span> });
+<span class="n">show</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;bad&quot;</span>).<span class="n">andthen</span>({ <span class="nb">say</span> <span class="s">&quot;not run&quot;</span> });
+<span class="n">show</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">2</span>).<span class="n">orelse</span>({ <span class="nb">say</span> <span class="s">&quot;not run&quot;</span> });
+<span class="n">show</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;bad&quot;</span>).<span class="n">orelse</span>({ <span class="s">&quot;recovered from &quot;</span> ~ .<span class="n">cause</span>.<span class="n">message</span> });
+<span class="k">my</span> <span class="nv">$b</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;same&quot;</span>);
+<span class="nb">say</span> <span class="nv">$b</span>.<span class="n">andthen</span>({ <span class="mi">1</span> }).<span class="n">cause</span> === <span class="nv">$b</span>.<span class="n">cause</span>;
+<span class="n">show</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>).<span class="n">andthen</span>({ .<span class="n">result</span> + <span class="mi">1</span> }).<span class="n">andthen</span>({ <span class="nb">die</span> <span class="s">&quot;stop&quot;</span> }).<span class="n">orelse</span>({ <span class="s">&quot;fallback&quot;</span> });</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">kept: 20
+broken: bad
+kept: 2
+kept: recovered from bad
+True
+kept: fallback</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-start-block-sees-the-outer-but-fresh-and" data-tags="trap"><h2><a class="num" href="#a-start-block-sees-the-outer-but-fresh-and">21.15</a> <span class="t">A <code>start</code> block sees the outer <code>$_</code>, but fresh <code>$/</code> and <code>$!</code></span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A <code>start</code> block is a closure: it sees the variables around it, <code>$_</code> included. <code>$/</code> and <code>$!</code> are the exception: inside <code>start</code> they are fresh and Nil. A closure captures variables, not values, so a <code>start</code> in a <code>for</code> loop is safe, because each iteration has a <code>$_</code> of its own, while one in a C-style <code>loop</code> shares the single counter with every other iteration.</p>
+<figure class="ex ex-local" id="ex-21-19">
+<div class="code"><pre class="src"><span class="s">&quot;abc&quot;</span> ~~ <span class="sr">/b/</span>;
+<span class="k">try</span> <span class="nb">die</span> <span class="s">&quot;outer&quot;</span>;
+<span class="nv">$_</span> = <span class="s">&quot;outer topic&quot;</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { <span class="nv">$_</span>.<span class="nb">raku</span>, <span class="nv">$/</span>.<span class="nb">raku</span>, <span class="nv">$!</span>.<span class="nb">raku</span> };
+<span class="k">my</span> <span class="nv">@p</span>;
+<span class="k">for</span> <span class="mi">1</span>.<span class="mf">.3</span> { <span class="nv">@p</span>.<span class="nb">push</span>: <span class="k">start</span> { <span class="nv">$_</span> * <span class="mi">10</span> } }
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">@p</span>;
+<span class="k">my</span> <span class="nv">@q</span>;
+<span class="k">loop</span> (<span class="k">my</span> <span class="nv">$i</span> = <span class="mi">1</span>; <span class="nv">$i</span> &lt;= <span class="mi">3</span>; <span class="nv">$i</span>++) { <span class="nv">@q</span>.<span class="nb">push</span>: <span class="k">start</span> { <span class="nb">sleep</span> <span class="mf">0.1</span>; <span class="nv">$i</span> * <span class="mi">10</span> } }
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">@q</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">("outer topic" Nil Nil)
+(10 20 30)
+(40 40 40)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>By the time the three blocks in the <code>loop</code> read <code>$i</code>, the loop has left it at 4.</p>
+</section>
+<section class="corner" id="start-and-then-see-the-dynamic-variables-of-their-creator" data-tags="undocumented"><h2><a class="num" href="#start-and-then-see-the-dynamic-variables-of-their-creator">21.16</a> <span class="t"><code>start</code> and <code>then</code> see the dynamic variables of their creator</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p>The code of a <code>start</code> and of a <code>then</code> runs on another thread, but it sees the dynamic variables of the place where it was written, and can change them there. <code>$*PROMISE</code> is the promise whose code is running: a <code>start</code> block's own promise, or inside a <code>then</code>, the new promise, still Planned while its code runs. Outside any promise it does not exist.</p>
+<figure class="ex ex-local" id="ex-21-20">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$*LOG</span> = <span class="s">&quot;main&quot;</span>;
+<span class="nb">await</span> (<span class="k">start</span> { <span class="nv">$*LOG</span> ~= <span class="s">&quot; start&quot;</span> }).<span class="n">then</span>({ <span class="nv">$*LOG</span> ~= <span class="s">&quot; then&quot;</span> });
+<span class="nb">say</span> <span class="nv">$*LOG</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="k">start</span> { <span class="nv">$*PROMISE</span> };
+<span class="nb">say</span> (<span class="nb">await</span> <span class="nv">$p</span>) === <span class="nv">$p</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>.<span class="n">then</span>({ <span class="nv">$*PROMISE</span>.<span class="n">status</span> });
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">$*PROMISE</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">sub</span> <span class="n">helper</span> { <span class="nv">$*DEPTH</span> }
+<span class="k">my</span> <span class="nv">$*DEPTH</span> = <span class="mi">3</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { <span class="n">helper</span>() };</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">main start then
+True
+Planned
+X::Dynamic::NotFound
+3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="start-takes-an-expression-and-a-dying-block-breaks-its-promise" data-tags=""><h2><a class="num" href="#start-takes-an-expression-and-a-dying-block-breaks-its-promise">21.17</a> <span class="t"><code>start</code> takes an expression, and a dying block breaks its promise</span></h2>
+<p><code>start</code> is a statement prefix: it takes a block or any single expression, so <code>start 6 * 7</code> computes the product on the pool. The promise is kept with the value as it is, a lazy Seq included. A <code>die</code> or a <code>fail</code> breaks it, and so does <code>return</code>, which has no routine to return from. A CATCH that handles the exception inside the block keeps the promise with Nil. <code>Promise.start</code> does the same for a Callable and passes any further arguments to it.</p>
+<figure class="ex ex-local" id="ex-21-21">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> <span class="mi">6</span> * <span class="mi">7</span>;
+<span class="nb">say</span> (<span class="nb">await</span> <span class="k">start</span> (<span class="mi">0</span>.<span class="mf">.3</span>).<span class="nb">map</span>(* + <span class="mi">1</span>)).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="nb">start</span>(-&gt; <span class="nv">$a</span>, <span class="nv">$b</span> { <span class="nv">$a</span> + <span class="nv">$b</span> }, <span class="mi">3</span>, <span class="mi">4</span>);
+<span class="k">my</span> <span class="nv">$f</span> = <span class="k">start</span> { <span class="nb">fail</span> <span class="s">&quot;failed in the thread&quot;</span> };
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$f</span>;
+<span class="nb">say</span> <span class="nv">$f</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$c</span> = <span class="k">start</span> { <span class="nb">die</span> <span class="s">&quot;x&quot;</span>; <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> <span class="s">&quot;handled in the thread&quot;</span> } } };
+<span class="nb">say</span> (<span class="nb">await</span> <span class="nv">$c</span>).<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$c</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$r</span> = <span class="k">start</span> { <span class="k">return</span> <span class="mi">5</span> };
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$r</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">42
+(1, 2, 3, 4).Seq
+7
+Broken failed in the thread
+handled in the thread
+Nil Kept
+X::ControlFlow::Return+{X::Await::Died}</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p><code>Promise.start</code> also takes <code>:catch</code>, a handler that sees the exception before the promise is broken:</p>
+<figure class="ex ex-local" id="ex-21-22">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">@seen</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">start</span>({ <span class="nb">die</span> <span class="s">&quot;oops&quot;</span> }, :<span class="n">catch</span>({ <span class="nv">@seen</span>.<span class="nb">push</span>: .<span class="n">message</span> }));
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$p</span>;
+<span class="nb">say</span> <span class="nv">@seen</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[oops] Broken</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-dying-start-whose-promise-is-sunk-ends-the-program" data-tags="trap"><h2><a class="num" href="#a-dying-start-whose-promise-is-sunk-ends-the-program">21.18</a> <span class="t">A dying <code>start</code> whose promise is sunk ends the program</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>A <code>start</code> used as a statement on its own is in sink context: nobody holds its promise, so nobody would ever hear that it broke. When such a block dies, Rakudo prints "Unhandled exception in code scheduled on thread" and the exception to standard error, and ends the whole program with exit code 1, at the moment of the death. What counts is whether the promise is sunk, so a sub that returns a <code>start</code> arms the report when its call is sunk. A promise kept in a variable is silent. So is a sunk <code>start</code> in a <code>use v6.c</code> file, and so is a <code>Promise.start</code> unless it is given <code>:report-broken-if-sunk</code>. A handler in <code>$*SCHEDULER.uncaught_handler</code> receives the exception instead, and the program goes on.</p>
+<p>The example runs each case as a separate program, and writes N for the thread number:</p>
+<figure class="ex ex-local" id="ex-21-23">
+<div class="code"><pre class="src"><span class="k">sub</span> <span class="n">child</span>(<span class="nv">$code</span>) {
+    <span class="k">my</span> <span class="nv">$proc</span> = <span class="nb">run</span> <span class="nv">$*EXECUTABLE</span>, <span class="s">&quot;-e&quot;</span>, <span class="nv">$code</span>, :<span class="n">out</span>, :<span class="n">err</span>;
+    <span class="k">my</span> <span class="nv">$out</span> = <span class="nv">$proc</span>.<span class="n">out</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">join</span>(<span class="s">&quot;,&quot;</span>);
+    <span class="k">my</span> <span class="nv">$err</span> = <span class="nv">$proc</span>.<span class="n">err</span>.<span class="nb">slurp</span>(:<span class="nb">close</span>).<span class="nb">lines</span>.<span class="nb">head</span>(<span class="mi">2</span>).<span class="nb">join</span>(<span class="s">&quot; / &quot;</span>).<span class="n">subst</span>(<span class="sr">/\d+/</span>, <span class="s">&quot;N&quot;</span>);
+    <span class="nb">say</span> <span class="s">&quot;exit $proc.exitcode() out [$out] err [$err]&quot;</span>;
+}
+<span class="n">child</span> <span class="s">'start { die &quot;boom&quot; }; sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'my $p = start { die &quot;boom&quot; }; sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'sub f { start { die &quot;boom&quot; } }; f(); sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'sub f { start { die &quot;boom&quot; } }; my $p = f(); sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'use v6.c; start { die &quot;boom&quot; }; sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'Promise.start({ die &quot;boom&quot; }); sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'Promise.start({ die &quot;boom&quot; }, :report-broken-if-sunk); sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'$*SCHEDULER.uncaught_handler = { say &quot;handled: &quot;, .message }; start { die &quot;boom&quot; }; sleep 0.2; say &quot;after&quot;'</span>;
+<span class="n">child</span> <span class="s">'$*SCHEDULER.cue({ die &quot;cued&quot; }); sleep 0.2; say &quot;after&quot;'</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">exit 1 out [] err [Unhandled exception in code scheduled on thread N / boom]
+exit 0 out [after] err []
+exit 1 out [] err [Unhandled exception in code scheduled on thread N / boom]
+exit 0 out [after] err []
+exit 0 out [after] err []
+exit 0 out [after] err []
+exit 1 out [] err [Unhandled exception in code scheduled on thread N / boom]
+exit 0 out [handled: boom,after] err []
+exit 1 out [] err [Unhandled exception in code scheduled on thread N / cued]</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The last case is code given to the scheduler directly (see <a href="/deep/promises/#cue-returns-nil-and-a-cancellation-only-with-a-timer"><code>cue</code> returns Nil, and a Cancellation only with a timer</a>): it ends the program the same way.</p>
+</section>
+<section class="corner" id="promisein-keeps-with-true-after-a-delay-inf-never-does" data-tags=""><h2><a class="num" href="#promisein-keeps-with-true-after-a-delay-inf-never-does">21.19</a> <span class="t"><code>Promise.in</code> keeps with True after a delay; <code>Inf</code> never does</span></h2>
+<p><code>Promise.in($seconds)</code> returns a promise that is kept with <code>True</code> once the delay has passed, and <code>Promise.at($time)</code> one that is kept at an <code>Instant</code>, a <code>DateTime</code> or a number of seconds since the epoch. A delay of zero or less, or a time in the past, keeps it right away; <code>Inf</code> never keeps it; <code>NaN</code> is refused at once. The delay may be any number, a <code>Duration</code> or a numeric string. Rakudo holds the vow, so the promise cannot be kept by hand.</p>
+<figure class="ex ex-local" id="ex-21-24">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.1</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">in</span>(-<span class="mi">1</span>).<span class="n">result</span>, <span class="s">&quot; &quot;</span>, <span class="nb">Promise</span>.<span class="n">at</span>(<span class="nb">now</span> - <span class="mi">100</span>).<span class="n">result</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="s">&quot;0.1&quot;</span>).<span class="n">result</span>, <span class="s">&quot; &quot;</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="nb">Duration</span>.<span class="nb">new</span>(<span class="mf">0.1</span>)).<span class="n">result</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">at</span>(<span class="nb">DateTime</span>.<span class="nb">now</span>.<span class="n">later</span>(<span class="n">seconds</span> =&gt; <span class="mf">0.1</span>)).<span class="n">result</span>, <span class="s">&quot; &quot;</span>, <span class="nb">Promise</span>.<span class="n">at</span>(<span class="nb">now</span>.<span class="nb">Num</span> + <span class="mf">0.1</span>).<span class="n">result</span>;
+<span class="k">my</span> <span class="nv">$never</span> = <span class="nb">Promise</span>.<span class="n">in</span>(<span class="n">Inf</span>);
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$never</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$never</span>.<span class="n">status</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="n">NaN</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="s">&quot;soon&quot;</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.1</span>).<span class="n">keep</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="nb">Any</span>).<span class="n">result</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned
+True
+True True
+True True
+True True
+Planned
+X::Scheduler::CueInNaNSeconds
+X::TypeCheck::Binding::Parameter
+X::Promise::Vowed
+True</pre><div class="lbl err">and on standard error</div><pre class="err-text">Use of uninitialized value of type Any in numeric context
+  in block &lt;unit&gt; at example.raku line 16</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>An undefined delay counts as zero, with a warning.</p>
+</section>
+<section class="corner" id="anyof-and-allof-count-a-broken-promise-as-done" data-tags=""><h2><a class="num" href="#anyof-and-allof-count-a-broken-promise-as-done">21.20</a> <span class="t"><code>anyof</code> and <code>allof</code> count a broken promise as done</span></h2>
+<p><code>Promise.anyof</code> returns a promise that is kept once any of its arguments is resolved, <code>Promise.allof</code> one that is kept once all of them are. Both are kept with <code>True</code>, whether the arguments were kept or broken, so their <code>.result</code> never throws: look at the arguments to learn what happened. With no arguments the combined promise is kept already. Anything that is not a defined Promise is refused with <code>X::Promise::Combinator</code>.</p>
+<figure class="ex ex-local" id="ex-21-25">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$ok</span>  = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$bad</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$any</span> = <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$ok</span>, <span class="nv">$bad</span>);
+<span class="k">my</span> <span class="nv">$all</span> = <span class="nb">Promise</span>.<span class="n">allof</span>(<span class="nv">$ok</span>, <span class="nv">$bad</span>);
+<span class="nv">$bad</span>.<span class="n">break</span>(<span class="s">&quot;failed&quot;</span>);
+<span class="nb">say</span> <span class="nv">$any</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$all</span>.<span class="n">status</span>;
+<span class="nv">$ok</span>.<span class="n">keep</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nv">$all</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">allof</span>().<span class="n">status</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">anyof</span>([<span class="nb">Promise</span>.<span class="n">kept</span>, <span class="nb">Promise</span>.<span class="n">kept</span>]).<span class="n">result</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">allof</span>(<span class="nb">Promise</span>.<span class="n">kept</span>, <span class="mi">42</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.<span class="n">combinator</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True
+Planned
+True
+Kept
+True
+X::Promise::Combinator allof</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The combined promise is kept by a task on the thread pool, a moment after the argument that completes it, so read it through <code>.result</code> or <code>await</code>, not through <code>.status</code>. <code>anyof</code> with a <code>Promise.in</code> is the usual timeout: the work that lost the race is still running, and still Planned.</p>
+<figure class="ex ex-local" id="ex-21-26">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$work</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$work</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.1</span>));
+<span class="nb">say</span> <span class="nv">$work</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="await-and-result-rethrow-with-different-roles" data-tags="undocumented"><h2><a class="num" href="#await-and-result-rethrow-with-different-roles">21.21</a> <span class="t"><code>await</code> and <code>.result</code> rethrow with different roles</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p><code>await</code> on a broken promise throws a copy of the cause with the role <code>X::Await::Died</code> mixed in, where <code>.result</code> mixes in <code>X::Promise::Broken</code>. The copy matches the original type, including a class of the program's own, and carries an <code>.await-backtrace</code>. Neither copy is the cause itself. What an uncaught <code>await</code> prints is in <a href="/deep/exceptions/#await-rethrows-a-threads-exception-with-a-role-mixed-in">Exceptions and Failures</a>.</p>
+<figure class="ex ex-run" id="ex-21-27">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;oh&quot;</span>);
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$p</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span>.<span class="n">await-backtrace</span>.^<span class="n">name</span>;
+<span class="nb">say</span> <span class="nv">$!</span> ~~ <span class="n">X::AdHoc</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span> === <span class="nv">$p</span>.<span class="n">cause</span>;
+<span class="k">class</span> <span class="n">X::Mine</span> <span class="k">is</span> <span class="nb">Exception</span> { <span class="k">method</span> <span class="n">message</span> { <span class="s">&quot;mine&quot;</span> } }
+<span class="k">try</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="n">X::Mine</span>.<span class="nb">new</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$!</span> ~~ <span class="n">X::Mine</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::AdHoc+{X::Promise::Broken}
+X::AdHoc+{X::Await::Died} Backtrace
+True False
+X::Mine+{X::Await::Died} True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>X::AdHoc</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>An exception that already wears <code>X::Await::Died</code> is passed on unchanged, so an <code>await</code> of an <code>await</code> shows the role once:</p>
+<figure class="ex ex-local" id="ex-21-28">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;inner&quot;</span>);
+<span class="k">try</span> <span class="nb">await</span> <span class="k">start</span> { <span class="nb">await</span> <span class="nv">$p</span> };
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::AdHoc+{X::Await::Died}: inner</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="await-on-several-promises-returns-their-results-in-argument-order" data-tags=""><h2><a class="num" href="#await-on-several-promises-returns-their-results-in-argument-order">21.22</a> <span class="t"><code>await</code> on several promises returns their results in argument order</span></h2>
+<p>Given several promises, or an array of them, <code>await</code> waits for all of them and returns a List of the results in the order of the arguments, not in the order they finished. Nested lists are flattened, and so are Slips among the results. A single promise gives its result alone, not a list of one. One broken promise anywhere makes the whole <code>await</code> throw.</p>
+<figure class="ex ex-local" id="ex-21-29">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$slow</span> = <span class="k">start</span> { <span class="nb">sleep</span> <span class="mf">0.1</span>; <span class="s">&quot;slow&quot;</span> };
+<span class="k">my</span> <span class="nv">$fast</span> = <span class="k">start</span> { <span class="s">&quot;fast&quot;</span> };
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$slow</span>, <span class="nv">$fast</span>;
+<span class="nb">say</span> (<span class="nb">await</span> (<span class="nv">$slow</span>, (<span class="nv">$fast</span>, <span class="nv">$slow</span>))).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="nb">await</span> <span class="k">start</span> { (<span class="mi">1</span>, <span class="mi">2</span>).<span class="nb">Slip</span> }, <span class="k">start</span> { (<span class="mi">3</span>, <span class="mi">4</span>).<span class="nb">Slip</span> }).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>)).^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, (<span class="nb">await</span> (<span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>),)).<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>), <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;second&quot;</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(slow fast)
+("slow", "fast", "slow")
+(1, 2, 3, 4)
+Int (1,)
+second</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="await-is-an-empty-list-await-is-an-error" data-tags="trap"><h2><a class="num" href="#await-is-an-empty-list-await-is-an-error">21.23</a> <span class="t"><code>await ()</code> is an empty list; <code>await()</code> is an error</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>An empty list is a fine argument: <code>await ()</code> returns <code>()</code> at once. A call with no arguments at all, <code>await()</code>, is an error, and so is an undefined value such as Nil or the <code>Promise</code> type object. A defined value that cannot be awaited, such as a number or a string, is an error that wears the <code>X::Await::Died</code> role.</p>
+<figure class="ex ex-run" id="ex-21-30">
+<div class="code"><pre class="src" data-src><span class="nb">say</span> (<span class="nb">await</span> ()).<span class="nb">raku</span>;
+<span class="k">for</span> { <span class="nb">await</span>() }, { <span class="nb">await</span> <span class="nb">Nil</span> }, { <span class="nb">await</span> <span class="nb">Promise</span> }, { <span class="nb">await</span> <span class="mi">42</span> },
+    { <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">kept</span>, <span class="s">&quot;text&quot;</span> } -&gt; <span class="nv">&amp;code</span> {
+    <span class="n">code</span>();
+    <span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> .^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, .<span class="n">message</span> } }
+}</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">()
+X::AdHoc: Must specify an Awaitable to await (got an empty list)
+X::AdHoc: Must specify a defined Awaitable to await (got an undefined Nil)
+X::AdHoc: Must specify a defined Awaitable to await (got an undefined Promise)
+X::AdHoc+{X::Await::Died}: Can only specify Awaitable objects to await (got a Int)
+X::AdHoc+{X::Await::Died}: Can only specify Awaitable objects to await (got a Str)</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>(nothing on standard output; standard error says:)
+Must specify at least one Awaitable to await
+  in block &lt;unit&gt; at example.raku line 1
+      1 | say (await ()).raku;</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+<p>In a <code>use v6.c</code> file, <code>await 42</code> is a plain <code>X::AdHoc</code>, without the role.</p>
+</section>
+<section class="corner" id="await-on-the-thread-pool-does-not-hold-on-to-its-thread" data-tags=""><h2><a class="num" href="#await-on-the-thread-pool-does-not-hold-on-to-its-thread">21.24</a> <span class="t"><code>await</code> on the thread pool does not hold on to its thread</span></h2>
+<p>In Raku 6.d, code running on the thread pool that reaches <code>await</code> gives its thread back to the pool until the promise is resolved. A tree of <code>start</code> blocks in which every level awaits its children therefore completes even on a pool of four threads:</p>
+<figure class="ex ex-local" id="ex-21-31">
+<div class="code"><pre class="src"><span class="n">PROCESS::</span>&lt;<span class="nv">$SCHEDULER</span>&gt; := <span class="n">ThreadPoolScheduler</span>.<span class="nb">new</span>(<span class="n">max_threads</span> =&gt; <span class="mi">4</span>);
+<span class="k">sub</span> <span class="n">fib</span>(<span class="nv">$n</span>) {
+    <span class="k">start</span> { <span class="nv">$n</span> &lt;= <span class="mi">1</span> ?? <span class="mi">1</span> !! <span class="nb">await</span>(<span class="n">fib</span>(<span class="nv">$n</span> - <span class="mi">2</span>)) + <span class="nb">await</span>(<span class="n">fib</span>(<span class="nv">$n</span> - <span class="mi">1</span>)) }
+}
+<span class="nb">say</span> <span class="nb">await</span> <span class="n">fib</span>(<span class="mi">10</span>);
+<span class="nb">say</span> <span class="nv">$*SCHEDULER</span>.<span class="n">max_threads</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">89
+4</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The <code>await</code> of 6.c blocks its thread. The same program with <code>use v6.c</code> at the top fills the four threads with blocks that wait for children that can never be scheduled, and it does not return:</p>
+<figure class="ex ex-nocheck" id="ex-21-32">
+<div class="code"><pre class="src"><span class="k">use</span> <span class="n">v6</span>.<span class="n">c</span>;
+<span class="n">PROCESS::</span>&lt;<span class="nv">$SCHEDULER</span>&gt; := <span class="n">ThreadPoolScheduler</span>.<span class="nb">new</span>(<span class="n">max_threads</span> =&gt; <span class="mi">4</span>);
+<span class="k">sub</span> <span class="n">fib</span>(<span class="nv">$n</span>) {
+    <span class="k">start</span> { <span class="nv">$n</span> &lt;= <span class="mi">1</span> ?? <span class="mi">1</span> !! <span class="nb">await</span>(<span class="n">fib</span>(<span class="nv">$n</span> - <span class="mi">2</span>)) + <span class="nb">await</span>(<span class="n">fib</span>(<span class="nv">$n</span> - <span class="mi">1</span>)) }
+}
+<span class="nb">say</span> <span class="nb">await</span> <span class="n">fib</span>(<span class="mi">10</span>);</pre><span class="local-label">not run</span></div>
+</figure>
+</section>
+<section class="corner" id="await-refuses-a-junction-and-break-autothreads-over-one" data-tags="quirk undocumented"><h2><a class="num" href="#await-refuses-a-junction-and-break-autothreads-over-one">21.25</a> <span class="t"><code>await</code> refuses a Junction, and <code>break</code> autothreads over one</span><span class="tags"><span class="tag tag-quirk">Quirk</span><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p><code>await</code> does not autothread: a Junction of promises is refused as a value that cannot be awaited. A method called on a Junction of promises autothreads as usual. <code>keep</code> takes a Junction as an ordinary value. <code>break</code> does not: it autothreads, breaks the promise with the first eigenstate, and then throws when it tries to break it again with the second. <code>Promise.broken</code> stumbles in the same way, with <code>X::Promise::Resolved</code>.</p>
+<figure class="ex ex-run" id="ex-21-33">
+<div class="code"><pre class="src" data-src><span class="k">my</span> (<span class="nv">$a</span>, <span class="nv">$b</span>) = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">1</span>), <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">2</span>);
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$a</span> | <span class="nv">$b</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> (<span class="nv">$a</span> | <span class="nv">$b</span>).<span class="n">result</span>;
+<span class="k">my</span> <span class="nv">$k</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$k</span>.<span class="n">keep</span>(<span class="mi">1</span> | <span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$k</span>.<span class="n">result</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">try</span> <span class="nv">$p</span>.<span class="n">break</span>(<span class="mi">1</span> | <span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">cause</span>.<span class="n">payload</span>;
+<span class="k">try</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="mi">1</span> | <span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Can only specify Awaitable objects to await (got a Junction)
+any(1, 2)
+any(1, 2)
+X::Promise::Vowed 1
+X::Promise::Resolved</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>Nil
+any(1, 2)</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="a-channel-queues-values-until-they-are-received" data-tags=""><h2><a class="num" href="#a-channel-queues-values-until-they-are-received">21.26</a> <span class="t">A Channel queues values until they are received</span></h2>
+<p>A <code>Channel</code> is a queue that many threads may send to and receive from. <code>.send</code> adds a value, <code>.receive</code> takes the oldest one, waiting if there is none, and <code>.poll</code> takes one or returns Nil at once. <code>.close</code> ends the sending; the values already sent can still be received, and after them <code>.receive</code> throws <code>X::Channel::ReceiveOnClosed</code>. <code>.list</code> returns every value up to the close, so on a channel that is still open it waits for the close.</p>
+<figure class="ex ex-run" id="ex-21-34">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$c</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">send</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="mi">1</span>.<span class="mf">.3</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">receive</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">poll</span>;
+<span class="nv">$c</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="nb">list</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">poll</span>.<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nv">$c</span>.<span class="n">receive</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="nv">$c</span>.<span class="n">send</span>(<span class="mi">4</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">1
+2
+(3)
+Nil
+X::Channel::ReceiveOnClosed
+X::Channel::SendOnClosed</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-channels-closed-promise-waits-until-the-queue-is-empty" data-tags="trap"><h2><a class="num" href="#a-channels-closed-promise-waits-until-the-queue-is-empty">21.27</a> <span class="t">A Channel's <code>closed</code> promise waits until the queue is empty</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>.closed</code> returns a promise. docs.raku.org says it is kept once the channel is closed; Rakudo keeps it only when the channel is closed <em>and</em> the last value has been received. <code>.fail</code> closes the channel with an error: the values sent before it are received as usual, then <code>.receive</code> throws the error, and the <code>closed</code> promise is broken as soon as the last value is out.</p>
+<figure class="ex ex-run" id="ex-21-35">
+<div class="code"><pre class="src" data-src><span class="k">my</span> <span class="nv">$c</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">send</span>(<span class="nv">$_</span>) <span class="k">for</span> <span class="mi">1</span>, <span class="mi">2</span>;
+<span class="nv">$c</span>.<span class="nb">close</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">closed</span>.<span class="n">status</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">receive</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$c</span>.<span class="n">closed</span>.<span class="n">status</span>;
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">receive</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$c</span>.<span class="n">closed</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="mi">1</span>);
+<span class="nv">$d</span>.<span class="nb">fail</span>(<span class="s">&quot;gone&quot;</span>);
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">receive</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$d</span>.<span class="n">closed</span>.<span class="n">status</span>;
+<span class="k">try</span> <span class="nv">$d</span>.<span class="n">receive</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned
+1 Planned
+2 Kept
+1 Broken
+X::AdHoc: gone</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-channel-passes-values-between-threads-and-await-receives-one" data-tags=""><h2><a class="num" href="#a-channel-passes-values-between-threads-and-await-receives-one">21.28</a> <span class="t">A Channel passes values between threads, and <code>await</code> receives one</span></h2>
+<p>A channel is how one thread hands a stream of values to another. A <code>for</code> over <code>.list</code> receives until the sender closes the channel. <code>await</code> on a channel receives the next value, waiting for it if needed; on a channel that is closed and empty it throws <code>X::Channel::ReceiveOnClosed</code> with the <code>X::Await::Died</code> role.</p>
+<figure class="ex ex-local" id="ex-21-36">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$c</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$producer</span> = <span class="k">start</span> {
+    <span class="k">for</span> <span class="mi">1</span>.<span class="mf">.5</span> { <span class="nv">$c</span>.<span class="n">send</span>(<span class="nv">$_</span> ** <span class="mi">2</span>) }
+    <span class="nv">$c</span>.<span class="nb">close</span>;
+}
+<span class="k">my</span> <span class="nv">@got</span>;
+<span class="k">for</span> <span class="nv">$c</span>.<span class="nb">list</span> -&gt; <span class="nv">$v</span> { <span class="nv">@got</span>.<span class="nb">push</span>(<span class="nv">$v</span>) }
+<span class="nb">say</span> <span class="nv">@got</span>;
+<span class="nb">await</span> <span class="nv">$producer</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="k">start</span> { <span class="nb">sleep</span> <span class="mf">0.1</span>; <span class="nv">$d</span>.<span class="n">send</span>(<span class="s">&quot;late&quot;</span>) };
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$d</span>;
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="mi">1</span>);
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$d</span>, <span class="nv">$d</span>;
+<span class="nv">$d</span>.<span class="nb">close</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nv">$d</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[1 4 9 16 25]
+late
+(1 2)
+X::Channel::ReceiveOnClosed+{X::Await::Died}</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="await-on-a-channel-takes-a-nil-value-for-no-value" data-tags="bug"><h2><a class="num" href="#await-on-a-channel-takes-a-nil-value-for-no-value">21.29</a> <span class="t"><code>await</code> on a Channel takes a Nil value for no value</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span></span></h2>
+<p>A Nil sent into a channel is a value like any other, and <code>.receive</code> returns it. <code>await</code> should too. In Rakudo 2026.08 it consumes the Nil and goes on waiting as though nothing had been sent: with a later value it returns that one instead, and with none it never returns.</p>
+<figure class="ex ex-local" id="ex-21-37">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$c</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">send</span>(<span class="nb">Nil</span>);
+<span class="nb">say</span> <span class="nv">$c</span>.<span class="n">receive</span>.<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$d</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="nb">Nil</span>);
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="mi">1</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$d</span>;
+<span class="nb">say</span> <span class="nv">$d</span>.<span class="n">poll</span>.<span class="nb">raku</span>;
+<span class="nv">$d</span>.<span class="n">send</span>(<span class="nb">Nil</span>);
+<span class="k">my</span> <span class="nv">$waiter</span> = <span class="k">start</span> { <span class="nb">await</span> <span class="nv">$d</span> };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$waiter</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$waiter</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+1
+Nil
+Planned</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>On the main thread nothing times it out; this program does not return:</p>
+<figure class="ex ex-nocheck" id="ex-21-38">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$c</span> = <span class="nb">Channel</span>.<span class="nb">new</span>;
+<span class="nv">$c</span>.<span class="n">send</span>(<span class="nb">Nil</span>);
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$c</span>;</pre><span class="local-label">not run</span></div>
+</figure>
+</section>
+<section class="corner" id="sleep-returns-nil-and-some-arguments-mean-never" data-tags="quirk"><h2><a class="num" href="#sleep-returns-nil-and-some-arguments-mean-never">21.30</a> <span class="t"><code>sleep</code> returns Nil, and some arguments mean never</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>sleep</code> waits about the given number of seconds and returns Nil. It takes any number, a <code>Duration</code> or a numeric string. Zero, a negative number and <code>NaN</code> return at once. <code>sleep</code> with no argument, <code>sleep Inf</code> and <code>sleep *</code> never return. The quirk is a string that is not a number: <code>sleep "abc"</code> returns at once, with no error and no warning. An undefined argument warns, three times.</p>
+<figure class="ex ex-local" id="ex-21-39">
+<div class="code"><pre class="src"><span class="nb">say</span> (<span class="nb">sleep</span> <span class="mf">0.1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="nb">sleep</span> <span class="s">&quot;0.05&quot;</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="nb">sleep</span> -<span class="mi">1</span>).<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, (<span class="nb">sleep</span> <span class="mi">0</span>).<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, (<span class="nb">sleep</span> <span class="n">NaN</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="nb">sleep</span> <span class="s">&quot;abc&quot;</span>).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">@forever</span> = (<span class="k">start</span> { <span class="nb">sleep</span> }), (<span class="k">start</span> { <span class="nb">sleep</span> <span class="n">Inf</span> }), (<span class="k">start</span> { <span class="nb">sleep</span> * });
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nb">Promise</span>.<span class="n">allof</span>(<span class="nv">@forever</span>), <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">@forever</span>».<span class="n">status</span>;
+<span class="nb">say</span> (<span class="nb">sleep</span> <span class="nb">Any</span>).<span class="nb">raku</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+Nil
+Nil Nil Nil
+Nil
+[Planned Planned Planned]
+Nil</pre><div class="lbl err">and on standard error</div><pre class="err-text">Use of uninitialized value of type Any in numeric context
+  in block &lt;unit&gt; at example.raku line 8
+Use of uninitialized value of type Any in numeric context
+  in block &lt;unit&gt; at example.raku line 8
+Use of uninitialized value of type Any in numeric context
+  in block &lt;unit&gt; at example.raku line 8</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="sleep-timer-returns-what-it-did-not-sleep-sleep-until-a-bool" data-tags="bug"><h2><a class="num" href="#sleep-timer-returns-what-it-did-not-sleep-sleep-until-a-bool">21.31</a> <span class="t"><code>sleep-timer</code> returns what it did not sleep; <code>sleep-until</code> a Bool</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span></span></h2>
+<p><code>sleep-timer</code> sleeps like <code>sleep</code> and returns a <code>Duration</code>: the part of the time it did not sleep, normally zero. <code>sleep-until</code> takes an <code>Instant</code> or a <code>DateTime</code> and returns <code>True</code> once that time has come, or <code>False</code> at once when it has passed already, which is the case for <code>now</code>. A plain number is refused. <code>sleep NaN</code> returns at once, and <code>sleep-timer NaN</code> should too. In Rakudo 2026.08 it fails its own return type check instead, because it cannot make a Duration out of NaN.</p>
+<figure class="ex ex-local" id="ex-21-40">
+<div class="code"><pre class="src"><span class="nb">say</span> (<span class="n">sleep-timer</span> <span class="mf">0.1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="n">sleep-timer</span> -<span class="mi">1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="n">sleep-until</span> <span class="nb">now</span> + <span class="mf">0.1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="n">sleep-until</span> <span class="nb">now</span> - <span class="mi">1</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="n">sleep-until</span> <span class="nb">now</span>).<span class="nb">raku</span>;
+<span class="nb">say</span> (<span class="n">sleep-until</span> <span class="nb">DateTime</span>.<span class="nb">now</span>.<span class="n">later</span>(<span class="n">seconds</span> =&gt; <span class="mf">0.1</span>)).<span class="nb">raku</span>;
+<span class="k">try</span> <span class="n">sleep-until</span> <span class="mi">5</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="n">sleep-timer</span> <span class="n">NaN</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Duration.new(0.0)
+Duration.new(0.0)
+Bool::True
+Bool::False
+Bool::False
+Bool::True
+X::Cannot::New
+X::TypeCheck::Return</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="lockprotect-returns-what-its-block-returns-container-and-all" data-tags=""><h2><a class="num" href="#lockprotect-returns-what-its-block-returns-container-and-all">21.32</a> <span class="t"><code>Lock.protect</code> returns what its block returns, container and all</span></h2>
+<p>A <code>Lock</code> lets one thread at a time into a piece of code. <code>.protect(&amp;code)</code> takes the lock, runs the code, releases the lock and returns the code's value. The lock is released even when the code dies, and the exception goes on to the caller. The value is returned as it is: a variable comes back as the variable, and can be assigned to.</p>
+<figure class="ex ex-local" id="ex-21-41">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="nb">Lock</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$total</span> = <span class="mi">0</span>;
+<span class="nb">await</span> (<span class="mi">1</span>.<span class="mf">.100</span>).<span class="nb">map</span>: { <span class="k">start</span> { <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$total</span> += <span class="nv">$_</span> }) } };
+<span class="nb">say</span> <span class="nv">$total</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="mi">1</span>, <span class="mi">2</span> }).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$x</span> = <span class="mi">5</span>;
+<span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$x</span> }) = <span class="mi">6</span>;
+<span class="nb">say</span> <span class="nv">$x</span>;
+<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nb">die</span> <span class="s">&quot;inside&quot;</span> });
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="s">&quot;the lock was released&quot;</span> }) };</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">5050
+(1, 2)
+6
+inside
+the lock was released</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Without the lock, the hundred additions to <code>$total</code> could overlap and lose some of the updates.</p>
+</section>
+<section class="corner" id="a-lock-is-re-entrant-and-only-its-holder-may-unlock-it" data-tags=""><h2><a class="num" href="#a-lock-is-re-entrant-and-only-its-holder-may-unlock-it">21.33</a> <span class="t">A Lock is re-entrant, and only its holder may unlock it</span></h2>
+<p>The thread that holds a <code>Lock</code> can take it again: <code>.protect</code> inside <code>.protect</code> works, and after <code>.lock</code> twice it takes two <code>.unlock</code> calls to let another thread in. <code>.lock</code> and <code>.unlock</code> return the lock. Unlocking a lock that the current thread does not hold, because nobody holds it or another thread does, throws an <code>X::AdHoc</code>.</p>
+<figure class="ex ex-local" id="ex-21-42">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="nb">Lock</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="s">&quot;re-entrant&quot;</span> }) });
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">lock</span>.<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">unlock</span>.<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nb">Lock</span>.<span class="nb">new</span>.<span class="n">unlock</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="k">my</span> <span class="nv">$other</span> = <span class="k">start</span> { <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="s">&quot;got it&quot;</span> }) };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$other</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$other</span>.<span class="n">status</span>;
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$other</span>;
+<span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { (<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">unlock</span>) // <span class="nv">$!</span>.<span class="n">message</span> };
+<span class="nv">$lock</span>.<span class="n">unlock</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">re-entrant
+Lock.new
+Lock.new
+Attempt to unlock mutex by thread not holding it
+Planned
+got it
+Attempt to unlock mutex by thread not holding it</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="every-call-of-condition-makes-a-new-condition-variable" data-tags="trap"><h2><a class="num" href="#every-call-of-condition-makes-a-new-condition-variable">21.34</a> <span class="t">Every call of <code>.condition</code> makes a new condition variable</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p><code>$lock.condition</code> returns a <code>Lock::ConditionVariable</code>, with which a thread that holds the lock can <code>.wait</code>, releasing the lock until another thread calls <code>.signal</code> or <code>.signal_all</code>. Each call of <code>.condition</code> makes a new, separate condition variable, and a signal reaches only the threads waiting on that same object. Keep the object in a variable and use it on both sides. Waiting without holding the lock is an error.</p>
+<figure class="ex ex-local" id="ex-21-43">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="nb">Lock</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$cond</span> = <span class="nv">$lock</span>.<span class="n">condition</span>;
+<span class="nb">say</span> <span class="nv">$cond</span> === <span class="nv">$lock</span>.<span class="n">condition</span>;
+<span class="k">my</span> <span class="nv">$waiting</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$waiter</span> = <span class="k">start</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$waiting</span>.<span class="n">keep</span>; <span class="nv">$cond</span>.<span class="n">wait</span>; <span class="s">&quot;woken&quot;</span> });
+<span class="nb">await</span> <span class="nv">$waiting</span>;
+<span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$lock</span>.<span class="n">condition</span>.<span class="n">signal_all</span> });
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$waiter</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$waiter</span>.<span class="n">status</span>;
+<span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$cond</span>.<span class="n">signal_all</span> });
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$waiter</span>;
+<span class="k">try</span> <span class="nv">$cond</span>.<span class="n">wait</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$cond</span>.<span class="n">wait</span>({ <span class="n">True</span> }); <span class="s">&quot;no wait&quot;</span> });</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">False
+Planned
+woken
+Can only wait on a condition variable when holding mutex
+no wait</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The last line uses <code>.wait(&amp;predicate)</code>, which waits until the predicate is true, and does not wait at all when it is true already.</p>
+</section>
+<section class="corner" id="locksoft-is-a-lock-whose-misuse-has-typed-exceptions" data-tags="undocumented"><h2><a class="num" href="#locksoft-is-a-lock-whose-misuse-has-typed-exceptions">21.35</a> <span class="t"><code>Lock::Soft</code> is a Lock whose misuse has typed exceptions</span><span class="tags"><span class="tag tag-undocumented">Not in the docs</span></span></h2>
+<p><code>Lock::Soft</code> has the interface of <code>Lock</code>: <code>lock</code>, <code>unlock</code>, <code>protect</code> and <code>condition</code>, re-entrant, with the value of <code>protect</code> returned as it is. It has no page on docs.raku.org. The differences are small: <code>lock</code> and <code>unlock</code> return Nil, a misused <code>unlock</code> throws a typed exception, and <code>.condition</code> returns the same condition variable every time.</p>
+<figure class="ex ex-local" id="ex-21-44">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="n">Lock::Soft</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">lock</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$lock</span>.<span class="n">unlock</span>.<span class="nb">raku</span>;
+<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { (<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">unlock</span>) // <span class="nv">$!</span>.^<span class="n">name</span> };
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="s">&quot;re-entrant&quot;</span> }) });
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">condition</span> === <span class="nv">$lock</span>.<span class="n">condition</span>;
+<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">condition</span>.<span class="n">wait</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil Nil
+X::Lock::Unlock::NoMutex
+X::Lock::Unlock::WrongThread
+re-entrant
+True
+X::Lock::ConditionVariable::NoMutex</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="lockasynclock-returns-a-promise-and-the-lock-is-not-re-entrant" data-tags="quirk"><h2><a class="num" href="#lockasynclock-returns-a-promise-and-the-lock-is-not-re-entrant">21.36</a> <span class="t"><code>Lock::Async.lock</code> returns a promise, and the lock is not re-entrant</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>Lock::Async</code> does not make its caller wait. <code>.lock</code> returns a Promise that is kept when the lock is acquired: kept already when the lock was free, Planned otherwise, with waiters served first come, first served. <code>.unlock</code> hands the lock to the next waiter, and it may be called from any thread. The quirk: every <code>.lock</code> that gets the lock at once returns the same kept Promise, shared by all <code>Lock::Async</code> objects.</p>
+<figure class="ex ex-local" id="ex-21-45">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="n">Lock::Async</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$first</span> = <span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nv">$first</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$first</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$second</span> = <span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="k">my</span> <span class="nv">$third</span> = <span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nv">$second</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$third</span>.<span class="n">status</span>;
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">await</span> <span class="nv">$second</span>;
+<span class="nb">say</span> <span class="nv">$second</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$third</span>.<span class="n">status</span>;
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">await</span> <span class="nv">$third</span>;
+<span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="k">try</span> <span class="nv">$lock</span>.<span class="n">unlock</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$again</span> = <span class="nv">$lock</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nv">$again</span> === <span class="nv">$first</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$again</span> === <span class="n">Lock::Async</span>.<span class="nb">new</span>.<span class="n">lock</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Promise Kept
+Planned Planned
+Kept Planned
+X::Lock::Async::NotLocked: Cannot unlock a Lock::Async that is not currently locked
+True True</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Unlike <code>Lock</code>, a <code>Lock::Async</code> cannot be taken twice by the same code: a <code>protect</code> inside a <code>protect</code> of the same lock waits for itself and never returns. The lock belongs to no thread, so another thread may unlock it:</p>
+<figure class="ex ex-local" id="ex-21-46">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="n">Lock::Async</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="mi">42</span> });
+<span class="k">my</span> <span class="nv">$nested</span> = <span class="k">start</span> { <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="nv">$lock</span>.<span class="n">protect</span>({ <span class="s">&quot;inner&quot;</span> }) }) };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$nested</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$nested</span>.<span class="n">status</span>;
+<span class="k">my</span> <span class="nv">$other</span> = <span class="n">Lock::Async</span>.<span class="nb">new</span>;
+<span class="nb">await</span> <span class="nv">$other</span>.<span class="n">lock</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="k">start</span> { <span class="nv">$other</span>.<span class="n">unlock</span>; <span class="s">&quot;unlocked by another thread&quot;</span> };
+<span class="nb">say</span> <span class="nv">$other</span>.<span class="n">lock</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">42
+Planned
+unlocked by another thread
+Kept</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="protect-or-queue-on-recursion-defers-the-inner-call-instead-of-waiting" data-tags="unasserted"><h2><a class="num" href="#protect-or-queue-on-recursion-defers-the-inner-call-instead-of-waiting">21.37</a> <span class="t"><code>protect-or-queue-on-recursion</code> defers the inner call instead of waiting</span><span class="tags"><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>For code that may call itself while holding a <code>Lock::Async</code>, the method <code>protect-or-queue-on-recursion</code> avoids waiting for itself. With the lock free, it runs the code now and returns Nil. Called again from inside its own code, it does not run the code but returns a Planned promise for it; the code runs as soon as the outer call releases the lock, and its value keeps the promise.</p>
+<figure class="ex ex-local" id="ex-21-47">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="n">Lock::Async</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">@log</span>;
+<span class="nb">say</span> <span class="nv">$lock</span>.<span class="n">protect-or-queue-on-recursion</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;free&quot;</span>) }).<span class="nb">raku</span>;
+<span class="k">my</span> <span class="nv">$queued</span>;
+<span class="nv">$lock</span>.<span class="n">protect-or-queue-on-recursion</span>({
+    <span class="nv">$queued</span> = <span class="nv">$lock</span>.<span class="n">protect-or-queue-on-recursion</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;inner&quot;</span>); <span class="s">&quot;inner's value&quot;</span> });
+    <span class="nb">say</span> <span class="nv">$queued</span>.<span class="n">status</span>;
+    <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;outer&quot;</span>);
+});
+<span class="nb">say</span> <span class="nv">@log</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$queued</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Nil
+Planned
+[free outer inner]
+inner's value</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Its companion <code>with-lock-hidden-from-recursion-check</code> runs code with the lock left out of that check. A <code>protect-or-queue-on-recursion</code> inside it then waits for the lock that its own caller holds, and never returns:</p>
+<figure class="ex ex-local" id="ex-21-48">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$lock</span> = <span class="n">Lock::Async</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$w</span> = <span class="k">start</span> <span class="nv">$lock</span>.<span class="n">protect-or-queue-on-recursion</span>({
+    <span class="nv">$lock</span>.<span class="n">with-lock-hidden-from-recursion-check</span>({
+        <span class="nv">$lock</span>.<span class="n">protect-or-queue-on-recursion</span>({ <span class="s">&quot;never&quot;</span> })
+    })
+});
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$w</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$w</span>.<span class="n">status</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Planned</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-semaphore-hands-out-permits-and-release-has-no-ceiling" data-tags=""><h2><a class="num" href="#a-semaphore-hands-out-permits-and-release-has-no-ceiling">21.38</a> <span class="t">A Semaphore hands out permits, and <code>release</code> has no ceiling</span></h2>
+<p><code>Semaphore.new($n)</code> starts with <code>$n</code> permits. <code>.try_acquire</code> takes one and returns <code>True</code>, or returns <code>False</code> at once when none is left; <code>.acquire</code> waits until one is free. <code>.release</code> adds a permit, from any thread, with no upper limit: releasing more than was acquired leaves more permits than there were at the start. <code>.acquire</code> and <code>.release</code> return <code>Mu</code>. The count is required, and must be a native integer that is not negative.</p>
+<figure class="ex ex-local" id="ex-21-49">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$s</span> = <span class="n">Semaphore</span>.<span class="nb">new</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">try_acquire</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$s</span>.<span class="n">try_acquire</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$s</span>.<span class="n">try_acquire</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">release</span>.<span class="nb">raku</span>;
+<span class="nv">$s</span>.<span class="n">release</span> <span class="k">for</span> ^<span class="mi">3</span>;
+<span class="nb">say</span> (^<span class="mi">6</span>).<span class="nb">map</span>({ <span class="nv">$s</span>.<span class="n">try_acquire</span> });
+<span class="k">my</span> <span class="nv">$zero</span> = <span class="n">Semaphore</span>.<span class="nb">new</span>(<span class="mi">0</span>);
+<span class="k">my</span> <span class="nv">$w</span> = <span class="k">start</span> { <span class="nv">$zero</span>.<span class="n">acquire</span>; <span class="s">&quot;acquired&quot;</span> };
+<span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">anyof</span>(<span class="nv">$w</span>, <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.2</span>));
+<span class="nb">say</span> <span class="nv">$w</span>.<span class="n">status</span>;
+<span class="nv">$zero</span>.<span class="n">release</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$w</span>;
+<span class="k">for</span> { <span class="n">Semaphore</span>.<span class="nb">new</span> }, { <span class="n">Semaphore</span>.<span class="nb">new</span>(<span class="s">&quot;2&quot;</span>) }, { <span class="n">Semaphore</span>.<span class="nb">new</span>(-<span class="mi">1</span>) } -&gt; <span class="nv">&amp;c</span> {
+    <span class="k">try</span> <span class="n">c</span>();
+    <span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+}</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">True True False
+Mu
+(True True True True False False)
+Planned
+acquired
+Too few positionals passed; expected 2 arguments but got 1
+This type cannot unbox to a native integer: P6opaque, Str
+Failed to initialize Semaphore: invalid argument</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-semaphores-permit-count-wraps-at-32-bits" data-tags="bug unasserted"><h2><a class="num" href="#a-semaphores-permit-count-wraps-at-32-bits">21.39</a> <span class="t">A Semaphore's permit count wraps at 32 bits</span><span class="tags"><span class="tag tag-bug">Rakudo bug</span><span class="tag tag-unasserted">Not in Roast</span></span></h2>
+<p>The number of permits is kept in 32 bits. Counts up to <code>2**31 - 1</code> work; from <code>2**31</code> to <code>2**32 - 1</code> they are refused. From <code>2**32</code> on, Rakudo 2026.08 accepts the count silently and keeps only its low 32 bits, so <code>2**32</code> gives a semaphore with no permits at all and <code>2**32 + 1</code> one with a single permit. A big count should be refused or honoured, not wrapped.</p>
+<figure class="ex ex-run" id="ex-21-50">
+<div class="code"><pre class="src" data-src><span class="k">for</span> <span class="mi">2</span>**<span class="mi">31</span> - <span class="mi">1</span>, <span class="mi">2</span>**<span class="mi">31</span>, <span class="mi">2</span>**<span class="mi">32</span>, <span class="mi">2</span>**<span class="mi">32</span> + <span class="mi">1</span> -&gt; <span class="nv">$n</span> {
+    <span class="k">my</span> <span class="nv">$s</span> = <span class="k">try</span> <span class="n">Semaphore</span>.<span class="nb">new</span>(<span class="nv">$n</span>);
+    <span class="nb">say</span> <span class="s">&quot;$n: &quot;</span>, <span class="nv">$s</span> ?? <span class="s">&quot;{$s.try_acquire} {$s.try_acquire}&quot;</span> !! <span class="nv">$!</span>.<span class="n">message</span>;
+}
+<span class="k">try</span> <span class="n">Semaphore</span>.<span class="nb">new</span>(<span class="mi">2</span>**<span class="mi">64</span>);
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;</pre><button class="run" type="button" title="Edit and run it here (Raku++ in your browser)">▶ Run</button></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">2147483647: True True
+2147483648: Failed to initialize Semaphore: invalid argument
+4294967296: False False
+4294967297: True False
+Cannot unbox 65 bit wide bigint into native integer. Did you mix int and Int or literals?</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+<details class="engine-note"><summary>The editor’s engine, Raku++, prints something else here</summary><pre>2147483647: True True
+2147483648: True True
+4294967296: True True
+4294967297: True True
+Nil</pre><p>Measured with Raku++ 4.0.1-240-g0aca2320-modified (2026-09-28) arm64-darwin. The book shows what Rakudo prints; the editor runs Raku++ compiled to WebAssembly.</p></details>
+</figure>
+</section>
+<section class="corner" id="cue-returns-nil-and-a-cancellation-only-with-a-timer" data-tags="quirk"><h2><a class="num" href="#cue-returns-nil-and-a-cancellation-only-with-a-timer">21.40</a> <span class="t"><code>cue</code> returns Nil, and a Cancellation only with a timer</span><span class="tags"><span class="tag tag-quirk">Quirk</span></span></h2>
+<p><code>$*SCHEDULER</code> is the scheduler that runs <code>start</code> blocks and timers, a <code>ThreadPoolScheduler</code> by default. Its <code>cue</code> method runs code on the pool. docs.raku.org says <code>cue</code> returns a <code>Cancellation</code>; Rakudo returns one only when a timer is involved (<code>:in</code>, <code>:at</code>, <code>:every</code> or <code>:times</code>), and Nil for plain <code>cue(&amp;code)</code>. A Cancellation's <code>.cancel</code> stops the timer. <code>:catch</code> receives the exception of code that dies; without it, the program ends as shown in <a href="/deep/promises/#a-dying-start-whose-promise-is-sunk-ends-the-program">A dying <code>start</code> whose promise is sunk ends the program</a>.</p>
+<figure class="ex ex-local" id="ex-21-51">
+<div class="code"><pre class="src"><span class="nb">say</span> <span class="nv">$*SCHEDULER</span>.^<span class="n">name</span>;
+<span class="k">my</span> <span class="nv">$done</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ <span class="nv">$done</span>.<span class="n">keep</span>(<span class="s">&quot;ran&quot;</span>) }).<span class="nb">raku</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$done</span>;
+<span class="k">my</span> <span class="nv">$timer</span> = <span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ <span class="nb">say</span> <span class="s">&quot;never printed&quot;</span> }, :<span class="n">in</span>(<span class="mf">0.1</span>));
+<span class="nb">say</span> <span class="nv">$timer</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$timer</span>.<span class="n">cancelled</span>;
+<span class="nb">say</span> <span class="nv">$timer</span>.<span class="n">cancel</span>.<span class="nb">raku</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$timer</span>.<span class="n">cancelled</span>;
+<span class="k">my</span> <span class="nv">$caught</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ <span class="nb">die</span> <span class="s">&quot;in cued code&quot;</span> }, :<span class="n">catch</span>({ <span class="nv">$caught</span>.<span class="n">keep</span>(.<span class="n">message</span>) }));
+<span class="nb">say</span> <span class="nb">await</span> <span class="nv">$caught</span>;
+<span class="nb">sleep</span> <span class="mf">0.2</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">ThreadPoolScheduler
+Nil
+ran
+Cancellation False
+Bool::True True
+in cued code</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>The final <code>sleep</code> gives the cancelled timer the time to fire, and it does not. <code>:every</code> repeats the code at an interval, and <code>:times</code> limits the number of runs. <code>:every(Inf)</code> runs the code once, at once, with a warning. <code>NaN</code> for any of the delays is refused, and so is <code>:in</code> together with <code>:at</code>:</p>
+<figure class="ex ex-local" id="ex-21-52">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$count</span> = <span class="mi">0</span>;
+<span class="k">my</span> <span class="nv">$third</span> = <span class="nb">Promise</span>.<span class="nb">new</span>;
+<span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ <span class="nv">$third</span>.<span class="n">keep</span> <span class="k">if</span> ++<span class="nv">$count</span> == <span class="mi">3</span> }, :<span class="n">every</span>(<span class="mf">0.05</span>), :<span class="n">times</span>(<span class="mi">3</span>));
+<span class="nb">await</span> <span class="nv">$third</span>;
+<span class="nb">sleep</span> <span class="mf">0.2</span>;
+<span class="nb">say</span> <span class="nv">$count</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ <span class="nv">$n</span>++ }, :<span class="n">every</span>(<span class="n">Inf</span>));
+<span class="nb">say</span> <span class="nv">$n</span>;
+<span class="k">try</span> <span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ ; }, :<span class="n">in</span>(<span class="n">NaN</span>));
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;
+<span class="k">try</span> <span class="nv">$*SCHEDULER</span>.<span class="n">cue</span>({ ; }, :<span class="n">in</span>(<span class="mi">1</span>), :<span class="n">at</span>(<span class="nb">now</span>));
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">3
+1
+X::Scheduler::CueInNaNSeconds
+Cannot specify :at and :in at the same time</pre><div class="lbl err">and on standard error</div><pre class="err-text">Inf was passed via :every; running the given block only once, immediately
+  in block &lt;unit&gt; at example.raku line 8</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="a-currentthreadscheduler-runs-everything-at-once-in-the-caller" data-tags=""><h2><a class="num" href="#a-currentthreadscheduler-runs-everything-at-once-in-the-caller">21.41</a> <span class="t">A CurrentThreadScheduler runs everything at once, in the caller</span></h2>
+<p>A <code>CurrentThreadScheduler</code> has no threads: code given to it runs immediately, on the thread that asked. <code>Promise.start</code> with <code>:scheduler($s)</code> has run its code and kept its promise by the time it returns, a <code>then</code> on that promise is kept at once, and even <code>Promise.in</code> sleeps in the caller. Code that dies throws to the caller of <code>cue</code>, and <code>:every</code> is refused.</p>
+<figure class="ex ex-local" id="ex-21-53">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$here</span> = <span class="n">CurrentThreadScheduler</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">@log</span>;
+<span class="k">my</span> <span class="nv">$p</span> = <span class="nb">Promise</span>.<span class="nb">start</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;ran&quot;</span>); <span class="mi">42</span> }, :<span class="n">scheduler</span>(<span class="nv">$here</span>));
+<span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;start returned&quot;</span>);
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">status</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$p</span>.<span class="n">result</span>;
+<span class="nb">say</span> <span class="nv">$p</span>.<span class="n">then</span>({ .<span class="n">result</span> + <span class="mi">1</span> }).<span class="n">status</span>;
+<span class="nb">say</span> <span class="nb">Promise</span>.<span class="n">in</span>(<span class="mf">0.1</span>, :<span class="n">scheduler</span>(<span class="nv">$here</span>)).<span class="n">status</span>;
+<span class="nv">$here</span>.<span class="n">cue</span>({ <span class="nv">@log</span>.<span class="nb">push</span>(<span class="s">&quot;cued&quot;</span>) });
+<span class="nb">say</span> <span class="nv">@log</span>;
+<span class="k">try</span> <span class="nv">$here</span>.<span class="n">cue</span>({ <span class="nb">die</span> <span class="s">&quot;loud&quot;</span> });
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">try</span> <span class="nv">$here</span>.<span class="n">cue</span>({ ; }, :<span class="n">every</span>(<span class="mi">1</span>));
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">Kept 42
+Kept
+Kept
+[ran start returned cued]
+loud
+X::AdHoc</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="hyper-keeps-the-order-of-the-elements-race-does-not" data-tags=""><h2><a class="num" href="#hyper-keeps-the-order-of-the-elements-race-does-not">21.42</a> <span class="t"><code>hyper</code> keeps the order of the elements, <code>race</code> does not</span></h2>
+<p><code>.hyper</code> and <code>.race</code> make a list's <code>map</code> and <code>grep</code> run in batches on the thread pool. <code>hyper</code> returns the results in the order of the input, like an ordinary <code>map</code>. <code>race</code> returns each batch as soon as it is done, so a slow element can end up last. Sort what a <code>race</code> returns when the order matters.</p>
+<figure class="ex ex-local" id="ex-21-54">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">@squares</span> = (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">1</span>)).<span class="nb">map</span>({ <span class="nb">sleep</span> <span class="mf">0.1</span> <span class="k">if</span> <span class="nv">$_</span> == <span class="mi">1</span>; <span class="nv">$_</span> ** <span class="mi">2</span> });
+<span class="nb">say</span> <span class="nv">@squares</span>;
+<span class="k">my</span> <span class="nv">@raced</span> = (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">race</span>(:<span class="nb">batch</span>(<span class="mi">1</span>)).<span class="nb">map</span>({ <span class="nb">sleep</span> <span class="mf">0.1</span> <span class="k">if</span> <span class="nv">$_</span> == <span class="mi">1</span>; <span class="nv">$_</span> ** <span class="mi">2</span> });
+<span class="nb">say</span> <span class="nv">@raced</span>[*-<span class="mi">1</span>];
+<span class="nb">say</span> <span class="nv">@raced</span>.<span class="nb">sort</span>;
+<span class="nb">say</span> (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">hyper</span>.^<span class="n">name</span>, <span class="s">&quot; &quot;</span>, (<span class="mi">1</span>.<span class="mf">.8</span>).<span class="nb">race</span>.^<span class="n">name</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">[1 4 9 16 25 36 49 64]
+1
+(1 4 9 16 25 36 49 64)
+HyperSeq RaceSeq</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+</section>
+<section class="corner" id="an-exception-in-a-hyper-worker-surfaces-where-the-values-are-read" data-tags="trap"><h2><a class="num" href="#an-exception-in-a-hyper-worker-surfaces-where-the-values-are-read">21.43</a> <span class="t">An exception in a <code>hyper</code> worker surfaces where the values are read</span><span class="tags"><span class="tag tag-trap">Trap</span></span></h2>
+<p>When the code in a <code>hyper</code> or <code>race</code> dies, the exception arrives, with the role <code>X::HyperRace::Died</code>, wherever the results are first read. <code>.List</code> on a <code>HyperSeq</code> does not read them yet, so a <code>try</code> around it catches nothing, and the exception comes out later:</p>
+<figure class="ex ex-local" id="ex-21-55">
+<div class="code"><pre class="src"><span class="k">try</span> { <span class="k">my</span> <span class="nv">@r</span> = (<span class="mi">1</span>.<span class="mf">.20</span>).<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">2</span>)).<span class="nb">map</span>({ <span class="nb">die</span> <span class="s">&quot;bad $_&quot;</span> <span class="k">if</span> <span class="nv">$_</span> == <span class="mi">7</span>; <span class="nv">$_</span> }) };
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="k">my</span> <span class="nv">$l</span> = <span class="k">try</span> (<span class="mi">1</span>.<span class="mf">.20</span>).<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">2</span>)).<span class="nb">map</span>({ <span class="nb">die</span> <span class="s">&quot;bad $_&quot;</span> <span class="k">if</span> <span class="nv">$_</span> == <span class="mi">7</span>; <span class="nv">$_</span> }).<span class="nb">List</span>;
+<span class="nb">say</span> <span class="s">&quot;the try is over&quot;</span>;
+<span class="nb">say</span> <span class="nv">$l</span>.<span class="nb">elems</span>;</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">X::AdHoc+{X::HyperRace::Died}: bad 7
+the try is over</pre><div class="lbl err">and on standard error</div><pre class="err-text">A worker in a parallel iteration (hyper or race) initiated here:
+  in block &lt;unit&gt; at example.raku line 5
+
+Died at:
+    bad 7
+      in block  at example.raku line 3
+</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>Assigning to an array, as in the first line, reads every value inside the <code>try</code>.</p>
+</section>
+<section class="corner" id="a-promise-becomes-a-supply-of-its-one-value" data-tags=""><h2><a class="num" href="#a-promise-becomes-a-supply-of-its-one-value">21.44</a> <span class="t">A Promise becomes a Supply of its one value</span></h2>
+<p><code>.Supply</code> on a Promise gives a Supply that emits the result and is done once the promise is kept, or quits with the cause once it is broken. Each tap gets the value again. <code>await</code> accepts a Supply too: it returns the last value emitted, and rethrows a quit with the <code>X::Await::Died</code> role. Both are covered in <a href="/deep/supplies/">Supplies</a>.</p>
+<figure class="ex ex-local" id="ex-21-56">
+<div class="code"><pre class="src"><span class="k">my</span> <span class="nv">$s</span> = <span class="nb">Promise</span>.<span class="n">kept</span>(<span class="mi">5</span>).<span class="nb">Supply</span>;
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="nb">list</span>, <span class="s">&quot; &quot;</span>, <span class="nv">$s</span>.<span class="nb">list</span>;
+<span class="k">try</span> <span class="nb">await</span> <span class="nb">Promise</span>.<span class="n">broken</span>(<span class="s">&quot;no luck&quot;</span>).<span class="nb">Supply</span>;
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>, <span class="s">&quot;: &quot;</span>, <span class="nv">$!</span>.<span class="n">message</span>;
+<span class="nb">say</span> <span class="nb">await</span> <span class="nb">Supply</span>.<span class="n">from-list</span>(<span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>);</pre><span class="local-label">run it locally</span></div>
+<div class="out" data-hidden="0"><div class="lbl">Rakudo prints</div><pre class="out-text">(5) (5)
+X::AdHoc+{X::Await::Died}: no luck
+3</pre><button class="reveal" type="button">What does it print? <span>Reveal</span></button></div>
+</figure>
+<p>A tap on the Supply of a promise that is broken already gets the quit asynchronously: sometimes before the next statement runs, sometimes after it.</p>
+</section>
+<footer class="chapter-foot"><label class="done"><input type="checkbox" data-done="promises"> I have read this chapter</label><nav class="pager"><a class="prev" href="/deep/processes/">← 20. Processes</a><a class="next" href="/deep/supplies/">22. Supplies →</a></nav></footer>
+</article>
+<footer class="site-foot"><p><b>Raku Behind the Docs</b> · The Raku++ project · Edited by Andrew Shitov</p><p>The text was written by Claude, Anthropic’s model, from the Raku++ project’s findings. Every output was printed by Rakudo v2026.08. <a href="/deep/colophon/">Colophon</a> · <a href="https://github.com/ash/raku-behind-the-docs">Source</a></p></footer>
+</main>
+</div>
+<script src="/raku.js?v=4f9b89a8" data-selector="[data-raku-never]" data-playground="off" defer></script>
+<script src="/deep/assets/book.js?v=mjp0h5mir1" defer></script>
+<script src="/theme/shell.js?v=4e7473f5" defer></script>
+</body>
+</html>
