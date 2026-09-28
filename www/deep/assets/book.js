@@ -62,34 +62,6 @@
     if (r) r.closest('.out').classList.add('revealed');
   });
 
-  // ---- editors on demand -------------------------------------------------
-  // The code is shown pre-highlighted; ▶ Run turns that block into a live
-  // raku.online editor (Raku++ in WebAssembly) and runs it.
-  function whenEmbed(fn, tries) {
-    if (window.RakuEmbed) return fn();
-    if ((tries || 0) > 100) return;
-    setTimeout(function () { whenEmbed(fn, (tries || 0) + 1); }, 100);
-  }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest('figure.ex .run');
-    if (!b) return;
-    var box = b.closest('.code'), pre = box.querySelector('pre.src');
-    b.disabled = true; b.textContent = '…';
-    whenEmbed(function () {
-      var host = document.createElement('div');
-      if (pre.hasAttribute('data-stdin')) host.setAttribute('data-stdin', pre.getAttribute('data-stdin'));
-      // Say which engine the reader is now running.
-      var cap = document.createElement('div');
-      cap.className = 'engine-cap';
-      cap.textContent = 'Raku++, running in your browser';
-      box.appendChild(cap);
-      box.appendChild(host);
-      box.classList.add('live');
-      b.remove();
-      window.RakuEmbed.enhance(host, { code: pre.textContent, run: true, hide: 'playground' });
-    });
-  });
-
   // ---- reading progress --------------------------------------------------
   var done = {};
   try { done = JSON.parse(load('corners-done', '{}')) || {}; } catch (e) { done = {}; }
