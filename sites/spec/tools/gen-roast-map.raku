@@ -80,6 +80,10 @@ sub MAIN(Str $results, Str $date = 'unknown', Str $roast = '/Users/ash/roast') {
             %count<filesPass>  = +$0;
             %count<filesTotal> = +$1;
         }
+        elsif $ln ~~ / 'Assertions passed without skip/todo:' \s+ (\d+) \s* '/' \s* (\d+) / {
+            %count<strictPassed> = +$0;
+            %count<strictTotal>  = +$1;
+        }
         elsif $ln ~~ / 'Assertions passed:' \s+ (\d+) \s* '/' \s* (\d+) / {
             %count<passed> = +$0;
             my $d = +$1;
@@ -88,12 +92,13 @@ sub MAIN(Str $results, Str $date = 'unknown', Str $roast = '/Users/ash/roast') {
             elsif $ln.contains('declared')       { %count<declared> = $d }
         }
     }
-    for <passed ran planned declared filesPass filesTotal> -> $k {
+    for <strictPassed strictTotal passed ran planned declared filesPass filesTotal> -> $k {
         die "results file has no run-roast summary block (missing '$k') — "
             ~ "pass a full tools/run-roast.raku output file"
             unless %count{$k}:exists;
     }
-    my $counting = '{"passed":' ~ %count<passed> ~ ',"ran":' ~ %count<ran>
+    my $counting = '{"strictPassed":' ~ %count<strictPassed> ~ ',"strictTotal":' ~ %count<strictTotal>
+        ~ ',"passed":' ~ %count<passed> ~ ',"ran":' ~ %count<ran>
         ~ ',"planned":' ~ %count<planned> ~ ',"declared":' ~ %count<declared>
         ~ ',"filesPass":' ~ %count<filesPass> ~ ',"filesTotal":' ~ %count<filesTotal> ~ '}';
 

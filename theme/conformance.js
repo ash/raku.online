@@ -54,8 +54,10 @@
       '<small>' + n(c.passed) + ' / ' + n(c.declared) + ' · ' +
       c.filesPass + ' of ' + c.filesTotal + ' files fully pass</small></span>';
 
-    // The three denominators, widest-to-strictest — same accounting as docs/ROAST.md.
+    // The denominators, same accounting as docs/ROAST.md: first the skip/todo-free
+    // figure (only the tests Roast expects to pass), then ran, planned, all declared.
     var rows = [
+      ['tests <b>without skip/todo</b>', c.strictPassed, c.strictTotal, 'all declared tests except those Roast marks skip or todo'],
       ['tests that <b>ran</b>', c.passed, c.ran, 'only assertions files actually emitted'],
       ['tests <b>planned</b>', c.passed, c.planned, '+ tests lost when a file aborts mid-plan'],
       ['<b>all declared</b> tests', c.passed, c.declared, '+ tests in parse-error files, recovered from source']

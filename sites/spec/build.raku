@@ -579,8 +579,8 @@ sub render-conformance(%site, %by-cat --> Str) {
       <div class="conf-hero" id="conf-hero"></div>
       <div class="conf-denoms" id="conf-denoms"></div>
       <p class="conf-source">Counts and methodology come from Raku++'s own Roast run —
-      see <a href="RAKUPP_REPO/blob/main/docs/ROAST.md">ROAST.md</a> (standing &amp;
-      per-synopsis breakdown) and <a href="RAKUPP_REPO/blob/main/docs/COUNTING.md">COUNTING.md</a>
+      see <a href="RAKUPP_REPO/blob/main/docs/status/ROAST.md">ROAST.md</a> (standing &amp;
+      per-synopsis breakdown) and <a href="RAKUPP_REPO/blob/main/docs/status/COUNTING.md">COUNTING.md</a>
       (exact definition of every figure).</p>
     </div>
     <h2 class="conf-areas-title">Execution modes</h2>
