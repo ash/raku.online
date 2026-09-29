@@ -37,9 +37,11 @@
     root.textContent = 'Could not load the conformance map.';
   });
 
-  // Floor, not round: never overstate a pass rate (87.5% reads as 87%, matching
-  // docs/ROAST.md's quoted figure — rounding up to 88% would flatter).
+  // A bar width: floor, never overstating the fill.
   function pct(a, b) { return b ? Math.floor(a / b * 100) : 0; }
+  // A quoted rate: two decimals, as ROAST.md and the front page state it
+  // (220,054 of 220,055 is 100.00%; a whole-percent floor read it as 99%).
+  function rate(a, b) { return b ? (a / b * 100).toFixed(2) : '0.00'; }
   function n(x) { return x.toLocaleString(); }
 
   function renderHeadline(d) {
@@ -47,7 +49,7 @@
     // Headline is the honest "all declared" rate: every test the suite intends to
     // run, including parse-error files that abort before emitting any TAP.
     document.getElementById('conf-hero').innerHTML =
-      '<span class="conf-big">' + pct(c.passed, c.declared) + '%</span>' +
+      '<span class="conf-big">' + rate(c.passed, c.declared) + '%</span>' +
       '<span class="conf-big-sub">of all declared Roast tests pass' +
       '<small>' + n(c.passed) + ' / ' + n(c.declared) + ' · ' +
       c.filesPass + ' of ' + c.filesTotal + ' files fully pass</small></span>';
@@ -63,7 +65,7 @@
       '<th>Rate</th><th class="conf-denom-note">What it includes</th></tr></thead><tbody>' +
       rows.map(function (r) {
         return '<tr><td>' + r[0] + '</td><td>' + n(r[1]) + ' / ' + n(r[2]) + '</td>' +
-               '<td class="conf-denom-pct">' + pct(r[1], r[2]) + '%</td>' +
+               '<td class="conf-denom-pct">' + rate(r[1], r[2]) + '%</td>' +
                '<td class="conf-denom-note">' + r[3] + '</td></tr>';
       }).join('') + '</tbody></table>';
   }

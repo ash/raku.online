@@ -41,7 +41,7 @@
         div('conf-stat-n', t, n);
         div('conf-stat-l', t, l);
       }
-      tile((100 * last.tests_pass / last.tests_total).toFixed(1) + '%',
+      tile((100 * last.tests_pass / last.tests_total).toFixed(2) + '%',
            'declared Roast tests passing — ' + fmt(last.tests_pass) + ' / ' + fmt(last.tests_total));
       tile(fmt(last.files_pass) + ' / ' + fmt(last.files_total), 'Roast files fully passing');
       // The one ecosystem number: the whole-ecosystem sweep. The curated battery
@@ -98,7 +98,7 @@
         tipRow: function (si, i) {
           var r = span[i];
           var note = r && r.rebaselined ? ' · wider pre-2026-07-10 denominator' : '';
-          return 'tests: ' + testsPct[i].toFixed(1) + '% (' + fmt(r.tests_pass) + ' / ' + fmt(r.tests_total) + ')' + preTag(i) + note;
+          return 'tests: ' + testsPct[i].toFixed(2) + '% (' + fmt(r.tests_pass) + ' / ' + fmt(r.tests_total) + ')' + preTag(i) + note;
         }
       });
       if (span.some(function (r) { return r && r.rebaselined; })) {
