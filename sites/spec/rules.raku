@@ -186,7 +186,7 @@ sub asset-version(--> Str) {
     my $blob = @files.sort.map({ slurp($_) }).join;
     my $p = run('cksum', :in, :out);
     $p.in.print($blob);
-    $p.in.close;
+    my $closed = $p.in.close;   # held, not sunk: a Proc sunk after a non-zero exit throws
     $p.out.slurp(:close).words[0].substr(0, 8)
 }
 

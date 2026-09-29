@@ -80,7 +80,7 @@ sub highlight(Str $code --> Str) {
     {
         my $p = run($RAKUPP, '--highlight', '--html', :in, :out, :err);
         $p.in.print($code);
-        $p.in.close;
+        my $closed = $p.in.close;   # held, not sunk: a Proc sunk after a non-zero exit throws
         $out = $p.out.slurp(:close);
         $p.err.slurp(:close);
         CATCH { default { return esc($code) } }
@@ -462,7 +462,7 @@ my %STATUS =
     ;
 
 sub status-badge(Str $status --> Str) {
-    my @s = %STATUS{$status} // ['st-ni', $status.tc, ''];
+    my @s = (%STATUS{$status} // ['st-ni', $status.tc, '']).list;   # a hash value is an item
     '<span class="status ' ~ @s[0] ~ '">' ~ esc(@s[1]) ~ '</span>'
 }
 

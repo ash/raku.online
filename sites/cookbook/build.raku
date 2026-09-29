@@ -221,7 +221,7 @@ sub highlight(Str $code --> Str) {
     {
         my $p = run($RAKUPP, '--highlight', '--html', :in, :out, :err);
         $p.in.print($code);
-        $p.in.close;
+        my $closed = $p.in.close;   # held, not sunk: a Proc sunk after a non-zero exit throws
         $out = $p.out.slurp(:close);
         $p.err.slurp(:close);
         CATCH { default { return esc($code) } }

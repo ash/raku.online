@@ -11,11 +11,15 @@ IntStr
 NumStr
 RatStr
 ', '', '' ],
-    [ 'Allomorph', '2', 'rakupp-differs', '', 'False
+    [ 'Allomorph', '2', 'ok', 'False
 False
 False
 False
-', 'Type check failed for an element of @strings; expected Str but got Complex (<42+0i>)', '' ],
+', 'False
+False
+False
+False
+', '', '' ],
     [ 'Allomorph', '3', 'ok', 'False
 True
 True
@@ -115,7 +119,7 @@ cba
     [ 'Any', '19', 'ok', '((3 4) (5 3))
 ', '((3 4) (5 3))
 ', '', '' ],
-    [ 'Any', '20', 'ok', '(() () 7)
+    [ 'Any', '20', 'rakupp-differs', '(7)
 (7)
 ', '(() () 7)
 (7)
@@ -165,8 +169,8 @@ food
 Any
 food
 ', '', '' ],
-    [ 'Any', '30', 'all-differ', '{}
-{a => 42, b => 666}
+    [ 'Any', '30', 'doc-drift', '{}
+Map.new((a => 42, b => 666))
 {a => 42, b => 666}
 ', '{}
 Map.new((a => 42, b => 666))
@@ -232,18 +236,18 @@ b => C
 (:b(75),)
 ', '', '' ],
     [ 'Any', '38', 'rakudo-differs', '(Þor Oðin Freija)
-', '(Þor Freija Oðin)
+', '(Freija Oðin Þor)
 ', '', '' ],
-    [ 'Any', '39', 'all-differ', 'ß
-(ß þ ß ß ð)
+    [ 'Any', '39', 'all-differ', 'ð
+(ß ß þ þ ß)
 ', 'ð
-(ð ð þ ß ß)
+(ð ð ð ß þ)
 ', '', '' ],
     [ 'Any', '40', 'ok', '3
 ', '3
 ', '', '' ],
-    [ 'Any', '41', 'all-differ', '(φ ι ω)
-', '(ω τ π)
+    [ 'Any', '41', 'all-differ', '(θ κ τ)
+', '(τ φ σ)
 ', '', '' ],
     [ 'Any', '43', 'ok', '(Int)
 (Str)
@@ -287,7 +291,7 @@ True
 True
 True
 ', '', '' ],
-    [ 'Any', '47', 'not-runnable', '', '', 'Not all list elements are of type Str', 'Expected \'Str\' but got \'Int\'' ],
+    [ 'Any', '47', 'not-runnable', '', '', 'Expected \'Str\' but got \'Int\'', 'Expected \'Str\' but got \'Int\'' ],
     [ 'Any', '48', 'ok', '[]
 []
 [1 2 3]
@@ -384,11 +388,11 @@ Nil
     [ 'Any', '71', 'ok', '()
 ', '()
 ', '', '' ],
-    [ 'Any', '72', 'all-differ', '(1 => s 2 => t 3 => u)
-', '(3 => u 1 => s 2 => t)
+    [ 'Any', '72', 'doc-drift', '(1 => s 2 => t 3 => u)
+', '(1 => s 2 => t 3 => u)
 ', '', '' ],
-    [ 'Any', '73', 'rakupp-differs', '(3 => a 2 => b 4 => c)
-', '(4 => c 3 => a 2 => b)
+    [ 'Any', '73', 'all-differ', '(3 => a 2 => b 4 => c)
+', '(3 => a 4 => c 2 => b)
 ', '', '' ],
     [ 'Any', '74', 'ok', '()
 ', '()
@@ -460,7 +464,7 @@ A-B—C—E|F|G
     [ 'Any', '89', 'ok', '(())
 ', '(())
 ', '', '' ],
-    [ 'Any', '90', 'rakupp-differs', '()
+    [ 'Any', '90', 'ok', '((Any))
 ()
 ', '((Any))
 ()
@@ -475,9 +479,11 @@ A-B—C—E|F|G
 ', '(1 2 3)
 ()
 ', '', '' ],
-    [ 'Any', '94', 'rakupp-differs', '', 'Same
+    [ 'Any', '94', 'ok', 'Same
 True
-', 'No such method \'set\' for invocant of type \'Any\'', '' ],
+', 'Same
+True
+', '', '' ],
     [ 'Any', '95', 'ok', '((3 4 5) (6 7 8))
 ', '((3 4 5) (6 7 8))
 ', '', '' ],
@@ -496,7 +502,7 @@ True
     [ 'Any', '101', 'ok', '(1 4 5 6 7 9)
 ', '(1 4 5 6 7 9)
 ', '', '' ],
-    [ 'Any', '102', 'rakupp-differs', '', '(2 5)
+    [ 'Any', '102', 'ok', '(2 5)
 (13 9 6)
 (5)
 (13)
@@ -510,7 +516,21 @@ True
 (29)
 (2 5 5)
 (a b)
-', '===SORRY!=== Parse error at line 7: Unable to parse quote-words subscript; couldn\'t find \'>\' (got \'\')', '' ],
+', '(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+(2 5)
+(13 9 6)
+(5)
+(13)
+(29)
+(2 5 5)
+(a b)
+', '', '' ],
     [ 'Any', '103', 'all-differ', '', '666
 (3 4 5)
 ', 'Target is not assignable', '42' ],
@@ -546,10 +566,10 @@ def
 ', '[a 42 c]
 [a b c 72]
 ', '', '' ],
-    [ 'Array', '10', 'all-differ', '(1 0.7256485070023295 0.5782406334945236)
-(1 0.4696243335284187 0.004239174981719884)
-', '(1 0.27561592513561906 0.7501641858425679)
-(1 0.27561592513561906 0.7501641858425679)
+    [ 'Array', '10', 'all-differ', '(1 0.3472523947731361 0.1527791425248033)
+(1 0.3472523947731361 0.1527791425248033)
+', '(1 0.7300186271283287 0.8080726248359354)
+(1 0.7300186271283287 0.8080726248359354)
 ', '', '' ],
     [ 'Array', '11', 'ok', 'Seq
 ', 'Seq
@@ -616,7 +636,7 @@ X::TypeCheck::Assignment: Type check failed for an element of @a2; expected Int 
     [ 'Array', '26', 'ok', 'True
 ', 'True
 ', '', '' ],
-    [ 'Array', '27', 'rakupp-differs', '(1 (Any) (Any) 3)
+    [ 'Array', '27', 'ok', '(1 Nil Nil 3)
 ', '(1 Nil Nil 3)
 ', '', '' ],
     [ 'Array', '28', 'ok', '(0 (Int) (Int) 3)
@@ -633,7 +653,7 @@ X::TypeCheck::Assignment: Type check failed for an element of @a2; expected Int 
 ', '42
 ', '', '' ],
     [ 'Attribute', '4', 'rakupp-differs', 'C.new(a => 666)
-C.new(a => Any)
+C.new(a => 42)
 Foo.new(bar => [])
 ', 'C.new(a => 666)
 C.new(a => 42)
@@ -648,7 +668,7 @@ but you did not provide a value for it.
 but you did not provide a value for it.
 ', '', '' ],
     [ 'Attribute', '16', 'not-runnable', '', '', 'Undeclared name \'Thing\'', '===SORRY!=== Error while compiling -e' ],
-    [ 'Attribute', '20', 'not-runnable', '', '', 'No such method \'new\' for invocant of type \'Foo\'', '===SORRY!===' ],
+    [ 'Attribute', '20', 'not-runnable', '', '', 'Type \'Foo\' is not declared', '===SORRY!===' ],
     [ 'Attribute', '23', 'ok', '@!bar
 ', '@!bar
 ', '', '' ],
@@ -695,7 +715,7 @@ True
 4
 ', '', '' ],
     [ 'Backtrace', '5', 'rakupp-differs', '', '[6]
-', 'No such method \'outer-caller-idx\' for invocant of type \'List\'', '' ],
+', 'No such method \'outer-caller-idx\' for invocant of type \'Backtrace\'', '' ],
     [ 'Backtrace', '6', 'all-differ', '  in block  at -e line 1
   in block  at -e line 1
   in sub zipi at -e line 1
@@ -720,19 +740,19 @@ True
 4
 0
 ', '', '' ],
-    [ 'Bag', '3', 'doc-drift', '(:a(0), :b(1), :c(2)).Seq
+    [ 'Bag', '3', 'rakupp-differs', '(:a(0), :b(1), :c(2)).Seq
 ((Pair) (Pair) (Pair))
 (1, 1, 2).Seq
-', '(:a(0), :b(1), :c(2)).Seq
+', '(:c(2), :b(1), :a(0)).Seq
 ((Pair) (Pair) (Pair))
-(1, 1, 2).Seq
+(2, 1, 1).Seq
 ', '', '' ],
-    [ 'Bag', '4', 'rakudo-differs', '("b", "c").Seq
+    [ 'Bag', '4', 'ok', '("b", "c").Seq
 ((Str) (Str))
 (1, 4).Seq
-', '("c", "b").Seq
+', '("b", "c").Seq
 ((Str) (Str))
-(4, 1).Seq
+(1, 4).Seq
 ', '', '' ],
     [ 'Bag', '5', 'ok', 'Bag(1 2 3 4(2) 5)
 ', 'Bag(1 2 3 4(2) 5)
@@ -782,12 +802,12 @@ Bag(2(3) 3(2) 4(2))
 0
 (eggs sausage sausage spam spam spam spam)
 ', '', '' ],
-    [ 'BagHash', '3', 'doc-drift', '("a"=>1,"b"=>1,"c"=>2).BagHash
+    [ 'BagHash', '3', 'all-differ', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("a", "b", "c").Seq
 (1, 1, 2).Seq
-', '("a"=>1,"b"=>1,"c"=>2).BagHash
-("a", "b", "c").Seq
-(1, 1, 2).Seq
+', '("c"=>2,"b"=>1,"a"=>1).BagHash
+("c", "b", "a").Seq
+(2, 1, 1).Seq
 ', '', '' ],
     [ 'BagHash', '4', 'rakudo-differs', '("b"=>1,"c"=>4).BagHash
 ("b", "c").Seq
@@ -798,8 +818,8 @@ Bag(2(3) 3(2) 4(2))
 ', '', '' ],
     [ 'BagHash', '5', 'all-differ', '("a"=>1,"b"=>1,"c"=>2).BagHash
 ("b"=>1,"c"=>4).BagHash
-', '("c"=>2,"b"=>1,"a"=>1).BagHash
-("b"=>1,"c"=>4).BagHash
+', '("c"=>2,"a"=>1,"b"=>1).BagHash
+("c"=>4,"b"=>1).BagHash
 ', '', '' ],
     [ 'BagHash', '6', 'ok', '2
 0
@@ -815,8 +835,8 @@ Bag(2(3) 3(2) 4(2))
 ("a"=>1,"b"=>1,"c"=>2).BagHash
 ("c"=>2).BagHash
 ("c"=>1).BagHash
-', '("b"=>1,"c"=>2,"a"=>1).BagHash
-("b"=>1,"c"=>3,"a"=>1).BagHash
+', '("c"=>2,"a"=>1,"b"=>1).BagHash
+("c"=>3,"a"=>1,"b"=>1).BagHash
 ("c"=>3).BagHash
 ("c"=>2).BagHash
 ', '', '' ],
@@ -824,9 +844,9 @@ Bag(2(3) 3(2) 4(2))
 ("a"=>1,"b"=>1,"c"=>3).BagHash
 ("a"=>1,"b"=>0,"c"=>3).BagHash
 ("b"=>0,"c"=>3).BagHash
-', '("c"=>2,"b"=>1,"a"=>1).BagHash
-("c"=>3,"b"=>1,"a"=>1).BagHash
-("c"=>3,"a"=>1).BagHash
+', '("b"=>1,"a"=>1,"c"=>2).BagHash
+("b"=>1,"a"=>1,"c"=>3).BagHash
+("a"=>1,"c"=>3).BagHash
 ("c"=>3).BagHash
 ', '', '' ],
     [ 'BagHash', '12', 'doc-drift', 'False
@@ -856,45 +876,45 @@ BagHash(2(3) 3(2) 4(2))
     [ 'Baggy', '1', 'ok', 'Mix(butter(0.22) sugar(0.12))
 ', 'Mix(butter(0.22) sugar(0.12))
 ', '', '' ],
-    [ 'Baggy', '2', 'all-differ', 'Rover
-(Ford Rover)
+    [ 'Baggy', '2', 'all-differ', 'Ford
+(Rover Rover)
 (Ford Rover)
 ', 'Rover
-(Rover Rover)
-(Ford Ford)
+(Ford Rover)
+(Ford Rover)
 ', '', '' ],
     [ 'Baggy', '3', 'ok', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grab\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '4', 'all-differ', 'bacon => 3
-BagHash(eggs(2))
-(eggs => 2)
-()
-', 'eggs => 2
+    [ 'Baggy', '4', 'all-differ', 'eggs => 2
 BagHash(bacon(3))
 (bacon => 3)
+()
+', 'bacon => 3
+BagHash(eggs(2))
+(eggs => 2)
 ()
 ', '', '' ],
     [ 'Baggy', '5', 'ok', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', 'X::Immutable: Cannot call \'grabpairs\' on an immutable \'Bag\'
 ', '', '' ],
-    [ 'Baggy', '6', 'rakupp-differs', 'bacon
+    [ 'Baggy', '6', 'all-differ', 'eggs
+(bacon bacon)
+', 'bacon
 (bacon eggs)
-', 'eggs
-(eggs bacon)
 ', '', '' ],
     [ 'Baggy', '7', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'Baggy', '8', 'rakudo-differs', 'eggs => 1
-(bacon => 3)
-(eggs => 1 bacon => 3)
-', 'bacon => 3
-(bacon => 3)
+    [ 'Baggy', '8', 'all-differ', 'bacon => 3
+(eggs => 1)
+(bacon => 3 eggs => 1)
+', 'eggs => 1
+(eggs => 1)
 (eggs => 1 bacon => 3)
 ', '', '' ],
-    [ 'Baggy', '9', 'all-differ', 'bacon
-(bacon bacon bacon)
-', 'eggs
-(bacon bacon bacon)
+    [ 'Baggy', '9', 'all-differ', 'eggs
+(bacon eggs bacon)
+', 'bacon
+(eggs eggs eggs)
 ', '', '' ],
     [ 'Baggy', '10', 'not-runnable', '', '', 'Variable \'$breakfast\' is not declared', '===SORRY!=== Error while compiling -e' ],
     [ 'Baggy', '11', 'ok', '(bacon => 2 eggs => 1)
@@ -918,11 +938,11 @@ BagHash(bacon(3))
     [ 'Baggy', '21', 'ok', '(2 6)
 ', '(2 6)
 ', '', '' ],
-    [ 'Baggy', '22', 'doc-drift', '(eggs 1 spam 3)
-', '(eggs 1 spam 3)
+    [ 'Baggy', '22', 'rakupp-differs', '(eggs 1 spam 3)
+', '(spam 3 eggs 1)
 ', '', '' ],
-    [ 'Baggy', '23', 'ok', '(a 6 b 2)
-', '(a 6 b 2)
+    [ 'Baggy', '23', 'rakudo-differs', '(a 6 b 2)
+', '(b 2 a 6)
 ', '', '' ],
     [ 'Baggy', '24', 'ok', '(bacon eggs spam spam spam)
 ', '(bacon eggs spam spam spam)
@@ -963,8 +983,8 @@ False
 ', 'SetHash
 2
 ', '', '' ],
-    [ 'Baggy', '35', 'rakupp-differs', 'True
-False
+    [ 'Baggy', '35', 'ok', 'True
+True
 ', 'True
 True
 ', '', '' ],
@@ -1000,8 +1020,8 @@ True
     [ 'Blob', '10', 'ok', '(122 105 112 105)
 ', '(122 105 112 105)
 ', '', '' ],
-    [ 'Blob', '11', 'all-differ', 'Blob:0x<01 02 03>
-Blob:0x<01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0 D1 D2 D3 D4 D5 D6 D7 D8 D9 DA DB DC DD DE DF E0 E1 E2 E3 E4 E5 E6 E7 E8 E9 EA EB EC ED EE EF F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 FA FB FC FD FE FF 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81 82 83 84 85 86 87 88 89 8A 8B 8C 8D 8E 8F 90 91 92 93 94 95 96 97 98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 AA AB AC AD AE AF B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 BA BB BC BD BE BF C0 C1 C2 C3 C4 C5 C6 C7 C8 C9 CA CB CC CD CE CF D0>
+    [ 'Blob', '11', 'doc-drift', 'Blob:0x<01 02 03>
+Blob:0x<01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 ...>
 ', 'Blob:0x<01 02 03>
 Blob:0x<01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 40 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 5B 5C 5D 5E 5F 60 61 62 63 64 ...>
 ', '', '' ],
@@ -1021,7 +1041,7 @@ Blob:0x<06 07>
     [ 'Blob', '17', 'ok', '(1 2 3 4 5 6 7 8 9 10)
 ', '(1 2 3 4 5 6 7 8 9 10)
 ', '', '' ],
-    [ 'Blob', '19', 'all-differ', '(3 2 1)
+    [ 'Blob', '19', 'all-differ', 'Blob:0x<03 02 01>
 (2)
 (32 16)
 ', 'Blob:0x<03 02 01>
@@ -1061,23 +1081,24 @@ False
 ', 'False
 False
 ', '', '' ],
-    [ 'Bool', '4', 'all-differ', '', 'Map.new((False => 0, True => 1))
+    [ 'Bool', '4', 'all-differ', 'Map.new((False => 0, True => 1))
+', 'Map.new((False => 0, True => 1))
 Map.new((False => 0, True => 1))
 ', 'No such method \'enums\' for invocant of type \'Bool\'', '' ],
-    [ 'Bool', '5', 'rakupp-differs', 'False
-', 'True
+    [ 'Bool', '5', 'doc-drift', 'False
+', 'False
 ', '', '' ],
     [ 'Bool', '6', 'doc-drift', '(True)
 ', '(True)
 ', '', '' ],
-    [ 'Bool', '7', 'rakudo-differs', '(False True)
-', '(True False)
+    [ 'Bool', '7', 'ok', '(False True)
+', '(False True)
 ', '', '' ],
     [ 'Bool', '8', 'all-differ', 'True
-(False True False)
+(True True True)
 (...)
-', 'True
-(False True True)
+', 'False
+(True True False)
 (...)
 ', '', '' ],
     [ 'Bool', '9', 'ok', '0
@@ -1108,9 +1129,8 @@ Map.new((False => 0, True => 1))
     [ 'Buf', '6', 'doc-drift', 'Buf.new(123,123)
 ', 'Buf.new(123,123)
 ', '', '' ],
-    [ 'Buf', '7', 'ok', 'Buf.new(1,2,42)
-', 'Buf.new(1,2,42)
-', '', '' ],
+    [ 'Buf', '7', 'rakupp-differs', '', 'Buf.new(1,2,42)
+', 'Undefined routine \'subbuf-rw\'', '' ],
     [ 'Buf', '8', 'ok', 'Buf.new(0,1,2,3,4)
 ', 'Buf.new(0,1,2,3,4)
 ', '', '' ],
@@ -1157,7 +1177,7 @@ True
     [ 'Callable', '3', 'ok', '6
 ', '6
 ', '', '' ],
-    [ 'Capture', '4', 'not-runnable', '', '', 'Stub code executed', 'Too many positionals passed; expected 0 arguments but got 1' ],
+    [ 'Capture', '4', 'not-runnable', '', '', 'Too many positionals passed; expected 0 arguments but got 1', 'Too many positionals passed; expected 0 arguments but got 1' ],
     [ 'Capture', '5', 'ok', '(-2 3 2 4)
 (-2 2 3 4 5)
 ', '(-2 3 2 4)
@@ -1169,8 +1189,8 @@ True
 ', '7
 1
 ', '', '' ],
-    [ 'Capture', '10', 'rakupp-differs', '1
-1
+    [ 'Capture', '10', 'rakupp-differs', '0
+-5
 ', '1
 -5
 ', '', '' ],
@@ -1231,7 +1251,7 @@ False
 1
 2
 ', '', '' ],
-    [ 'Code', '4', 'not-runnable', '', '', 'No such method \'assuming\' for invocant of type \'Any\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Code', '4', 'not-runnable', '', '', 'Undefined routine \'slow\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Code', '7', 'not-runnable', '', '', 'Undefined routine \'surname-smith\'', '===SORRY!=== Error while compiling -e' ],
     [ 'Code', '8', 'ok', 'Name is Joe Q. Public Jr.
 ', 'Name is Joe Q. Public Jr.
@@ -1260,7 +1280,7 @@ Inf
 ', '', '' ],
     [ 'Code', '15', 'all-differ', '(sub { ... })
 ()
-', '(-> $a { #`(Block|2513550764312) ... })
+', '(-> $a { #`(Block|5982810597656) ... })
 ()
 ', '', '' ],
     [ 'Code', '16', 'all-differ', 'marine
@@ -1268,7 +1288,7 @@ Inf
 &marine
 ', 'marine
 marine
-sub marine { #`(Sub|5885373574336) ... }
+sub marine { #`(Sub|4312073366720) ... }
 ', 'Sub object coerced to string (please use .gist or .raku to do that)', 'Sub object coerced to string (please use .gist or .raku to do that)' ],
     [ 'Code', '17', 'rakupp-differs', 'SETTING::src/core.c/
 ', 'SETTING::src/core.c/Numeric.rakumod
@@ -1283,9 +1303,11 @@ sub marine { #`(Sub|5885373574336) ... }
 ', '', '' ],
     [ 'Code', '21', 'not-runnable', '', '126
 ', 'No such method \'bytecode-size\' for invocant of type \'Sub\'', 'No such method \'cadidates\' for invocant of type \'Sub\'. Did you mean' ],
-    [ 'Collation', '2', 'rakupp-differs', '', 'Less
+    [ 'Collation', '2', 'ok', 'Less
 More
-', 'Undeclared name \'Collation\'', '' ],
+', 'Less
+More
+', '', '' ],
     [ 'CompUnit::Repository::FileSystem', '2', 'ok', 'Nada
 Nada
 ', 'Nada
@@ -1299,7 +1321,7 @@ Nada
     [ 'Compiler', '1', 'all-differ', 'Raku++ (2026.08)
 ', 'rakudo (2026.08)
 ', '', '' ],
-    [ 'Compiler', '2', 'all-differ', '2026-09-17
+    [ 'Compiler', '2', 'all-differ', '2026-09-28
 ', '', '', 'No such method \'build-date\' for invocant of type \'Compiler\'' ],
     [ 'Compiler', '3', 'all-differ', '', 'Raku::can-language-versions=1 2 2.PREVIEW 2.TEST 2.TESTDEPR 3 3.PREVIEW
 Raku::codename=
@@ -1583,7 +1605,7 @@ False
     [ 'Complex', '18', 'all-differ', '0.20787957635076193+0i
 0.7692389013639721+0.6389612763136348i
 -1+1.2246467991473532e-16i
-NaN+NaNi
+NaN+NaN\\i
 1+0i
 ', '0.20787957635076193+0i
 0.7692389013639721+0.6389612763136348i
@@ -1622,8 +1644,8 @@ forty two (but complicated)
 -1
 0
 ', '', '' ],
-    [ 'Cool', '9', 'all-differ', '70786.47434876686
-', '64873.31419607626
+    [ 'Cool', '9', 'all-differ', '19218.632453347338
+', '74946.87567434595
 ', '', '' ],
     [ 'Cool', '10', 'doc-drift', '0
 0.7071067811865475
@@ -2008,7 +2030,7 @@ The|quick
     [ 'Cool', '99', 'ok', '   Þor
 ', '   Þor
 ', '', '' ],
-    [ 'Cool', '100', 'all-differ', '-0.00000215', '-0.00005263', '', '' ],
+    [ 'Cool', '100', 'all-differ', '-0.00000310', '-0.00005275', '', '' ],
     [ 'Cool', '101', 'ok', '1+1i
 3.141592653589793+0i
 1.3+0i
@@ -2168,12 +2190,12 @@ Failure
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-14:56
+02:04
 ', '2015-11-21T16:01:00Z
 2015-12-11T16:01:00Z
 2015-11-21T16:00:00Z
 2015-11-21T08:01:00-08:00
-14:56
+02:04
 ', '', '' ],
     [ 'DateTime', '3', 'ok', '2016-08-10T18:26:23.300000Z
 ', '2016-08-10T18:26:23.300000Z
@@ -2181,8 +2203,8 @@ Failure
     [ 'DateTime', '4', 'ok', '2023-03-04T00:00:00Z
 ', '2023-03-04T00:00:00Z
 ', '', '' ],
-    [ 'DateTime', '5', 'all-differ', '2026-09-17T14:56:31.438660+02:00
-', '2026-09-17T14:56:31.524204+02:00
+    [ 'DateTime', '5', 'all-differ', '2026-09-29T02:04:54.458203+02:00
+', '2026-09-29T02:04:54.541203+02:00
 ', '', '' ],
     [ 'DateTime', '6', 'doc-drift', '2026
 ', '2026
@@ -2227,7 +2249,7 @@ Failure
     [ 'DateTime', '18', 'ok', '2015-12-24T12:23:00+02:00
 ', '2015-12-24T12:23:00+02:00
 ', '', '' ],
-    [ 'DateTime', '19', 'rakupp-differs', '1450952590
+    [ 'DateTime', '19', 'rakupp-differs', '1450952616
 ', 'Instant:1450952616
 ', '', '' ],
     [ 'DateTime', '20', 'ok', '0.5159772
@@ -2286,7 +2308,7 @@ Failure
     [ 'DateTime', '32', 'doc-drift', '2015-12-24T09:23:00-01:00
 ', '2015-12-24T09:23:00-01:00
 ', '', '' ],
-    [ 'DateTime', '33', 'rakupp-differs', '31536001e0
+    [ 'DateTime', '33', 'rakupp-differs', 'Duration.new(31536001)
 2015-01-01T00:00:00+01:00
 ', 'Duration.new(31536001.0)
 2015-01-01T00:00:00+01:00
@@ -2372,32 +2394,32 @@ False
 ', '', '' ],
     [ 'Dateish', '15', 'all-differ', '2015-11-15
 2016-08-10
-2026-09-17
+2026-09-29
 ', '2015-11-15
 2016-08-10
-2026/09/17
+2026/09/29
 ', '', '' ],
     [ 'Dateish', '16', 'all-differ', '11-15-2015
 08-10-2016
-09-17-2026
+09-29-2026
 ', '11-15-2015
 08-10-2016
-09/17/2026
+09/29/2026
 ', '', '' ],
     [ 'Dateish', '17', 'all-differ', '15-11-2015
 10-08-2016
-17-09-2026
+29-09-2026
 ', '15-11-2015
 10-08-2016
-17/09/2026
+29/09/2026
 ', '', '' ],
     [ 'Dateish', '18', 'ok', '49987
 ', '49987
 ', '', '' ],
-    [ 'Dateish', '19', 'all-differ', '"2026-09-17".IO
-"2026-09-17T14:56:36.163328+02:00".IO
-', '"2026-09-17".IO
-"2026-09-17T14:56:36.248907+02:00".IO
+    [ 'Dateish', '19', 'all-differ', '"2026-09-29".IO
+"2026-09-29T02:04:59.051028+02:00".IO
+', '"2026-09-29".IO
+"2026-09-29T02:04:59.135174+02:00".IO
 ', '', '' ],
     [ 'Dateish', '20', 'ok', '2014-09-25
 2015-01-25T00:00:00Z
@@ -2450,7 +2472,7 @@ False
 ', 'True
 False
 ', '', '' ],
-    [ 'Enumeration', '5', 'rakupp-differs', '(0 1 2)
+    [ 'Enumeration', '5', 'ok', '(Þor Oðin Freija)
 ', '(Þor Oðin Freija)
 ', '', '' ],
     [ 'Enumeration', '6', 'ok', 'Map.new((g => 1, kg => 1000, mg => 0.001))
@@ -2497,8 +2519,8 @@ Cannot convert string to number: base-10 number must begin with valid digits or 
     [ 'Exception', '11', 'ok', 'Dead
 ', 'Dead
 ', '', '' ],
-    [ 'Failure', '2', 'all-differ', 'Any: 
-', 'X::AdHoc: 2026-09-17T12:56:39.243293ZWELP‼
+    [ 'Failure', '2', 'all-differ', 'X::AdHoc: WELP‼
+', 'X::AdHoc: 2026-09-29T00:05:02.055887ZWELP‼
 ', '', '' ],
     [ 'Failure', '3', 'ok', 'False
 ', 'False
@@ -2509,9 +2531,7 @@ Cannot convert string to number: base-10 number must begin with valid digits or 
     [ 'Failure', '5', 'ok', 'X::AdHoc: Failed
 ', 'X::AdHoc: Failed
 ', '', '' ],
-    [ 'Failure', '9', 'all-differ', 'exception	
-handled	True
-message	Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'♥\'
+    [ 'Failure', '9', 'all-differ', '(HANDLED) Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>♥\' (indicated by <HERE>)
 ', '(HANDLED) Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>♥\' (indicated by <HERE>)
   in block <unit> at -e line 1
 
@@ -2677,8 +2697,7 @@ POPULATE → Submethod
 ', '42
 7
 ', '', '' ],
-    [ 'Grammar', '7', 'doc-drift', '
-', '', '', 'No such method \'start\' for invocant of type \'RepeatChar\'. Did you mean' ],
+    [ 'Grammar', '7', 'not-runnable', '', '', 'No such method \'start\' for invocant of type \'RepeatChar\'', 'No such method \'start\' for invocant of type \'RepeatChar\'. Did you mean' ],
     [ 'Grammar', '14', 'doc-drift', '', '', '', '' ],
     [ 'Hash', '7', 'ok', '{:a(1), :b(5), :c(6)}
 ', '{:a(1), :b(5), :c(6)}
@@ -2717,12 +2736,13 @@ Hash
     [ 'Hash', '27', 'ok', '{}
 ', '{}
 ', '', '' ],
-    [ 'Hash', '28', 'all-differ', '', 'Cannot resolve caller push(Hash:D, :f(Int)); none of these signatures matches:
+    [ 'Hash', '28', 'all-differ', 'Unexpected named argument \'f\' passed to push
+', 'Cannot resolve caller push(Hash:D, :f(Int)); none of these signatures matches:
     (\\a, \\b)
     (\\a, **@b is raw)
 ', '', '' ],
-    [ 'Hash', '29', 'rakupp-differs', '{322 => pair, 323 => [hash pipe]}
-', '{322 => pair, 323 => [pipe hash]}
+    [ 'Hash', '29', 'doc-drift', '{322 => pair, 323 => [hash pipe]}
+', '{322 => pair, 323 => [hash pipe]}
 ', '', '' ],
     [ 'Hash', '31', 'ok', '{a => [42 (a b c a)]}
 ', '{a => [42 (a b c a)]}
@@ -2752,7 +2772,8 @@ Hash
     [ 'Hash', '38', 'ok', '(Str(Any))
 ', '(Str(Any))
 ', '', '' ],
-    [ 'Hash', '39', 'all-differ', '(Str)
+    [ 'Hash', '39', 'doc-drift', '(Str)
+X::TypeCheck::Binding::Parameter: Type check failed in binding to parameter \'key\'; expected Str but got Int (3)
 ', '(Str)
 X::TypeCheck::Binding::Parameter: Type check failed in binding to parameter \'key\'; expected Str but got Int (3)
 ', '', '' ],
@@ -2803,14 +2824,14 @@ True
     [ 'Hash', '52', 'ok', '(a 1 c 3)
 ', '(a 1 c 3)
 ', '', '' ],
-    [ 'Hash', '53', 'ok', '(a)
+    [ 'Hash', '53', 'rakudo-differs', '(a)
 (1)
 (a b)
 (1 2)
 ', '(a)
 (1)
-(a b)
-(1 2)
+(b a)
+(2 1)
 ', '', '' ],
     [ 'HyperSeq', '1', 'doc-drift', '(0 9 36 81 144 225 324 441 576 729 900 1089 1296 1521 1764 2025 2304 2601 2916 3249 3600 3969 4356 4761 5184 5625 6084 6561 7056 7569 8100 8649 9216 9801 10404 11025 11664 12321 12996 13689 14400 15129 15876 16641 17424 18225 19044 19881 20736 21609 22500 23409 24336 25281 26244 27225 28224 29241 30276 31329 32400 33489 34596 35721 36864 38025 39204 40401 41616 42849 44100 45369 46656 47961 49284 50625 51984 53361 54756 56169 57600 59049 60516 62001 63504 65025 66564 68121 69696 71289 72900 74529 76176 77841 79524 81225 82944 84681 86436 88209 ...)
 ', '(0 9 36 81 144 225 324 441 576 729 900 1089 1296 1521 1764 2025 2304 2601 2916 3249 3600 3969 4356 4761 5184 5625 6084 6561 7056 7569 8100 8649 9216 9801 10404 11025 11664 12321 12996 13689 14400 15129 15876 16641 17424 18225 19044 19881 20736 21609 22500 23409 24336 25281 26244 27225 28224 29241 30276 31329 32400 33489 34596 35721 36864 38025 39204 40401 41616 42849 44100 45369 46656 47961 49284 50625 51984 53361 54756 56169 57600 59049 60516 62001 63504 65025 66564 68121 69696 71289 72900 74529 76176 77841 79524 81225 82944 84681 86436 88209 ...)
@@ -2826,33 +2847,47 @@ True
 False
 ', '', '' ],
     [ 'HyperWhatever', '3', 'rakupp-differs', '', '(1 4 9 16 25)
-', '===SORRY!=== Parse error at line 1: expected ) (got \'²\')', '' ],
+', '===SORRY!=== Parse error at line 1: Two terms in a row', '' ],
     [ 'HyperWhatever', '4', 'ok', '(1 4 9 16 25)
 ', '(1 4 9 16 25)
 ', '', '' ],
-    [ 'IO::CatHandle', '1', 'rakupp-differs', '', '("A", "B").Seq
+    [ 'IO::CatHandle', '1', 'ok', '("A", "B").Seq
 ("C\\n", "D\\n", "E\\n").Seq
-', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '2', 'rakupp-differs', '', '("A", "B").Seq
+', '("A", "B").Seq
+("C\\n", "D\\n", "E\\n").Seq
+', '', '' ],
+    [ 'IO::CatHandle', '2', 'ok', '("A", "B").Seq
 ("C", "D", "E").Seq
-', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '4', 'rakupp-differs', '("fi", "le", "s\\t", "fo", "o ", "ba", "r").Seq
+', '("A", "B").Seq
+("C", "D", "E").Seq
+', '', '' ],
+    [ 'IO::CatHandle', '4', 'ok', '("fo", "ob", "ar").Seq
 ', '("fo", "ob", "ar").Seq
 ', '', '' ],
-    [ 'IO::CatHandle', '5', 'rakupp-differs', '', 'I ♥ R
+    [ 'IO::CatHandle', '5', 'rakupp-differs', 'I ♥ R
+akumeow
+', 'I ♥ R
 Buf[uint8]:0x<6B 75 6D 65 6F 77>
-', 'No such method \'readchars\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '6', 'rakupp-differs', '', 'SWITCH! False
+', '', '' ],
+    [ 'IO::CatHandle', '6', 'ok', 'SWITCH! False
 SWITCH! False
 SWITCH! True
-', 'No such method \'eof\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '7', 'rakupp-differs', '', 'a
+', 'SWITCH! False
+SWITCH! False
+SWITCH! True
+', '', '' ],
+    [ 'IO::CatHandle', '7', 'ok', 'a
 b
 c
 d
 e
-', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '8', 'rakupp-differs', '', 'I
+', 'a
+b
+c
+d
+e
+', '', '' ],
+    [ 'IO::CatHandle', '8', 'ok', 'I
  
 ♥
  
@@ -2864,58 +2899,98 @@ m
 e
 o
 w
-', 'No such method \'getc\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '10', 'rakupp-differs', '', '(1a 1b)
+', 'I
+ 
+♥
+ 
+R
+a
+k
+u
+m
+e
+o
+w
+', '', '' ],
+    [ 'IO::CatHandle', '10', 'ok', '(1a 1b)
 (3a 3b)
-', 'No such method \'handles\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '11', 'rakupp-differs', '("files\\tfoo bar",).Seq
+', '(1a 1b)
+(3a 3b)
+', '', '' ],
+    [ 'IO::CatHandle', '11', 'ok', '("foo", "bar", "meow").Seq
 ', '("foo", "bar", "meow").Seq
 ', '', '' ],
-    [ 'IO::CatHandle', '12', 'all-differ', '', '4
+    [ 'IO::CatHandle', '12', 'all-differ', '3
+3
+0
+', '4
 4
 0
-', 'No such method \'native-descriptor\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '16', 'rakupp-differs', '("files\\tfoo bar",).Seq
-[]
+', '', '' ],
+    [ 'IO::CatHandle', '16', 'ok', '("", "B", "C", "", "E").Seq
+["A\\nB\\nC", "D\\nE"]
 ', '("", "B", "C", "", "E").Seq
 ["A\\nB\\nC", "D\\nE"]
 ', '', '' ],
-    [ 'IO::CatHandle', '17', 'rakupp-differs', '', 'False
+    [ 'IO::CatHandle', '17', 'ok', 'False
 True
 True
 False
-', 'No such method \'opened\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '19', 'all-differ', '', 'Buf[uint8]:0x<6D 65>
+', 'False
+True
+True
+False
+', '', '' ],
+    [ 'IO::CatHandle', '19', 'doc-drift', 'Buf[uint8]:0x<6D 65>
 Buf[uint8]:0x<6F 77 04 05 06>
 meow
 Buf[uint8]:0x<04 05 06>
-', 'No such method \'read\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '20', 'rakupp-differs', '', 'Raku loves 
+', 'Buf[uint8]:0x<6D 65>
+Buf[uint8]:0x<6F 77 04 05 06>
+meow
+Buf[uint8]:0x<04 05 06>
+', '', '' ],
+    [ 'IO::CatHandle', '20', 'ok', 'Raku loves 
 to meow
-', 'No such method \'readchars\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '21', 'rakupp-differs', '', 'foo
+', 'Raku loves 
+to meow
+', '', '' ],
+    [ 'IO::CatHandle', '21', 'ok', 'foo
 oo
 bar
 Failed to seek in filehandle: 22
-', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '22', 'all-differ', '', 'foo
+', 'foo
+oo
+bar
+Failed to seek in filehandle: 22
+', '', '' ],
+    [ 'IO::CatHandle', '22', 'doc-drift', 'foo
 3
 1
 oob
 1
-', 'No such method \'get\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '23', 'all-differ', 'foobar
-foobar
-
+', 'foo
+3
+1
+oob
+1
+', '', '' ],
+    [ 'IO::CatHandle', '23', 'doc-drift', 'foobar
+Buf[uint8]:0x<66 6F 6F 62 61 72>
+Nil
 ', 'foobar
 Buf[uint8]:0x<66 6F 6F 62 61 72>
 Nil
 ', '', '' ],
-    [ 'IO::CatHandle', '24', 'rakupp-differs', '("files\\tf", " bar").Seq
+    [ 'IO::CatHandle', '24', 'ok', '("f", "bar").Seq
 ', '("f", "bar").Seq
 ', '', '' ],
-    [ 'IO::CatHandle', '25', 'all-differ', 'files => ["foo".IO "bar".IO]
-files => ["foo".IO "bar".IO]
+    [ 'IO::CatHandle', '25', 'doc-drift', 'fo
+ob
+ar
+Buf[uint8]:0x<66 6F>
+Buf[uint8]:0x<6F 62>
+Buf[uint8]:0x<61 72>
 ', 'fo
 ob
 ar
@@ -2923,25 +2998,26 @@ Buf[uint8]:0x<66 6F>
 Buf[uint8]:0x<6F 62>
 Buf[uint8]:0x<61 72>
 ', '', '' ],
-    [ 'IO::CatHandle', '26', 'all-differ', '', 'False
+    [ 'IO::CatHandle', '26', 'doc-drift', 'False
 False
-', 'No such method \'t\' for invocant of type \'CatHandle\'', '' ],
-    [ 'IO::CatHandle', '27', 'rakupp-differs', '("files", "foo", "bar").Seq
+', 'False
+False
+', '', '' ],
+    [ 'IO::CatHandle', '27', 'ok', '("foo", "bar", "meow").Seq
 ', '("foo", "bar", "meow").Seq
 ', '', '' ],
-    [ 'IO::Handle', '11', 'all-differ', 'First line is text, then:
-First line is text, then:
-Binary
+    [ 'IO::Handle', '11', 'doc-drift', 'First line is text, then:
+Buf[uint8]:0x<42 69 6E 61 72 79>
 ', 'First line is text, then:
 Buf[uint8]:0x<42 69 6E 61 72 79>
 ', '', '' ],
     [ 'IO::Handle', '12', 'not-runnable', '', '', 'Failed to open file 50GB-file: No such file or directory', 'Failed to open file /private/tmp/typerun-sandbox/50GB-file: No such file or directory' ],
-    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/31909/statm: No such file or directory', 'Failed to open file /proc/31911/statm: No such file or directory' ],
+    [ 'IO::Handle', '13', 'not-runnable', '', '', 'Failed to open file /proc/39347/statm: No such file or directory', 'Failed to open file /proc/39349/statm: No such file or directory' ],
     [ 'IO::Handle', '15', 'ok', 'I ♥ Raku!
 ', 'I ♥ Raku!
 ', '', '' ],
-    [ 'IO::Handle', '23', 'not-runnable', '', '', 'Failed to open file path/to/file: No such file or directory', 'Earlier failures:' ],
-    [ 'IO::Handle', '24', 'all-differ', 'Buf:0x<49 20 E2 99 A5 20>
+    [ 'IO::Handle', '23', 'not-runnable', '', '', 'Cannot resolve caller say(Failure:D: ...); none of these signatures matches:', 'Earlier failures:' ],
+    [ 'IO::Handle', '24', 'doc-drift', 'Buf[uint8]:0x<49 20 E2 99 A5 20>
 ', 'Buf[uint8]:0x<49 20 E2 99 A5 20>
 ', '', '' ],
     [ 'IO::Handle', '25', 'ok', 'I ♥ R
@@ -2955,7 +3031,7 @@ something
 ', 'something
 something
 ', '', '' ],
-    [ 'IO::Handle', '33', 'rakupp-differs', '"42\\n42\\n"
+    [ 'IO::Handle', '33', 'ok', '"42\\n42foo"
 ', '"42\\n42foo"
 ', '', '' ],
     [ 'IO::Handle', '35', 'ok', '[one
@@ -2967,9 +3043,11 @@ something
  three
 ]
 ', '', '' ],
-    [ 'IO::Handle', '36', 'rakupp-differs', '', 'one
+    [ 'IO::Handle', '36', 'ok', 'one
 two
-', 'No such method \'read\' for invocant of type \'IO::Store\'', '' ],
+', 'one
+two
+', '', '' ],
     [ 'IO::Path::Parts', '1', 'ok', 'C:
 ', 'C:
 ', '', '' ],
@@ -3107,7 +3185,7 @@ False
 ".".IO
 ".".IO
 "/".IO
-".".IO
+"C:/".IO
 ', '"/etc".IO
 "/etc".IO
 "/etc".IO
@@ -3126,15 +3204,15 @@ False
 True
 False
 ', '', '' ],
-    [ 'IO::Path', '45', 'all-differ', '15756424
+    [ 'IO::Path', '45', 'all-differ', '21448856
 ', '35952
 ', '', '' ],
-    [ 'IO::Path', '46', 'all-differ', '"./.bash_aliases".IO
+    [ 'IO::Path', '46', 'doc-drift', '".bash_aliases".IO
 "/home/camelia/.bash_aliases".IO
 ', '".bash_aliases".IO
 "/home/camelia/.bash_aliases".IO
 ', '', '' ],
-    [ 'IO::Path', '47', 'all-differ', '"//bar".IO
+    [ 'IO::Path', '47', 'doc-drift', '"/bar".IO
 "/foo/bar".IO
 ', '"/bar".IO
 "/foo/bar".IO
@@ -3215,7 +3293,7 @@ False
 ', '', '' ],
     [ 'IO::Spec::Unix', '8', 'all-differ', '(__curupdir)
 ()
-', '-> str $dir { #`(Block|4265092112912) ... }
+', '-> str $dir { #`(Block|5413727429136) ... }
 (foo bar)
 ', '', '' ],
     [ 'IO::Spec::Unix', '10', 'ok', '/
@@ -3399,8 +3477,8 @@ bar\\foo\\..\\..
 \\private\\tmp\\typerun-sandbox\\bar\\foo\\..\\..
 ', '', '' ],
     [ 'IO::Spec::Win32', '20', 'rakupp-differs', 'IO::Path::Parts.new("C:","/foo","bar.txt")
-IO::Path::Parts.new("","\\\\","foo")
-IO::Path::Parts.new("","\\\\","\\\\")
+IO::Path::Parts.new("","/","foo")
+IO::Path::Parts.new("","/","/")
 IO::Path::Parts.new("",".",".")
 IO::Path::Parts.new("",".",".")
 IO::Path::Parts.new("","\\\\","\\\\")
@@ -3454,33 +3532,34 @@ IO::Path::Parts.new("","","")
 ', '<STDIN>
 <STDIN>
 ', '', '' ],
-    [ 'Instant', '1', 'rakupp-differs', '2017-01-01T00:00:00Z
+    [ 'Instant', '1', 'ok', '2016-12-31T23:59:60Z
 2017-01-01T00:00:00Z
 ', '2016-12-31T23:59:60Z
 2017-01-01T00:00:00Z
 ', '', '' ],
-    [ 'Instant', '2', 'rakupp-differs', '(1483228800 False)
-(1483228800 False)
+    [ 'Instant', '2', 'ok', '(1483228800 False)
+(1483228800 True)
 ', '(1483228800 False)
 (1483228800 True)
 ', '', '' ],
     [ 'Instant', '3', 'all-differ', '1788431650
+2026-09-03
 ', 'Instant:1788431650
 2026-09-03
-', 'No such method \'Date\' for invocant of type \'Instant\'', '' ],
-    [ 'Instant', '4', 'all-differ', '2026-09-17T12:56:59.013030Z
-', '2026-09-17T12:56:59.098865Z
 ', '', '' ],
-    [ 'Instant', '5', 'rakupp-differs', '[2016-12-31T23:59:59Z 1483228799]
+    [ 'Instant', '4', 'all-differ', '2026-09-29T00:05:21.257311Z
+', '2026-09-29T00:05:21.339963Z
+', '', '' ],
+    [ 'Instant', '5', 'ok', '[2016-12-31T23:59:59Z 1483228799]
+[2016-12-31T23:59:60Z 1483228800]
 [2017-01-01T00:00:00Z 1483228800]
 [2017-01-01T00:00:01Z 1483228801]
-[2017-01-01T00:00:02Z 1483228802]
 ', '[2016-12-31T23:59:59Z 1483228799]
 [2016-12-31T23:59:60Z 1483228800]
 [2017-01-01T00:00:00Z 1483228800]
 [2017-01-01T00:00:01Z 1483228801]
 ', '', '' ],
-    [ 'Instant', '6', 'rakupp-differs', '10
+    [ 'Instant', '6', 'ok', '37
 ', '37
 ', '', '' ],
     [ 'Int', '2', 'ok', 'True
@@ -3508,7 +3587,7 @@ IO::Path::Parts.new("","","")
 (0 2 1)
 ', '', '' ],
     [ 'Int', '13', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'Int', '14', 'all-differ', '(0 0 12 0 0 0)
+    [ 'Int', '14', 'doc-drift', '(120)
 (120)
 (120)
 (4 32 4 15 36)
@@ -3612,15 +3691,13 @@ IterationEnd
 3
 IterationEnd
 ', '', '' ],
-    [ 'Iterator', '15', 'not-runnable', '', '', '===SORRY!=== Parse error at line 1: expected { (got \';\')', '===SORRY!=== Error while compiling -e' ],
+    [ 'Iterator', '15', 'not-runnable', '', '', '===SORRY!=== Parse error at line 1: Missing block', '===SORRY!=== Error while compiling -e' ],
     [ 'Iterator', '17', 'ok', '3
 [1 2 3]
 ', '3
 [1 2 3]
 ', '', '' ],
-    [ 'Iterator', '18', 'all-differ', 'Never mind
-Coupled codons: C A G C G G A A G C C T, 
-', '', '', 'Too few positionals passed; expected 3 arguments but got 2' ],
+    [ 'Iterator', '18', 'not-runnable', '', '', 'Too few positionals passed; expected 3 arguments but got 1', 'Too few positionals passed; expected 3 arguments but got 2' ],
     [ 'Iterator', '19', 'ok', '10
 [1 2 3 4 5 6 7 8 9 10]
 ', '10
@@ -3696,17 +3773,17 @@ False
     [ 'Junction', '12', 'ok', 'False
 ', 'False
 ', '', '' ],
-    [ 'Junction', '15', 'all-differ', '[3]
+    [ 'Junction', '15', 'all-differ', '[(any((HANDLED) Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>not a number\' (indicated by <HERE>), 42, 2.1))]
 ', '[any((HANDLED) Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>not a number\' (indicated by <HERE>)
 , 42, 2.1)]
 ', '', '' ],
-    [ 'Junction', '16', 'rakupp-differs', 'False
+    [ 'Junction', '16', 'ok', 'Got exception: X::Str::Numeric
 ', 'Got exception: X::Str::Numeric
 ', '', '' ],
     [ 'Junction', '17', 'ok', 'Nil
 ', 'Nil
 ', '', '' ],
-    [ 'Junction', '18', 'ok', 'True
+    [ 'Junction', '18', 'rakupp-differs', 'False
 ', 'True
 ', '', '' ],
     [ 'Junction', '19', 'ok', 'any(True, False)
@@ -3736,7 +3813,7 @@ False
     [ 'Junction', '26', 'ok', 'all("a", IntStr.new(42, "42"), "c")
 ', 'all("a", IntStr.new(42, "42"), "c")
 ', '', '' ],
-    [ 'Junction', '27', 'all-differ', 'any(any(12, 14, 16), any(32, 34, 36), any(52, 54, 56))
+    [ 'Junction', '27', 'doc-drift', 'any(12, 14, 16, 32, 34, 36, 52, 54, 56)
 Found 34!
 Found 03
 Found 11
@@ -3751,16 +3828,18 @@ Found 11
     [ 'Kernel', '2', 'doc-drift', 'arm64
 ', 'arm64
 ', '', '' ],
-    [ 'Kernel', '3', 'rakupp-differs', 'darwin
+    [ 'Kernel', '3', 'ok', '2
 ', '2
 ', '', '' ],
     [ 'Label', '2', 'ok', 'A1B1A1A2
 ', 'A1B1A1A2
 ', '', '' ],
-    [ 'Label', '3', 'rakupp-differs', '', '駱駝道
-', 'Undefined routine \'駱駝道\'', '' ],
-    [ 'Label', '4', 'rakupp-differs', '', 'A
-', 'Undeclared name \'A\'', '' ],
+    [ 'Label', '3', 'rakupp-differs', 'element
+', '駱駝道
+', '', '' ],
+    [ 'Label', '4', 'rakupp-differs', 'element
+', 'A
+', '', '' ],
     [ 'Label', '6', 'doc-drift', '', '', '', '' ],
     [ 'Label', '9', 'doc-drift', '', '', '', '' ],
     [ 'Label', '11', 'doc-drift', '', '', '', '' ],
@@ -3977,21 +4056,20 @@ True
     [ 'List', '59', 'ok', '5
 ', '5
 ', '', '' ],
-    [ 'List', '60', 'not-runnable', '(0 1 2 3)
-', '', 'Undefined routine \'my-sub\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'List', '60', 'not-runnable', '', '', 'Undefined routine \'my-sub\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '62', 'ok', 'True
 ', 'True
 ', '', '' ],
     [ 'List', '63', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'List', '64', 'all-differ', 'e
-(d b a)
-(c b d e a)
-', 'a
-(b a d)
-(d b e a c)
+    [ 'List', '64', 'all-differ', 'b
+(e d a)
+(a e b d c)
+', 'd
+(b e c)
+(a d c e b)
 ', '', '' ],
-    [ 'List', '65', 'all-differ', '(b c a)
-', '(a c b a b c c a b a)
+    [ 'List', '65', 'all-differ', '(b a c b a c c b a b)
+', '(c a b b a c b a c a)
 ', '', '' ],
     [ 'List', '69', 'not-runnable', '', '', 'Undefined routine \'ll\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '70', 'ok', '(world! hello)
@@ -4027,7 +4105,7 @@ True
     [ 'List', '81', 'ok', '10
 ', '10
 ', '', '' ],
-    [ 'List', '85', 'not-runnable', '', '', 'Undefined routine \'numbers\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'List', '85', 'not-runnable', '', '', 'Undefined routine \'count-and-sum-evens\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '86', 'ok', '81
 81
 81
@@ -4047,19 +4125,19 @@ True
 ', '24
 1
 ', '', '' ],
-    [ 'List', '89', 'rakupp-differs', '[[&mult]]
+    [ 'List', '89', 'ok', '24
 ', '24
-', 'Useless use of constant integer 1 in sink context (line 2)', '' ],
+', '', '' ],
     [ 'List', '91', 'ok', '9
 ', '9
 ', '', '' ],
-    [ 'List', '92', 'rakupp-differs', '(((1, 2), 3), 4)
+    [ 'List', '92', 'ok', '(1, (2, (3, 4)))
 ', '(1, (2, (3, 4)))
 ', '', '' ],
     [ 'List', '93', 'ok', '(((1, 2), 3), 4)
 ', '(((1, 2), 3), 4)
 ', '', '' ],
-    [ 'List', '97', 'not-runnable', '', '', 'Useless use of constant integer 3 in sink context (line 1)', '===SORRY!=== Error while compiling -e' ],
+    [ 'List', '97', 'not-runnable', '', '', 'Undefined routine \'evaluate\'', '===SORRY!=== Error while compiling -e' ],
     [ 'List', '98', 'ok', '(4 81 2417851639229258349412352)
 (4 81 2417851639229258349412352)
 (4 81 2417851639229258349412352)
@@ -4201,8 +4279,9 @@ More
     [ 'Lock', '1', 'ok', '10
 ', '10
 ', '', '' ],
-    [ 'Lock', '8', 'all-differ', '', '(2* 5* 10 17* 26 37* 50 65 82 101* 122 145 170 197* 226 257* 290 325 362 401* 442 485 530 577* 626 677* 730 785 842 901 962 1025 1090 1157 1226 1297* 1370 1445 1522 1601* 1682 1765 1850 1937 2026 2117 2210 2305 2402 2501 2602 2705 2810 2917* 3026 3137* 3250 3365 3482 3601 3722 3845 3970 4097 4226 4357* 4490 4625 4762 4901 5042 5185 5330 5477* 5626 5777 5930 6085 6242 6401 6562 6725 6890 7057* 7226 7397 7570 7745 7922 8101* 8282 8465 8650 8837* 9026 9217 9410 9605 9802 10001)
-', 'No such method \'wait\' for invocant of type \'Lock\'', '' ],
+    [ 'Lock', '8', 'all-differ', '(2 5 10 17 26 37 50 65 82 101 122 145 170 197 226 257 290 325 362 401 442 485 530 577 626 677 730 785 842 901 962 1025 1090 1157 1226 1297 1370 1445 1522 1601 1682 1765 1850 1937 2026 2117 2210 2305 2402 2501 2602 2705 2810 2917 3026 3137 3250 3365 3482 3601 3722 3845 3970 4097 4226 4357 4490 4625 4762 4901 5042 5185 5330 5477 5626 5777 5930 6085 6242 6401 6562 6725 6890 7057 7226 7397 7570 7745 7922 8101 8282 8465 8650 8837 9026 9217 9410 9605 9802 10001)
+', '(2* 5* 10 17* 26 37* 50 65 82 101* 122 145 170 197* 226 257* 290 325 362 401* 442 485 530 577* 626 677* 730 785 842 901 962 1025 1090 1157 1226 1297* 1370 1445 1522 1601* 1682 1765 1850 1937 2026 2117 2210 2305 2402 2501 2602 2705 2810 2917* 3026 3137* 3250 3365 3482 3601 3722 3845 3970 4097 4226 4357* 4490 4625 4762 4901 5042 5185 5330 5477* 5626 5777 5930 6085 6242 6401 6562 6725 6890 7057* 7226 7397 7570 7745 7922 8101* 8282 8465 8650 8837* 9026 9217 9410 9605 9802 10001)
+', '', '' ],
     [ 'Map', '2', 'ok', '1
 (1 2)
 ', '1
@@ -4220,23 +4299,23 @@ More
     [ 'Map', '10', 'ok', '2
 ', '2
 ', '', '' ],
-    [ 'Map', '11', 'ok', '(a b)
-', '(a b)
+    [ 'Map', '11', 'rakudo-differs', '(a b)
+', '(b a)
 ', '', '' ],
-    [ 'Map', '12', 'rakudo-differs', '((2 3) 17)
-', '(17 (2 3))
+    [ 'Map', '12', 'ok', '((2 3) 17)
+', '((2 3) 17)
 ', '', '' ],
     [ 'Map', '13', 'ok', '(a => (2 3) b => 17)
 ', '(a => (2 3) b => 17)
 ', '', '' ],
-    [ 'Map', '14', 'ok', '((2 3) => a 17 => b)
-', '((2 3) => a 17 => b)
+    [ 'Map', '14', 'rakudo-differs', '((2 3) => a 17 => b)
+', '(17 => b (2 3) => a)
 ', '', '' ],
-    [ 'Map', '15', 'ok', '(2 => a 3 => a 17 => b)
-', '(2 => a 3 => a 17 => b)
+    [ 'Map', '15', 'rakudo-differs', '(2 => a 3 => a 17 => b)
+', '(17 => b 2 => a 3 => a)
 ', '', '' ],
-    [ 'Map', '17', 'rakupp-differs', '(a => (2 3) b => 17)
-', '(b => 17 a => (2 3))
+    [ 'Map', '17', 'doc-drift', '(a => (2 3) b => 17)
+', '(a => (2 3) b => 17)
 ', '', '' ],
     [ 'Map', '18', 'ok', '(a => 1 b => 2 c => 3)
 (a => 1 b => 2 c => 3)
@@ -4285,8 +4364,8 @@ More
     [ 'Match', '7', 'ok', 'þor
 ', 'þor
 ', '', '' ],
-    [ 'Match', '8', 'rakupp-differs', '42
-Str
+    [ 'Match', '8', 'ok', '42
+Int
 ', '42
 Int
 ', '', '' ],
@@ -4324,21 +4403,24 @@ Int
 ', '((Int) (Cool) (Any) (Mu))
 ', '', '' ],
     [ 'Metamodel::ClassHOW', '1', 'all-differ', 'True
-Nil
+sign
 ', 'True
-lsb
+cosh
 ', '', '' ],
-    [ 'Metamodel::ClassHOW', '2', 'all-differ', '1
+    [ 'Metamodel::ClassHOW', '2', 'all-differ', '2
 0
+1
 ', '2
 1
 2
 ', '', '' ],
-    [ 'Metamodel::ClassHOW', '3', 'all-differ', '&Int
-', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|3458967639024) ... }
+    [ 'Metamodel::ClassHOW', '3', 'all-differ', 'Int
 method `uppercase` not found
 FOO
-', 'Variable \'$meth\' is not declared', '' ],
+', 'method Int (Str:D $:: *%_ --> Int:D) { #`(Method|5871665517552) ... }
+method `uppercase` not found
+FOO
+', '', '' ],
     [ 'Metamodel::ClassHOW', '4', 'ok', 'Hey
 Hey
 ', 'Hey
@@ -4375,11 +4457,11 @@ True
     [ 'Metamodel::MethodContainer', '2', 'ok', '42
 ', '42
 ', '', '' ],
-    [ 'Metamodel::MethodContainer', '5', 'all-differ', '&sqrt
+    [ 'Metamodel::MethodContainer', '5', 'all-differ', 'sqrt
 Mu
 (Mu)
 ', 'proto method sqrt (Cool $:: *%_) {*}
-submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|3259251669144) ... }
+submethod BUILD (Str $:: Str(Any) :$value = "", *%_ --> Nil) { #`(Submethod|4876038420632) ... }
 (Mu)
 ', '', '' ],
     [ 'Metamodel::MethodDelegation', '1', 'rakudo-differs', 'Role
@@ -4396,12 +4478,10 @@ True
 True
 ', '', '' ],
     [ 'Metamodel::Mixins', '2', 'rakupp-differs', 'True
-False
-True
 ', 'True
 True
 True
-', '', '' ],
+', 'Type check failed for return value; expected Str:D but got Str (Str)', '' ],
     [ 'Metamodel::Mixins', '3', 'ok', 'Foo+{Bar}.new
 Foo+{Bar}.new
 ', 'Foo+{Bar}.new
@@ -4426,24 +4506,23 @@ Perl6::Metamodel::ParametricRoleHOW.new
     [ 'Metamodel::ParametricRoleHOW', '2', 'rakupp-differs', 'Metamodel::ClassHOW.new
 ', 'Perl6::Metamodel::ParametricRoleHOW.new
 ', '', '' ],
-    [ 'Metamodel::Primitives', '1', 'all-differ', 'X::Method::NotFound: No such method \'create_type\' for invocant of type \'Metamodel::Primitives\'
-', 'X::Method::NotFound: No such method \'why\' for invocant of type \'why oh why?\'. Did you mean
+    [ 'Metamodel::Primitives', '1', 'all-differ', '', 'X::Method::NotFound: No such method \'why\' for invocant of type \'why oh why?\'. Did you mean
 \'WHO\'?
 ', '', '' ],
     [ 'Metamodel::RolePunning', '1', 'ok', 'punned
 ', 'punned
 ', '', '' ],
-    [ 'Metamodel::Stashing', '1', 'rakupp-differs', '(Any)
-(Any)
+    [ 'Metamodel::Stashing', '1', 'ok', '(Namespace)
+(Namespace)
 ', '(Namespace)
 (Namespace)
 ', '', '' ],
     [ 'Metamodel::Stashing', '2', 'rakupp-differs', '', 'WithStash
-', 'No such method \'create_type\' for invocant of type \'Metamodel::Primitives\'', '' ],
-    [ 'Metamodel::TypePretense', '1', 'all-differ', 'True
+', 'No such method \'set_name\' for invocant of type \'WithStashHOW\'', '' ],
+    [ 'Metamodel::TypePretense', '1', 'rakudo-differs', 'True
 True
 True
-(Any)
+(Any Mu)
 ()
 ', 'True
 True
@@ -4478,7 +4557,7 @@ github:Kaiepi
     [ 'Method', '3', 'ok', 'Int
 ', 'Int
 ', '', '' ],
-    [ 'Method', '7', 'not-runnable', '', '', 'Class \'B\' cannot inherit from \'A\' because it is unknown', '===SORRY!=== Error while compiling -e' ],
+    [ 'Method', '7', 'not-runnable', '', '', 'Class \'B\' cannot inherit from \'A\' because it is unknown. Did you mean \'B\'?', '===SORRY!=== Error while compiling -e' ],
     [ 'Mix', '1', 'doc-drift', '3
 (butter flour sugar)
 (butter => 0.22 flour => 0.275 sugar => 0.12)
@@ -4495,10 +4574,10 @@ github:Kaiepi
 0.12
 0
 ', '', '' ],
-    [ 'Mix', '3', 'all-differ', '(Str Pair Rat Num)
+    [ 'Mix', '3', 'doc-drift', '(Str Pair Rat Num)
 (a => 2 (b => 0) => 1 3.14 => 1 3.141592653589793 => 2)
-', '(Pair Num Str Rat)
-((b => 0) => 1 3.141592653589793 => 2 a => 2 3.14 => 1)
+', '(Str Pair Rat Num)
+(a => 2 (b => 0) => 1 3.14 => 1 3.141592653589793 => 2)
 ', '', '' ],
     [ 'Mix', '4', 'rakudo-differs', '((Str) (Str))
 (a => 2 c => 3.14)
@@ -4542,19 +4621,19 @@ True
 (butter => 0.22 flour => 0.275 sugar => 0.12)
 0.615
 ', '', '' ],
-    [ 'MixHash', '2', 'doc-drift', '0.22
+    [ 'MixHash', '2', 'all-differ', '0.22
 0.12
 0
 (sugar => 0.12 flour => 0.275 chocolate => 0.3)
 ', '0.22
 0.12
 0
-(sugar => 0.12 flour => 0.275 chocolate => 0.3)
+(chocolate => 0.3 sugar => 0.12 flour => 0.275)
 ', '', '' ],
-    [ 'MixHash', '3', 'doc-drift', '((Str) (Pair) (Pair))
+    [ 'MixHash', '3', 'all-differ', '((Str) (Pair) (Pair))
 (a => 2 (b => 0) => 1 (c => 3.14) => 1)
-', '((Str) (Pair) (Pair))
-(a => 2 (b => 0) => 1 (c => 3.14) => 1)
+', '((Pair) (Pair) (Str))
+((c => 3.14) => 1 (b => 0) => 1 a => 2)
 ', '', '' ],
     [ 'MixHash', '4', 'rakudo-differs', '((Str) (Str))
 (a => 2 c => 3.14)
@@ -4668,8 +4747,8 @@ Mu.new
     [ 'Mu', '12', 'ok', 'Str
 ', 'Str
 ', '', '' ],
-    [ 'Mu', '13', 'ok', 'Set.new(1,2,3)
-', 'Set.new(1,2,3)
+    [ 'Mu', '13', 'rakudo-differs', 'Set.new(1,2,3)
+', 'Set.new(1,3,2)
 ', '', '' ],
     [ 'Mu', '14', 'ok', '$[1, 2, 3]
 ${:apple(10)}
@@ -4696,8 +4775,8 @@ Point(2, -5)
 Foo.new(foo => 70, boo => sub { ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
-', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|4848133973624) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
-Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|4848133976432) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+', 'Foo.new(foo => 42, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|5378830870136) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
+Foo.new(foo => 70, boo => -> ;; $_? is raw = OUTER::<$_> { #`(Block|5378830872944) ... }, bar => ["Z", "Y"], baz => {:X("W"), :Z("Y")})
 Hi
 Bye
 ', '', '' ],
@@ -4747,7 +4826,7 @@ False
 ', 'any(1, 2, 3)
 ', '', '' ],
     [ 'Mu', '35', 'not-runnable', '', '', 'Undefined routine \'insert\'', '===SORRY!=== Error while compiling -e' ],
-    [ 'Mu', '36', 'rakupp-differs', '[1 1 1]
+    [ 'Mu', '36', 'rakupp-differs', '[1 2 3]
 ', '[2 3 4]
 ', '', '' ],
     [ 'Mu', '37', 'ok', 'Verbose option detected in arguments
@@ -4765,8 +4844,8 @@ False
     [ 'Nil', '2', 'ok', 'Nil
 ', 'Nil
 ', '', '' ],
-    [ 'Nil', '3', 'rakupp-differs', 'Nil
-(Any)
+    [ 'Nil', '3', 'ok', 'Nil
+Nil
 Nil
 Nil
 Nil
@@ -4791,15 +4870,17 @@ Nil
     [ 'Nil', '7', 'ok', '(Int)
 ', '(Int)
 ', '', '' ],
-    [ 'Nil', '8', 'all-differ', '', 'X::TypeCheck::Assignment: Type check failed in assignment to $i; expected Int:D but got Int (Int) (perhaps Nil was assigned to a :D which had no default?)
+    [ 'Nil', '8', 'all-differ', 'X::TypeCheck::Assignment: Type check failed in assignment to $i; expected Int:D but got Nil
+', 'X::TypeCheck::Assignment: Type check failed in assignment to $i; expected Int:D but got Int (Int) (perhaps Nil was assigned to a :D which had no default?)
 ', '', '' ],
     [ 'Nil', '11', 'ok', '(Any)
 X::TypeCheck::Assignment: Type check failed in assignment to $y; expected Int but got Any (Any)
 ', '(Any)
 X::TypeCheck::Assignment: Type check failed in assignment to $y; expected Int but got Any (Any)
 ', '', '' ],
-    [ 'Nil', '12', 'rakupp-differs', '', '(Str)
-', 'Type check failed in assignment to $s; expected Str but got Nil (Nil)', '' ],
+    [ 'Nil', '12', 'ok', '(Str)
+', '(Str)
+', '', '' ],
     [ 'Nil', '13', 'rakupp-differs', '(Any)
 ', '42
 ', '', '' ],
@@ -4816,7 +4897,7 @@ True
 True
 1.5707963267948966
 True
-', 'Useless use of constant integer ² in sink context (line 1)', '' ],
+', '', '' ],
     [ 'Num', '4', 'ok', 'Hou←X→se ←X→of ←X→M
 ', 'Hou←X→se ←X→of ←X→M
 ', '', '' ],
@@ -4877,8 +4958,8 @@ value
     [ 'Pair', '10', 'ok', 'bar => 10
 ', 'bar => 10
 ', '', '' ],
-    [ 'Pair', '11', 'rakupp-differs', 'a => value A
-a => value A
+    [ 'Pair', '11', 'ok', 'a => value A
+a => value B
 ', 'a => value A
 a => value B
 ', '', '' ],
@@ -4904,8 +4985,8 @@ False
 False
 False
 ', '', '' ],
-    [ 'Pair', '16', 'rakupp-differs', 'True
-False => truthy
+    [ 'Pair', '16', 'ok', 'True
+True
 False
 ', 'True
 True
@@ -4945,20 +5026,19 @@ Raku => d
 ', 'Seq
 Raku => d
 ', '', '' ],
-    [ 'Pair', '25', 'all-differ', 'Seq
+    [ 'Pair', '25', 'not-runnable', 'Seq
 Raku => d
-Pair
 ', 'Seq
 Raku => d
-', '', 'The iterator of this Seq is already in use/consumed by another Seq (you' ],
+', 'The iterator of this Seq is already in use/consumed by another Seq', 'The iterator of this Seq is already in use/consumed by another Seq (you' ],
     [ 'Pair', '26', 'ok', '(:bar("foo"),).Seq
 ', '(:bar("foo"),).Seq
 ', '', '' ],
     [ 'Pair', '27', 'ok', '(:Raku("foo"), :is("foo"), :great("foo")).Seq
 ', '(:Raku("foo"), :is("foo"), :great("foo")).Seq
 ', '', '' ],
-    [ 'Pair', '28', 'ok', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
-', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
+    [ 'Pair', '28', 'rakudo-differs', '((:a(42)) => "foo", (:b(72)) => "foo").Seq
+', '((:b(72)) => "foo", (:a(42)) => "foo").Seq
 ', '', '' ],
     [ 'Pair', '29', 'ok', '(Raku)
 ', '(Raku)
@@ -4966,13 +5046,14 @@ Raku => d
     [ 'Pair', '30', 'ok', '(d)
 ', '(d)
 ', '', '' ],
-    [ 'Pair', '31', 'all-differ', 'key => orange
-key => orange
+    [ 'Pair', '31', 'doc-drift', 'key => orange
+orange
+X::Assignment::RO: Cannot modify an immutable Str (orange)
 ', 'key => orange
 orange
 X::Assignment::RO: Cannot modify an immutable Str (orange)
 ', '', '' ],
-    [ 'Pair', '32', 'not-runnable', '', '', 'No such method \'Map\' for invocant of type \'Any\'', '===SORRY!=== Error while compiling -e' ],
+    [ 'Pair', '32', 'not-runnable', '', '', 'Odd number of elements found where hash initializer expected:', '===SORRY!=== Error while compiling -e' ],
     [ 'Pair', '33', 'doc-drift', 'eggs	3
 ', 'eggs	3
 ', '', '' ],
@@ -5011,7 +5092,7 @@ True
 True
 True
 ', '', '' ],
-    [ 'Parameter', '7', 'all-differ', 'X::Assignment::RO: Cannot assign to a readonly variable or a value
+    [ 'Parameter', '7', 'all-differ', 'X::AdHoc: Cannot assign to a readonly variable or a value
 ', 'X::Assignment::RO: Cannot modify an immutable Int (42)
 ', '', '' ],
     [ 'Parameter', '9', 'rakupp-differs', 'True
@@ -5048,8 +5129,8 @@ False
 ', 'True
 False
 ', '', '' ],
-    [ 'Parameter', '15', 'rakupp-differs', 'True
-True
+    [ 'Parameter', '15', 'ok', 'True
+False
 ', 'True
 False
 ', '', '' ],
@@ -5058,12 +5139,14 @@ False
 ', '(Code)
 12
 ', '', '' ],
-    [ 'Parameter', '17', 'all-differ', '(Int)
+    [ 'Parameter', '17', 'doc-drift', '(Int)
+(T)
+(Int)
 ', '(Int)
 (T)
 (Int)
-', 'No such method \'type_captures\' for invocant of type \'Parameter\'', '' ],
-    [ 'Parameter', '18', 'rakupp-differs', 'Nil
+', '', '' ],
+    [ 'Parameter', '18', 'ok', 'Type check failed in assignment to $zz; expected Int but got Str ("six")
 Type check failed in binding to parameter \'$y\'; expected Str but got Int (5)
 ', 'Type check failed in assignment to $zz; expected Int but got Str ("six")
 Type check failed in binding to parameter \'$y\'; expected Str but got Int (5)
@@ -5120,10 +5203,11 @@ Str
     [ 'Proc::Async', '19', 'ok', '(cat some files)
 ', '(cat some files)
 ', '', '' ],
-    [ 'Proc::Async', '20', 'rakupp-differs', '42
+    [ 'Proc::Async', '20', 'ok', '42
+100
 ', '42
 100
-', '100', '' ],
+', '', '' ],
     [ 'Proc', '1', 'ok', 'Output was "Hallo world\\n"
 ', 'Output was "Hallo world\\n"
 ', '', '' ],
@@ -5168,8 +5252,8 @@ Set(minus one)
 ', 'Set(one two)
 Set(one)
 ', '', '' ],
-    [ 'QuantHash', '2', 'rakupp-differs', 'Bag(one two)
-Bag(minus(-1) one)
+    [ 'QuantHash', '2', 'ok', 'Bag(one two)
+Bag(one)
 ', 'Bag(one two)
 Bag(one)
 ', '', '' ],
@@ -5218,9 +5302,7 @@ Nil
 Nil
 11
 ', '', '' ],
-    [ 'Range', '7', 'ok', '4
-8
-15
+    [ 'Range', '7', 'rakupp-differs', '16
 4
 8
 15
@@ -5231,10 +5313,10 @@ Nil
 8
 15
 ', '', '' ],
-    [ 'Range', '8', 'rakupp-differs', '2..11
+    [ 'Range', '8', 'ok', '2..11
 0..9
 2..20
-0.5..5
+0.5..5.0
 ', '2..11
 0..9
 2..20
@@ -5301,7 +5383,7 @@ False
 ', '(2 5)
 (2 4)
 ', '', '' ],
-    [ 'Range', '24', 'rakupp-differs', ', 
+    [ 'Range', '24', 'ok', '3, 5
 ', '3, 5
 ', '', '' ],
     [ 'Range', '25', 'ok', 'True, True
@@ -5311,10 +5393,10 @@ False, True
 False, True
 (1 5), (2 5)
 ', '', '' ],
-    [ 'Range', '26', 'rakupp-differs', 'False, False
+    [ 'Range', '26', 'ok', 'False, False
 False, True
-(1 5)
-(1 4)
+(1.1 5.2)
+X::AdHoc: Cannot return minmax on Range with excluded ends
 ', 'False, False
 False, True
 (1.1 5.2)
@@ -5335,10 +5417,10 @@ X::AdHoc: Cannot return minmax on Range with excluded ends
 ', '(5 4 3 2)
 (d c b a)
 ', 'Cannot reverse an infinite range', 'Cannot .reverse a lazy list' ],
-    [ 'Range', '31', 'all-differ', '2.188749971198618
-0.15548354407965803
-', '3.3281619799210604
-0.25424329635568366
+    [ 'Range', '31', 'all-differ', '2.75401566494898
+0.13007002515185848
+', '1.6649758219214323
+0.17996107385090263
 ', '', '' ],
     [ 'Range', '32', 'ok', 'True
 False
@@ -5370,7 +5452,7 @@ False
     [ 'Range', '39', 'ok', '2..4
 ', '2..4
 ', '', '' ],
-    [ 'Range', '40', 'rakudo-differs', '1..2
+    [ 'Range', '40', 'doc-drift', '1.0..2.0
 ', '1.0..2.0
 ', '', '' ],
     [ 'Range', '41', 'ok', 'Same
@@ -5418,7 +5500,7 @@ forty two and a bit
 ', '42.1
 forty two and a bit
 ', '', '' ],
-    [ 'Rational', '1', 'all-differ', 'Positive.new
+    [ 'Rational', '1', 'doc-drift', '0.333333
 ', '0.333333
 ', '', 'Type check failed in binding to parameter \'nu\'; expected UInt but got Int (-2)' ],
     [ 'Rational', '5', 'ok', '<1/0>
@@ -5442,9 +5524,9 @@ forty two and a bit
 (0.2 0 80)
 ', '', '' ],
     [ 'Real', '8', 'all-differ', '3.142
-0.007813
+0.0078125
 0.01
-0.333333
+0.3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333
 ', '3.142
 ', '', '' ],
     [ 'Regex', '2', 'ok', 'Regex
@@ -5470,14 +5552,15 @@ f was called
 after
 f was called
 ', '', '' ],
-    [ 'Routine', '1', 'rakupp-differs', '', 'Submethod
-', 'Variable \'&?ROUTINE\' is not declared', '' ],
+    [ 'Routine', '1', 'rakupp-differs', 'Method
+', 'Submethod
+', '', '' ],
     [ 'Routine', '2', 'all-differ', 'True
 (False)
 ', '0
 (True)
 ', '', '' ],
-    [ 'Routine', '3', 'all-differ', '()
+    [ 'Routine', '3', 'all-differ', '(*%_)
 ', '', '', '' ],
     [ 'Routine', '4', 'ok', 'True
 False
@@ -5506,7 +5589,7 @@ Int
 Int
 ', '', '' ],
     [ 'Scalar', '4', 'rakupp-differs', 'Int
-Int
+Scalar
 Int
 Int
 Int
@@ -5530,6 +5613,7 @@ Int
 Int
 Int
 Int
+X::Assignment::RO: Cannot modify an immutable Int (1)
 ', 'Int
 Int
 Int
@@ -5558,9 +5642,7 @@ Seq
 ', '(1 2 3 4 5)
 Seq
 ', '', '' ],
-    [ 'Seq', '2', 'ok', 'consuming...
-consuming...
-one
+    [ 'Seq', '2', 'rakupp-differs', 'consuming...
 ', 'consuming...
 consuming...
 one
@@ -5609,7 +5691,7 @@ False
 ', '', '' ],
     [ 'Set', '3', 'all-differ', '(:zero(0), :one(1), :two(2)).Seq
 ((Pair) (Pair) (Pair))
-', '(:one(1), :zero(0), :two(2)).Seq
+', '(:two(2), :one(1), :zero(0)).Seq
 ((Pair) (Pair) (Pair))
 ', '', '' ],
     [ 'Set', '4', 'ok', '("one", "two").Seq
@@ -5665,8 +5747,8 @@ SetHash()
     [ 'SetHash', '4', 'doc-drift', '(kiwi orange peach)
 ', '(kiwi orange peach)
 ', '', '' ],
-    [ 'SetHash', '5', 'rakupp-differs', 'False
-1
+    [ 'SetHash', '5', 'ok', 'False
+True
 False
 ', 'False
 True
@@ -5674,7 +5756,7 @@ False
 ', '', '' ],
     [ 'SetHash', '6', 'all-differ', '(:zero(0), :one(1), :two(2)).Seq
 ((Pair) (Pair) (Pair))
-', '(:one(1), :zero(0), :two(2)).Seq
+', '(:two(2), :one(1), :zero(0)).Seq
 ((Pair) (Pair) (Pair))
 ', '', '' ],
     [ 'SetHash', '7', 'rakudo-differs', '("one", "two").Seq
@@ -5682,10 +5764,10 @@ False
 ', '("two", "one").Seq
 ((Str) (Str))
 ', '', '' ],
-    [ 'SetHash', '8', 'rakudo-differs', 'SetHash(key1 key2)
+    [ 'SetHash', '8', 'ok', 'SetHash(key1 key2)
 ("key1", "key2").Seq
 ', 'SetHash(key1 key2)
-("key2", "key1").Seq
+("key1", "key2").Seq
 ', '', '' ],
     [ 'SetHash', '9', 'ok', 'True
 False
@@ -5717,24 +5799,24 @@ SetHash(1 2 3 4)
     [ 'Setty', '1', 'ok', 'Set(butter sugar)
 ', 'Set(butter sugar)
 ', '', '' ],
-    [ 'Setty', '2', 'all-differ', '4 => True
-(3 => True)
+    [ 'Setty', '2', 'all-differ', '3 => True
+(4 => True)
 (4 => True 2 => True 3 => True)
-', '3 => True
-(2 => True)
-(2 => True 3 => True 4 => True)
+', '2 => True
+(3 => True)
+(3 => True 2 => True 4 => True)
 ', '', '' ],
     [ 'Setty', '3', 'ok', '(True => 1 True => 2 True => 3)
 ', '(True => 1 True => 2 True => 3)
 ', '', '' ],
-    [ 'Setty', '4', 'rakupp-differs', '(1 2 3)
-', '(3 1 2)
+    [ 'Setty', '4', 'all-differ', '(1 2 3)
+', '(2 1 3)
 ', '', '' ],
     [ 'Setty', '5', 'ok', '(True True True)
 ', '(True True True)
 ', '', '' ],
-    [ 'Setty', '6', 'all-differ', '(1 True 2 True 3 True)
-', '(3 True 2 True 1 True)
+    [ 'Setty', '6', 'doc-drift', '(1 True 2 True 3 True)
+', '(1 True 2 True 3 True)
 ', '', '' ],
     [ 'Setty', '7', 'ok', 'True
 False
@@ -5755,7 +5837,7 @@ False
     [ 'Setty', '11', 'ok', 'True
 ', 'True
 ', '', '' ],
-    [ 'Setty', '12', 'not-runnable', '', '', 'Variable \'$s1\' is not declared', '===SORRY!=== Error while compiling -e' ],
+    [ 'Setty', '12', 'not-runnable', '', '', 'Variable \'$s1\' is not declared. Did you mean \'$s2\'?', '===SORRY!=== Error while compiling -e' ],
     [ 'Setty', '13', 'doc-drift', 'Mix(1 2 3)
 ', 'Mix(1 2 3)
 ', '', '' ],
@@ -5781,7 +5863,7 @@ False
     [ 'Slip', '2', 'ok', 'a A|b B|c C
 ', 'a A|b B|c C
 ', '', '' ],
-    [ 'Slip', '5', 'rakupp-differs', '(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).Seq
+    [ 'Slip', '5', 'ok', '((1, 2), (3, 4), (5, 6), (7, 8), (9, 10)).Seq
 (1, 2, 3, 4, 5, 6, 7, 8, 9, 10).Seq
 ', '((1, 2), (3, 4), (5, 6), (7, 8), (9, 10)).Seq
 (1, 2, 3, 4, 5, 6, 7, 8, 9, 10).Seq
@@ -5923,11 +6005,11 @@ Nil
 ', '(2 9)
 (0 2 7 9)
 ', '', '' ],
-    [ 'Str', '22', 'rakupp-differs', '｢perl｣
+    [ 'Str', '22', 'ok', '｢perl｣
 ｢prop｣
 ｢1 2 3｣
 ｢a2｣
-｢abracadabra｣
+(｢abracadabra｣ ｢abracada｣ ｢abraca｣ ｢abra｣ ｢acadabra｣ ｢acada｣ ｢aca｣ ｢adabra｣ ｢ada｣ ｢abra｣)
 (｢several｣ ｢words｣ ｢here｣)
 ｢cdef｣
 ｢fo｣
@@ -6169,9 +6251,9 @@ az-Zorro-c
 ', 'azc
 az-Zorro-c
 ', '', '' ],
-    [ 'Str', '80', 'rakupp-differs', 'A character in the \'Flintstones\' is: barney
-A character in the \'Flintstones\' is: barney
-A character in the \'Flintstones\' is: barney
+    [ 'Str', '80', 'ok', 'A character in the \'Flintstones\' is: barney
+A character in the \'Flintstones\' is: fred
+A character in the \'Flintstones\' is: wilma
 ', 'A character in the \'Flintstones\' is: barney
 A character in the \'Flintstones\' is: fred
 A character in the \'Flintstones\' is: wilma
@@ -6197,11 +6279,11 @@ aþðþbþðþc
 aþðþbþðþc
 ', '', '' ],
     [ 'Str', '94', 'rakupp-differs', 'aþðþbþðþc
-aþðþbþðþc
+aþðbþðc
 ', 'aþðbþðc
 aþðbþðc
 ', '', '' ],
-    [ 'Str', '95', 'rakupp-differs', '121
+    [ 'Str', '95', 'ok', '12
 ', '12
 ', '', '' ],
     [ 'Str', '96', 'ok', 'zbcd
@@ -6271,7 +6353,7 @@ ComplexStr
     [ 'Sub', '4', 'all-differ', 'start
 ⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|&bar
 bar has been called
-', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|5459360559160
+', '⟨is foo⟩ has been called with ⟨oi‽⟩ on Sub|6248560799800
 start
 bar has been called
 ', '', '' ],
@@ -6307,11 +6389,15 @@ is foo called
 4
 10
 ', '', '' ],
-    [ 'Supply', '11', 'rakupp-differs', '', 'a
+    [ 'Supply', '11', 'ok', 'a
 ä
 o
 ö
-', 'No such method \'tap\' for invocant of type \'List\'', '' ],
+', 'a
+ä
+o
+ö
+', '', '' ],
     [ 'Supply', '12', 'ok', '15
 ', '15
 ', '', '' ],
@@ -6383,11 +6469,15 @@ Word!
 ', 'Hello
 Word!
 ', '', '' ],
-    [ 'Supply', '33', 'rakupp-differs', '', 'A
+    [ 'Supply', '33', 'ok', 'A
 b
 b
 C
-', 'No such method \'tap\' for invocant of type \'Seq\'', '' ],
+', 'A
+b
+b
+C
+', '', '' ],
     [ 'Supply', '34', 'ok', '4
 5
 6
@@ -6425,8 +6515,8 @@ ok 1 - The object is-a \'Numeric\'
 ', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
     [ 'Unicode', '3', 'all-differ', '', 'True
 ', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
-    [ 'ValueObjAt', '1', 'all-differ', '"Hash|a\\t42"
-', 'ObjAt.new("Hash|4026445184560")
+    [ 'ValueObjAt', '1', 'all-differ', '"Hash|0x1062dea78"
+', 'ObjAt.new("Hash|6268686548528")
 ', '', '' ],
     [ 'ValueObjAt', '2', 'rakupp-differs', '"Date|60876"
 ', 'ValueObjAt.new("Date|60876")
@@ -6438,14 +6528,12 @@ ok 1 - The object is-a \'Numeric\'
 5
 42
 ', '', '' ],
-    [ 'Variable', '3', 'rakupp-differs', '42
-41
+    [ 'Variable', '3', 'not-runnable', '42
 ', '42
-', '', 'Cannot access \'$x\' through CALLER, because it is not declared as dynamic' ],
-    [ 'Variable', '4', 'rakupp-differs', '42
-(Any)
+', 'Cannot access \'$x\' through CALLER, because it is not declared as dynamic', 'Cannot access \'$x\' through CALLER, because it is not declared as dynamic' ],
+    [ 'Variable', '4', 'not-runnable', '42
 ', '42
-', '', 'Dynamic variable $*x not found' ],
+', 'Dynamic variable $*x not found', 'Dynamic variable $*x not found' ],
     [ 'Variable', '5', 'ok', 'X::TypeCheck::Assignment Type check failed in assignment to $i; expected Int but got Str ("forty plus two")
 ', 'X::TypeCheck::Assignment Type check failed in assignment to $i; expected Int but got Str ("forty plus two")
 ', '', '' ],
@@ -6518,15 +6606,15 @@ False
 False
 ', '', '' ],
     [ 'WhateverCode', '6', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
-    [ 'WhateverCode', '9', 'all-differ', '0.9868777897790117
-0.09910592081669023
-0.9986543057334281
-', '0.378442671387754
-0.2320923086236194
-0.1869423552484133
+    [ 'WhateverCode', '9', 'all-differ', '0.6487802718064124
+0.8438327104576118
+0.21036182262220748
+', '0.27779951953510373
+0.8291739790870085
+0.9815910509720044
 ', '', '' ],
     [ 'X::AdHoc', '2', 'rakupp-differs', '', 'Capture+{X::AdHoc::SlurpySentry}3FalseNot here', 'No such method \'payload\' for invocant of type \'X::Method::NotFound\'', '' ],
-    [ 'X::Assignment::RO', '1', 'all-differ', 'X::Assignment::RO: Target is not assignable
+    [ 'X::Assignment::RO', '1', 'doc-drift', 'X::Assignment::RO: Cannot modify an immutable Int (42)
 ', 'X::Assignment::RO: Cannot modify an immutable Int (42)
 ', '', '' ],
     [ 'X::Bind::Slice', '1', 'doc-drift', '', '', '', '' ],
@@ -6548,15 +6636,17 @@ Cannot pop from an empty Stack
     [ 'X::Control', '1', 'ok', 'Controlled CX::Vaya: I messed up!
 ', 'Controlled CX::Vaya: I messed up!
 ', '', '' ],
-    [ 'X::ControlFlow::Return', '1', 'rakupp-differs', '', 'X::ControlFlow::Return: Attempt to return outside of any Routine
-', 'Attempt to return outside of any Routine', '' ],
+    [ 'X::ControlFlow::Return', '1', 'ok', 'X::ControlFlow::Return: Attempt to return outside of any Routine
+', 'X::ControlFlow::Return: Attempt to return outside of any Routine
+', '', '' ],
     [ 'X::ControlFlow', '1', 'rakupp-differs', '', 'X::ControlFlow: last without loop construct
 ', 'last without loop construct', '' ],
-    [ 'X::Dynamic::NotFound', '1', 'doc-drift', '', '', '', 'Dynamic variable $*dynamic-not-found not found' ],
+    [ 'X::Dynamic::NotFound', '1', 'not-runnable', '', '', 'Dynamic variable $*dynamic-not-found not found', 'Dynamic variable $*dynamic-not-found not found' ],
     [ 'X::Eval::NoSuchLang', '1', 'ok', 'X::Eval::NoSuchLang: No compiler available for language \'bar\'
 ', 'X::Eval::NoSuchLang: No compiler available for language \'bar\'
 ', '', '' ],
-    [ 'X::Method::InvalidQualifier', '1', 'rakupp-differs', '', 'X::Method::InvalidQualifier: Cannot dispatch to method split on Str because it is not inherited or done by Int
+    [ 'X::Method::InvalidQualifier', '1', 'ok', 'X::Method::InvalidQualifier: Cannot dispatch to method split on Str because it is not inherited or done by Int
+', 'X::Method::InvalidQualifier: Cannot dispatch to method split on Str because it is not inherited or done by Int
 ', '', '' ],
     [ 'X::Mixin::NotComposable', '1', 'ok', 'X::Mixin::NotComposable: Cannot mix in non-composable type B into object of type Int
 ', 'X::Mixin::NotComposable: Cannot mix in non-composable type B into object of type Int
@@ -6573,34 +6663,37 @@ Cannot pop from an empty Stack
     [ 'X::Numeric::Real', '1', 'all-differ', 'X::Numeric::Real: Cannot convert 1.000000+2.000000i to Int: imaginary part not zero
 ', 'X::Numeric::Real: Cannot convert 1+2i to Int: imaginary part not zero
 ', '', '' ],
-    [ 'X::OutOfRange', '1', 'rakupp-differs', 'Nil
+    [ 'X::OutOfRange', '1', 'ok', 'X::OutOfRange: Index out of range. Is: 2, should be in 0..0
 ', 'X::OutOfRange: Index out of range. Is: 2, should be in 0..0
 ', '', '' ],
-    [ 'X::Phaser::PrePost', '1', 'rakudo-differs', '', 'X::Phaser::PrePost: Precondition \'{ $x ~~ Int }\' failed
+    [ 'X::Phaser::PrePost', '1', 'all-differ', 'X::Phaser::PrePost: Precondition \'False\' failed
+', 'X::Phaser::PrePost: Precondition \'{ $x ~~ Int }\' failed
 ', '', '' ],
     [ 'X::Proc::Async::AlreadyStarted', '1', 'ok', 'X::Proc::Async::AlreadyStarted: Process has already been started
 
 ', 'X::Proc::Async::AlreadyStarted: Process has already been started
 
 ', '', '' ],
-    [ 'X::Proc::Async::CharsOrBytes', '1', 'rakupp-differs', '', 'X::Proc::Async::CharsOrBytes: Can only tap one of chars or bytes supply for stdout
+    [ 'X::Proc::Async::CharsOrBytes', '1', 'rakupp-differs', 'X::Proc::Async::CharsOrBytes: Can only get stdout as characters or bytes, not both
+', 'X::Proc::Async::CharsOrBytes: Can only tap one of chars or bytes supply for stdout
 ', '', '' ],
-    [ 'X::Proc::Async::MustBeStarted', '1', 'rakupp-differs', 'X::Proc::Async::MustBeStarted: Process must be started before say
+    [ 'X::Proc::Async::MustBeStarted', '1', 'ok', 'X::Proc::Async::MustBeStarted: Process must be started first before calling \'say\'
 ', 'X::Proc::Async::MustBeStarted: Process must be started first before calling \'say\'
 ', '', '' ],
-    [ 'X::Proc::Async::OpenForWriting', '1', 'rakupp-differs', 'X::Proc::Async::OpenForWriting: Process must be started with :w to write to its standard input
+    [ 'X::Proc::Async::OpenForWriting', '1', 'ok', 'X::Proc::Async::OpenForWriting: Process must be opened for writing with :w to call \'say\'
 
 ', 'X::Proc::Async::OpenForWriting: Process must be opened for writing with :w to call \'say\'
 
 ', '', '' ],
-    [ 'X::Proc::Async::TapBeforeSpawn', '1', 'all-differ', 'foo
+    [ 'X::Proc::Async::TapBeforeSpawn', '1', 'doc-drift', 'X::Proc::Async::TapBeforeSpawn: To avoid data races, you must tap stdout before running the process
+foo
 ', 'X::Proc::Async::TapBeforeSpawn: To avoid data races, you must tap stdout before running the process
 foo
 ', '', '' ],
     [ 'X::Str::Match::x', '1', 'ok', 'X::Str::Match::x: in Str.match, got invalid value of type Str for :x, must be Int or Range
 ', 'X::Str::Match::x: in Str.match, got invalid value of type Str for :x, must be Int or Range
 ', '', '' ],
-    [ 'X::Str::Numeric', '1', 'all-differ', 'X::Str::Numeric: Cannot convert string to number: trailing characters after number in \'42 answers\'
+    [ 'X::Str::Numeric', '1', 'doc-drift', 'X::Str::Numeric: Cannot convert string to number: trailing characters after number in \'42<HERE> answers\' (indicated by <HERE>)
 ', 'X::Str::Numeric: Cannot convert string to number: trailing characters after number in \'42<HERE> answers\' (indicated by <HERE>)
 ', '', '' ],
     [ 'X::Temporal::InvalidFormat', '1', 'ok', 'X::Temporal::InvalidFormat: Invalid Date string \'12/25/2015\'; use yyyy-mm-dd instead
@@ -6636,7 +6729,7 @@ foo
 ', '/private/tmp/typerun-sandbox/EVAL_0
 /my-eval-code
 ', '', '' ],
-    [ 'routines', '21', 'all-differ', '(/tmp)
+    [ 'routines', '21', 'doc-drift', '(/private/tmp/typerun-sandbox)
 ', '(/private/tmp/typerun-sandbox)
 ', '', '' ],
     [ 'routines', '22', 'ok', '(/tmp)
@@ -6691,7 +6784,7 @@ I ♥ Raku
 I ♥ Raku
 1..Inf
 ', '', '' ],
-    [ 'routines', '33', 'rakupp-differs', 'I ♥ writ
+    [ 'routines', '33', 'rakupp-differs', 'I ♥  Rak
 ', 'I ♥ Raku
 ', '', '' ],
     [ 'routines', '35', 'not-runnable', '', '', 'Failed to open file path/to/file: No such file or directory', 'Failed to open file /private/tmp/typerun-sandbox/path/to/file: No such file or directory' ],
@@ -6714,8 +6807,7 @@ Mjölnir\'s weight is 3.34 kg
 þor is mighty
 Mjölnir\'s weight is 3.34 kg
 ', '', '' ],
-    [ 'routines', '51', 'all-differ', 'Product Ab-1e-42; cost: $0
-', '', 'Useless use of constant string "in" in sink context (line 5)', 'WARNINGS for -e:' ],
+    [ 'routines', '51', 'not-runnable', '', '', 'Useless use of constant string "in" in sink context (line 5)', 'WARNINGS for -e:' ],
     [ 'routines', '52', 'ok', '2 x $20 = $40
 2 x $20 = $40
 ', '2 x $20 = $40
@@ -6724,7 +6816,7 @@ Mjölnir\'s weight is 3.34 kg
     [ 'routines', '54', 'doc-drift', '', '', '', '' ],
     [ 'routines', '55', 'doc-drift', '', '', '', '' ],
     [ 'routines', '56', 'doc-drift', '', '', '', '' ],
-    [ 'routines', '59', 'not-runnable', '', '', 'Undefined routine \'NYI\'', 'Directive vd is not valid in sprintf format \'%vd\'' ],
+    [ 'routines', '59', 'not-runnable', '', '', 'Directive v is not valid in sprintf format \'%vd\'', 'Directive vd is not valid in sprintf format \'%vd\'' ],
     [ 'routines', '63', 'not-runnable', '', '', 'Undefined routine \'NYI\'', 'Directive 2$*3$d %d is not valid in sprintf format \'%2$*3$d %d \'' ],
     [ 'routines', '64', 'not-runnable', '', '', 'Undefined routine \'NYI\'', 'Directive ld a big number is not valid in sprintf format \'%ld a big' ],
     [ 'routines', '65', 'doc-drift', '', '', '', '' ],
@@ -6762,14 +6854,14 @@ Mjölnir\'s weight is 3.34 kg
 ', '(42 42)
 (42)
 ', '', '' ],
-    [ 'routines', '75', 'all-differ', '2.5101680755615234
-', '2.510626106
+    [ 'routines', '75', 'all-differ', '2.510176
+', '2.510636318
 ', '', '' ],
     [ 'routines', '76', 'not-runnable', '', '', '===SORRY!=== Error while compiling -e', '===SORRY!=== Error while compiling -e' ],
     [ 'routines', '77', 'ok', '0
 ', '0
 ', '', '' ],
-    [ 'routines', '79', 'not-runnable', '', '', 'Undefined routine \'now\'', '' ],
+    [ 'routines', '79', 'not-runnable', '', '', '', '' ],
     [ 'routines', '80', 'ok', 'False
 ', 'False
 ', '', '' ],
@@ -6783,7 +6875,8 @@ Mjölnir\'s weight is 3.34 kg
     [ 'routines', '86', 'not-runnable', '1
 ', '1
 ', 'Cannot shift from an empty Array', 'Cannot shift from an empty Array[Int]' ],
-    [ 'routines', '91', 'all-differ', '', 'Cannot resolve caller append(Hash:D, :i(List)); none of these signatures matches:
+    [ 'routines', '91', 'all-differ', 'Unexpected named argument \'i\' passed to append
+', 'Cannot resolve caller append(Hash:D, :i(List)); none of these signatures matches:
     (\\a, \\b)
     (\\a, **@b is raw)
 ', '', '' ],

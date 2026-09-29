@@ -3,7 +3,7 @@
 {
   'infix|**' => [
     [ '1 ** 2', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '"a" ** "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" ** "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 ** "2"', 'Int | 1', 'Int | 1', 'agree' ],
     [ '(1, 2) ** (3, 4, 5)', 'Int | 8', 'Int | 8', 'agree' ],
     [ 'True ** False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -28,7 +28,7 @@
   ],
   'prefix|+' => [
     [ '+ (1)', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '+ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '+ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '+ ((1, 2))', 'Int | 2', 'Int | 2', 'agree' ],
     [ '+ (True)', 'Int | 1', 'Int | 1', 'agree' ],
     [ '+ (Nil)', 'Int | 0', 'Int | 0', 'agree' ],
@@ -36,7 +36,7 @@
   ],
   'prefix|-' => [
     [ '- (1)', 'Int | -1', 'Int | -1', 'agree' ],
-    [ '- ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '- ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '- ((1, 2))', 'Int | -2', 'Int | -2', 'agree' ],
     [ '- (True)', 'Int | -1', 'Int | -1', 'agree' ],
     [ '- (Nil)', 'Int | 0', 'Int | 0', 'agree' ],
@@ -60,7 +60,7 @@
   ],
   'prefix|+^' => [
     [ '+^ (1)', 'Int | -2', 'Int | -2', 'agree' ],
-    [ '+^ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '+^ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '+^ ((1, 2))', 'Int | -3', 'Int | -3', 'agree' ],
     [ '+^ (True)', 'Int | -2', 'Int | -2', 'agree' ],
     [ '+^ (Nil)', 'Int | -1', 'Int | -1', 'agree' ],
@@ -84,11 +84,11 @@
   ],
   'prefix|^' => [
     [ '^ (1)', 'Range | ^1', 'Range | ^1', 'agree' ],
-    [ '^ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '^ ("a")', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '^ ((1, 2))', 'Range | ^2', 'Range | ^2', 'agree' ],
     [ '^ (True)', 'Range | ^1', 'Range | ^True', 'differ' ],
     [ '^ (Nil)', 'Range | ^0', 'Range | ^0', 'agree' ],
-    [ '^ (1/2)', 'Range | ^0', 'Range | 0..^0.5', 'differ' ],
+    [ '^ (1/2)', 'Range | 0..^0.5', 'Range | 0..^0.5', 'agree' ],
   ],
   'infix|.' => [
     [ '1 . 2', 'ERR Parse error', 'ERR Error while compiling -e', 'both-reject' ],
@@ -101,7 +101,7 @@
   ],
   'infix|*' => [
     [ '1 * 2', 'Int | 2', 'Int | 2', 'agree' ],
-    [ '"a" * "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" * "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 * "2"', 'Int | 2', 'Int | 2', 'agree' ],
     [ '(1, 2) * (3, 4, 5)', 'Int | 6', 'Int | 6', 'agree' ],
     [ 'True * False', 'Int | 0', 'Int | 0', 'agree' ],
@@ -110,7 +110,7 @@
   ],
   'infix|/' => [
     [ '1 / 2', 'Rat | 0.5', 'Rat | 0.5', 'agree' ],
-    [ '"a" / "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" / "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 / "2"', 'Rat | 0.5', 'Rat | 0.5', 'agree' ],
     [ '(1, 2) / (3, 4, 5)', 'Rat | 0.666667', 'Rat | 0.666667', 'agree' ],
     [ 'True / False', 'ERR Attempt to divide by zero when coercing Rational to Str', 'ERR Attempt to divide 1 by zero when coercing Rational to Str', 'both-reject' ],
@@ -119,25 +119,25 @@
   ],
   'infix|div' => [
     [ '1 div 2', 'Int | 0', 'Int | 0', 'agree' ],
-    [ '"a" div "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Attempt to divide a by zero using div', 'both-reject' ],
+    [ '"a" div "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Attempt to divide a by zero using div', 'both-reject' ],
     [ '1 div "2"', 'Int | 0', 'Int | 0', 'agree' ],
     [ '(1, 2) div (3, 4, 5)', 'Int | 0', 'Int | 0', 'agree' ],
-    [ 'True div False', 'ERR Attempt to divide True by zero using infix:<div>', 'ERR Attempt to divide True by zero using div', 'both-reject' ],
+    [ 'True div False', 'ERR Attempt to divide True by zero using div', 'ERR Attempt to divide True by zero using div', 'both-reject' ],
     [ 'Nil div 1', 'Int | 0', 'Int | 0', 'agree' ],
     [ '1/2 div 1/3', 'Rat | 0', 'Rat | 0', 'agree' ],
   ],
   'infix|%' => [
     [ '1 % 2', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '"a" % "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" % "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 % "2"', 'Int | 1', 'Int | 1', 'agree' ],
     [ '(1, 2) % (3, 4, 5)', 'Int | 2', 'Int | 2', 'agree' ],
-    [ 'True % False', 'ERR Attempt to divide True by zero using infix:<%>', 'ERR Attempt to divide True by zero using %', 'both-reject' ],
+    [ 'True % False', 'ERR Attempt to divide True by zero using %', 'ERR Attempt to divide True by zero using %', 'both-reject' ],
     [ 'Nil % 1', 'Int | 0', 'Int | 0', 'agree' ],
     [ '1/2 % 1/3', 'Rat | 0.166667', 'Rat | 0.166667', 'agree' ],
   ],
   'infix|%%' => [
     [ '1 %% 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" %% "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" %% "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 %% "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) %% (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True %% False', 'ERR Attempt to divide True by zero using infix:<%%>', 'ERR Attempt to divide True by zero using infix:<%%>', 'both-reject' ],
@@ -146,16 +146,16 @@
   ],
   'infix|mod' => [
     [ '1 mod 2', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '"a" mod "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" mod "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 mod "2"', 'Int | 1', 'Int | 1', 'agree' ],
     [ '(1, 2) mod (3, 4, 5)', 'Int | 2', 'Int | 2', 'agree' ],
-    [ 'True mod False', 'ERR Attempt to divide True by zero using infix:<mod>', 'ERR Attempt to divide True by zero using div', 'both-reject' ],
+    [ 'True mod False', 'ERR Attempt to divide True by zero using mod', 'ERR Attempt to divide True by zero using div', 'both-reject' ],
     [ 'Nil mod 1', 'Int | 0', 'Int | 0', 'agree' ],
     [ '1/2 mod 1/3', 'Rat | 0.166667', 'Rat | 0.166667', 'agree' ],
   ],
   'infix|+&' => [
     [ '1 +& 2', 'Int | 0', 'Int | 0', 'agree' ],
-    [ '"a" +& "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" +& "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 +& "2"', 'Int | 0', 'Int | 0', 'agree' ],
     [ '(1, 2) +& (3, 4, 5)', 'Int | 2', 'Int | 2', 'agree' ],
     [ 'True +& False', 'Int | 0', 'Int | 0', 'agree' ],
@@ -164,7 +164,7 @@
   ],
   'infix|+<' => [
     [ '1 +< 2', 'Int | 4', 'Int | 4', 'agree' ],
-    [ '"a" +< "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" +< "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 +< "2"', 'Int | 4', 'Int | 4', 'agree' ],
     [ '(1, 2) +< (3, 4, 5)', 'Int | 16', 'Int | 16', 'agree' ],
     [ 'True +< False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -173,7 +173,7 @@
   ],
   'infix|+>' => [
     [ '1 +> 2', 'Int | 0', 'Int | 0', 'agree' ],
-    [ '"a" +> "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" +> "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 +> "2"', 'Int | 0', 'Int | 0', 'agree' ],
     [ '(1, 2) +> (3, 4, 5)', 'Int | 0', 'Int | 0', 'agree' ],
     [ 'True +> False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -218,7 +218,7 @@
   ],
   'infix|gcd' => [
     [ '1 gcd 2', 'Int | 1', 'Int | 1', 'agree' ],
-    [ '"a" gcd "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" gcd "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 gcd "2"', 'Int | 1', 'Int | 1', 'agree' ],
     [ '(1, 2) gcd (3, 4, 5)', 'Int | 1', 'Int | 1', 'agree' ],
     [ 'True gcd False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -227,7 +227,7 @@
   ],
   'infix|lcm' => [
     [ '1 lcm 2', 'Int | 2', 'Int | 2', 'agree' ],
-    [ '"a" lcm "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" lcm "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 lcm "2"', 'Int | 2', 'Int | 2', 'agree' ],
     [ '(1, 2) lcm (3, 4, 5)', 'Int | 6', 'Int | 6', 'agree' ],
     [ 'True lcm False', 'Int | 0', 'Int | 0', 'agree' ],
@@ -236,7 +236,7 @@
   ],
   'infix|+' => [
     [ '1 + 2', 'Int | 3', 'Int | 3', 'agree' ],
-    [ '"a" + "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" + "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 + "2"', 'Int | 3', 'Int | 3', 'agree' ],
     [ '(1, 2) + (3, 4, 5)', 'Int | 5', 'Int | 5', 'agree' ],
     [ 'True + False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -245,7 +245,7 @@
   ],
   'infix|-' => [
     [ '1 - 2', 'Int | -1', 'Int | -1', 'agree' ],
-    [ '"a" - "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" - "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 - "2"', 'Int | -1', 'Int | -1', 'agree' ],
     [ '(1, 2) - (3, 4, 5)', 'Int | -1', 'Int | -1', 'agree' ],
     [ 'True - False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -254,7 +254,7 @@
   ],
   'infix|+|' => [
     [ '1 +| 2', 'Int | 3', 'Int | 3', 'agree' ],
-    [ '"a" +| "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" +| "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 +| "2"', 'Int | 3', 'Int | 3', 'agree' ],
     [ '(1, 2) +| (3, 4, 5)', 'Int | 3', 'Int | 3', 'agree' ],
     [ 'True +| False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -263,7 +263,7 @@
   ],
   'infix|+^' => [
     [ '1 +^ 2', 'Int | 3', 'Int | 3', 'agree' ],
-    [ '"a" +^ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" +^ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 +^ "2"', 'Int | 3', 'Int | 3', 'agree' ],
     [ '(1, 2) +^ (3, 4, 5)', 'Int | 1', 'Int | 1', 'agree' ],
     [ 'True +^ False', 'Int | 1', 'Int | 1', 'agree' ],
@@ -308,7 +308,7 @@
   ],
   'infix|x' => [
     [ '1 x 2', 'Str | 11', 'Str | 11', 'agree' ],
-    [ '"a" x "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'b\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" x "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 x "2"', 'Str | 11', 'Str | 11', 'agree' ],
     [ '(1, 2) x (3, 4, 5)', 'Str | 1 21 21 2', 'Str | 1 21 21 2', 'agree' ],
     [ 'True x False', 'Str |', 'Str |', 'agree' ],
@@ -317,7 +317,7 @@
   ],
   'infix|xx' => [
     [ '1 xx 2', 'Seq | (1 1)', 'Seq | (1 1)', 'agree' ],
-    [ '"a" xx "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'b\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" xx "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>b\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 xx "2"', 'Seq | (1 1)', 'Seq | (1 1)', 'agree' ],
     [ '(1, 2) xx (3, 4, 5)', 'Seq | ((1 2) (1 2) (1 2))', 'Seq | ((1 2) (1 2) (1 2))', 'agree' ],
     [ 'True xx False', 'Seq | ()', 'Seq | ()', 'agree' ],
@@ -452,7 +452,7 @@
     [ '1 does 2', 'ERR Cannot use \'does\' operator on a Int, did you mean \'but\'?', 'ERR Cannot use \'does\' operator on an Int, did you mean \'but\'?', 'both-reject' ],
     [ '"a" does "b"', 'ERR Cannot use \'does\' operator on a Str, did you mean \'but\'?', 'ERR Cannot use \'does\' operator on a Str, did you mean \'but\'?', 'both-reject' ],
     [ '1 does "2"', 'ERR Cannot use \'does\' operator on a Int, did you mean \'but\'?', 'ERR Cannot use \'does\' operator on an Int, did you mean \'but\'?', 'both-reject' ],
-    [ '(1, 2) does (3, 4, 5)', 'List+{<anon|1>,<anon|2>,<anon|3>} | (1 2)', 'ERR Method \'Int\' must be resolved by class List+{<anon|1>,<anon|2>,<anon|3>} because it exists in multiple roles (<anon|3>, <anon|2>, <anon|1>)', 'differ' ],
+    [ '(1, 2) does (3, 4, 5)', 'ERR Method \'Int\' must be resolved by class List because it exists in multiple roles', 'ERR Method \'Int\' must be resolved by class List+{<anon|1>,<anon|2>,<anon|3>} because it exists in multiple roles (<anon|3>, <anon|2>, <anon|1>)', 'both-reject' ],
     [ 'True does False', 'ERR Cannot use \'does\' operator on a Bool, did you mean \'but\'?', 'ERR Cannot use \'does\' operator on an Int, did you mean \'but\'?', 'both-reject' ],
     [ 'Nil does 1', 'ERR Cannot use \'does\' operator on a Nil, did you mean \'but\'?', 'ERR Cannot use \'does\' operator on a type object Mu.', 'both-reject' ],
     [ '1/2 does 1/3', 'ERR Cannot use \'does\' operator on a Rat, did you mean \'but\'?', 'ERR Cannot resolve caller infix:<does>(Rat:D, Int:D, :value(Int)); none of these signatures matches:', 'both-reject' ],
@@ -461,8 +461,8 @@
     [ '1 but 2', 'Int+{<anon|1>} | 1', 'Int+{<anon|1>} | 1', 'agree' ],
     [ '"a" but "b"', 'Str+{<anon|1>} | a', 'Str+{<anon|1>} | a', 'agree' ],
     [ '1 but "2"', 'Int+{<anon|1>} | 1', 'Int+{<anon|1>} | 2', 'differ' ],
-    [ '(1, 2) but (3, 4, 5)', 'List+{<anon|1>,<anon|2>,<anon|3>} | (1 2)', 'ERR Method \'Int\' must be resolved by class List+{<anon|4>,<anon|5>,<anon|6>} because it exists in multiple roles (<anon|6>, <anon|5>, <anon|4>)', 'differ' ],
-    [ 'True but False', 'Bool+{<anon|1>} | True', 'Bool+{<anon|1>} | False', 'differ' ],
+    [ '(1, 2) but (3, 4, 5)', 'ERR Method \'Int\' must be resolved by class List because it exists in multiple roles', 'ERR Method \'Int\' must be resolved by class List+{<anon|4>,<anon|5>,<anon|6>} because it exists in multiple roles (<anon|6>, <anon|5>, <anon|4>)', 'both-reject' ],
+    [ 'True but False', 'Bool+{<anon|1>} | False', 'Bool+{<anon|1>} | False', 'agree' ],
     [ 'Nil but 1', 'Nil+{<anon|1>} | Nil', 'Nil+{<anon|1>} | Nil', 'agree' ],
     [ '1/2 but 1/3', 'Rat | 0.166667', 'ERR Cannot resolve caller infix:<but>(Rat:D, Int:D, :value(Int)); none of these signatures matches:', 'differ' ],
   ],
@@ -504,7 +504,7 @@
   ],
   'infix|<=>' => [
     [ '1 <=> 2', 'Order | Less', 'Order | Less', 'agree' ],
-    [ '"a" <=> "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" <=> "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 <=> "2"', 'Order | Less', 'Order | Less', 'agree' ],
     [ '(1, 2) <=> (3, 4, 5)', 'Order | Less', 'Order | Less', 'agree' ],
     [ 'True <=> False', 'Order | More', 'Order | More', 'agree' ],
@@ -549,7 +549,7 @@
   ],
   'infix|==' => [
     [ '1 == 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" == "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" == "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 == "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) == (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True == False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -558,7 +558,7 @@
   ],
   'infix|⩵' => [
     [ '1 ⩵ 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" ⩵ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" ⩵ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 ⩵ "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) ⩵ (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True ⩵ False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -567,7 +567,7 @@
   ],
   'infix|!=' => [
     [ '1 != 2', 'Bool | True', 'Bool | True', 'agree' ],
-    [ '"a" != "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'Bool | True', 'differ' ],
+    [ '"a" != "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'Bool | True', 'differ' ],
     [ '1 != "2"', 'Bool | True', 'Bool | True', 'agree' ],
     [ '(1, 2) != (3, 4, 5)', 'Bool | True', 'Bool | True', 'agree' ],
     [ 'True != False', 'Bool | True', 'Bool | True', 'agree' ],
@@ -576,7 +576,7 @@
   ],
   'infix|≠' => [
     [ '1 ≠ 2', 'Bool | True', 'Bool | True', 'agree' ],
-    [ '"a" ≠ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'Bool | True', 'differ' ],
+    [ '"a" ≠ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'Bool | True', 'differ' ],
     [ '1 ≠ "2"', 'Bool | True', 'Bool | True', 'agree' ],
     [ '(1, 2) ≠ (3, 4, 5)', 'Bool | True', 'Bool | True', 'agree' ],
     [ 'True ≠ False', 'Bool | True', 'Bool | True', 'agree' ],
@@ -585,7 +585,7 @@
   ],
   'infix|<' => [
     [ '1 < 2', 'Bool | True', 'Bool | True', 'agree' ],
-    [ '"a" < "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" < "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 < "2"', 'Bool | True', 'Bool | True', 'agree' ],
     [ '(1, 2) < (3, 4, 5)', 'Bool | True', 'Bool | True', 'agree' ],
     [ 'True < False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -594,7 +594,7 @@
   ],
   'infix|<=' => [
     [ '1 <= 2', 'Bool | True', 'Bool | True', 'agree' ],
-    [ '"a" <= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" <= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 <= "2"', 'Bool | True', 'Bool | True', 'agree' ],
     [ '(1, 2) <= (3, 4, 5)', 'Bool | True', 'Bool | True', 'agree' ],
     [ 'True <= False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -603,7 +603,7 @@
   ],
   'infix|≤' => [
     [ '1 ≤ 2', 'Bool | True', 'Bool | True', 'agree' ],
-    [ '"a" ≤ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" ≤ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 ≤ "2"', 'Bool | True', 'Bool | True', 'agree' ],
     [ '(1, 2) ≤ (3, 4, 5)', 'Bool | True', 'Bool | True', 'agree' ],
     [ 'True ≤ False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -612,7 +612,7 @@
   ],
   'infix|>' => [
     [ '1 > 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" > "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" > "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 > "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) > (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True > False', 'Bool | True', 'Bool | True', 'agree' ],
@@ -621,7 +621,7 @@
   ],
   'infix|>=' => [
     [ '1 >= 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" >= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" >= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 >= "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) >= (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True >= False', 'Bool | True', 'Bool | True', 'agree' ],
@@ -630,7 +630,7 @@
   ],
   'infix|≥' => [
     [ '1 ≥ 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" ≥ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" ≥ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 ≥ "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) ≥ (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True ≥ False', 'Bool | True', 'Bool | True', 'agree' ],
@@ -756,7 +756,7 @@
   ],
   'infix|=~=' => [
     [ '1 =~= 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" =~= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" =~= "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 =~= "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) =~= (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True =~= False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -765,7 +765,7 @@
   ],
   'infix|≅' => [
     [ '1 ≅ 2', 'Bool | False', 'Bool | False', 'agree' ],
-    [ '"a" ≅ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'a\'', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
+    [ '"a" ≅ "b"', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'ERR Cannot convert string to number: base-10 number must begin with valid digits or \'.\' in \'<HERE>a\' (indicated by <HERE>)', 'both-reject' ],
     [ '1 ≅ "2"', 'Bool | False', 'Bool | False', 'agree' ],
     [ '(1, 2) ≅ (3, 4, 5)', 'Bool | False', 'Bool | False', 'agree' ],
     [ 'True ≅ False', 'Bool | False', 'Bool | False', 'agree' ],
@@ -958,7 +958,7 @@
     [ '1 min "2"', 'Int | 1', 'Int | 1', 'agree' ],
     [ '(1, 2) min (3, 4, 5)', 'List | (1 2)', 'List | (1 2)', 'agree' ],
     [ 'True min False', 'Bool | False', 'Bool | False', 'agree' ],
-    [ 'Nil min 1', 'Any | (Any)', 'Int | 1', 'differ' ],
+    [ 'Nil min 1', 'Int | 1', 'Int | 1', 'agree' ],
     [ '1/2 min 1/3', 'Rat | 0.333333', 'Rat | 0.333333', 'agree' ],
   ],
   'infix|max' => [
@@ -1107,7 +1107,7 @@
     [ '1 ... 2', 'Seq | (1 2)', 'Seq | (1 2)', 'agree' ],
     [ '"a" ... "b"', 'Seq | (a b)', 'Seq | (a b)', 'agree' ],
     [ '1 ... "2"', 'Seq | (1 2)', 'Seq | (1 2)', 'agree' ],
-    [ '(1, 2) ... (3, 4, 5)', 'Seq | (1 2 3)', 'Seq | (1 2 3 4 5)', 'differ' ],
+    [ '(1, 2) ... (3, 4, 5)', 'Seq | (1 2 3 4 5)', 'Seq | (1 2 3 4 5)', 'agree' ],
     [ 'True ... False', 'Seq | (True 0)', 'Seq | (True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True True ...)', 'differ' ],
     [ 'Nil ... 1', 'Seq | (Nil 1)', 'ERR Use of uninitialized value of type Any in string context.', 'differ' ],
     [ '1/2 ... 1/3', 'Seq | (0.5)', 'Seq | (0.5)', 'agree' ],
@@ -1127,7 +1127,7 @@
     [ '1 andthen "2"', 'Str | 2', 'Str | 2', 'agree' ],
     [ '(1, 2) andthen (3, 4, 5)', 'List | (3 4 5)', 'List | (3 4 5)', 'agree' ],
     [ 'True andthen False', 'Bool | False', 'Bool | False', 'agree' ],
-    [ 'Nil andthen 1', 'Any | (Any)', 'Slip | ()', 'differ' ],
+    [ 'Nil andthen 1', 'Slip | ()', 'Slip | ()', 'agree' ],
     [ '1/2 andthen 1/3', 'Rat | 0.333333', 'Rat | 0.333333', 'agree' ],
   ],
   'infix|notandthen' => [

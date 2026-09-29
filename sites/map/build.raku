@@ -429,7 +429,10 @@ sub comparison(%case, %res --> Str) {
     elsif $fo && $fe && $fo.elems == $fe.elems && $fo.map(*.key) eq $fe.map(*.key) {
         @h.push: '<div class="map-table-wrap"><table class="map-table">',
             "<thead><tr><th></th><th>{$oracle}</th><th>{$engine}</th></tr></thead><tbody>";
-        for $fo.list Z $fe.list -> ($a, $b) {
+        # by index, not `Z … -> ($a, $b)`: the elements are Pairs, and a Pair
+        # destructured into a sub-signature binds as a NAMED argument (Rakudo too)
+        for ^$fo.elems -> $i {
+            my ($a, $b) = $fo[$i], $fe[$i];
             my $same = $a.value eq $b.value;
             @h.push: '<tr class="' ~ ($same ?? 'eq' !! 'ne') ~ '"><th>' ~ (%FIELD{$a.key} // $a.key)
                 ~ '</th><td><code>' ~ esc($a.value) ~ '</code></td><td><code>' ~ esc($b.value) ~ '</code>'
