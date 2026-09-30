@@ -1,0 +1,42 @@
+<p class="lede">Raku promises that <code>0.1 + 0.2 == 0.3</code> is <code>True</code>, because its decimals are exact rationals. It also counts a string's characters as a reader sees them, not as bytes or code points. Both promises are invisible until they are broken, and both were kept from the first commit. July was spent making them complete, and the rest of the time making them fast.</p>
+
+<div class="pc-stats">
+  <div><b>8,271</b><span>Unicode collation conformance tests, all passing, from 11 July</span></div>
+  <div><b>100%</b><span>of S15, Unicode: 91,752 of 91,752 assertions, v1.1.0</span></div>
+  <div><b>6.83 s → 0.32 s</b><span>the Mandelbrot demo, in one day of Rat work</span></div>
+  <div><b>865 → 7 ms</b><span>one big-integer reduction, after Knuth's algorithm D</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>The Unicode tables started at version 15.1 because that is what the host's Python shipped, and Python generated them. On 11 July the generator was rewritten in Raku and run by rakupp itself, and the tables went to Unicode 17.0. The engine now builds its own data.</div>
+
+<h2>Whole graphemes</h2>
+<ul class="pc-dates">
+  <li><time>2 Jul</time>Unicode is the strongest area from the start: 40 files in full, 95% of the synopsis's assertions.</li>
+  <li><time>7 Jul</time>Unicode number literals take the literals section to 100%.</li>
+  <li><time>11 Jul</time>Unicode 17 grapheme clustering (UAX #29) and the four normalization forms: S15 at 99.9%, and <code>emoji-test.t</code> with its 3,825 tests passes. Then UCA collation from DUCET 17.0, and all 8,271 conformance tests pass. That took the whole suite from 76.2% to 80.6% of its tests.</li>
+  <li><time>20 Jul</time>Strings are normalized when they are built, as Raku requires. That made <code>~=</code> quadratic for a day, until strcat went from 360 ms back to about 20.</li>
+  <li><time>24 Jul · v1.1.0</time><b>100% Unicode.</b> 91,752 of 91,752 assertions in S15. The one file not counted, <code>concat-stable.t</code>, is a timeout, not a failure.</li>
+</ul>
+
+<h2>Exact numbers</h2>
+<p>Underneath every arithmetic operation is a hand-written big integer, base 10<sup>9</sup> so that printing a number needs no conversion, with a fast path while it fits in 64 bits. A <code>Rat</code> is two of them. Raku also says when exactness ends: a <code>Rat</code> whose reduced denominator no longer fits in 64 bits becomes a <code>Num</code>, and <code>FatRat</code> never does. That rule arrived on 11 July with <code>rat.t</code> (869 tests) and <code>complex.t</code> (557) passing in full.</p>
+
+<h2>The Mandelbrot</h2>
+<p><code>examples/mandel.raku</code> descends from the ASCII Mandelbrot that shipped with Parrot two decades ago. Its decimal literals are Rats, so the render is exact rational arithmetic, and it ran slower than Rakudo. One day's work on 11 July followed the profile:</p>
+<ul>
+  <li><b>6.83 s → 3.62 s:</b> a 128-bit fast path for small Rats, and Rat literals cached on the tree node. A bare <code>10.0</code> in a hot loop had been allocating two big integers and running a GCD every time it was evaluated, about 10 µs each.</li>
+  <li><b>3.6 s → 0.32 s</b> (0.21 s on arm64)<b>:</b> the fast path's numerator and denominator were already coprime, and the constructor reduced them again anyway. GCD on already-reduced 19-digit parts is its worst case: about 90 allocating steps per operation.</li>
+</ul>
+<p>The compiled binary took 0.12 s. The same maths, the same fractal, drawn in a blink.</p>
+
+<h2>Fast on other people's workloads</h2>
+<ul class="pc-dates">
+  <li><time>9 Aug</time>A 64-bit fast path through GCD and division. GCD went from 15,761 ns to 183, and a Rat-heavy sum loop from 717 ms to 72. The old division had done a binary search over [0, 10<sup>9</sup>) for every limb.</li>
+  <li><time>28 Aug</time>Knuth's algorithm D. A <code>Math::NumberTheory</code> test never finished: not slow, never. Reducing a 1,437-digit number over an 812-digit one took 865 ms, and takes 7 now.</li>
+  <li><time>30 Aug</time>An issue report timed a graph library at 4× Rakudo. 128-bit fast paths took <code>%</code> from 4.1× Rakudo's time to 1.4×, and <code>div</code> from 6.0× to 2.1×. The same benchmark exposed four silent wrong answers: a graph's diameter came out 399 instead of 38. The report put it this way: it had looked faster only because it was not doing the work.</li>
+  <li><time>1 Sep</time>Eight independent carry chains in multiplication. The big-integer kernel went from 13.0 to 7.4 ms. One chain costs about five cycles a limb where the instruction count says one and a half; four or six chains perform within 3% of eight, and sixteen is too many.</li>
+  <li><time>30 Sep</time>The first four limbs are stored inline, so any integer below 10<sup>36</sup> never allocates. The Rat kernel went from 2.00 million to 1.20 million allocations.</li>
+</ul>
+
+<h2>Division, according to the VM</h2>
+<p>On 13 September a module that calls the VM's own opcodes showed how they divide. <code>nqp::div_i</code> floors (<code>-7 div 2</code> is −4), <code>nqp::mod_i</code> truncates (−1), and <code>mod_I</code> floors again. Raku++ had floored <code>mod_i</code> as well, and answered 0 on a zero divisor. No Roast file calls an nqp opcode, so nothing had noticed. All three now do what MoarVM does.</p>

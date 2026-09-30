@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four ways to run a program — Pace</title>
+<meta name="description" content="Interpret, bundle, embed the tree, or compile to C++: correct by parity with the interpreter, slim binaries, and loops that compile while they run.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" aria-current="page" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<p class="pc-eyebrow">Chapter 4 · July – September</p><h1>Four ways to run a program</h1>
+<p class="lede">Raku++ was a compiler from its first commit, not only an interpreter. The first commit already had four ways to run a program. Getting the compiled path to agree with the interpreter on every program, then making its binaries small, then letting a running program compile its own hot loops, took the rest of the three months.</p>
+
+<pre><code>rakupp program.raku                       # interpret
+rakupp --bundle program.raku -o program   # the interpreter plus the source, as one binary
+rakupp --aot    program.raku -o program   # parsed ahead of time, the tree embedded
+rakupp --exe    program.raku -o program   # transpiled to C++ and compiled natively</code></pre>
+
+<div class="pc-turn"><b>The turn</b>What made <code>--exe</code> possible was something left out. Raku lets a program change its own grammar while it is being parsed: custom operators at parse time, slangs. Raku++ left those out at first. If the parse tree cannot change at run time, it can be turned into C++ at build time. Much later the restraint was lifted on purpose, when <a href="../rakuast/">slangs arrived</a>, without giving up compilation.</div>
+
+<h2>Correct by parity</h2>
+<p>The compiler is not checked against Roast. It is checked against the interpreter: compile a program, run it, run the same program interpreted, and require identical output. The interpreter is the oracle for the compiler.</p>
+<p>The corpus for that check was <code>examples/</code>, two dozen small programs: Mandelbrot in ASCII, Life on a torus, a JSON parser written as a grammar, a Brainfuck interpreter, a quine. By 12 July all 23 compiled natively with identical output. The next day's sweep over Roast found that 389 of the 416 fully passing files would transpile.</p>
+<p>What made the parameters compile was a calling convention. Every compiled sub takes a uniform <code>ValueList</code>, and binding is emitted per parameter from its signature, so named, optional, default, slurpy and <code>multi</code> parameters all compile rather than falling back.</p>
+
+<h2>How much faster native is</h2>
+<table class="pc-t">
+  <thead><tr><th>example, 12 July</th><th class="num">interpreted</th><th class="num">--exe</th><th class="num"></th></tr></thead>
+  <tbody>
+    <tr><td>life</td><td class="num">746.2 ms</td><td class="num">171.6 ms</td><td class="num">4.3×</td></tr>
+    <tr><td>nqueens</td><td class="num">70.2 ms</td><td class="num">27.9 ms</td><td class="num">2.5×</td></tr>
+    <tr><td>mandel</td><td class="num">106.6 ms</td><td class="num">45.8 ms</td><td class="num">2.3×</td></tr>
+    <tr><td>brainfuck</td><td class="num">7.5 ms</td><td class="num">8.2 ms</td><td class="num">0.9×</td></tr>
+  </tbody>
+</table>
+<p>Brainfuck is slower native, and the guide says so: "known, small, and honest". By September <code>--exe</code> ran the benchmark kernels 1.0 to 11.8 times faster than the interpreter. The distance between the two is what <a href="../tree-walker/">the last chapter</a> set out to close from the interpreter's side.</p>
+
+<h2>The embedded tree had been losing fields</h2>
+<p><code>--aot</code> used to write one builder function per kind of tree node, and any field nobody listed was silently dropped. <code>my Int(Str) $n = "42"</code> compiled into a binary that threw a type error, and compiled programs lost their line numbers. On 1 August the emitter was replaced by a serializer whose reader and writer are the same visitor instantiated twice, so a field cannot be saved and not restored. The same code became the precompilation cache for modules.</p>
+
+<h2>Only what the program needs</h2>
+<p>Until v3.14.0 every <code>--exe</code> binary was the same size whatever the program did: <code>say "Hello"</code> weighed 9.83 MB. <code>--slim</code> split the runtime into five archives and made four features cuttable: Unicode names, collation, properties, and <code>EVAL</code>. A program that turns out to need a cut feature at run time gets <code>X::Feature::NotBuilt</code> rather than a wrong answer. The differential gate compared 270 programs: 241 byte-identical, none different.</p>
+<figure class="pc-fig" data-chart="exe-size">
+  <figcaption><b><code>say "Hello"</code>, compiled.</b> The full binary and the slim one, release by release, as the release notes recorded them.</figcaption>
+</figure>
+<p>The line climbs after v3.14.0 because the engine kept growing, and a size budget kept count. It was re-pinned four times in six weeks, and once in an emergency: the JIT had pulled the 663,096-byte C++ code generator into every binary, <code>say "Hello"</code> included, for a call that binary could never make.</p>
+
+<h2>Compiling while the program runs</h2>
+<p>On 19 September two opt-in flags let a hot loop stop being interpreted. <code>--jit</code> hands the loop to the C++ code generator and a compiler. <code>--cnp</code> needs no compiler: it copies and patches machine-code stencils the binary already carries, 53 of them. A five-million-iteration integer loop that takes 0.96 s interpreted takes 0.04 s with <code>--jit</code> (warm cache), 0.05 s with <code>--cnp</code>, and 0.03 s as <code>--exe -O</code>. Both flags are marked work in progress. The plan is for <code>--cnp</code> to become the default and for <code>--jit</code> to go.</p>
+<p>The JIT had its own lesson. After an afternoon its cache was 91 MB, 89 of it headers. The note it left: an optimisation that spends the user's disk is not free just because it was measured in seconds.</p>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/numbers/"><span>← Chapter 3</span>Exact numbers, whole graphemes</a><a class="next" href="/pace/browser/"><span>Chapter 5 →</span>Raku in a browser tab</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
+</body>
+</html>

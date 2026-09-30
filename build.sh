@@ -32,6 +32,15 @@ build_tour() {
     cp -R "$ROOT/sites/tour/out" "$WWW/tour"
 }
 
+# Pace: the history of Raku++ in chapters. Its charts read out/data.json, which
+# build.raku cuts from the spec dashboard's data, so the two plot the same history.
+build_pace() {
+    echo "pace -> www/pace"
+    ( cd "$ROOT/sites/pace" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/pace"
+    cp -R "$ROOT/sites/pace/out" "$WWW/pace"
+}
+
 build_faq() {
     echo "faq -> www/faq"
     ( cd "$ROOT/sites/faq" && "$RAKUPP" build.raku --clean )
@@ -210,14 +219,15 @@ case "${1:-all}" in
     grid)      build_grid ;;
     map)       build_theme; build_map ;;
     faq)       build_faq ;;
+    pace)      build_pace ;;
     cookbook)  build_cookbook ;;
     book)      build_book ;;
     deep)      build_deep ;;
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_pace; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|pace|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers

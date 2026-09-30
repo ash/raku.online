@@ -1,0 +1,30 @@
+<p class="lede">From the start, Raku++ ran <code>start</code> blocks on real OS threads, but only one thread at a time could interpret. A global interpreter lock kept the engine safe and kept a program on one core. On 9 August, v3.0.0 made parallel the default: the lock went, after a two-day campaign to make sure that a race in a program's data could no longer corrupt the interpreter.</p>
+
+<div class="pc-stats">
+  <div><b>35 → 0</b><span>ThreadSanitizer reports, in two batches</span></div>
+  <div><b>26 / 26</b><span>stress programs clean, in both modes</span></div>
+  <div><b>2.9×</b><span>four workers against one, contention-free, re-measured in September</span></div>
+  <div><b>145 → 44 ms</b><span><code>race for ^400_000</code>, once <code>hyper for</code> really fanned out</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>The design record weighed three options: lock everything finely, impose an ownership discipline on the program, or run isolated interpreters. It chose to harden the runtime rather than every user structure. Unsynchronised sharing is the program's bug, but a race in the program's data must never corrupt the interpreter.</div>
+
+<ul class="pc-dates">
+  <li><time>7 Jul</time><b>Plan A: safe points.</b> Before this, a fire-and-forget compute <code>start</code> held the lock forever, so the program could never shut down. Workers became preemptible. The lock stayed.</li>
+  <li><time>7 Aug</time><b>The rules first.</b> A written memory model, a stress suite of nine programs run in both modes with a ratchet (a new failure fails it, and so does a known failure that starts passing), and a ThreadSanitizer job in CI. The first run found the three gaps the plan had predicted: <code>atomicint</code> lost updates, a <code>Channel</code> with several producers hung, and <code>Supplier.emit</code> dropped emissions from other threads.</li>
+  <li><time>7 Aug</time><b>Registers per thread, caches decided once.</b> Execution state moved into thread-local registers. The caches the interpreter writes into tree nodes became atomics that are decided once. ThreadSanitizer went from 35 reports to 6, then to none.</li>
+  <li><time>8 Aug</time><b>Striped containers.</b> Arrays and hashes take a lock stripe only while more than one worker is alive, so a single-threaded program pays nothing.</li>
+  <li><time>9 Aug · v3.0.0</time><b>Faster by default.</b> The default flipped; <code>RAKUPP_GIL=1</code> stayed for one release as the way back. On the Roast gate the parallel build timed out on 5 files, against 11 for the locked one.</li>
+</ul>
+
+<h2>A livelock in five minutes</h2>
+<p><code>S17-lowlevel/thread.t</code> did not finish in five minutes. A sample of the stuck process showed <code>cas</code> running the user's block while holding its pool stripe. Three threads doing <code>cas %seen{$_}, {.succ}</code> each held one stripe and waited for another. The fix was a real compare-and-swap retry loop, and the file went from no output at all to 29 of 29.</p>
+
+<h2>What "N times faster" means</h2>
+<p>At v3.0.0 four workers ran 3.72 times as fast as one on the four performance cores. In September that was re-measured at 2.9×, and the parallel guide says why the ratio fell: the serial baseline had become about four times faster, and the threading had not. A single <code>start</code> block costs something (0.85× of plain code), and a contended atomic counter is slower in parallel than serial (0.79×). The guide gives the method for measuring your own case.</p>
+
+<h2>Later</h2>
+<ul>
+  <li><b>27 Sep:</b> <code>hyper for</code> and <code>race for</code> had been parsed as <code>do for</code> and run on the calling thread. They now fan out in batches of 64. The first version ran seven workers slower than one, because every worker bumped one shared reference count. Once fixed, <code>race for ^400_000 { 1 }</code> went from 145 ms to 44 ms (serial: 69 ms). This completed Roast's S07.</li>
+  <li><b>28 Sep:</b> a supply's queue had been written for the locked engine and had no lock of its own. One Roast test hung about once in 60 runs, and a looped reproduction lost 9 to 24 deliveries per run. It is locked now.</li>
+</ul>

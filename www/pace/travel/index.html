@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raku that travels — Pace</title>
+<meta name="description" content="A module installer, binaries that carry their modules or refuse to build, a C API with six languages on it, and Windows as a platform.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" aria-current="page" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<p class="pc-eyebrow">Chapter 11 · 24 July – 17 September</p><h1>Raku that travels</h1>
+<p class="lede">An interpreter that works in its developer's shell is the easy part. v4.0.0 was named, a month before any of its code existed, "Raku that travels". It set three goals: installing modules without Rakudo or zef, compiled binaries that carry everything they need or refuse to build, and Raku as a library other languages can call.</p>
+
+<div class="pc-stats">
+  <div><b>16.0 → 5.7 ms</b><span>to <code>use XML</code>, once parsed modules were cached</span></div>
+  <div><b>2.7 ms</b><span>a 278 KB JSON document through the native extension ABI, against ~440 ms in pure Raku</span></div>
+  <div><b>6</b><span>host languages calling one C API: C++, Go, JavaScript, Python, Rust, Wolfram</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>Before v4.0.0, a module that could not be embedded in a compiled binary was skipped silently. The binary still built, and needed the disk at run time. Now every compile mode reports what it embedded and what it could not, and why. <code>--standalone</code> turns any such skip into a build failure.</div>
+
+<h2>Modules</h2>
+<ul class="pc-dates">
+  <li><time>24 Jul</time><code>zef install</code> works end to end under Raku++. The next day it installed a module from the live ecosystem, and every blocker it hit was a general engine bug.</li>
+  <li><time>1 Aug</time><b>A precompilation cache.</b> It stores the parsed tree, not bytecode (there is none), and is validated by content hash, never by timestamp: <code>use XML</code> 16.0 → 5.7 ms interpreted.</li>
+  <li><time>2 Aug</time><b>NativeCall through libffi,</b> loaded at run time. Before that the FFI was <code>dlsym</code> and one over-wide prototype of eight integers and eight doubles.</li>
+  <li><time>9 Aug</time><b>A native extension ABI</b> (<code>rakupp_ext.h</code>). Its first user parsed a 278 KB JSON document in 2.7 ms, against about 440 ms for the same module's Raku code. The next day a check found that on Linux an extension's first call had always crashed: a plain ELF executable keeps its symbols out of the dynamic table.</li>
+  <li><time>12 Aug</time><b><code>rakupp install</code>,</b> itself a Raku program. It resolves the fez index, verifies each file's checksum, runs the distribution's own tests, and writes the same store layout Rakudo and zef use. A seven-distribution graph installed by Raku++ loads under Rakudo, and both engines enumerate the same 727 SPDX licenses from it. <code>uninstall --check</code>'s first real run found store damage that was breaking Rakudo's own <code>use File::Temp</code>.</li>
+  <li><time>17 Sep · v4.0.0</time><b><code>%?RESOURCES</code> in compiled binaries.</b> It had been an empty hash in every compiled binary. <code>%?RESOURCES&lt;x&gt;</code> answered <code>Any</code>, and the program died with a message that never mentioned resources. Meanwhile <code>--standalone</code> reported "embedded 1 module" and exited 0.</li>
+</ul>
+<p>The plan said to serve resources from memory. That was wrong: <code>is native(%?RESOURCES&lt;libraries/x&gt;)</code> hands its value to <code>dlopen</code>, which needs a path on a real filesystem. A distribution now writes its resources to one temporary directory on first use, and it is removed at exit. A binary that never reads a resource never creates one, and <code>say "Hello"</code> compiles byte-identically.</p>
+
+<h2>Raku as a library</h2>
+<p>The extension ABI turned out to be the harder half of an embedding API, so the two share one vocabulary of values rather than growing two. v3.1.0 (11 August) exported the C API, and the bindings followed: Python, C++, JavaScript on bun, Go and Rust on 12 August, then Wolfram on 24 August. Anton Antonov published the Wolfram one as a paclet, <em>RakuppLink</em>.</p>
+<p>The reason anyone outside the project would care is grammars. "Embed Raku in Python" is abstract. "Use Raku grammars from Python" is something the host language has nothing like: a regex library gives you one pattern, not a composable grammar with named rules, inheritance and longest-token dispatch. The grammar stays a <code>.raku</code> file, and each host's class is generated from it. One corpus runs from every host in CI, and the outputs must match byte for byte.</p>
+
+<h2>More places to run</h2>
+<ul class="pc-dates">
+  <li><time>21 Jul</time>OpenBSD, from an outside contribution: stack-size introspection and a CI job in a VM. Its archive has been a release asset since the next day.</li>
+  <li><time>7 Aug</time><b>A grown-up command line.</b> Perl's one-liner surface (<code>-n -p -a -F -l -0</code>, in-place <code>-i[.bak]</code>, <code>-M</code>, clusters like <code>-lane</code>), checked against a live <code>perl</code>. <code>-i</code> refuses loudly where Perl is silent. Building it exposed that <code>my $*OUT = $handle</code> did not reroute <code>say</code>.</li>
+  <li><time>11 Sep · v3.27.0</time><b>Windows becomes a platform.</b> <code>$*DISTRO.is-win</code> had been hard-coded <code>False</code>. The FFI went from eight integer arguments to sixteen, with pointers the width of a machine word: a real <code>HMODULE</code> had reached its caller as <code>-2003238912</code>. There is a PowerShell one-liner and an installer that keeps <code>PATH</code> expandable.</li>
+  <li><time>12 Sep</time><code>curl -fsSL https://raku.online/install.sh | sh</code>, which verifies SHA-256, and <code>rakupp upgrade</code>.</li>
+  <li><time>15 Sep</time>A report that the Linux build would not start on Ubuntu 22.04, Debian 12 or RHEL 9: it needed glibc 2.38. Builds moved to manylinux 2.28, and the floor is glibc 2.28, from 2018.</li>
+</ul>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/values/"><span>← Chapter 10</span>Smaller values, real frames</a><a class="next" href="/pace/rakuast/"><span>Chapter 12 →</span>RakuAST and slangs</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<p class="lede">The interpreter is portable C++ with no dependencies, and that is exactly what compiles to WebAssembly. Twelve days after the first commit, Raku++ ran in a browser tab with no server behind it. It was the same interpreter, not a port. Two months later a second route to the browser followed: Raku compiled to JavaScript.</p>
+
+<div class="pc-stats">
+  <div><b>14 Jul</b><span>Raku.js: the interpreter built with Emscripten, running in a Web Worker</span></div>
+  <div><b>≈ 2 MB</b><span>the engine gzipped (7.5 MB raw)</span></div>
+  <div><b>1.3–6.8×</b><span>the WebAssembly tax against native, on a clean host</span></div>
+  <div><b>65 ms</b><span><code>fib(29)</code> compiled to JavaScript, against 297 ms interpreted</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>Nothing in the engine's source was changed for the browser: the WebAssembly build only adds an entry point, a build script and an editor. Because it is the same engine, its semantics are the ones Roast checks. That is what lets every example on this site run live.</div>
+
+<h2>Raku.js</h2>
+<ul class="pc-dates">
+  <li><time>14 Jul</time>The first build: a build script, a thin C entry point, and a playground with the engine in a worker. It first went live as the course's playground.</li>
+  <li><time>16 Jul</time>WebAssembly builds are attached to every release, and the first browser showcase applications arrive.</li>
+  <li><time>19 Jul</time>raku.online replaces the course's playground as the place to run Raku in a browser.</li>
+  <li><time>23 Aug</time>The playground moves to <a href="/play/">/play</a>, and the site around it grows into the sections along the top of this page.</li>
+</ul>
+<p>Three choices in the build were measured, not assumed:</p>
+<ul>
+  <li><b>Classic exceptions.</b> The interpreter uses C++ exceptions for <code>next</code>, <code>last</code> and <code>return</code>. With the newer WebAssembly exception model those catches failed and the loop trapped with <code>RuntimeError: unreachable</code>, so the build ships the older model.</li>
+  <li><b>A worker.</b> The engine runs off the main thread, so the page stays responsive: output streams, a spinner turns, and Stop works.</li>
+  <li><b>Built for size.</b> <code>-Oz</code> beat <code>-O2</code> on both counts. It was smaller, and it recursed deeper: 206 levels against 174.</li>
+</ul>
+<p>Recursion depth is the browser's real limit. A plain recursive sub reaches 58 levels in a Chrome worker and 115 on Chrome's main thread; in Safari, 32 and 419. When a worker's stack overflows, the run is retried on the main thread.</p>
+<p>The tax for running in WebAssembly is 1.3× to 6.8× against the native binary, depending on the program. Even so, the WebAssembly engine's big-integer kernel (41.7 ms under Node) outran native Rakudo on the same kernel (258.9 ms) when it was measured.</p>
+
+<h2>Raku as JavaScript</h2>
+<p>On 3 September a proposal to retire Rakudo's own JavaScript backend cited Raku++ in the browser. The same week, Raku++ gained <code>--target=js</code>: a second code generator whose output is JavaScript source rather than C++. It trades completeness for speed, size and access to the host. What it cannot compile falls back to the WebAssembly engine. Anything that parses at run time, such as <code>EVAL</code>, stays WebAssembly-only for good.</p>
+<ul class="pc-dates">
+  <li><time>4 Sep</time>The first code: the six starting kernels agree, and the regression corpus reads 60 agreeing programs. <code>fib(29)</code> takes 65 ms against 297 ms interpreted.</li>
+  <li><time>4 Sep</time>Interop with the host through <code>use JS</code>, then regexes and grammars, source maps, and supplies. Three showcases: an eclipse, a Fourier drawing and orbits. The eclipse is 690 lines of Raku that become 425 KB of JavaScript.</li>
+  <li><time>13 Sep</time><code>use js</code> becomes a pragma, a directive to the compiler like <code>strict</code>, rather than a module.</li>
+  <li><time>17 Sep</time>v4.0.0: bun is the default host, and <code>--fallback=wasm</code> resolves the engine before requiring it.</li>
+</ul>
+
+<h2>Things that broke on the way</h2>
+<ul>
+  <li>On 29 August the playground's engine turned out to have been built by a compiler two releases old, because nothing checked which one had built it.</li>
+  <li>Four documents said the browser engine had no files. The in-memory filesystem had been there all along.</li>
+  <li>The copy-and-patch JIT (<a href="../compiler/">the compiler chapter</a>) broke the WebAssembly build twice before it was fenced off.</li>
+</ul>

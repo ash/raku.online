@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smaller values, real frames — Pace</title>
+<meta name="description" content="What reading Perl 5 taught: a value from 344 bytes to 128, variables as slots, the cost of a result, and a lever per plan.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" aria-current="page" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<p class="pc-eyebrow">Chapter 10 · 9 August – 30 September</p><h1>Smaller values, real frames</h1>
+<p class="lede">In August the question changed. Instead of "what is slow in this program", it became "what does every operation pay". The answer came from reading how Perl 5 does it. In two days a value went from 344 bytes to 128, variables stopped being looked up by name, and storing a result stopped costing more than computing it.</p>
+
+<div class="pc-stats">
+  <div><b>344 → 128</b><span>bytes per value, 21–22 August</span></div>
+  <div><b>−34%</b><span>loopsum, when variables became slots in a frame</span></div>
+  <div><b>28 vs 108 ns</b><span>the cost of an add, against the cost of storing its result</span></div>
+  <div><b>4.60 → 0.03 s</b><span><code>for ^200000 { next if $_ % 2 }</code></span></div>
+</div>
+
+<figure class="pc-fig" data-chart="bench" data-kernel="loopsum" data-lanes="interp,rakudo">
+  <figcaption><b>loopsum, every release, one machine.</b> Blue is Raku++ interpreting. The dashed line is the Rakudo that was current on each release's day.</figcaption>
+</figure>
+
+<div class="pc-turn"><b>The turn</b>A remark that natively compiled Raku++ was "only twice slower than Perl 5" became a benchmark kernel, and then a reading of five Perl 5 source files. The notes list eight techniques. A Perl scalar is 24 bytes, and ours was 344. Perl resolves each lexical to an array offset at compile time. Every value-producing op writes into a pre-assigned target slot. Most of what followed was those items, one plan each, each with a stated way to be proved wrong.</div>
+
+<h2>The value</h2>
+<ul class="pc-dates">
+  <li><time>29 Jul</time>376 bytes: five strings and eleven shared pointers in every value.</li>
+  <li><time>9 Aug</time>344: the type and container tags interned.</li>
+  <li><time>22 Aug</time>200: a census found that 25.6 million of about 30 million destroyed values had none of the eleven pointers set. The rarely used fields moved to a cold block allocated on demand.</li>
+  <li><time>22 Aug</time>128: five payload pointers became one tagged slot.</li>
+</ul>
+<p>The target had been 64 bytes. A September study showed why the work stopped at 128. The last 24 bytes are all string. Moving the string out of the value made short strings slower (0.60×). Keeping it inline would change the type at about 1,549 sites. Reaching 16 bytes would mean values stop being reference-counted, which is a rewrite of assignment and binding, not a batch. A 56-byte design is priced and waiting.</p>
+
+<h2>Hashes like Perl's</h2>
+<p>On 21 August <code>std::map</code> gave way to an open-addressed table that stores each key's hash, as Perl's does: the hash kernel −30%, the hash-fill kernel −19% interpreted and −24% compiled. On that kernel the compiled binary passed Perl: 78 ms against 82.</p>
+
+<h2>Pads</h2>
+<p>Until 22 August every variable read hashed the variable's name into the current scope's map and walked up the parent scopes on a miss. Perl resolves a lexical to an array offset at compile time, and reading it is one indexed load. Raku++ now does the same.</p>
+<p>The first A/B was flat on the assignment kernel, which was exactly what the plan said would prove it wrong. A sample showed the cost had moved to creating a scope on every iteration, so flat loop bodies now keep one. After that: assignment −25%, loopsum −34%, hash −24%, strcat −24%. The same batch fixed a recursion bug in <code>is rw</code> that the Forth showcase had found. Deriving the frame instead of tracking it in a register fixed some 109 re-pointing sites at once.</p>
+
+<h2>The cost of a result</h2>
+<p>The plan priced one loop iteration: a floor of 65 ns, reading a variable 37, the add itself 28, and storing its result 108. The arithmetic cost 28 ns, and storing its result cost 108. The first slice of Perl's target-slot idea, a lane for simple assignment, took the assignment kernel down 40%. Later slices took sub calls and string passing down 19.5% each.</p>
+
+<h2>Levers, one plan each</h2>
+<ul class="pc-dates">
+  <li><time>30 Aug</time><b>Methods stop allocating.</b> An issue timed a graph library at 4× Rakudo. A user method call was 5.8× Rakudo's cost and a multi method 10×, because methods allocated a scope per call while subs took one from a pool. Now both use the pool. A call-site cache was built and measured neutral, so it was reverted. Object construction, rebuilt per class on every <code>.new</code>, was levelled with Rakudo on 9 September.</li>
+  <li><time>31 Aug</time><b>Every <code>next</code> in the mainline threw.</b> A sentinel collided with the mainline's frame index 0, so every <code>next</code> outside a routine took the exception path, at about 80 µs each: 100,000 of them took 8.1 s. <code>for ^200000 { next if $_ % 2 }</code> went from 4.60 s to 0.03 s, and <code>given</code>/<code>when</code>, the same defect, from 4.70 s to 0.10 s.</li>
+  <li><time>2 Sep</time><b>An argument list stopped being a <code>std::vector</code>:</b> growth that relocates in one pass, and a free list for small blocks.</li>
+  <li><time>20 Sep</time><b>A slab for payloads.</b> The allocator was 21.5% of an array-and-hash workload's profile. A slab bought about 4% on regex. It had been predicted at 12%: an allocator micro-benchmark overstates its own effect about threefold.</li>
+  <li><time>30 Sep</time><b>An object's attributes stop costing a 4 KB block.</b> Every object's attribute table is a hash, and every hash's first block was 4 KB. A program holding 100,000 objects and 50,000 small hashes went from 531 MB peak to 175 MB. The same change had been tried on 30 August, cost the hash kernel 17%, and was reverted. It landed a month later in a different shape.</li>
+</ul>
+
+<h2>A correction worth keeping</h2>
+<p>On 22 August the benchmarks page said the interpreter had overtaken Rakudo on <code>fib</code>. The Rakudo in that comparison had been running under Rosetta 2, emulated. Re-measured natively, <code>fib</code> was still behind (369.8 ms against 311.4 at v3.7.0). The one-machine re-measurement of every release, <a href="../versus/">two chapters on</a>, exists because of that mistake.</p>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/instruments/"><span>← Chapter 9</span>Honest instruments</a><a class="next" href="/pace/travel/"><span>Chapter 11 →</span>Raku that travels</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
+</body>
+</html>

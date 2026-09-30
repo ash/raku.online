@@ -1,0 +1,77 @@
+# Site configuration for Pace. EVAL'd by build.raku; must evaluate to a Hash.
+{
+    base      => '/pace',
+    title     => 'Pace',
+    tagline   => 'How Raku++ got here: the turns in its architecture, its speed and its coverage, ' ~
+                 'from the first commit on 2 July 2026 to every file of Roast, in fifteen chapters.',
+    repo      => 'https://github.com/ash/rakupp',
+
+    # The spec dashboard's history; the charts plot the same numbers it does.
+    dashboard => '../spec/src/data/dashboard.json',
+
+    # The chapters in reading order. Roughly chronological by where each story
+    # starts; several run in parallel, and each says which dates it covers.
+    chapters => (
+        { slug => 'day-one',     when => '2–11 July',
+          title => 'An engine on day one',
+          blurb => 'The first commit was already a lexer, a parser, a tree-walker, a regex engine and a compiler to C++, measured against Roast from the first day.' },
+        { slug => 'regexes',     when => 'July – September',
+          title => 'A regex engine of its own',
+          blurb => 'Match-time interpolation for YAMLish, true longest-token matching, JSON::Fast made native, and a YAML file parsed faster than the reference compiler.' },
+        { slug => 'numbers',     when => 'July – September',
+          title => 'Exact numbers, whole graphemes',
+          blurb => 'Unicode 17 and all 8,271 collation tests, exact Rats that spill to Num, the Mandelbrot from 6.83 s to 0.32 s, and big integers that stopped allocating.' },
+        { slug => 'compiler',    when => 'July – September',
+          title => 'Four ways to run a program',
+          blurb => 'Interpret, bundle, embed the tree, or compile to C++: correct by parity with the interpreter, slim binaries, and loops that compile while they run.' },
+        { slug => 'browser',     when => '14 July – 17 September',
+          title => 'Raku in a browser tab',
+          blurb => 'The same engine as WebAssembly behind every editor on this site, and later a second route: Raku compiled to JavaScript.' },
+        { slug => 'other-code',  when => 'July – September',
+          title => "Other people's code",
+          blurb => 'Two real programs, 3,068 course snippets, 10,428 Weekly Challenge solutions, the documentation, and the whole module ecosystem, each diffed against Rakudo.' },
+        { slug => 'first-speed', when => '11 July – 1 August',
+          title => 'Slow programs, and what they pointed at',
+          blurb => 'Control flow that threw C++ exceptions, array reads that copied, decisions made once per node, and a campaign ranked by the profile.' },
+        { slug => 'parallel',    when => '7 July – 28 September',
+          title => 'Parallel by default',
+          blurb => 'The global lock came out in v3.0.0, after a memory model, ThreadSanitizer, a stress matrix and a livelock found in five minutes.' },
+        { slug => 'instruments', when => '9 August – 29 September',
+          title => 'Honest instruments',
+          blurb => 'Seven gates passed over a wrong hash; every gate then had to prove it could fail, and the battery turned out to be comparing Raku++ with itself.' },
+        { slug => 'values',      when => '9 August – 30 September',
+          title => 'Smaller values, real frames',
+          blurb => 'What reading Perl 5 taught: a value from 344 bytes to 128, variables as slots, the cost of a result, and a lever per plan.' },
+        { slug => 'travel',      when => '24 July – 17 September',
+          title => 'Raku that travels',
+          blurb => 'A module installer, binaries that carry their modules or refuse to build, a C API with six languages on it, and Windows as a platform.' },
+        { slug => 'rakuast',     when => '31 July – 17 September',
+          title => 'RakuAST and slangs',
+          blurb => 'RakuAST as a view that costs the ordinary path nothing, Raku in fourteen natural languages, a formatter, and slangs that run for real.' },
+        { slug => 'roast',       when => '2 July – 30 September',
+          title => 'Roast, from 185 files to 1,424',
+          blurb => 'The climb, the times it went down for the right reason, and the nine days from 803 files to every one of them.' },
+        { slug => 'versus',      when => '13 July – 30 September',
+          title => 'Against the reference compiler',
+          blurb => 'Every release re-run on one machine, kernel by kernel, beside the Rakudo of its day.' },
+        { slug => 'tree-walker', when => '30 September',
+          title => 'The tree-walker, 20% faster in a day',
+          blurb => 'Thirteen commits after v5.1.0: the gap to compiled code cut by a third to a half, and 100% of Roast kept after every one.' },
+    ),
+
+    # `say "Hello"` compiled, in bytes, from each release's notes. Releases
+    # before v3.14.0 had no --slim; later ones publish no Hello row.
+    exe-size => (
+        { tag => 'v3.1.0',  date => '2026-08-11', full => 9830680 },
+        { tag => 'v3.14.0', date => '2026-08-11', full => 8087112,  slim => 4856936 },
+        { tag => 'v3.5.0',  date => '2026-08-20', full => 8493752,  slim => 5246376 },
+        { tag => 'v3.6.0',  date => '2026-08-21', full => 8511112,  slim => 5247200 },
+        { tag => 'v3.7.0',  date => '2026-08-24', full => 9091256,  slim => 5827368 },
+        { tag => 'v3.20.0', date => '2026-08-27', full => 9823512,  slim => 6510864 },
+        { tag => 'v3.21.0', date => '2026-08-29', full => 9446216,  slim => 6165528 },
+        { tag => 'v3.24.0', date => '2026-09-01', full => 9567336,  slim => 6286248 },
+        { tag => 'v3.25.0', date => '2026-09-03', full => 9753480,  slim => 6455800 },
+        { tag => 'v3.26.0', date => '2026-09-08', full => 10143928, slim => 6845704 },
+        { tag => 'v3.27.0', date => '2026-09-11', full => 10294936, slim => 6963352 },
+    ),
+}

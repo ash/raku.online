@@ -29,13 +29,14 @@
     { href: '/drills/', label: 'Drills', hue: 'drills' },
     { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
     { href: '/grid/',   label: 'Grid',   hue: 'grid'   },
-    // Beside Grid on purpose: Grid is how much of Raku runs, Pace is how fast.
-    { href: '/pace/',   label: 'Pace',   hue: 'pace'   },
     { href: '/map/',    label: 'Map',    hue: 'map'    },
     { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
     // "Cook" rather than "Cookbook": the bar is ten tabs wide on a laptop and
     // the long form is the one that pushes it to wrap.
     { href: '/cookbook/', label: 'Cook', hue: 'cook'  },
+    // Pace is the project's history, chapter by chapter, so it opens the reading
+    // shelf: the story first, then the books.
+    { href: '/pace/',   label: 'Pace',   hue: 'pace'   },
     { href: '/book/',   label: 'Book',   hue: 'book'   },
     // Raku Behind the Docs: the verified-behaviour book, built in its own
     // repository and copied in by `build.sh deep`. Beside Book, the other book.

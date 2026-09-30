@@ -1,0 +1,39 @@
+<p class="lede">Raku++ was a compiler from its first commit, not only an interpreter. The first commit already had four ways to run a program. Getting the compiled path to agree with the interpreter on every program, then making its binaries small, then letting a running program compile its own hot loops, took the rest of the three months.</p>
+
+<pre><code>rakupp program.raku                       # interpret
+rakupp --bundle program.raku -o program   # the interpreter plus the source, as one binary
+rakupp --aot    program.raku -o program   # parsed ahead of time, the tree embedded
+rakupp --exe    program.raku -o program   # transpiled to C++ and compiled natively</code></pre>
+
+<div class="pc-turn"><b>The turn</b>What made <code>--exe</code> possible was something left out. Raku lets a program change its own grammar while it is being parsed: custom operators at parse time, slangs. Raku++ left those out at first. If the parse tree cannot change at run time, it can be turned into C++ at build time. Much later the restraint was lifted on purpose, when <a href="../rakuast/">slangs arrived</a>, without giving up compilation.</div>
+
+<h2>Correct by parity</h2>
+<p>The compiler is not checked against Roast. It is checked against the interpreter: compile a program, run it, run the same program interpreted, and require identical output. The interpreter is the oracle for the compiler.</p>
+<p>The corpus for that check was <code>examples/</code>, two dozen small programs: Mandelbrot in ASCII, Life on a torus, a JSON parser written as a grammar, a Brainfuck interpreter, a quine. By 12 July all 23 compiled natively with identical output. The next day's sweep over Roast found that 389 of the 416 fully passing files would transpile.</p>
+<p>What made the parameters compile was a calling convention. Every compiled sub takes a uniform <code>ValueList</code>, and binding is emitted per parameter from its signature, so named, optional, default, slurpy and <code>multi</code> parameters all compile rather than falling back.</p>
+
+<h2>How much faster native is</h2>
+<table class="pc-t">
+  <thead><tr><th>example, 12 July</th><th class="num">interpreted</th><th class="num">--exe</th><th class="num"></th></tr></thead>
+  <tbody>
+    <tr><td>life</td><td class="num">746.2 ms</td><td class="num">171.6 ms</td><td class="num">4.3×</td></tr>
+    <tr><td>nqueens</td><td class="num">70.2 ms</td><td class="num">27.9 ms</td><td class="num">2.5×</td></tr>
+    <tr><td>mandel</td><td class="num">106.6 ms</td><td class="num">45.8 ms</td><td class="num">2.3×</td></tr>
+    <tr><td>brainfuck</td><td class="num">7.5 ms</td><td class="num">8.2 ms</td><td class="num">0.9×</td></tr>
+  </tbody>
+</table>
+<p>Brainfuck is slower native, and the guide says so: "known, small, and honest". By September <code>--exe</code> ran the benchmark kernels 1.0 to 11.8 times faster than the interpreter. The distance between the two is what <a href="../tree-walker/">the last chapter</a> set out to close from the interpreter's side.</p>
+
+<h2>The embedded tree had been losing fields</h2>
+<p><code>--aot</code> used to write one builder function per kind of tree node, and any field nobody listed was silently dropped. <code>my Int(Str) $n = "42"</code> compiled into a binary that threw a type error, and compiled programs lost their line numbers. On 1 August the emitter was replaced by a serializer whose reader and writer are the same visitor instantiated twice, so a field cannot be saved and not restored. The same code became the precompilation cache for modules.</p>
+
+<h2>Only what the program needs</h2>
+<p>Until v3.14.0 every <code>--exe</code> binary was the same size whatever the program did: <code>say "Hello"</code> weighed 9.83 MB. <code>--slim</code> split the runtime into five archives and made four features cuttable: Unicode names, collation, properties, and <code>EVAL</code>. A program that turns out to need a cut feature at run time gets <code>X::Feature::NotBuilt</code> rather than a wrong answer. The differential gate compared 270 programs: 241 byte-identical, none different.</p>
+<figure class="pc-fig" data-chart="exe-size">
+  <figcaption><b><code>say "Hello"</code>, compiled.</b> The full binary and the slim one, release by release, as the release notes recorded them.</figcaption>
+</figure>
+<p>The line climbs after v3.14.0 because the engine kept growing, and a size budget kept count. It was re-pinned four times in six weeks, and once in an emergency: the JIT had pulled the 663,096-byte C++ code generator into every binary, <code>say "Hello"</code> included, for a call that binary could never make.</p>
+
+<h2>Compiling while the program runs</h2>
+<p>On 19 September two opt-in flags let a hot loop stop being interpreted. <code>--jit</code> hands the loop to the C++ code generator and a compiler. <code>--cnp</code> needs no compiler: it copies and patches machine-code stencils the binary already carries, 53 of them. A five-million-iteration integer loop that takes 0.96 s interpreted takes 0.04 s with <code>--jit</code> (warm cache), 0.05 s with <code>--cnp</code>, and 0.03 s as <code>--exe -O</code>. Both flags are marked work in progress. The plan is for <code>--cnp</code> to become the default and for <code>--jit</code> to go.</p>
+<p>The JIT had its own lesson. After an afternoon its cache was 91 MB, 89 of it headers. The note it left: an optimisation that spends the user's disk is not free just because it was measured in seconds.</p>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>An engine on day one — Pace</title>
+<meta name="description" content="The first commit was already a lexer, a parser, a tree-walker, a regex engine and a compiler to C++, measured against Roast from the first day.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" aria-current="page" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<p class="pc-eyebrow">Chapter 1 · 2–11 July</p><h1>An engine on day one</h1>
+<p class="lede">The repository's first commit landed on 2 July 2026. It was already a working engine and already a compiler: a hand-written lexer, a recursive-descent parser, a tree-walking evaluator, a regex engine, exact big integers, generated Unicode tables, and a code generator that turned Raku into C++. On that day it passed 185 of Roast's 1,464 files completely.</p>
+
+<div class="pc-stats">
+  <div><b>49</b><span>files in the first commit, 46,964 lines, a week of work behind it</span></div>
+  <div><b>185</b><span>Roast files passing completely on 2 July (13%)</span></div>
+  <div><b>300</b><span>when v0.1.0 was tagged on 10 July</span></div>
+  <div><b>0</b><span>lines of the C++ typed by a person, then or since</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>The definition of correct was settled before any of the code was: Roast, the executable specification, plus the prose of docs.raku.org. Rakudo was the reference for how Raku behaves, never a source to copy. The first README already carried the motto: any compiler that can run Roast can officially be called a Raku compiler.</div>
+
+<h2>What was there</h2>
+<p>The first commit's architecture note describes the pieces as they still are:</p>
+<ul>
+  <li><b>A hand-written lexer</b> (740 lines) and <b>a recursive-descent parser</b> with a Pratt core for expressions (1,728).</li>
+  <li><b>A tree-walking evaluator</b> (2,469) and the builtins (1,828). The program's syntax tree is what runs.</li>
+  <li><b>A regex engine</b> of its own (401 lines): a recursive-descent pattern parser feeding a backtracking matcher written in continuation-passing style. It was not a wrapper around a library, and it already knew about grammar subrules.</li>
+  <li><b>A number tower:</b> a big integer in base 10<sup>9</sup> with a fast path through <code>long long</code>, and an exact <code>Rat</code>.</li>
+  <li><b>Unicode tables</b> generated from the Unicode Character Database, 32,046 lines of names alone.</li>
+  <li><b>A code generator</b> (814 lines) behind <code>--exe</code>, and <code>--bundle</code> and <code>--aot</code> beside it, all on one runtime library.</li>
+</ul>
+<p>That first build already passed some of every area: 40 of the Unicode files in full, 95% of their assertions, and 13 of the regex files.</p>
+
+<h2>A harness that runs on what it measures</h2>
+<p>The Roast harness, <code>tools/run-roast.raku</code>, is in the first commit too. It is written in Raku and run by rakupp itself, so the tool that measures the compiler runs on the compiler. Getting it to work needed process spawning with timeouts, directory listing and argument handling, which then paid off across the rest of the suite.</p>
+
+<h2>The first ten days</h2>
+<ul class="pc-dates">
+  <li><time>2 Jul</time>185 files. The status page already quotes two numbers, whole files and single tests, and warns that they measure different things.</li>
+  <li><time>4 Jul</time>251 files, 119,645 of 164,029 tests among the files that ran.</li>
+  <li><time>5 Jul</time>"Call it v0.1.0": the version is bumped at 252 files.</li>
+  <li><time>9 Jul</time>300 files. A minimal <code>NativeCall</code> arrives, through <code>dlsym</code> and without libffi.</li>
+  <li><time>10 Jul</time>The v0.1.0 tag and a Homebrew tap. 350 files by the end of the day.</li>
+  <li><time>11 Jul</time>419 files: Unicode 17 graphemes and normalization, UCA collation, and exact arithmetic fast enough for a Mandelbrot. <a href="../numbers/">The numbers chapter</a> has that day.</li>
+</ul>
+
+<h2>A principle noticed after the fact</h2>
+<p>"Rakudo is the reference, not the source" was not declared on the first day. It was simply what happened: there was never a need to open Rakudo's code, so nobody did. Only later was it written down as a rule. On 22 August, with the engine past 90% of Roast's tests, the project began studying other implementations at the design level: Perl 5, Rakudo and MoarVM among nine. Since then the rule has been to read designs and never port code, to take the semantics and implement them another way. Roast is still the only definition of correct.</p>
+
+<h2>Who wrote it</h2>
+<p>The whole of Raku++ was written without its author typing a line of its C++. The author described what was wanted, ran the tests and pointed at what was broken; an AI model wrote the code. The role is director and reviewer rather than typist, and the project is the argument that the role works.</p>
+
+<h2>The loop</h2>
+<p>The method has not changed since the first week, and every later chapter is this loop run on a different source of failures:</p>
+<blockquote><p>Find the failing thing, in Roast, in a real program, in the docs or in a corpus. Work out what Raku actually means. Make the smallest change that is right, not just one that turns a test green. Run the whole suite and diff the set of passing files. Keep the fixes that are correct even when the count dips. Write down what was not obvious.</p></blockquote>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/"><span>← Pace</span>All chapters</a><a class="next" href="/pace/regexes/"><span>Chapter 2 →</span>A regex engine of its own</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
+</body>
+</html>

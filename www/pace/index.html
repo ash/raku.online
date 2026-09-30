@@ -3,79 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pace — Raku++ interpreter speed</title>
-<meta name="description" content="How fast the Raku++ tree-walking interpreter runs, and what each speed-up commit bought: the gap to --exe, the benchmark programs, the perf-guard kernels.">
-<script src="/theme/boot.js?v=b4ebbcba"></script>
-<link rel="stylesheet" href="/theme/base.css?v=b4ebbcba">
-<link rel="stylesheet" href="/theme/shell.css?v=b4ebbcba">
-<style>
-/* Page tokens. The charts read them off <html> at draw time, so they live
-   there, and the dark set follows the site switcher's data-theme-active. */
-html {
-  --surface: #fcfcfb; --ink: #111513; --ink-2: #4d5550; --ink-3: #7b847e;
-  --rule: #dfe3e0; --grid: #eceeec;
-  --v401: #1baf7a; --v510: #eb6834; --now: #2a78d6; --good: #0f7a4a; --warn: #9a5a00;
-  --f-display: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --f-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --f-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-}
-html[data-theme-active="dark"] {
-  --surface: #1c1d22; --ink: #f2f4f2; --ink-2: #c3c7c3; --ink-3: #8d948f;
-  --rule: #2e3431; --grid: #242826;
-  --v401: #199e70; --v510: #d95926; --now: #3987e5; --good: #4cc38a; --warn: #e0a24a;
-}
-.pace * { box-sizing: border-box; }
-.pace { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; padding: 0; }
-.pace .wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 48px; }
-.pace .read { max-width: 66ch; }
-.pace header { display: grid; gap: 14px; }
-.pace .eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.pace h1 { font-family: var(--f-display); font-stretch: 112%; font-weight: 800; font-size: clamp(34px, 6vw, 58px); line-height: 1.02; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-.pace h2 { border: 0; padding: 0; font-family: var(--f-display); font-stretch: 105%; font-weight: 700; font-size: 24px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
-.pace p { margin: 0; }
-.pace .lede { font-size: 17px; color: var(--ink-2); max-width: 62ch; }
-.pace code { font-family: var(--f-mono); font-size: 0.92em; }
-.pace .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
-.pace .stat { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
-.pace .stat b { font-family: var(--f-display); font-stretch: 100%; font-weight: 800; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
-.pace .stat span { font-size: 13px; color: var(--ink-2); }
-.pace section { display: grid; gap: 16px; }
-.pace .note { font-size: 13px; color: var(--ink-3); }
-.pace .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); }
-.pace .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-.pace figure { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 16px 8px; position: relative; min-width: 0; }
-.pace .chart { width: 100%; overflow-x: auto; }
-.pace svg { display: block; width: 100%; height: auto; }
-.pace svg text { font-family: var(--f-mono); font-size: 11px; fill: var(--ink-2); }
-.pace svg .lbl { font-family: var(--f-body); font-size: 12.5px; fill: var(--ink); }
-.pace svg .val { fill: var(--ink); font-weight: 500; }
-.pace svg .axis { stroke: var(--rule); }
-.pace svg .grid { stroke: var(--grid); }
-.pace svg .ref { stroke: var(--ink-3); stroke-dasharray: 3 3; }
-.pace .hit { fill: transparent; cursor: default; }
-.pace .hit:hover + g .mark, .pace .row:hover .mark { filter: brightness(1.08); }
-.pace .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-family: var(--f-mono); font-size: 12px; padding: 7px 9px; border-radius: 4px; white-space: nowrap; opacity: 0; transition: opacity .1s; z-index: 2; }
-.pace details { font-size: 13px; }
-.pace summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
-.pace summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; border-radius: 3px; }
-.pace .tbl { overflow-x: auto; }
-.pace table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
-.pace th, .pace td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-.pace th:first-child, .pace td:first-child { text-align: left; }
-.pace th { font-weight: 600; color: var(--ink-2); font-size: 12px; }
-.pace td.num { font-family: var(--f-mono); }
-.pace .ledger td:nth-child(2) { white-space: normal; text-align: left; min-width: 260px; }
-.pace .ledger td:first-child { font-family: var(--f-mono); color: var(--ink-3); }
-.pace .ledger td:nth-child(3) { font-family: var(--f-mono); color: var(--good); text-align: left; white-space: normal; min-width: 150px; }
-.pace .pill { display: inline-block; font-family: var(--f-mono); font-size: 11.5px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--rule); color: var(--ink-2); }
-.pace .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; }
-.pace .cols > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
-.pace ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
-@media (prefers-reduced-motion: reduce) { .pace .tip { transition: none; } }
-</style>
+<title>Pace</title>
+<meta name="description" content="How Raku++ got here: the turns in its architecture, its speed and its coverage, from the first commit on 2 July 2026 to every file of Roast, in fifteen chapters.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
 </head>
-<body>
-
+<body class="home">
 <span class="theme-switch">
   <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
   <ul class="theme-menu" hidden>
@@ -84,223 +20,45 @@ html[data-theme-active="dark"] {
     <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
   </ul>
 </span>
-
 <main>
 <div class="content pace">
-<div class="wrap">
-  <header>
-    <div class="eyebrow">Raku++ · INTERP-SPEED-PLAN · 30 September 2026</div>
-    <h1>The tree-walker got 20% faster in a day</h1>
-    <p class="lede">From v5.1.0 (<code>4c89cbae</code>) to <code>b81c74fd</code>: thirteen engine commits working through the plan's tasks 2–9. The gap between interpreting a program and running its <code>--exe</code> build shrank by a third to a half on the kernels where it was widest, and Roast stayed at every file passing.</p>
-  </header>
-
-  <div class="stats" aria-label="Headline figures">
-    <div class="stat"><b>−20%</b><span>mean time over the 19 perf-guard kernels, vs v5.1.0</span></div>
-    <div class="stat"><b>4.3×</b><span><code>fib</code> behind <code>--exe</code>, from 7.6×</span></div>
-    <div class="stat"><b>−58%</b><span><code>streq</code>, the program with the widest gap</span></div>
-    <div class="stat"><b>175 MB</b><span>peak memory holding 100k objects, from 531 MB</span></div>
-    <div class="stat"><b>1,424 / 1,424</b><span>Roast files passing, after every commit</span></div>
-  </div>
-
-  <section>
-    <div class="read">
-      <h2>How far behind native code the interpreter runs</h2>
-      <p class="note">Interpreted time divided by the time of the same program compiled with <code>--exe</code>. 1× would be native speed.</p>
-    </div>
-    <div class="legend"><span><i style="background:var(--v510)"></i>v5.1.0</span><span><i style="background:var(--now)"></i>now</span></div>
-    <figure><div class="chart" id="gap"></div><div class="tip"></div></figure>
-    <details><summary>Table: the gap in milliseconds</summary><div class="tbl" id="gap-t"></div></details>
-  </section>
-
-  <section>
-    <div class="read">
-      <h2>The benchmark programs, against v4.0.1</h2>
-      <p class="note">Each program's time as a percentage of v4.0.1's (the dashed line). Left of the line is faster. The line from the orange dot to the blue one is today's work. Sorted by today's time.</p>
-    </div>
-    <div class="legend"><span><i style="background:var(--v510)"></i>v5.1.0</span><span><i style="background:var(--now)"></i>now</span><span><i style="background:var(--v401);border-radius:0;height:2px;width:14px;vertical-align:3px"></i>v4.0.1 = 100%</span></div>
-    <figure><div class="chart" id="bench"></div><div class="tip"></div></figure>
-    <details><summary>Table: milliseconds, best of 5</summary><div class="tbl" id="bench-t"></div></details>
-  </section>
-
-  <section>
-    <div class="read">
-      <h2>The perf-guard kernels, v5.1.0 to now</h2>
-      <p class="note">Change in time on each of the 19 release-gate kernels. <code>junctionwide</code> runs for 18 ms and is the noisiest in the set.</p>
-    </div>
-    <figure><div class="chart" id="kern"></div><div class="tip"></div></figure>
-    <details><summary>Table: milliseconds, best of 5</summary><div class="tbl" id="kern-t"></div></details>
-  </section>
-
-  <section>
-    <div class="read"><h2>What landed</h2>
-      <p class="note">Each figure is that commit's own interleaved A/B against the commit before it, best of 5 or 7.</p></div>
-    <div class="tbl"><table class="ledger" id="ledger"><thead><tr><th>commit</th><th>change</th><th>measured</th></tr></thead><tbody></tbody></table></div>
-  </section>
-
-  <section class="cols">
-    <div>
-      <h2>Tried and dropped</h2>
-      <ul>
-        <li>A small front function ahead of <code>evalBinary</code>: <code>fib</code> +4–5%, two calls where there was one.</li>
-        <li>Moving <code>evalBinary</code>'s metaop or DateTime block out: its frame shrank by 0 and 48 bytes. It has no dominant arm.</li>
-        <li>A second compiled handler for <code>fib($n-1) + fib($n-2)</code>: +1.1%, the code it jumped to has as large a frame as the one it skipped.</li>
-        <li>An inline Int switch in the fast shape, a one-byte metaop gate, a first-byte reject in <code>isNativeScalarName</code>: no measurable change.</li>
-      </ul>
-    </div>
-    <div>
-      <h2>How it was measured</h2>
-      <ul>
-        <li>Local arm64 Release builds of v4.0.1, v5.1.0 and HEAD on one machine, run in turn (A, B, C, A, B, C…), best of 5.</li>
-        <li>Another process kept the load average at 4–8 during the final run; interleaving gives every build the same conditions, so the ratios hold.</li>
-        <li>Every commit passed Roast and the source size budget. The corpus diff and the module-battery suites ran clean on all of it through <code>8fd1e905</code>.</li>
-        <li>Still slower than v4.0.1: <code>textsplit</code> <span class="pill">+8%</span> and <code>multiwhere</code> <span class="pill">+5%</span>. Both regressed gradually over the Roast bursts; about half of it is won back.</li>
-      </ul>
-    </div>
-  </section>
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<h1>Pace</h1><p class="tagline">How Raku++ got here: the turns in its architecture, its speed and its coverage, from the first commit on 2 July 2026 to every file of Roast, in fifteen chapters.</p>
+<div class="pc-stats">
+  <div><b>2 Jul 2026</b><span>the first commit: an interpreter and a compiler to C++</span></div>
+  <div><b>41</b><span>tagged releases in thirteen weeks</span></div>
+  <div><b>185 → 1,424</b><span>Roast files passing completely</span></div>
+  <div><b>16 of 17</b><span>benchmark kernels where compiled Raku++ beats Rakudo</span></div>
 </div>
+
+<figure class="pc-fig" data-chart="roast">
+  <figcaption><b>The whole climb.</b> Share of Roast files in which every test passes (blue), and of all declared tests (green), from the first commit to now. <a href="roast/">Chapter 13</a> explains the dips.</figcaption>
+</figure>
+
+<p>Raku++ is an independent implementation of Raku, written from nothing in C++. These chapters tell how it got to where it is. They cover the decisions that shaped its architecture, where its speed came from and where it was lost, and how its correctness was counted, including the times the count was wrong. Every date and figure comes from the release notes, plans and measurements committed in the <a href="https://github.com/ash/rakupp">repository</a>.</p>
+<p>The chapters can be read in any order. They run roughly in the order each story starts, and most of them overlap.</p>
+<h2 id="chapters">The chapters</h2><ol class="pc-list"><li><a href="/pace/day-one/"><span class="n">1</span><span class="t">An engine on day one</span><span class="w">2–11 July</span><span class="b">The first commit was already a lexer, a parser, a tree-walker, a regex engine and a compiler to C++, measured against Roast from the first day.</span></a></li>
+<li><a href="/pace/regexes/"><span class="n">2</span><span class="t">A regex engine of its own</span><span class="w">July – September</span><span class="b">Match-time interpolation for YAMLish, true longest-token matching, JSON::Fast made native, and a YAML file parsed faster than the reference compiler.</span></a></li>
+<li><a href="/pace/numbers/"><span class="n">3</span><span class="t">Exact numbers, whole graphemes</span><span class="w">July – September</span><span class="b">Unicode 17 and all 8,271 collation tests, exact Rats that spill to Num, the Mandelbrot from 6.83 s to 0.32 s, and big integers that stopped allocating.</span></a></li>
+<li><a href="/pace/compiler/"><span class="n">4</span><span class="t">Four ways to run a program</span><span class="w">July – September</span><span class="b">Interpret, bundle, embed the tree, or compile to C++: correct by parity with the interpreter, slim binaries, and loops that compile while they run.</span></a></li>
+<li><a href="/pace/browser/"><span class="n">5</span><span class="t">Raku in a browser tab</span><span class="w">14 July – 17 September</span><span class="b">The same engine as WebAssembly behind every editor on this site, and later a second route: Raku compiled to JavaScript.</span></a></li>
+<li><a href="/pace/other-code/"><span class="n">6</span><span class="t">Other people's code</span><span class="w">July – September</span><span class="b">Two real programs, 3,068 course snippets, 10,428 Weekly Challenge solutions, the documentation, and the whole module ecosystem, each diffed against Rakudo.</span></a></li>
+<li><a href="/pace/first-speed/"><span class="n">7</span><span class="t">Slow programs, and what they pointed at</span><span class="w">11 July – 1 August</span><span class="b">Control flow that threw C++ exceptions, array reads that copied, decisions made once per node, and a campaign ranked by the profile.</span></a></li>
+<li><a href="/pace/parallel/"><span class="n">8</span><span class="t">Parallel by default</span><span class="w">7 July – 28 September</span><span class="b">The global lock came out in v3.0.0, after a memory model, ThreadSanitizer, a stress matrix and a livelock found in five minutes.</span></a></li>
+<li><a href="/pace/instruments/"><span class="n">9</span><span class="t">Honest instruments</span><span class="w">9 August – 29 September</span><span class="b">Seven gates passed over a wrong hash; every gate then had to prove it could fail, and the battery turned out to be comparing Raku++ with itself.</span></a></li>
+<li><a href="/pace/values/"><span class="n">10</span><span class="t">Smaller values, real frames</span><span class="w">9 August – 30 September</span><span class="b">What reading Perl 5 taught: a value from 344 bytes to 128, variables as slots, the cost of a result, and a lever per plan.</span></a></li>
+<li><a href="/pace/travel/"><span class="n">11</span><span class="t">Raku that travels</span><span class="w">24 July – 17 September</span><span class="b">A module installer, binaries that carry their modules or refuse to build, a C API with six languages on it, and Windows as a platform.</span></a></li>
+<li><a href="/pace/rakuast/"><span class="n">12</span><span class="t">RakuAST and slangs</span><span class="w">31 July – 17 September</span><span class="b">RakuAST as a view that costs the ordinary path nothing, Raku in fourteen natural languages, a formatter, and slangs that run for real.</span></a></li>
+<li><a href="/pace/roast/"><span class="n">13</span><span class="t">Roast, from 185 files to 1,424</span><span class="w">2 July – 30 September</span><span class="b">The climb, the times it went down for the right reason, and the nine days from 803 files to every one of them.</span></a></li>
+<li><a href="/pace/versus/"><span class="n">14</span><span class="t">Against the reference compiler</span><span class="w">13 July – 30 September</span><span class="b">Every release re-run on one machine, kernel by kernel, beside the Rakudo of its day.</span></a></li>
+<li><a href="/pace/tree-walker/"><span class="n">15</span><span class="t">The tree-walker, 20% faster in a day</span><span class="w">30 September</span><span class="b">Thirteen commits after v5.1.0: the gap to compiled code cut by a third to a half, and 100% of Roast kept after every one.</span></a></li></ol>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
 </div>
 </main>
-
-<script>
-const GAP = [
-  // kernel, exe ms, v5.1.0 ms, now ms
-  ["fib", 50.5, 382.2, 218.5], ["loopsum", 12.7, 80.6, 55.1], ["streq", 20.1, 258.8, 109.8],
-  ["hash", 8.0, 19.9, 18.7], ["objects", 185.3, 389.3, 323.1]];
-const BENCH = [
-  // program, v4.0.1, v5.1.0, now (ms)
-  ["arrayops", 46.1, 38.2, 38.0], ["arraypush", 138.0, 151.7, 130.3], ["bigint", 6.3, 6.0, 6.0],
-  ["fib", 306.8, 381.5, 219.2], ["hash", 21.6, 19.9, 18.3], ["hashfill", 111.1, 109.4, 98.4],
-  ["loopsum", 88.9, 80.5, 55.6], ["mainwhen", 198.0, 78.6, 64.9], ["multiwhere", 635.8, 709.6, 669.5],
-  ["objects", 336.4, 394.8, 320.8], ["rats", 207.9, 222.1, 179.3], ["regex", 34.6, 35.4, 30.5],
-  ["sortby", 26.7, 26.2, 24.6], ["sortnums", 24.5, 26.6, 24.9], ["strcat", 8.8, 8.0, 7.4],
-  ["streq", 236.3, 260.8, 110.3], ["textsplit", 52.6, 61.7, 56.7]];
-const KERN = [
-  ["asg", 158.6, 133.7, 87.3], ["attrread", 198.2, 200.5, 172.8], ["fib", 307.0, 380.9, 219.7],
-  ["hash", 21.4, 19.8, 18.3], ["junction", 348.8, 106.9, 89.5], ["junctionwide", 704.8, 18.3, 19.0],
-  ["loopsum", 88.4, 80.4, 55.6], ["mainnext", 31.5, 26.8, 19.9], ["mainwhen", 198.0, 79.7, 65.2],
-  ["method", 173.6, 179.7, 145.8], ["multimeth", 369.2, 393.3, 346.5], ["multiwhere", 617.0, 670.7, 631.0],
-  ["objnew", 224.6, 272.8, 219.7], ["privmeth", 297.0, 309.8, 262.4], ["rats", 208.3, 221.9, 178.2],
-  ["regexloop", 105.4, 113.1, 87.9], ["strpass", 70.0, 78.2, 60.8], ["strscan", 119.2, 137.2, 114.0],
-  ["subcall", 157.6, 142.0, 112.1]];
-const LEDGER = [
-  ["477dac44", "Loop bodies run on a lean path; the assignment fast lane runs first; variable names hash inline", "loopsum −23%, asg −17%"],
-  ["abbaa3f4", "Routine bodies decide their phaser and hoisting work once; call-name tests decided once per call site", "fib −13%, method −8%"],
-  ["ef3fbe9d", "A lean call path for plain subs; exec, eval and applyArith frames under a page", "fib −28%, mean −4%"],
-  ["a1be403f", "Thread-locals read once per use site; method dispatch without strlen", "objnew −16%, subcall −7%"],
-  ["cc2af7fc", "A binary operator's fast shape compiled to a per-node handler", "asg −6%, hash −6%"],
-  ["c2d3bb3d", "$x = $a op $b on machine Ints written straight into the variable", "asg −9%"],
-  ["131a178a", "The ternary's condition answered without building a Bool", "fib −5%"],
-  ["a01b1061", "The fused assignment covers native int counters", "subcall −7%, strpass −7%"],
-  ["401a40dd", "STMT if COND and string comparisons answered without building a Bool", "streq −23%"],
-  ["8fd1e905", "$n++ steps a plain Int variable in place", "streq −37%, regexloop −13%"],
-  ["8aa4be66", "Hash entries in chunks from 4, not a 4 KB block; object tables sized from the class", "100k kept objects: 531 → 175 MB, −16%"],
-  ["5e2195eb", "Rat accumulators take the assignment fast lane", "rats −7%"],
-  ["b81c74fd", "Big integers keep four limbs inline", "rats −7%, bigint −7%"]];
-
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const NS = "http://www.w3.org/2000/svg";
-function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
-function tipFor(fig) {
-  const tip = fig.querySelector(".tip");
-  return {
-    show(ev, html) { tip.innerHTML = html; tip.style.opacity = 1; const r = fig.getBoundingClientRect(); let x = ev.clientX - r.left + 12, y = ev.clientY - r.top + 12; if (x + tip.offsetWidth > r.width) x = r.width - tip.offsetWidth - 4; tip.style.left = x + "px"; tip.style.top = y + "px"; },
-    hide() { tip.style.opacity = 0; }
-  };
-}
-function table(id, head, rows) {
-  const t = document.createElement("table");
-  t.innerHTML = "<thead><tr>" + head.map(h => `<th>${h}</th>`).join("") + "</tr></thead><tbody>" +
-    rows.map(r => "<tr>" + r.map((c, i) => `<td class="${i ? "num" : ""}">${c}</td>`).join("") + "</tr>").join("") + "</tbody>";
-  document.getElementById(id).appendChild(t);
-}
-const pct = (a, b) => ((b / a - 1) * 100);
-const fmtPct = p => (p > 0 ? "+" : "−") + Math.abs(p).toFixed(1) + "%";
-
-function drawGap() {
-  const host = document.getElementById("gap"), fig = host.parentNode, tip = tipFor(fig);
-  const W = 760, L = 96, R = 60, rowH = 44, T = 8, B = 28, H = T + GAP.length * rowH + B;
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Interpreter time as a multiple of --exe time, v5.1.0 and now" }, host);
-  const max = 14, x = v => L + (v / max) * (W - L - R);
-  for (const t of [1, 2, 4, 6, 8, 10, 12, 14]) {
-    el("line", { x1: x(t), x2: x(t), y1: T, y2: H - B, class: t === 1 ? "ref" : "grid" }, svg);
-    el("text", { x: x(t), y: H - 10, "text-anchor": "middle" }, svg).textContent = t + "×";
-  }
-  GAP.forEach(([k, exe, old, now], i) => {
-    const y0 = T + i * rowH + 6, g1 = old / exe, g2 = now / exe;
-    el("text", { x: L - 12, y: y0 + 16, "text-anchor": "end", class: "lbl" }, svg).textContent = k;
-    const bars = [[g1, css("--v510"), "v5.1.0", old], [g2, css("--now"), "now", now]];
-    bars.forEach(([g, c, name, ms], j) => {
-      const y = y0 + j * 15, w = x(g) - L;
-      el("rect", { x: L, y, width: Math.max(w, 2), height: 12, rx: 3, fill: c, class: "mark" }, svg);
-      el("text", { x: x(g) + 6, y: y + 10, class: j ? "val" : "" }, svg).textContent = g.toFixed(1) + "×";
-      const hit = el("rect", { x: L, y: y - 2, width: W - L - R, height: 16, class: "hit" }, svg);
-      hit.addEventListener("mousemove", ev => tip.show(ev, `${k} · ${name}<br>${ms} ms interpreted<br>${exe} ms --exe · ${g.toFixed(2)}×`));
-      hit.addEventListener("mouseleave", tip.hide);
-    });
-  });
-  table("gap-t", ["kernel", "--exe", "v5.1.0", "gap", "now", "gap"], GAP.map(([k, e, o, n]) => [k, e.toFixed(1), o.toFixed(1), (o / e).toFixed(1) + "×", n.toFixed(1), (n / e).toFixed(1) + "×"]));
-}
-
-function drawBench() {
-  const host = document.getElementById("bench"), fig = host.parentNode, tip = tipFor(fig);
-  const rows = BENCH.map(([k, a, b, c]) => ({ k, a, b, c, pb: b / a * 100, pc: c / a * 100 })).sort((p, q) => p.pc - q.pc);
-  const W = 760, L = 96, R = 56, rowH = 26, T = 10, B = 30, H = T + rows.length * rowH + B;
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Benchmark program times as a percentage of v4.0.1, for v5.1.0 and now" }, host);
-  const lo = 20, hi = 140, x = v => L + (v - lo) / (hi - lo) * (W - L - R);
-  for (let t = 20; t <= 140; t += 20) {
-    el("line", { x1: x(t), x2: x(t), y1: T, y2: H - B, class: t === 100 ? "ref" : "grid" }, svg);
-    el("text", { x: x(t), y: H - 12, "text-anchor": "middle" }, svg).textContent = t + "%";
-  }
-  el("line", { x1: x(100), x2: x(100), y1: T, y2: H - B, stroke: css("--v401"), "stroke-width": 2 }, svg);
-  rows.forEach((r, i) => {
-    const y = T + i * rowH + rowH / 2;
-    el("text", { x: L - 12, y: y + 4, "text-anchor": "end", class: "lbl" }, svg).textContent = r.k;
-    el("line", { x1: x(r.pb), x2: x(r.pc), y1: y, y2: y, stroke: css("--ink-3"), "stroke-width": 2 }, svg);
-    el("circle", { cx: x(r.pb), cy: y, r: 5, fill: css("--v510"), stroke: css("--surface"), "stroke-width": 2 }, svg);
-    el("circle", { cx: x(r.pc), cy: y, r: 5.5, fill: css("--now"), stroke: css("--surface"), "stroke-width": 2 }, svg);
-    const right = Math.max(r.pb, r.pc);
-    el("text", { x: x(right) + 10, y: y + 4, class: "val" }, svg).textContent = r.pc.toFixed(0) + "%";
-    const hit = el("rect", { x: L, y: y - rowH / 2, width: W - L - R, height: rowH, class: "hit" }, svg);
-    hit.addEventListener("mousemove", ev => tip.show(ev, `${r.k}<br>v4.0.1 ${r.a} ms<br>v5.1.0 ${r.b} ms · ${r.pb.toFixed(0)}%<br>now ${r.c} ms · ${r.pc.toFixed(0)}%<br>today ${fmtPct(pct(r.b, r.c))}`));
-    hit.addEventListener("mouseleave", tip.hide);
-  });
-  table("bench-t", ["program", "v4.0.1", "v5.1.0", "now", "today", "vs v4.0.1"], rows.map(r => [r.k, r.a.toFixed(1), r.b.toFixed(1), r.c.toFixed(1), fmtPct(pct(r.b, r.c)), fmtPct(pct(r.a, r.c))]));
-}
-
-function drawKern() {
-  const host = document.getElementById("kern"), fig = host.parentNode, tip = tipFor(fig);
-  const rows = KERN.map(([k, a, b, c]) => ({ k, a, b, c, d: pct(b, c) })).sort((p, q) => p.d - q.d);
-  const W = 760, L = 106, R = 60, rowH = 22, T = 10, B = 30, H = T + rows.length * rowH + B;
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Change in time per perf-guard kernel, v5.1.0 to now" }, host);
-  const lo = -50, hi = 10, x = v => L + (v - lo) / (hi - lo) * (W - L - R);
-  for (let t = -50; t <= 10; t += 10) {
-    el("line", { x1: x(t), x2: x(t), y1: T, y2: H - B, class: t === 0 ? "axis" : "grid" }, svg);
-    el("text", { x: x(t), y: H - 12, "text-anchor": "middle" }, svg).textContent = (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t) + "%";
-  }
-  rows.forEach((r, i) => {
-    const y = T + i * rowH + 4, x0 = x(0), x1 = x(r.d);
-    el("text", { x: L - 12, y: y + 11, "text-anchor": "end", class: "lbl" }, svg).textContent = r.k;
-    el("rect", { x: Math.min(x0, x1), y, width: Math.max(Math.abs(x1 - x0), 2), height: 14, rx: 3, fill: r.d <= 0 ? css("--now") : css("--v510"), class: "mark" }, svg);
-    el("text", { x: r.d <= 0 ? x1 - 6 : x1 + 6, y: y + 11, "text-anchor": r.d <= 0 ? "end" : "start", class: "val" }, svg).textContent = fmtPct(r.d);
-    const hit = el("rect", { x: L, y: y - 3, width: W - L - R, height: rowH, class: "hit" }, svg);
-    hit.addEventListener("mousemove", ev => tip.show(ev, `${r.k}<br>v5.1.0 ${r.b} ms → now ${r.c} ms<br>${fmtPct(r.d)}`));
-    hit.addEventListener("mouseleave", tip.hide);
-  });
-  table("kern-t", ["kernel", "v4.0.1", "v5.1.0", "now", "today"], rows.map(r => [r.k, r.a.toFixed(1), r.b.toFixed(1), r.c.toFixed(1), fmtPct(r.d)]));
-}
-
-function drawLedger() {
-  const tb = document.querySelector("#ledger tbody");
-  tb.innerHTML = LEDGER.map(([c, what, m]) => `<tr><td>${c}</td><td>${what}</td><td>${m}</td></tr>`).join("");
-}
-
-function drawAll() { for (const id of ["gap", "bench", "kern", "gap-t", "bench-t", "kern-t"]) document.getElementById(id).innerHTML = ""; drawGap(); drawBench(); drawKern(); }
-drawLedger();
-drawAll();
-const mq = window.matchMedia("(prefers-color-scheme: dark)");
-mq.addEventListener && mq.addEventListener("change", drawAll);
-new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-active"] });
-</script>
-<script src="/theme/shell.js?v=b4ebbcba" defer></script>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
 </body>
 </html>

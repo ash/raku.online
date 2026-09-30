@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Against the reference compiler — Pace</title>
+<meta name="description" content="Every release re-run on one machine, kernel by kernel, beside the Rakudo of its day.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=c27f14af"></script>
+<link rel="stylesheet" href="/theme/base.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/shell.css?v=c27f14af">
+<link rel="stylesheet" href="/theme/pace.css?v=c27f14af">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" aria-current="page" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a></nav>
+<p class="pc-eyebrow">Chapter 14 · 13 July – 30 September</p><h1>Against the reference compiler</h1>
+<p class="lede">Every released Raku++ binary, re-run on one machine in one sitting, against the Rakudo that was current on each release's day. This is the fairest picture of how the speed moved. Each release's own benchmark table was measured on whatever machine it had, and for a while with Rakudo emulated.</p>
+
+<div class="pc-turn"><b>How it was measured</b>The released <code>rakupp-macos-universal</code> archive for each tag, checked against its published checksum, arm64 slice, on one Apple M3. Each kernel runs seven times; the first run is discarded and the fastest of the other six kept. Rakudo is built from source for each monthly release and assigned to Raku++ releases by date. The last point is a local build of v5.1.0. Hover any point for the release and its time.</div>
+
+<div class="pc-grid2">
+  <figure class="pc-fig" data-chart="bench" data-kernel="fib" data-lanes="interp,native,rakudo"><figcaption><b>fib</b>: recursive calls.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="loopsum" data-lanes="interp,native,rakudo"><figcaption><b>loopsum</b>: an integer loop.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="streq" data-lanes="interp,native,rakudo"><figcaption><b>streq</b>: string comparison.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="hash" data-lanes="interp,native,rakudo"><figcaption><b>hash</b>: hash reads and writes.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="objects" data-lanes="interp,native,rakudo"><figcaption><b>objects</b>: construction and attributes.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="regex" data-lanes="interp,native,rakudo"><figcaption><b>regex</b>: matching.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="strcat" data-lanes="interp,native,rakudo"><figcaption><b>strcat</b>: building a string.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="startup" data-lanes="interp,native,rakudo"><figcaption><b>startup</b>: an empty program.</figcaption></figure>
+</div>
+
+<h2>How to read them</h2>
+<ul>
+  <li><b>Two drops stand out.</b> v3.6.0 to v3.7.0 is the value shrinking to 128 bytes and variables becoming slots (<a href="../values/">the values chapter</a>): fib 536.4 → 369.8 ms, loopsum 206.2 → 97.2. v3.26.0 to v3.27.0 is object construction: 411.8 → 319.4 ms.</li>
+  <li><b>Two rises.</b> fib went from 736 ms at v0.5.1 to 898.5 at v1.2.6, while correctness came first. And v5.0.0 paid for 100% of Roast: fib 308.6 → 400.6, streq 237.3 → 335.2. <a href="../tree-walker/">The last chapter</a> is the round that won most of it back.</li>
+  <li><b>Compiled, Raku++ is faster than Rakudo on 16 of the 17 kernels.</b> Interpreted, it still takes longer on <code>fib</code> (1.3×), <code>streq</code> (1.4×), <code>objects</code> (1.8×) and a multi-dispatch kernel with <code>where</code> clauses (3.2×).</li>
+  <li><b>Startup</b> is a few milliseconds against about 75: an interpreter that parses its program directly, against a VM that loads its runtime first. On one run that is nothing. On the two-hundredth run of an edit-and-regenerate loop, it is the difference you notice.</li>
+  <li><b>Rakudo moves too.</b> The dashed line steps at each monthly release, and 2026.09 made RakuAST its default front end. Its September rows come from a Homebrew bottle, which ran 2026.08 about 13% slower than a source build, so read that step with care.</li>
+</ul>
+<p>The full table, with every kernel and the other engines, is on <a href="/spec/dashboard/">the dashboard</a>.</p>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/roast/"><span>← Chapter 13</span>Roast, from 185 files to 1,424</a><a class="next" href="/pace/tree-walker/"><span>Chapter 15 →</span>The tree-walker, 20% faster in a day</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=c27f14af" defer></script>
+<script src="/theme/shell.js?v=c27f14af" defer></script>
+</body>
+</html>

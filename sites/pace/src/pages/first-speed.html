@@ -1,0 +1,42 @@
+<p class="lede">For its first month, Raku++ got faster because some small program felt slow. The example programs, Mandelbrot, N-Queens, Life and Brainfuck, were timed against Rakudo, and each slow one pointed at a single engine fault. In late July the work turned to profiles, and a benchmark gate began to decide whether a release could ship.</p>
+
+<div class="pc-stats">
+  <div><b>16.0 → 1.81 s</b><span>N-Queens at N=10, once <code>next</code> stopped being a C++ exception</span></div>
+  <div><b>0.29 → 0.01 s</b><span>Brainfuck, once an array read stopped copying the value</span></div>
+  <div><b>−17.6%</b><span><code>fib</code> in v1.5.1, from a profile-ranked campaign</span></div>
+  <div><b>−18.3%</b><span><code>$a OP $b</code> in a loop, from node specialization (v1.7.0)</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>The rule that came out of July: ask the profile who allocates. The wins came from removing work and allocations, not from making structures smaller. A flag-packing change that took a value from 376 to 360 bytes ran 2.5% slower, and was reverted.</div>
+
+<h2>What the slow programs pointed at</h2>
+<ul class="pc-dates">
+  <li><time>11 Jul</time><b>Control flow was exceptions.</b> <code>return</code>, <code>next</code>, <code>last</code> and <code>redo</code> were C++ exceptions. N-Queens at N=10 threw about half a million times and spent some 90% of its profile unwinding. They became a thread-local flag with a per-activation frame counter; only a jump that crosses a closure or a builtin's callback still throws. N=8 went from 0.69 s to 0.09 s, N=10 from 16.0 s to 1.81 s, and Life from 2.18 s to 1.31 s.</li>
+  <li><time>11 Jul</time><b>Rats re-reduced.</b> The Mandelbrot demo went from 6.83 s to 0.32 s. <a href="../numbers/">The numbers chapter</a> tells that one.</li>
+  <li><time>11 Jul</time><b>Plain variables skipped the special cases,</b> and loops reused one scope per iteration: loopsum −24%, fib −22%, hash −22%.</li>
+  <li><time>12 Jul</time><b>An array read copied the value three times.</b> <code>@a[$i]</code> copied a value of about 300 bytes on every read. The copy constructor was 98% of Brainfuck's profile. A pointer fast path took it from 0.29 s to 0.01 s.</li>
+  <li><time>19 Jul</time><b>A function object per iteration.</b> A <code>std::function</code> allocated on every loop iteration: loopsum 227 → 190 ms. The benchmark gate gained its loop and hash kernels.</li>
+</ul>
+
+<h2>Decided once</h2>
+<p>v1.5.0 (29 July) found <code>fib</code> walking its own body about 2.7 million times, through an allocating callback, to decide whether any declaration needed hoisting. The answer never changes, so it is now decided once per block and stored on the tree node. fib went from 911 to 831 ms. That became a pattern: a question whose answer depends only on the program is answered once and remembered on the node. When the engine went parallel, those answers became atomics that are decided once (<a href="../parallel/">the parallel chapter</a>).</p>
+
+<h2>A campaign ranked by the profile</h2>
+<p>v1.5.1 changed no behaviour at all; Roast was identical byte for byte. Five candidates were ranked from a profile. Three landed, one was measured and dropped, and one was measured and never attempted.</p>
+<ul>
+  <li><b>A call's argument vector is moved, not copied:</b> −9% on call-heavy code, from four lines. It was found because the call path accounted for 514 of about 580 allocation samples.</li>
+  <li><b>The invocant is passed by reference,</b> not copied to serve four arms out of 352: −3.4%.</li>
+  <li><b>Rarely used scope containers are created on demand:</b> a scope went from 256 to 72 bytes, −2.4%.</li>
+</ul>
+<p>fib: 903.3 → 744.1 ms. Slot-indexed variables were billed as the biggest architectural win of all, but measured a ceiling of about 4% and were set aside. Three weeks later, with the rest of the frame work done, they took loopsum down 34% (<a href="../values/">the next speed chapter</a>).</p>
+
+<h2>Shapes</h2>
+<p>v1.7.0 (1 August) taught the two hottest evaluators to recognise four syntactic shapes: <code>$var OP literal</code>, <code>literal OP $var</code>, <code>$var OP $var</code>, and <code>@arr[$var]</code> or <code>@arr[literal]</code>. The verdict is recorded on the node, and the path skips what the general case must do. <code>$a OP $b</code> −18.3%, <code>$a OP 1</code> −17.7%, fib −11.7%, <code>@a[$i]</code> −8.7%.</p>
+
+<h2>Measured and not done</h2>
+<ul>
+  <li><b>Constant folding</b> found 37 foldable sites in 51,353 nodes across 48 real programs.</li>
+  <li><b>A hash map for method dispatch:</b> 56% of the arms dispatch on the invocant's type, and one lookup costs about as much as 19 of the name compares it would replace.</li>
+  <li><b>A register IR</b> instead of the tree (8 August): dispatch is under 1% of a node visit. Re-measured in September, dispatch cost 0.32 ns against a node visit of 46 to 85 ns.</li>
+  <li><b>The gate cried wolf once.</b> fib read +27% because background processes had saturated the machine. Since then the old and new binaries are interleaved.</li>
+</ul>

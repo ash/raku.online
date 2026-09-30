@@ -1,0 +1,34 @@
+<p class="lede">Every number on these pages comes from a tool: the Roast harness, the module battery, the benchmark runner, the documentation sweep. In late August the tools themselves were put under review, and what that found changed how every figure since has been taken.</p>
+
+<div class="pc-stats">
+  <div><b>7</b><span>release gates in v3.21.0, all green over a hash function returning wrong answers</span></div>
+  <div><b>8 / 8</b><span>planted defects caught once every gate had to prove it could fail</span></div>
+  <div><b>25</b><span>more defects found by reviewing the instruments in v3.23.0</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>Before v3.22.0 a green gate was taken on trust. From v3.22.0 on, a gate counts only after it has been shown to go red on a defect planted for it. The gate is always the list of files that pass, never the count.</div>
+
+<ul class="pc-dates">
+  <li><time>9 Aug · v3.0.1</time><b>The procedure, run.</b> v3.0.0 had been tagged without running the written release procedure. Running it produced lower figures, and they were published: 197,080 tests where v3.0.0 had claimed 197,191, and 12–16 timeouts a run where the notes had claimed 5. It also found that three of the five platform binaries came from the wrong commit.</li>
+  <li><time>27 Aug · v3.20.0</time><b>A figure corrected in the open.</b> The release-day tally double-counted an interleaved log and published 97 of 105 for the module battery. The measured figure was 48 of 59, two below the release before. The notes now say so.</li>
+  <li><time>29 Aug · v3.21.0</time><b>All seven gates passed, and the release shipped a wrong answer.</b> <code>Digest</code>'s RIPEMD returned incorrect hashes for every input. Its constant table was built with 5 entries instead of 80. One gate of seven saw it, and the first diagnosis blamed <code>.flat</code>. Checked against Rakudo, that was wrong: the fault was in binding.</li>
+  <li><time>29 Aug · v3.22.0</time><b>The instruments, fixed and then proved.</b> Six of the seven gates had a defect of their own. Each was fixed, and then each was given a planted fault to catch.</li>
+  <li><time>29 Aug · v3.23.0</time><b>The re-baseline.</b> Reviewing the tools before re-measuring through them found twenty-five more defects, three of which would have corrupted that release's own numbers. It also found that "8 of 8" had been a correct count but an incorrect claim: the conformance gate had no red path at all.</li>
+  <li><time>29 Sep · v5.0.0</time><b>The battery had been comparing Raku++ with itself.</b> The battery runs each distribution's suite under both engines. It started its reference engine by the name <code>raku</code>, and on the machine of record that name had meant Raku++ since 12 September. Against Rakudo, the release candidate had broken eleven distributions. Ten were fixed before the tag.</li>
+</ul>
+
+<h2>What the instruments got wrong</h2>
+<ul>
+  <li><b>The harness corrupted its own status lines.</b> A child process's stderr (14,026 lines of it) was spliced through four <code>[PASS]</code> lines, so four files a run lost their path and fell out of the list. The list is now written as data, not scraped from a log.</li>
+  <li><b>A fork storm that passed.</b> A compiled binary under test re-ran itself: 1,253 processes at load average 450, and the gate reported PASSED.</li>
+  <li><b>A comparison against itself, in miniature.</b> The battery compared a run against the file it had just written, so it reported "no regression" while <code>Digest</code> went from 4 of 4 to 3 of 4.</li>
+  <li><b>A dashboard that published 638 while the tag said 643.</b> Bare table cells were read by a script that could not tell which number was which. A figure checker now reads the release notes the way a person would.</li>
+</ul>
+
+<h2>How a figure is taken now</h2>
+<ul>
+  <li><b>The list, not the count.</b> The gate is the sorted list of files that pass completely, and it must have no removals. The count is the headline; the list is the check.</li>
+  <li><b>Say what is being measured.</b> Three different <code>rakupp</code> binaries once answered on the same PATH. Every run now records which binary and which Rakudo it used.</li>
+  <li><b>Run alone.</b> Timing-sensitive files time out on a loaded machine. Gates run with nothing else beside them, and a release quotes the profile that repeats across runs, not the best one. In v3.7.0, five passes each dropped a different file to a timeout; the union of their lists was the figure, and the diff against the release before was empty.</li>
+  <li><b>Interleave, then compare.</b> A performance A/B runs the old and new binaries in turn (A, B, A, B…) on the same machine, so both see the same conditions.</li>
+</ul>
