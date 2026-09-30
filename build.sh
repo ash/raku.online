@@ -32,6 +32,16 @@ build_tour() {
     cp -R "$ROOT/sites/tour/out" "$WWW/tour"
 }
 
+# Film: Raku++ Internals, one mechanism per animated episode. The scenes and
+# scripts are read from the rakupp checkout (docs/film, or $RAKUPP_FILM); the
+# narration audio is sites/film/audio, written there by rakupp's voice.py.
+build_film() {
+    echo "film -> www/film"
+    ( cd "$ROOT/sites/film" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/film"
+    cp -R "$ROOT/sites/film/out" "$WWW/film"
+}
+
 # Pace: the history of Raku++ in chapters. Its charts read out/data.json, which
 # build.raku cuts from the spec dashboard's data, so the two plot the same history.
 build_pace() {
@@ -175,7 +185,7 @@ check_shell() {
                 "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
                 "$WWW/deep/index.html" \
                 "$WWW/modules/index.html" "$WWW/grid/index.html" "$WWW/map/index.html" \
-                "$WWW/in-use/index.html" \
+                "$WWW/in-use/index.html" "$WWW/film/index.html" \
                 "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
         [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
         grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
@@ -194,9 +204,9 @@ check_frozen() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/film" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|pace|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -220,14 +230,15 @@ case "${1:-all}" in
     map)       build_theme; build_map ;;
     faq)       build_faq ;;
     pace)      build_pace ;;
+    film)      build_film ;;
     cookbook)  build_cookbook ;;
     book)      build_book ;;
     deep)      build_deep ;;
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_pace; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|pace|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_pace; build_film; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers

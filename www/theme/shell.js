@@ -37,6 +37,9 @@
     // Pace is the project's history, chapter by chapter, so it opens the reading
     // shelf: the story first, then the books.
     { href: '/pace/',   label: 'Pace',   hue: 'pace'   },
+    // Film sits beside Pace: Pace tells how the engine got here, Film shows how
+    // one part of it works, one mechanism per episode.
+    { href: '/film/',   label: 'Film',   hue: 'film'   },
     { href: '/book/',   label: 'Book',   hue: 'book'   },
     // Raku Behind the Docs: the verified-behaviour book, built in its own
     // repository and copied in by `build.sh deep`. Beside Book, the other book.

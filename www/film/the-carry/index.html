@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Carry — Raku++ Internals</title>
+<meta name="description" content="What happens when an Int outgrows its 64-bit word: the overflow check, the BigInt and its base-10⁹ limbs, and the LimbVec that keeps four of them inline.">
+<script>window.__SITE_BASE='/film';</script>
+<script src="/theme/boot.js?v=d7c725f7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=d7c725f7">
+<link rel="stylesheet" href="/theme/shell.css?v=d7c725f7">
+<link rel="stylesheet" href="/film/film.css?v=5336d944">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content film-page">
+<p class="film-eyebrow"><a href="/film/">Raku++ Internals</a> · Episode 3</p><h1>The Carry</h1><p class="tagline">What happens when an Int outgrows its 64-bit word: the overflow check, the BigInt and its base-10⁹ limbs, and the LimbVec that keeps four of them inline.</p>
+<div class="film">
+  <div class="film-screen" id="screen" title="Click to play or pause">
+    <svg id="sv" viewBox="0 0 1600 900" role="img" aria-label="Animated explainer: how Raku++ stores integers, from a machine word to a BigInt with inline limbs">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a92ab"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f4b73f"/></marker>
+      </defs>
+      <g id="stage"></g>
+    </svg>
+    <button id="bigplay" class="film-bigplay" type="button"><span aria-hidden="true">▶</span> Play with narration</button>
+  </div>
+  <p class="film-cap" id="cap" aria-live="polite"></p>
+  <div class="film-bar">
+    <button id="play" type="button">Play</button>
+    <button id="prev" type="button" aria-label="Previous chapter">◀︎</button>
+    <button id="next" type="button" aria-label="Next chapter">▶︎</button>
+    <div class="film-prog" id="prog" tabindex="0" role="slider" aria-label="Playback position" aria-valuemin="0"><div class="fill" id="fill"></div></div>
+    <button id="vo" type="button" aria-pressed="true">Narration on</button>
+    <span class="film-clock" id="clock">0:00</span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Style</span>
+    <div class="film-pills" id="styles" role="group" aria-label="Narration style"></div>
+    <span class="film-note" id="stylenote"></span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Speed</span>
+    <div class="film-pills" id="speeds" role="group" aria-label="Playback speed"></div>
+  </div>
+  <ol class="film-chap" id="chap"></ol>
+  <p class="film-src">Drawn from commit <code>b81c74fd</code>, <code>src/BigInt.h</code> (LimbVec), <code>src/Value.h</code> (Value::bigint) and <code>src/IntOps.h</code> (add_ovf). Narrated by <span id="credit"></span> (ElevenLabs). Space plays and pauses, the arrow keys change chapters.</p>
+</div>
+
+<nav class="film-pn" aria-label="Previous and next episode"><a class="prev" href="/film/die-without-throwing/"><span>← Episode 2</span>Die Without Throwing</a><a class="next" href="/film/take-and-wait/"><span>Episode 4 →</span>Take, and Wait</a></nav>
+<footer>
+<span>Each film is drawn from the plans, commits and code in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, where its scenes and scripts live under <code>docs/film</code>.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/pace/">Pace</a>, the project's history.</span>
+</footer>
+</div>
+</main>
+<script>window.FILM_VO = {"credit":"George and Alice","styles":[{"id":"casual","label":"Casual","note":"a friendlier, rewritten script","src":"casual.mp4","clips":[[0.0,5.04],[5.24,8.96],[14.4,7.52],[22.12,5.6],[27.92,6.88],[35.0,4.48],[39.68,3.2],[43.08,8.16],[51.44,7.28],[58.92,4.8],[63.92,8.08],[72.2,5.12],[77.52,5.52],[83.24,5.36],[88.8,3.44],[92.44,5.28],[97.92,2.64],[100.76,9.6],[110.56,7.36],[118.12,7.28],[125.6,6.72],[132.52,5.84],[138.56,5.76],[144.52,8.64],[153.36,3.76],[157.32,4.56],[162.08,5.84],[168.12,6.08],[174.4,2.08],[176.68,6.8],[183.68,5.44],[189.32,6.72],[196.24,2.72],[199.16,6.4],[205.76,4.24],[210.2,8.24],[218.64,4.88]],"subs":["Welcome to Raku++ Internals. Episode 3: The Carry.","In Raku, an Int never overflows. Ever. So what does that ask of the interpreter? And how did we make it cheaper?","Let’s start small. A small Int lives right inside the Value, in one 64-bit machine word.","Adding two of them is one CPU instruction, plus a quick check for overflow.","No overflow? Then no allocation, nothing. And that’s what happens almost all the time.","Now let’s be difficult. Take the biggest word there is, and add one.","The overflow check trips, and the fast path gives up.","So the general path takes over. It works the answer out with 128-bit arithmetic, or as a BigInt.","And here’s the thing: the answer is still just an Int. The type never changes. Only where the number lives.","So what is a BigInt? It’s a sign, plus a list of limbs.","And a limb here is nine decimal digits, packed into a 32-bit number. So the base is one billion.","The lowest limb comes first. 2⁶³ needs three of them.","And the moment a result fits in 64 bits again, it moves back into the word.","But a BigInt doesn’t fit inside the Value. So it hangs off the Value’s cold block.","The BigInt itself is a shared object, out on the heap.","And its limbs used to live in a std::vector. Which is another heap block.","Even for a number that’s just one limb long.","Now, guess what’s made of BigInts? Every decimal number you write in Raku is a Rat. And a Rat is two BigInts.","So 0.01 × 7 built two whole vectors, each holding a single limb.","In the rats benchmark, that added up to ten allocations. Every single time round the loop.","So here’s the fix: a vector with room for four limbs, built right in. It’s called LimbVec.","It’s 24 bytes. Exactly the same size as the std::vector it replaced.","Sixteen of those bytes hold the four limbs. The other eight keep the count and the capacity.","Four limbs is 36 digits. So any number under 10³⁶ keeps its limbs right inside. No allocation.","And if a number needs a fifth limb? Then it spills.","The capacity doubles to eight, and the limbs get copied out to the heap.","How does it know where its limbs are? It just looks at the capacity. Nothing else.","And once it has spilled, it stays on the heap, even if the number gets smaller again.","Of course, not everything changed.","A native int never turns into a BigInt. It wraps around at 64 bits, just like in Rakudo.","Really big numbers, 10³⁶ and up, still keep their limbs on the heap.","And every Rat still carries its cold block and two shared pointers. That part is still to do.","So, back to our loop. Same numbers.","Allocations per iteration in the rats benchmark: ten, down to six.","The rats and bigint benchmarks got about seven percent faster.","And the answers didn’t change one bit. Three thousand rounds of random arithmetic matched the previous build, and Rakudo.","Next time: a block of code that can stop halfway through, and wait."]},{"id":"enterprise","label":"Enterprise","note":"a documentary read of the original script","src":"enterprise.mp4","clips":[[0.0,3.994],[4.194,7.198],[11.592,5.712],[17.504,4.923],[22.627,3.855],[26.681,1.997],[28.878,3.344],[32.422,5.944],[38.566,4.783],[43.549,2.368],[46.118,6.084],[52.402,4.83],[57.431,6.269],[63.901,4.783],[68.884,3.483],[72.567,4.133],[76.9,3.019],[80.119,5.433],[85.752,5.666],[91.618,5.573],[97.391,4.365],[101.956,3.994],[106.15,4.923],[111.272,6.502],[117.974,2.554],[120.728,4.04],[124.969,5.387],[130.556,5.016],[135.771,1.95],[137.922,5.991],[144.112,4.412],[148.724,5.526],[154.45,1.625],[156.276,4.69],[161.166,4.272],[165.639,7.477],[173.316,3.901]]}]};</script>
+<script src="/film/film.js?v=7dd585d0"></script>
+<script src="scenes.js?v=da13255f"></script>
+<script src="/theme/shell.js?v=d7c725f7" defer></script>
+</body>
+</html>

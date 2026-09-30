@@ -39,6 +39,7 @@ program still runs in a fraction of a second:
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
 | `/cookbook/` | The Cookbook — whole tasks worked end to end; the programs are linked to the rakupp repo, not copied here. The site bar calls it **Cook** | generated from `sites/cookbook/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
+| `/film/` | Short narrated films, one per mechanism of the interpreter (the pad, errors without C++ throws, big integers, gather as a coroutine). Scenes, scripts and subtitles come from `rakupp/docs/film`; the narration audio lives here, in `sites/film/audio/` | generated from `sites/film/` |
 | `/modules/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/modules/` |
 | `/modules/ecosystem/` | Every distribution in the REA index and how each one ran under Raku++ | generated from `sites/modules/` |
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
@@ -135,6 +136,11 @@ history is intact.
 
 # the book, likewise — chapters and the built PDF
 ./sites/book/sync.sh ~/raku++
+
+# the films read their scenes and scripts straight from rakupp/docs/film (or
+# $RAKUPP_FILM); the audio is sites/film/audio, written by rakupp's
+# docs/film/tools/voice.py. The build stops if a script and its audio disagree.
+./build.sh film
 
 # the handbook's examples need the modules INSTALLED, so they are checked on
 # demand rather than on every build — run this before publishing a change

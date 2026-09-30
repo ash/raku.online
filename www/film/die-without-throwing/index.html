@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die Without Throwing — Raku++ Internals</title>
+<meta name="description" content="How an error reaches its CATCH as a value instead of a C++ exception: the HandedError, the handOff slot, and a default that finishes by setting a flag.">
+<script>window.__SITE_BASE='/film';</script>
+<script src="/theme/boot.js?v=d7c725f7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=d7c725f7">
+<link rel="stylesheet" href="/theme/shell.css?v=d7c725f7">
+<link rel="stylesheet" href="/film/film.css?v=5336d944">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content film-page">
+<p class="film-eyebrow"><a href="/film/">Raku++ Internals</a> · Episode 2</p><h1>Die Without Throwing</h1><p class="tagline">How an error reaches its CATCH as a value instead of a C++ exception: the HandedError, the handOff slot, and a default that finishes by setting a flag.</p>
+<div class="film">
+  <div class="film-screen" id="screen" title="Click to play or pause">
+    <svg id="sv" viewBox="0 0 1600 900" role="img" aria-label="Animated explainer: how Raku++ hands an error to its CATCH without a C++ throw">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a92ab"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f4b73f"/></marker>
+      </defs>
+      <g id="stage"></g>
+    </svg>
+    <button id="bigplay" class="film-bigplay" type="button"><span aria-hidden="true">▶</span> Play with narration</button>
+  </div>
+  <p class="film-cap" id="cap" aria-live="polite"></p>
+  <div class="film-bar">
+    <button id="play" type="button">Play</button>
+    <button id="prev" type="button" aria-label="Previous chapter">◀︎</button>
+    <button id="next" type="button" aria-label="Next chapter">▶︎</button>
+    <div class="film-prog" id="prog" tabindex="0" role="slider" aria-label="Playback position" aria-valuemin="0"><div class="fill" id="fill"></div></div>
+    <button id="vo" type="button" aria-pressed="true">Narration on</button>
+    <span class="film-clock" id="clock">0:00</span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Style</span>
+    <div class="film-pills" id="styles" role="group" aria-label="Narration style"></div>
+    <span class="film-note" id="stylenote"></span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Speed</span>
+    <div class="film-pills" id="speeds" role="group" aria-label="Playback speed"></div>
+  </div>
+  <ol class="film-chap" id="chap"></ol>
+  <p class="film-src">Drawn from commit <code>9cc30857</code>, <code>src/Interpreter.h</code> (HandedError), <code>src/InterpreterCore.cpp</code> (execBlockFull) and <code>src/InterpreterModules.cpp</code> (execStmtHanding, runBlockCatch). Narrated by <span id="credit"></span> (ElevenLabs). Space plays and pauses, the arrow keys change chapters.</p>
+</div>
+
+<nav class="film-pn" aria-label="Previous and next episode"><a class="prev" href="/film/the-pad/"><span>← Episode 1</span>The Pad</a><a class="next" href="/film/the-carry/"><span>Episode 3 →</span>The Carry</a></nav>
+<footer>
+<span>Each film is drawn from the plans, commits and code in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, where its scenes and scripts live under <code>docs/film</code>.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/pace/">Pace</a>, the project's history.</span>
+</footer>
+</div>
+</main>
+<script>window.FILM_VO = {"credit":"George and Alice","styles":[{"id":"casual","label":"Casual","note":"a friendlier, rewritten script","src":"casual.mp4","clips":[[0.0,6.56],[6.76,6.48],[13.44,5.52],[19.16,5.6],[24.96,8.16],[33.32,4.4],[37.92,1.92],[40.04,5.44],[45.68,4.08],[49.96,4.8],[54.96,7.36],[62.52,7.2],[69.92,11.44],[81.56,5.28],[87.04,2.24],[89.48,7.84],[97.52,5.28],[103.0,7.04],[110.24,4.0],[114.44,4.32],[118.96,6.64],[125.8,7.76],[133.76,6.08],[140.04,7.84],[148.08,6.16],[154.44,7.92],[162.56,5.52],[168.28,5.44],[173.92,6.96],[181.08,3.44],[184.72,3.2],[188.12,3.44],[191.76,5.68],[197.64,4.56],[202.4,5.76],[208.36,2.48],[211.04,2.56],[213.8,3.36],[217.36,6.16],[223.72,4.0]],"subs":["Welcome back to Raku++ Internals. Episode 2: Die Without Throwing.","When your code dies, the error has to get from there to whoever handles it. So how does it travel?","Meet a loop from Roast’s catch.t. It dies half a million times.","The inner CATCH doesn’t match anything. The outer one catches it with default.","Under Raku++, this file took 37 seconds. And the Roast harness only gives each file 10.","Here’s why. Every lap threw four C++ exceptions.","One for the die itself.","Then two more, just to get out of the inner block, because its CATCH didn’t want the error.","And one more for default, because it also left its handler by throwing.","Half a million laps. That’s two million throws.","And a C++ throw isn’t cheap. On a Mac with Apple silicon, it’s about 20 µs.","None of that time is Raku. It’s the unwinder, walking back up the stack, one frame at a time.","And for every frame, it reads a table of call sites, line by line. exec’s table has 725 entries. eval’s has 904.","So the answer wasn’t a faster throw. It was fewer throws.","Let’s watch the old road.","die throws. The inner block catches it and runs its CATCH. Nope, no match.","So it rethrows from inside its own handler, and its own catch-all grabs it again.","Which ran LEAVE a second time, after the scope was already closed. That was a bug, by the way.","Then one more rethrow, and finally the outer default takes it.","So here’s the idea. What if an error were just a value?","A HandedError holds the error, plus the original C++ exception if there was one.","And each nested block gets a slot from its parent, called handOff. It can drop the error there instead of throwing it.","Let’s trace one lap. The inner block runs each statement through execStmtHanding.","It spots a statement that’s nothing but a call to die. No user-defined die, no wrapper. Good.","So dieError builds the error, and it lands in the block’s own slot. Nothing gets thrown.","runBlockCatch checks the inner CATCH. No match. LEAVE runs. Once, this time.","Then the error slides into the handOff slot and goes back to the parent as a plain return value.","The outer block finds the error waiting in its slot and runs its own CATCH.","runBlockCatch marks this frame as the given frame, so default can finish just by setting a flag.","It’s the same trick the given statement was already using.","C++ throws for this lap? Zero.","Now, this only works inside a block’s own statement loop.","A die inside a routine you called, or inside a try? That still throws.","Same for a die that’s part of a bigger expression, like die if something.","And if nobody nearby handles the error, it’s thrown exactly once, from the outermost block.","So, same loop. Same errors.","Before: four throws, every lap.","After: a value, a slot, and a flag.","And catch.t went from 37 seconds to 0.42.","Next time: what happens when a number gets too big for the machine?"]},{"id":"enterprise","label":"Enterprise","note":"a documentary read of the original script","src":"enterprise.mp4","clips":[[0.0,4.644],[4.844,6.734],[11.778,4.365],[16.343,5.155],[21.698,7.291],[29.189,3.483],[32.872,1.579],[34.651,4.551],[39.402,3.344],[42.946,2.647],[45.793,5.433],[51.426,5.341],[56.967,9.706],[66.873,2.415],[69.488,1.486],[71.174,4.923],[76.296,5.155],[81.651,5.201],[87.053,3.715],[90.968,4.412],[95.58,6.223],[102.002,6.78],[108.983,5.016],[114.198,6.502],[120.9,5.248],[126.347,3.204],[129.752,5.387],[135.339,4.226],[139.765,6.734],[146.699,3.762],[150.66,2.926],[153.786,2.74],[156.726,4.133],[161.059,4.365],[165.624,5.851],[171.676,1.486],[173.362,1.765],[175.327,2.694],[178.22,4.644],[183.064,4.226]]}]};</script>
+<script src="/film/film.js?v=7dd585d0"></script>
+<script src="scenes.js?v=3618be9b"></script>
+<script src="/theme/shell.js?v=d7c725f7" defer></script>
+</body>
+</html>

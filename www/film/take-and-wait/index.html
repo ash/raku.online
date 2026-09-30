@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Take, and Wait — Raku++ Internals</title>
+<meta name="description" content="How a gather block stops at a take and resumes later: a stack of its own, a few lines of assembly to switch to it, and a Seq that can be read only once.">
+<script>window.__SITE_BASE='/film';</script>
+<script src="/theme/boot.js?v=d7c725f7"></script>
+<link rel="stylesheet" href="/theme/base.css?v=d7c725f7">
+<link rel="stylesheet" href="/theme/shell.css?v=d7c725f7">
+<link rel="stylesheet" href="/film/film.css?v=5336d944">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content film-page">
+<p class="film-eyebrow"><a href="/film/">Raku++ Internals</a> · Episode 4</p><h1>Take, and Wait</h1><p class="tagline">How a gather block stops at a take and resumes later: a stack of its own, a few lines of assembly to switch to it, and a Seq that can be read only once.</p>
+<div class="film">
+  <div class="film-screen" id="screen" title="Click to play or pause">
+    <svg id="sv" viewBox="0 0 1600 900" role="img" aria-label="Animated explainer: how Raku++ runs gather blocks as coroutines">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a92ab"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f4b73f"/></marker>
+      </defs>
+      <g id="stage"></g>
+    </svg>
+    <button id="bigplay" class="film-bigplay" type="button"><span aria-hidden="true">▶</span> Play with narration</button>
+  </div>
+  <p class="film-cap" id="cap" aria-live="polite"></p>
+  <div class="film-bar">
+    <button id="play" type="button">Play</button>
+    <button id="prev" type="button" aria-label="Previous chapter">◀︎</button>
+    <button id="next" type="button" aria-label="Next chapter">▶︎</button>
+    <div class="film-prog" id="prog" tabindex="0" role="slider" aria-label="Playback position" aria-valuemin="0"><div class="fill" id="fill"></div></div>
+    <button id="vo" type="button" aria-pressed="true">Narration on</button>
+    <span class="film-clock" id="clock">0:00</span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Style</span>
+    <div class="film-pills" id="styles" role="group" aria-label="Narration style"></div>
+    <span class="film-note" id="stylenote"></span>
+  </div>
+  <div class="film-row">
+    <span class="film-lbl">Speed</span>
+    <div class="film-pills" id="speeds" role="group" aria-label="Playback speed"></div>
+  </div>
+  <ol class="film-chap" id="chap"></ol>
+  <p class="film-src">Drawn from commit <code>0d048722</code>, <code>docs/dev/plans/ROAST-TRACKS-PLAN.md</code>, <code>src/Coro.cpp</code> and <code>src/InterpreterOperators.cpp</code> (gatherPull, gatherTakeYield). Narrated by <span id="credit"></span> (ElevenLabs). Space plays and pauses, the arrow keys change chapters.</p>
+</div>
+
+<nav class="film-pn" aria-label="Previous and next episode"><a class="prev" href="/film/the-carry/"><span>← Episode 3</span>The Carry</a></nav>
+<footer>
+<span>Each film is drawn from the plans, commits and code in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, where its scenes and scripts live under <code>docs/film</code>.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/pace/">Pace</a>, the project's history.</span>
+</footer>
+</div>
+</main>
+<script>window.FILM_VO = {"credit":"George and Alice","styles":[{"id":"casual","label":"Casual","note":"a friendlier, rewritten script","src":"casual.mp4","clips":[[0.0,5.92],[6.12,6.8],[13.12,4.48],[17.8,2.88],[20.88,6.32],[27.4,5.44],[33.04,4.4],[37.64,6.72],[44.56,4.0],[48.76,9.92],[58.88,5.04],[64.12,4.8],[69.12,3.84],[73.16,7.2],[80.56,2.64],[83.4,4.8],[88.4,4.0],[92.6,6.16],[98.96,7.6],[106.76,8.0],[114.96,4.72],[119.88,3.36],[123.44,7.52],[131.16,2.96],[134.32,7.36],[141.88,7.28],[149.36,6.08],[155.64,2.0],[157.84,3.68],[161.72,7.6],[169.52,5.84],[175.56,5.36],[181.12,7.12],[188.44,6.56],[195.2,11.28],[206.68,4.96],[211.84,4.4],[216.44,7.28],[223.92,6.96],[231.08,10.0],[241.28,2.72]],"subs":["Welcome to Raku++ Internals. Episode 4: Take, and Wait.","Today: a block of code that can stop right in the middle, and carry on later from exactly the same spot.","Here’s an endless gather. It counts up forever, and takes each number.","The loop reads three of them, and stops.","Now look at the output. They take turns! Made 1, got 1. Made 2, got 2.","That’s not how it used to work. Raku++ ran the block the moment you wrote gather.","Up to 64 takes, or 20 milliseconds, whichever came first.","And if the block finished inside that probe, it was simply eager. Side effects and all.","Needed more elements? Well, there was no way to resume.","So the block ran again. From the top. With a bigger cap: 64, then 128, then 256.","A snapshot put back any variables it had changed, before each rerun.","Recursive gathers nested 100 deep? Over a minute.","So here’s the fix: give the block a stack of its own.","256 MiB are reserved. But the kernel only hands out pages as they’re actually touched.","A guard region at the bottom catches an overflow.","And finished stacks go back into a pool. Up to 16 per thread.","Jumping between the two stacks takes just a few lines of assembly.","Save the registers a function has to preserve, swap the stack pointer, and load the other side’s.","No ucontext, no threads. A resume and a yield, together, take about 42 nanoseconds.","Why not ucontext? macOS deprecates it, and it makes a system call on every single switch.","Let’s follow one element. The for loop asks the Seq for one more.","gatherPull notes how many are wanted, and resumes the block.","The block runs until take has filled what was asked for, and then it yields. Right there, in the middle of its loop.","And the next pull picks up exactly where it stopped.","There’s a catch, though. The interpreter keeps its running state per thread, so every switch has to swap it.","Field by field. Swapping the whole structure in one go cost 40% of a loop over a gather!","And dynamic variables look things up through whoever is pulling. Just like in Rakudo.","But what if nobody ever pulls again?","When the Seq is dropped, the sleeping block goes to a graveyard.","The next gather on that thread wakes it up once, only to throw StopGatherEx at it, so its frames unwind cleanly.","Its LEAVE phasers stay quiet, just like in Rakudo, and the stack goes back to the pool.","Oh, and one more change: a Seq can now be read only once.","The first for marks it consumed. Try a second one, and you get X::Seq::Consumed.","Things that only look, like elems or indexing, just mark it cached. They never complain.","Now, the switch needs its own few lines for each kind of processor. Raku++ has them for 64-bit ARM and x86, and uses Fibers on Windows.","Raku.js, running as WebAssembly, still uses the old probe.","And a gather that’s started producing can only be read on the thread that started it.","So, how did it turn out? Big gathers got 1.7 to 2.7 times faster.","Nested recursive gathers, 100 deep: from over a minute, down to 20 milliseconds.","And tiny gathers now pay a little for starting a coroutine. 60,000 of them went from 100 to 120 milliseconds.","That’s the end of this episode. Thanks for watching!"]},{"id":"enterprise","label":"Enterprise","note":"a documentary read of the original script","src":"enterprise.mp4","clips":[[0.0,4.876],[5.076,6.269],[11.546,4.505],[16.25,2.368],[18.819,6.827],[25.845,4.644],[30.689,4.18],[35.069,4.783],[40.052,3.019],[43.271,8.591],[52.062,4.644],[56.906,3.947],[61.054,2.368],[63.622,5.666],[69.488,3.019],[72.706,3.715],[76.621,3.715],[80.537,5.944],[86.681,7.663],[94.544,7.152],[101.895,3.715],[105.811,3.715],[109.726,5.759],[115.684,2.786],[118.671,4.783],[123.654,6.455],[130.309,4.923],[135.432,1.579],[137.211,3.669],[141.079,6.827],[148.106,4.69],[152.997,3.901],[157.098,4.969],[162.267,6.316],[168.782,9.985],[178.967,4.83],[183.997,4.458],[188.655,4.133],[192.988,6.502],[199.69,8.266],[208.156,2.926]]}]};</script>
+<script src="/film/film.js?v=7dd585d0"></script>
+<script src="scenes.js?v=6fa098a9"></script>
+<script src="/theme/shell.js?v=d7c725f7" defer></script>
+</body>
+</html>
