@@ -314,7 +314,8 @@ build_sitemap() {
     {
         echo '<?xml version="1.0" encoding="UTF-8"?>'
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        find "$WWW" -name index.html | LC_ALL=C sort | while read -r f; do
+        # www/film is built for local preview only (see .gitignore), so no URL.
+        find "$WWW" -path "$WWW/film" -prune -o -name index.html -print | LC_ALL=C sort | while read -r f; do
             grep -qi 'http-equiv="refresh"' "$f" && continue
             rel="${f#"$WWW"/}"
             echo "  <url><loc>https://raku.online/${rel%index.html}</loc></url>"
