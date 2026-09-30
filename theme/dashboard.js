@@ -65,7 +65,19 @@
       // ROAST.md's git history; the % series starts only where the modern
       // "declared" denominator applies (the miner already filtered the rest).
       var dev = data.dev || [];
-      var span = dev.concat(rel);
+      // Full Roast runs between releases, as the commits that gated them
+      // recorded them (src/data/roast-readings.tsv). Each goes in at its own
+      // date, after every release or sitting of that date or earlier.
+      var readings = data.roast_readings || [];
+      var roastRel = rel.slice();
+      readings.forEach(function (p) {
+        var at = roastRel.length;
+        for (var k = 0; k < roastRel.length; k++) {
+          if ((roastRel[k].date || '9999') > p.date) { at = k; break; }
+        }
+        roastRel.splice(at, 0, p);
+      });
+      var span = dev.concat(roastRel);
       var devCount = dev.length;
       // A point between releases is a DATE, and a date can hold more than one
       // sitting — so where the generator recorded which commit was measured,
@@ -119,7 +131,8 @@
         width: 380, height: 230, maxXLabels: 5,
         tipRow: function (si, i) {
           var r = span[i];
-          return 'files: ' + fmt(r.files_pass) + (r.files_total ? ' of ' + fmt(r.files_total) : '') + preTag(i);
+          return 'files: ' + fmt(r.files_pass) + (r.files_total ? ' of ' + fmt(r.files_total) : '') + preTag(i) +
+                 (r.note ? ' · ' + r.note : '');
         }
       });
 

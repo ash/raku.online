@@ -5,10 +5,12 @@
 #   legacy   — the historical compiler (`raku prog.raku`)
 #   rakuast  — the RakuAST backend (`RAKUDO_RAKUAST=1 raku prog.raku`)
 #
-# Rakudo 2026.09 makes RakuAST the default and keeps the old one reachable as
-# RAKUDO_LEGACY=1, so from that release on this tool's two lanes swap which
-# environment variable is the interesting one. Only the lane TABLE below needs
-# editing then; nothing else here knows which backend is the default.
+# Rakudo 2026.09 makes RakuAST the default, so from that release on the two
+# lanes swap which one needs the variable: legacy is `RAKUDO_RAKUAST=0`. (The
+# RAKUDO_LEGACY=1 the announcement named does nothing in the Homebrew 2026.09
+# build.) lanes-for() picks the table by --era, and every lane is PROVED before
+# it is timed: a variable Rakudo ignores gives a plausible copy of the other
+# lane, not an error, so each lane must report its own grammar.
 #
 # METHOD — the one rakudo-eras.tsv's header documents, because the numbers this
 # writes sit in the same column as the ones measured under it:
@@ -46,14 +48,22 @@
 #     --out=PATH        write the TSV rows here       (default: stdout only)
 
 constant @KERNELS = <arrayops arraypush bigint fib hash hashfill loopsum
-                     objects rats regex sortby sortnums startup strcat streq
-                     textsplit>;
+                     mainwhen multiwhere objects rats regex sortby sortnums startup
+                     strcat streq textsplit>;
 
 # lane => the env assignments its `env` invocation carries. An empty list still
 # goes through `env` (see the note above); `-u` clears an ambient setting so a
 # shell that already exported the variable cannot silently merge the two lanes.
-constant @LANES = ('legacy'  => ['-u', 'RAKUDO_RAKUAST'],
-                   'rakuast' => ['RAKUDO_RAKUAST=1']);
+sub lanes-for(Str $era --> List) {
+    $era ge '2026.09'
+        ?? ('legacy'  => ['RAKUDO_RAKUAST=0'],
+            'rakuast' => ['-u', 'RAKUDO_RAKUAST'])
+        !! ('legacy'  => ['-u', 'RAKUDO_RAKUAST'],
+            'rakuast' => ['RAKUDO_RAKUAST=1'])
+}
+
+# The grammar each lane must compile with — the proof that the switch took.
+constant %LANE-GRAMMAR = legacy => 'Perl6::Grammar', rakuast => 'Raku::Grammar';
 
 sub median(@n) { my @s = @n.sort; @s.elems %% 2 ?? (@s[@s.elems div 2 - 1] + @s[@s.elems div 2]) / 2 !! @s[@s.elems div 2] }
 
@@ -77,6 +87,7 @@ sub MAIN(Str :$rakudo = 'raku', Str :$bench, Str :$era!, Str :$released!,
     say "Rakudo modes, era $era (released $released)";
     say "  rakudo:  $rakudo";
     say "  bench:   $bench-d";
+    my @LANES = lanes-for($era);
     say "  kernels: {@kernels.elems}   lanes: {@LANES.map(*.key).join(', ')}";
     say "  method:  $rounds timed rounds x $passes passes, lanes interleaved, warm-up discarded";
     say '';
@@ -93,6 +104,14 @@ sub MAIN(Str :$rakudo = 'raku', Str :$bench, Str :$era!, Str :$released!,
 
     my %lane-env = @LANES;
     my sub lane-cmd(Str $lane, Str $path) { (|%lane-env{$lane}, $rakudo, $path) }
+
+    for @LANES -> $lane {
+        my $got = capture((|%lane-env{$lane.key}, $rakudo, '-e', 'print BEGIN $*LANG.^name')) // '(no answer)';
+        die "lane {$lane.key} compiles with $got, not {%LANE-GRAMMAR{$lane.key}} — "
+          ~ "its environment ({%lane-env{$lane.key}.join(' ')}) did not switch the frontend"
+            unless $got eq %LANE-GRAMMAR{$lane.key};
+    }
+    say "frontends: {@LANES.map({ "{.key} = {%LANE-GRAMMAR{.key}}" }).join(', ')}, each checked";
 
     my %bad;
     for @kernels -> $k {

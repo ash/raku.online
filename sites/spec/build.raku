@@ -643,12 +643,18 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <h2 class="conf-areas-title" id="roast">Roast <span>— tests passing and fully-passing files, per release</span> <a class="anchor" href="#roast" aria-label="link">#</a></h2>
     <p class="dash-note">A file counts as <em>fully passing</em> only when every
     single test in it passes — one failure anywhere and the whole file drops out
-    of the count. That strict bar is why the right-hand number is small next to
-    the 90% of individual tests passing on the left. Both series start before
-    the first tag, mined from ROAST.md's own git history — one point per day;
-    the %-series begins on Jul 10, when the current "declared" denominator was
-    defined (earlier percentages used a different counting method and would not
-    be comparable).</p>
+    of the count. That strict bar is why the right-hand line spent the summer
+    under half the suite while the left one sat above 90%, and why the two
+    weeks before v5.0.0 show on it as a climb from 705 files to 1,423 of
+    1,424. Those two weeks are full Roast runs dated between the releases, as
+    the commits they gated recorded them; ROAST.md itself was not updated until
+    the release. File counts are of the whole checkout (1,464 files) until
+    2026-09-26, of the 1,434 files Roast's <code>spectest.data</code> lists
+    from then, and of 1,424 after the Roast pull of 2026-09-28. Both series
+    start before the first tag, mined from ROAST.md's own git history — one
+    point per day; the %-series begins on Jul 10, when the current "declared"
+    denominator was defined (earlier percentages used a different counting
+    method and would not be comparable).</p>
     <div class="dash-bench" id="dash-roast" aria-live="polite">Loading…</div>
     <h2 class="conf-areas-title" id="documentation-conformance">Documentation conformance <span>— every documented example, run three ways</span> <a class="anchor" href="#documentation-conformance" aria-label="link">#</a></h2>
     <p class="dash-note">The same coloured verdicts the

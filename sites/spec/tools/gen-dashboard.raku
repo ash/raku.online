@@ -501,6 +501,7 @@ sub rakudo-at-date(%eras, Str $date, Str $mode = 'legacy' --> Hash) {
 }
 
 constant SITTINGS = 'src/data/bench-sittings.jsonl';
+constant ROAST_READINGS = 'src/data/roast-readings.tsv';
 
 sub sitting-date(Str $line --> Str) {
     $line ~~ / '"date":"' <( <-["]>+ )> '"' / ?? ~$/ !! ''
@@ -762,10 +763,34 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     }
     say "  conformance: {@conf.elems} snapshot points";
 
+    # Roast readings between releases, from the commits that gated them (see
+    # the file's header for why ROAST.md does not have them). Drawn on the two
+    # Roast charts only: they carry no benchmark, so they stay out of @entries.
+    my @readings;
+    if ROAST_READINGS.IO.e {
+        for ROAST_READINGS.IO.lines -> $line {
+            next if $line.starts-with('#') || !$line.trim;
+            my @w = $line.words;
+            next unless @w.elems >= 6;
+            my ($date, $commit, $fp, $ft, $tp, $tt) = @w[^6];
+            my $note = @w.elems > 6 ?? @w[6..*].join(' ') !! '-';
+            my @f;
+            @f.push('"tag":'    ~ json-esc(short-date($date)));
+            @f.push('"date":'   ~ json-esc($date));
+            @f.push('"commit":' ~ json-esc($commit.substr(0, 7)));
+            @f.push('"files_pass":'  ~ $fp.Int, '"files_total":' ~ $ft.Int) unless $fp eq '-';
+            @f.push('"tests_pass":'  ~ $tp.Int, '"tests_total":' ~ $tt.Int) unless $tp eq '-';
+            @f.push('"note":' ~ json-esc($note)) unless $note eq '-';
+            @readings.push('{' ~ @f.join(',') ~ '}');
+        }
+    }
+    say "  roast readings: {@readings.elems} between-release points from {ROAST_READINGS}";
+
     my $today = run-lines('git', '-C', $rakupp-repo, 'log', '-1', '--format=%as', 'HEAD').head // '';
     my $json = '{"generated":' ~ json-esc($today) ~
                ',"dev":['      ~ @dev.join(',')     ~ ']' ~
                ',"releases":[' ~ @entries.join(',') ~ ']' ~
+               ',"roast_readings":[' ~ @readings.join(',') ~ ']' ~
                ',"conformance":[' ~ @conf.join(',') ~ ']' ~
                ',"modules":['  ~ @mods.join(',')    ~ ']' ~
                ',"sweep":['    ~ @sweepj.join(',')  ~ ']}';
