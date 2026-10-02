@@ -39,6 +39,7 @@
   <nav class="sr-jump" aria-label="On this page">
     <a href="#one">One command</a>
     <a href="#brew">Homebrew</a>
+    <a href="#docker">Docker</a>
     <a href="#update">Updating</a>
     <a href="#binaries">Supported platforms</a>
     <a href="#source">From source</a>
@@ -114,8 +115,8 @@ brew install rakupp
 
 brew install --HEAD rakupp     # or: the latest main branch</code></pre>
   <p class="sr-fine" style="margin-top:.8rem">
-    Apple Silicon installs a prebuilt binary and compiles nothing; Intel builds
-    from source. Homebrew itself needs the Xcode Command Line Tools — if
+    Apple Silicon and Intel Macs both install the prebuilt universal binary and
+    compile nothing. Homebrew itself needs the Xcode Command Line Tools — if
     <code>brew install</code> asks for them, run <code>xcode-select --install</code>
     first.
   </p>
@@ -124,6 +125,39 @@ brew install --HEAD rakupp     # or: the latest main branch</code></pre>
     knows about the other: <code>brew upgrade rakupp</code> updates this one,
     <code>rakupp upgrade</code> updates that one. With both on your
     <code>PATH</code>, whichever comes first wins.
+  </p>
+</section>
+
+<!-- ============================= docker ============================= -->
+<section class="sr-sec" id="docker">
+  <p class="sr-kicker">Nothing installed</p>
+  <h2>Docker <a class="anchor" href="#docker" aria-label="link">#</a></h2>
+<pre class="native-code"><code>docker run --rm -it ghcr.io/ash/rakupp                        # the REPL
+docker run --rm ghcr.io/ash/rakupp -e 'say 6 * 7'             # a one-liner
+docker run --rm -v "$PWD:/work" ghcr.io/ash/rakupp main.raku  # a file from here</code></pre>
+  <p class="sr-fine" style="margin-top:.8rem">
+    Every release is an image, <code>ghcr.io/ash/rakupp</code>, for
+    <code>linux/amd64</code> and <code>linux/arm64</code>, so Docker on an Apple
+    Silicon Mac runs it natively. The tags are <code>latest</code>, the version
+    (<code>5.2.0</code>) and the minor (<code>5.2</code>). Everything after the
+    image name is a <code>rakupp</code> argument, and <code>/work</code> is the
+    working directory.
+  </p>
+  <p class="sr-fine">
+    The image is the release archive itself, checked against its published
+    SHA-256 and unpacked onto <code>debian:bookworm-slim</code>, so it runs
+    exactly the engine the archive does. <code>rakupp install</code> works
+    inside it; to keep modules, build on the image:
+  </p>
+<pre class="native-code"><code>FROM ghcr.io/ash/rakupp:5.2
+RUN rakupp install JSON::Fast
+COPY . /work
+CMD ["main.raku"]</code></pre>
+  <p class="sr-fine">
+    There is no C++ compiler in the image, so <code>--exe</code> needs one added
+    (<code>apt-get install g++</code>); the runtime it links is already there.
+    More in
+    <a href="https://github.com/ash/rakupp/blob/main/docs/guide/INSTALL.md#docker">INSTALL.md</a>.
   </p>
 </section>
 
