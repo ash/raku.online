@@ -21,7 +21,7 @@ program, not the collector. The program here is a file containing one
 statement, `say 1`, measured whole-process from launch to exit:
 
 ```bash
-/usr/bin/time -l rakupp floor.raku          # and the same line for `raku`
+/usr/bin/time -l rakupp floor.raku          # and the same line for `rakudo`
 ```
 
 | running `say 1` | peak footprint | max RSS |
@@ -156,7 +156,7 @@ sub outer($x) {
 }
 ```
 
-**Not in 4.0.0 and 4.0.1:** a regression makes the interpreter skip that cut
+**Not in 4.0.0 to 5.0.0:** a regression makes the interpreter skip that cut
 once `helper` has been called, so today the routine above keeps every frame it
 makes: about 1.5 KB per call, 1.5 GB over a million calls. Declaring `helper`
 at unit scope avoids it. The shapes affected are measured in

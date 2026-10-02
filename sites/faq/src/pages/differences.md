@@ -18,7 +18,7 @@ integer loops at the high. See [compiling.md](compiling.md).
 **It runs in a browser.** The same interpreter compiled to WebAssembly — no
 server, no install: <https://raku.online>.
 
-**It starts in ~2ms.** There is no runtime to boot. That is the difference
+**It starts in ~3 ms.** There is no runtime to boot. That is the difference
 between a Raku script being usable in a shell pipeline and not.
 
 **It ships a static analyser.** `rakupp --lint` reports unused variables,
@@ -114,8 +114,8 @@ without `-I lib`, and a program finds a module sitting beside it without
 
 ```sh
 cd myproject && rakupp app.raku     # finds lib/Helper.rakumod and ./Helper.rakumod
-cd myproject && raku  app.raku      # Could not find Helper
-cd myproject && raku -I. -Ilib app.raku   # …now it does
+cd myproject && rakudo app.raku     # Could not find Helper
+cd myproject && rakudo -I. -Ilib app.raku # …now it does
 ```
 
 Two consequences. A program written against Raku++ and never run elsewhere may
@@ -205,7 +205,7 @@ to load. JSON::Class was the witness.
 
 So: **detect the engine with `.name`, not with `.version`.** The number answers
 what the language does; the name answers who implements it. The era constant is
-`kOracleEra` in `src/Builtins.cpp`, and it moves when the conformance oracle
+`kOracleEra` in `src/Interpreter.h`, and it moves when the conformance oracle
 moves — not when Raku++ is released.
 
 ## The 6.e revision

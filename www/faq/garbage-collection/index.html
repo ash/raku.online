@@ -29,7 +29,7 @@
 <p>Figures below were measured on macOS arm64 (M-series), 2026-08-30, rakupp 3.23.0 against Rakudo v2026.08 / MoarVM 2026.08, with <code>/usr/bin/time -l</code>.</p>
 <h2 id="what-refcounting-buys">What refcounting buys <a class="anchor" href="#what-refcounting-buys" aria-label="link">#</a></h2>
 <p><strong>A small floor.</strong> Nothing is reserved for a heap, so the baseline is the program, not the collector. The program here is a file containing one statement, <code>say 1</code>, measured whole-process from launch to exit:</p>
-<pre class="native-code"><code class="lang-bash">/usr/bin/time -l rakupp floor.raku          # and the same line for `raku`</code></pre>
+<pre class="native-code"><code class="lang-bash">/usr/bin/time -l rakupp floor.raku          # and the same line for `rakudo`</code></pre>
 <div class="tablewrap"><table><tr><th>running <code>say 1</code></th><th>peak footprint</th><th>max RSS</th></tr><tr><td>rakupp</td><td>1.2 MB</td><td>4.2 MB</td></tr>
 <tr><td>Rakudo</td><td>92.1 MB</td><td>130.7 MB</td></tr></table></div>
 <p>Both columns because the two metrics count differently: <em>peak memory footprint</em> is what macOS charges the process, <em>maximum resident set size</em> also counts the clean pages mapped in from the binary and the shared libraries. Each wobbles a few MB between runs — Rakudo's RSS came out anywhere from 113 to 131 MB — and the gap does not.</p>
@@ -91,7 +91,7 @@
     <span class="k">my</span> <span class="k">sub</span> <span class="n">helper</span>(<span class="nv">$y</span>) { <span class="nv">$y</span> * <span class="mi">2</span> }    <span class="c1"># would otherwise retain outer's frame</span>
     <span class="n">helper</span>(<span class="nv">$x</span>) + <span class="mi">1</span>;
 }</code></pre>
-<p><strong>Not in 4.0.0 and 4.0.1:</strong> a regression makes the interpreter skip that cut once <code>helper</code> has been called, so today the routine above keeps every frame it makes: about 1.5 KB per call, 1.5 GB over a million calls. Declaring <code>helper</code> at unit scope avoids it. The shapes affected are measured in <a href="/faq/refcounting/">how reference counting works</a>.</p>
+<p><strong>Not in 4.0.0 to 5.0.0:</strong> a regression makes the interpreter skip that cut once <code>helper</code> has been called, so today the routine above keeps every frame it makes: about 1.5 KB per call, 1.5 GB over a million calls. Declaring <code>helper</code> at unit scope avoids it. The shapes affected are measured in <a href="/faq/refcounting/">how reference counting works</a>.</p>
 <p>That is the only cycle handled automatically. Cycles in <em>your</em> data are yours.</p>
 <h2 id="how-do-i-avoid-a-cycle">How do I avoid a cycle? <a class="anchor" href="#how-do-i-avoid-a-cycle" aria-label="link">#</a></h2>
 <p>Raku has no weak reference in either implementation, so the fix is structural, not a keyword:</p>
