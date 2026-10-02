@@ -102,8 +102,19 @@ sub changelog-at(Str $repo, Str $ref --> Hash) {
     my $md = show-file($repo, $ref, 'CHANGELOG.md');
     return {} unless $md;
     my %r;
+    my $minor;
     for $md.lines -> $line {
-        last if %r<files-pass>:exists && %r<tests-pass>:exists;
+        last if (%r<files-pass>:exists) && (%r<tests-pass>:exists);
+        # An entry with no table reads on into the ones below it. That is right
+        # for a patch release, which shipped its minor's engine (v3.5.1 and
+        # v3.20.1 were rebuilds), and wrong across minors: v5.1.0's entry has
+        # no table, and reading on drew v5.0.0's 1,423 files under v5.1.0's
+        # 1,424. So stop at the first entry of another X.Y; ROAST.md answers.
+        if $line ~~ / ^ '## v' (\d+ '.' \d+) '.' / {
+            $minor //= ~$0;
+            last if ~$0 ne $minor;
+            next;
+        }
         next unless $line.trim.starts-with('|');
         my @cells = $line.split('|').map(*.trim);
         next unless @cells.elems > 3;
@@ -293,7 +304,7 @@ sub startup-at(Str $repo, Str $ref --> Hash) {
         %out<rakudo> = $ms.Num if $mode eq 'Rakudo'              && !(%out<rakudo>:exists);
         %out<mutsu>  = $ms.Num if $mode eq 'mutsu'               && !(%out<mutsu>:exists);
     }
-    %out<interp>:exists && %out<native>:exists ?? %out !! {}
+    (%out<interp>:exists) && (%out<native>:exists) ?? %out !! {}
 }
 
 # ---------------------------------------------------------------------------
@@ -708,7 +719,7 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
 
     my @mods;
     for @(battery-series($battery)) -> %p {
-        my $batch = %p<batch>:exists ?? ',"batch":' ~ %p<batch> !! '';
+        my $batch = (%p<batch>:exists) ?? ',"batch":' ~ %p<batch> !! '';
         @mods.push('{"date":' ~ json-esc(%p<date>) ~ ',"n":' ~ %p<n> ~ ',"total":' ~ %p<total> ~ $batch ~ '}');
     }
     say "  modules: {@mods.elems} battery points";
