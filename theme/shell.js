@@ -41,7 +41,10 @@
     // Raku Behind the Docs: the verified-behaviour book, built in its own
     // repository and copied in by `build.sh deep`. Beside Book, the other book.
     { href: '/deep/',   label: 'Deep',   hue: 'deep'   },
-    { href: '/modules/', label: 'Modules', hue: 'eco' }
+    { href: '/modules/', label: 'Modules', hue: 'eco' },
+    // Last, as the way out of the reading rooms: where to ask when something
+    // breaks — GitHub issues, or DeepSoft's commercial support.
+    { href: '/support/', label: 'Support', hue: 'support' }
   ];
 
   // Deliberately not stamped at build time. The version that matters is the one
