@@ -150,7 +150,7 @@ sub parse-operators(Str $dir) {
             # `infix (&), infix ∩` — both belong at the same level and anchor.
             for $rendered.split(',') -> $piece {
                 my @w = $piece.trim.words;
-                next unless @w.elems >= 2 && %DOC-CATS{ @w[0] }:exists;
+                next unless @w.elems >= 2 && (%DOC-CATS{ @w[0] }:exists);
                 my $cat = @w[0];
                 my $sym = @w[1 .. *].join(' ');
                 # Disambiguating parentheticals are prose, not part of the
@@ -325,7 +325,7 @@ sub MAIN(
     spurt $out.subst(/ '.raku' $ /, '.json'),
         '{"ops":[' ~ @j.join(",\n") ~ "]}\n";
 
-    my $known = @ops.grep({ $_<rakupp>:exists && $_<rakupp> }).elems;
+    my $known = @ops.grep({ ($_<rakupp>:exists) && $_<rakupp> }).elems;
     my $levelled = @ops.grep({ $_<rank>:exists }).elems;
     say "precedence levels : {@ladder.elems}";
     say "operators         : {@ops.elems}  ($levelled placed on the ladder)";

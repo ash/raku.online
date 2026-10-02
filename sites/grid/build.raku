@@ -543,7 +543,7 @@ sub emit-atom-json(%a) {
             @extra.push: jarr([jstr('from'), jstr($from)]);
         }
         for %r.keys.sort -> $k {
-            next if %KNOWN{$k}:exists || $k.starts-with('_') || $k eq 'from';
+            next if (%KNOWN{$k}:exists) || $k.starts-with('_') || $k eq 'from';
             @extra.push: jarr([jstr($k), jstr(%r{$k}.Str)]);
         }
         @recs.push: jarr([

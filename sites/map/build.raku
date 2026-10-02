@@ -361,7 +361,7 @@ sub dump-table(@o, @e, Str $oracle, Str $engine --> Str) {
     # Merge the two key sequences, keeping each side's order: take the oracle's
     # next key unless the engine's next key is one the oracle never prints.
     while $i < @o.elems || $j < @e.elems {
-        my $k = $i < @o.elems && ($j >= @e.elems || %o{@e[$j].key}:exists) ?? @o[$i++].key !! @e[$j++].key;
+        my $k = $i < @o.elems && ($j >= @e.elems || (%o{@e[$j].key}:exists)) ?? @o[$i++].key !! @e[$j++].key;
         @keys.push($k) unless %seen{$k}++;
     }
     my @h = '<div class="map-table-wrap"><table class="map-table map-dump">',

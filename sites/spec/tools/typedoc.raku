@@ -303,7 +303,7 @@ sub MAIN(
     my @types;
     for @files -> $f {
         my %t = parse-type($f);
-        next unless %t<name>:exists && %t<name>.chars;
+        next unless (%t<name>:exists) && %t<name>.chars;
         %t<children>  = @(%children{ %t<name> } // []);
         %t<consumers> = @(%consumers{ %t<name> } // []);
         @types.push(%t);

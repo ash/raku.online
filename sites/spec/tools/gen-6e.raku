@@ -344,7 +344,7 @@ sub MAIN(Str :$rakupp = RAKUPP-DEFAULT, Str :$rakudo = RAKUDO-DEFAULT,
                 changed => ($d ne $e || $d-failed != $e-failed) ?? 1 !! 0,
                 gating => $gating,
                 status => $status, why => (%it<why> // ''),
-                rakuast => (%it<env>:exists ?? 1 !! 0),
+                rakuast => ((%it<env>:exists) ?? 1 !! 0),
             });
             say "  {%it<id>}: $status ($gating)";
         }

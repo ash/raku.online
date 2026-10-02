@@ -405,9 +405,9 @@ class Renderer {
         my @attrs = 'data-raku';
         @attrs.push('data-run') if $run;
         @attrs.push('data-stdin="' ~ esc-attr(%opts<stdin>) ~ '"')
-            if %opts<stdin>:exists && %opts<stdin> !=== True;
+            if (%opts<stdin>:exists) && %opts<stdin> !=== True;
         @attrs.push('data-rows="' ~ esc-attr(~%opts<rows>) ~ '"')
-            if %opts<rows>:exists && %opts<rows> !=== True;
+            if (%opts<rows>:exists) && %opts<rows> !=== True;
         @attrs.join(' ')
     }
 

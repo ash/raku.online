@@ -69,7 +69,7 @@ sub MAIN(
     if $inv.IO.e {
         my %i = EVAL slurp $inv;
         $ops = @(%i<ops>).elems;
-        $parsed = @(%i<ops>).grep({ $_<rakupp>:exists && $_<rakupp> }).elems;
+        $parsed = @(%i<ops>).grep({ ($_<rakupp>:exists) && $_<rakupp> }).elems;
     }
 
     # Per-type counts, compact: only the four verdicts a timeline would plot,

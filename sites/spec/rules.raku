@@ -268,7 +268,7 @@ sub op-name(Str $sym --> Str) {
     return $sym if $sym ~~ / ^ <[a..z A..Z 0..9 _ \-]>+ $ /;
     my @parts;
     for $sym.comb -> $c {
-        @parts.push(%CHARNAME{$c}:exists ?? %CHARNAME{$c} !! 'u' ~ $c.ord.base(16).lc);
+        @parts.push((%CHARNAME{$c}:exists) ?? %CHARNAME{$c} !! 'u' ~ $c.ord.base(16).lc);
     }
     @parts.join('-').subst(/ '-'+ /, '-', :g)
 }
@@ -617,9 +617,9 @@ class Renderer {
         my @attrs = 'data-raku';
         @attrs.push('data-run') if $run;
         @attrs.push('data-stdin="' ~ esc-attr(%opts<stdin>) ~ '"')
-            if %opts<stdin>:exists && %opts<stdin> !=== True;
+            if (%opts<stdin>:exists) && %opts<stdin> !=== True;
         @attrs.push('data-rows="' ~ esc-attr(~%opts<rows>) ~ '"')
-            if %opts<rows>:exists && %opts<rows> !=== True;
+            if (%opts<rows>:exists) && %opts<rows> !=== True;
         @!out.push('<pre ' ~ @attrs.join(' ') ~ '>' ~ esc($code) ~ '</pre>');
         if $expected.defined {
             @!out.push(
@@ -781,7 +781,7 @@ sub stub-body(%op, %siblings --> Str) {
 sub stub-entry(%op, %siblings --> Entry) {
     my $sym = %op<sym>;
     my $cat = %op<cat>.subst('_', ' ', :g);
-    my $status = (%op<rakupp>:exists && !%op<rakupp>) ?? 'gap' !! 'skeleton';
+    my $status = ((%op<rakupp>:exists) && !%op<rakupp>) ?? 'gap' !! 'skeleton';
     Entry.new(
         topic      => op-topic(%op),
         section    => op-section(%op),
@@ -884,7 +884,7 @@ sub collect-entries(--> Array) {
         my $p = $e.path;
         next unless $p;
         my ($meta, $) = parse-frontmatter(slurp($p), $p);
-        next unless $meta<sym>:exists && $meta<cat>:exists;
+        next unless ($meta<sym>:exists) && ($meta<cat>:exists);
         my $key = $meta<cat> ~ '|' ~ $meta<sym>;
         die "$p: no such construct in the inventory: {$meta<cat>}:<{$meta<sym>}>"
             unless %by-sym{$key}:exists;
@@ -1173,7 +1173,7 @@ sub facts-html($e --> Str) {
         'results differ from Rakudo — see the table below">Raku++ runs this — ' ~
         $differ ~ ' of ' ~ @mx.elems ~ ' results differ</span>'
     }
-    elsif %op<rakupp>:exists && %op<rakupp> {
+    elsif (%op<rakupp>:exists) && %op<rakupp> {
         '<span class="chip chip-weak" title="The spelling gets past the parser. ' ~
         'Whether it executes correctly has NOT been checked for this construct.">' ~
         'Raku++ parses this — execution unchecked</span>'
@@ -1325,7 +1325,7 @@ sub examples-html($e --> Str) {
 # example list being re-extracted (indices do not).
 sub adjudication(Str $type, Str $code) {
     my $key = $type ~ '|' ~ ($code.lines[0] // '').trim;
-    %ADJUDGED{$key}:exists ?? %(%ADJUDGED{$key}) !! Nil
+    (%ADJUDGED{$key}:exists) ?? %(%ADJUDGED{$key}) !! Nil
 }
 
 sub ruling-html($adj --> Str) {
