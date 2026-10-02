@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — parametric roles, and what role Foo[::T] means</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=ba1dadba"></script>
+<link rel="stylesheet" href="/theme/base.css?v=ba1dadba">
+<link rel="stylesheet" href="/theme/shell.css?v=ba1dadba">
+<link rel="stylesheet" href="/theme/faq.css?v=ba1dadba">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Parametric roles, and what role Foo[::T] means</h1>
+
+<p>Every snippet on this page was run on both Raku++ and Rakudo. They give identical output except in one place, which is shown with both outputs.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] { ... }</code></pre>
+<p>This is a <strong>parametric role</strong>: a role that takes arguments, much like a generic in C++, Java or Rust. The square brackets are the role's parameter list. They work like a routine's signature, but the arguments are bound when the role is applied to a class, not when something is called.</p>
+<h2 id="what-is-t">What is <code>::T</code>? <a class="anchor" href="#what-is-t" aria-label="link">#</a></h2>
+<p>It is a <strong>type capture</strong>. Whatever type is passed in gets the name <code>T</code>, and inside the role <code>T</code> can go anywhere a type name can go: on an attribute, on a parameter, or as a type object you call methods on.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] {
+    <span class="k">has</span> <span class="n">T</span> <span class="nv">@.items</span>;
+    <span class="k">method</span> <span class="n">push</span>(<span class="n">T</span> <span class="nv">$x</span>) { <span class="nv">@!items</span>.<span class="nb">push</span>(<span class="nv">$x</span>); <span class="nb">self</span> }
+    <span class="k">method</span> <span class="n">of-type</span>    { <span class="n">T</span>.^<span class="n">name</span> }
+}
+
+<span class="k">class</span> <span class="n">IntList</span> <span class="k">does</span> <span class="n">LinearArray</span>[<span class="nb">Int</span>] { }
+
+<span class="k">my</span> <span class="nv">$l</span> = <span class="n">IntList</span>.<span class="nb">new</span>;
+<span class="nv">$l</span>.<span class="nb">push</span>(<span class="mi">1</span>).<span class="nb">push</span>(<span class="mi">2</span>);
+<span class="nb">say</span> <span class="nv">$l</span>.<span class="n">items</span>;       <span class="c1"># [1 2]</span>
+<span class="nb">say</span> <span class="nv">$l</span>.<span class="n">of-type</span>;     <span class="c1"># Int</span></code></pre>
+<p>The type is enforced. <code>push</code> on an <code>IntList</code> takes an <code>Int</code>, so anything else fails to bind:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] {
+    <span class="k">method</span> <span class="n">push</span>(<span class="n">T</span> <span class="nv">$x</span>) { <span class="nb">say</span> <span class="s">&quot;pushed $x&quot;</span> }
+}
+<span class="k">class</span> <span class="n">IntList</span> <span class="k">does</span> <span class="n">LinearArray</span>[<span class="nb">Int</span>] { }
+
+<span class="n">IntList</span>.<span class="nb">new</span>.<span class="nb">push</span>(<span class="s">&quot;three&quot;</span>);
+<span class="k">CATCH</span> { <span class="k">default</span> { <span class="nb">say</span> .^<span class="n">name</span> } }    <span class="c1"># X::TypeCheck::Binding::Parameter</span></code></pre>
+<p>Type captures are not special to roles. A sub can capture the type of one argument and require it of another:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">same-type</span>(::<span class="n">T</span> <span class="nv">$a</span>, <span class="n">T</span> <span class="nv">$b</span>) { <span class="s">&quot;both are {T.^name}&quot;</span> }
+<span class="nb">say</span> <span class="n">same-type</span>(<span class="mi">1</span>, <span class="mi">2</span>);          <span class="c1"># both are Int</span>
+<span class="nb">say</span> <span class="n">same-type</span>(<span class="s">'a'</span>, <span class="s">'b'</span>);      <span class="c1"># both are Str</span>
+<span class="nb">say</span> <span class="n">same-type</span>(<span class="mi">1</span>, <span class="s">'b'</span>);        <span class="c1"># dies: X::TypeCheck::Binding::Parameter</span></code></pre>
+<h2 id="do-i-need-a-class-to-use-one">Do I need a class to use one? <a class="anchor" href="#do-i-need-a-class-to-use-one" aria-label="link">#</a></h2>
+<p>No. Calling <code>.new</code> on a role <strong>puns</strong> it: Raku makes an anonymous class that does the role and instantiates that. This works for a parametrised role too:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] {
+    <span class="k">has</span> <span class="n">T</span> <span class="nv">@.items</span>;
+    <span class="k">method</span> <span class="n">of-type</span> { <span class="n">T</span>.^<span class="n">name</span> }
+}
+<span class="k">my</span> <span class="nv">$s</span> = <span class="n">LinearArray</span>[<span class="nb">Str</span>].<span class="nb">new</span>(<span class="n">items</span> =&gt; <span class="s">&lt;a b c&gt;</span>);
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">items</span>;      <span class="c1"># [a b c]</span>
+<span class="nb">say</span> <span class="nv">$s</span>.<span class="n">of-type</span>;    <span class="c1"># Str</span></code></pre>
+<h2 id="several-parameters-and-defaults">Several parameters, and defaults <a class="anchor" href="#several-parameters-and-defaults" aria-label="link">#</a></h2>
+<p>The brackets take a full signature, so you can have more than one parameter, and defaults work as they do in a sub:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">Pairing</span>[::<span class="n">K</span>, ::<span class="n">V</span> = <span class="nb">Str</span>] {
+    <span class="k">method</span> <span class="n">kinds</span> { <span class="n">K</span>.^<span class="n">name</span> ~ <span class="s">' =&gt; '</span> ~ <span class="n">V</span>.^<span class="n">name</span> }
+}
+<span class="nb">say</span> <span class="n">Pairing</span>[<span class="nb">Int</span>].<span class="nb">new</span>.<span class="n">kinds</span>;         <span class="c1"># Int =&gt; Str</span>
+<span class="nb">say</span> <span class="n">Pairing</span>[<span class="nb">Int</span>, <span class="nb">Num</span>].<span class="nb">new</span>.<span class="n">kinds</span>;    <span class="c1"># Int =&gt; Num</span></code></pre>
+<h2 id="the-parameters-do-not-have-to-be-types">The parameters do not have to be types <a class="anchor" href="#the-parameters-do-not-have-to-be-types" aria-label="link">#</a></h2>
+<p>Any value can be a parameter. Here the role is parametrised by a size:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">Ring</span>[<span class="nb">Int</span> <span class="nv">$size</span>] {
+    <span class="k">has</span> <span class="nv">@.slots</span> = <span class="nb">Any</span> <span class="n">xx</span> <span class="nv">$size</span>;
+    <span class="k">method</span> <span class="n">size</span> { <span class="nv">$size</span> }
+}
+<span class="k">my</span> <span class="nv">$r</span> = <span class="n">Ring</span>[<span class="mi">4</span>].<span class="nb">new</span>;
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">size</span>;          <span class="c1"># 4</span>
+<span class="nb">say</span> <span class="nv">$r</span>.<span class="n">slots</span>.<span class="nb">elems</span>;   <span class="c1"># 4</span></code></pre>
+<h2 id="can-i-overload-a-role-on-its-parameters">Can I overload a role on its parameters? <a class="anchor" href="#can-i-overload-a-role-on-its-parameters" aria-label="link">#</a></h2>
+<p>Yes. Declare the role more than once with different signatures, and Raku picks the variant by multiple dispatch on the arguments, the same way it picks a <code>multi</code> candidate:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">Describe</span>[<span class="nb">Int</span> <span class="nv">$n</span>] { <span class="k">method</span> <span class="n">what</span> { <span class="s">&quot;an integer, $n&quot;</span> } }
+<span class="k">role</span> <span class="n">Describe</span>[<span class="nb">Str</span> <span class="nv">$s</span>] { <span class="k">method</span> <span class="n">what</span> { <span class="s">&quot;a string, $s&quot;</span> } }
+
+<span class="nb">say</span> <span class="n">Describe</span>[<span class="mi">42</span>].<span class="nb">new</span>.<span class="n">what</span>;      <span class="c1"># an integer, 42</span>
+<span class="nb">say</span> <span class="n">Describe</span>[<span class="s">'hi'</span>].<span class="nb">new</span>.<span class="n">what</span>;    <span class="c1"># a string, hi</span></code></pre>
+<h2 id="checking-what-something-does">Checking what something does <a class="anchor" href="#checking-what-something-does" aria-label="link">#</a></h2>
+<p>Smartmatching against the bare role name matches any parametrisation. With arguments, it matches only that one:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] { }
+<span class="k">class</span> <span class="n">IntList</span> <span class="k">does</span> <span class="n">LinearArray</span>[<span class="nb">Int</span>] { }
+
+<span class="nb">say</span> <span class="n">IntList</span> ~~ <span class="n">LinearArray</span>;          <span class="c1"># True</span>
+<span class="nb">say</span> <span class="n">IntList</span> ~~ <span class="n">LinearArray</span>[<span class="nb">Int</span>];     <span class="c1"># True</span>
+<span class="nb">say</span> <span class="n">IntList</span> ~~ <span class="n">LinearArray</span>[<span class="nb">Str</span>];     <span class="c1"># False</span></code></pre>
+<h2 id="where-you-have-already-met-them">Where you have already met them <a class="anchor" href="#where-you-have-already-met-them" aria-label="link">#</a></h2>
+<p>Typed arrays and hashes are parametric types too. <code>my Int @a</code> declares an <code>Array[Int]</code>, and you can name that type directly:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nb">Int</span> <span class="nv">@a</span> = <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>;
+<span class="nb">say</span> <span class="nv">@a</span>.^<span class="n">name</span>;               <span class="c1"># Array[Int]</span>
+<span class="nb">say</span> <span class="nv">@a</span> ~~ <span class="nb">Array</span>[<span class="nb">Int</span>];       <span class="c1"># True</span>
+
+<span class="k">my</span> <span class="nv">%h</span>{<span class="nb">Str</span>} <span class="n">of</span> <span class="nb">Int</span>;
+<span class="nb">say</span> <span class="nv">%h</span>.^<span class="n">name</span>;               <span class="c1"># Hash[Int,Str]</span>
+<span class="nb">say</span> <span class="nb">Array</span>[<span class="nb">Str</span>].<span class="nb">new</span>(<span class="s">&lt;x y&gt;</span>);  <span class="c1"># [x y]</span></code></pre>
+<p><code>Hash[Int,Str]</code> names the value type first and the key type second, the same order as <code>of Int</code> and <code>{Str}</code> in the declaration.</p>
+<h2 id="what-if-i-leave-the-arguments-off">What if I leave the arguments off? <a class="anchor" href="#what-if-i-leave-the-arguments-off" aria-label="link">#</a></h2>
+<p>A role whose parameter has no default needs an argument. Rakudo rejects <code>does LinearArray</code> at compile time:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span>] { <span class="k">has</span> <span class="n">T</span> <span class="nv">@.items</span> }
+<span class="k">class</span> <span class="n">Plain</span> <span class="k">does</span> <span class="n">LinearArray</span> { }
+<span class="nb">say</span> <span class="n">Plain</span>.<span class="nb">new</span>.<span class="n">items</span>.^<span class="n">name</span>;
+<span class="c1"># Rakudo:  ===SORRY!=== No appropriate parametric role variant available</span>
+<span class="c1">#          for 'LinearArray'</span>
+<span class="c1"># Raku++:  Array[T]</span></code></pre>
+<p>Raku++ accepts the program and leaves <code>T</code> unbound, which is not something to rely on. If a role should work without an argument, give the parameter a default, and then the two engines agree:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">role</span> <span class="n">LinearArray</span>[::<span class="n">T</span> = <span class="nb">Any</span>] { <span class="k">has</span> <span class="n">T</span> <span class="nv">@.items</span> }
+<span class="k">class</span> <span class="n">Plain</span> <span class="k">does</span> <span class="n">LinearArray</span> { }
+<span class="nb">say</span> <span class="n">Plain</span>.<span class="nb">new</span>.<span class="n">items</span>.^<span class="n">name</span>;     <span class="c1"># Array[Any]</span></code></pre>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=ba1dadba" defer></script>
+</body>
+</html>

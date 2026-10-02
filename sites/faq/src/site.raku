@@ -16,7 +16,7 @@
     # YOUR program, and it is about the engine. A reader arrives as one or the
     # other.
     groups => (
-        'Writing Raku'                  => <containers modules l10n 6e>,
+        'Writing Raku'                  => <containers parametric-roles modules l10n 6e>,
         'Talking to the outside world'  => <shell background-processes http buffering>,
         'Compiling, and making it fast' => <compiling optimizer performance>,
         'When something goes wrong'     => <debugging garbage-collection>,
@@ -33,6 +33,7 @@
         'background-processes' => 'Proc::Async: fire-and-forget processes that outlive the program, bind-stdin pipelines, kill — and where Raku\'s own docs stand on the survival.',
         http        => 'Is HTTP built into the engine? Sockets are and HTTP is not: what you get with no use, writing a request by hand, and which HTTP modules work on each engine.',
         containers  => 'Why does my list have one element? Itemisation, $(…) vs […], and passing lists to routines.',
+        'parametric-roles' => 'What role Foo[::T] means: type captures, punning, defaults, value parameters, and overloading a role on its arguments.',
         modules     => 'Getting a module and being able to use it: rakupp install, zef, and where both engines look.',
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
