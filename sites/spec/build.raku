@@ -906,8 +906,9 @@ sub render-excels(%site, %by-cat --> Str) {
     <div class="conf-head">
       <h1>Where Raku++ excels</h1>
       <p class="tagline">Places where Raku++ accepts and runs code the reference
-      implementation does not — constructs Rakudo rejects at compile time or leaves
-      unimplemented. Every example below runs live in your browser.</p>
+      implementation does not — constructs Rakudo rejects, at compile time or at run
+      time, or leaves unimplemented. Examples run live in your browser wherever the
+      browser engine supports the feature.</p>
     </div>
     BODY
     my @cards;
