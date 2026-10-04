@@ -44,6 +44,7 @@ program still runs in a fraction of a second:
 | `/modules/ecosystem/` | Every distribution in the REA index and how each one ran under Raku++ | generated from `sites/modules/` |
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
+| `/embed/wordpress/` | Raku Snippets, the WordPress plugin, and its `raku-snippets.zip`. The zip is built by `sites/wordpress/zip.sh` from `rakupp/editors/wordpress` — never edit it here; change the plugin there and re-run the script | `www/embed/wordpress/` |
 | `/builder/` | Paste code → copy an embed snippet | `www/builder/` |
 | `/demo/` | Every embed pattern, side by side | `www/demo/` |
 | `/slides/` | The 13-slide deck, plus its PDF export | `www/slides/` — copied from `rakupp/presentation/` |

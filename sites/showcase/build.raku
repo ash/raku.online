@@ -515,6 +515,47 @@ sub inuse-page(@adoptions, Int $showcases --> Str) {
           </p>
         </section>
 
+        <section class="sr-sec" id="your-site">
+          <p class="sr-kicker">On your own site</p>
+          <h2>Runnable Raku in your pages <a class="anchor" href="#your-site" aria-label="link">#</a></h2>
+          <p class="sr-intro">
+            The editors on these pages are not special to raku.online. One
+            script tag puts the same editor on any site, and a plugin does it
+            for WordPress. The code runs in the reader's browser, so there is
+            no server to run and nothing to pay for.
+          </p>
+
+          <div class="sr-grid two">
+            <div class="sr-card link">
+              <h3><a href="/embed/">Embed Raku</a></h3>
+              <p>
+                Load <code>raku.js</code> and mark the code: any block with
+                <code>data-raku</code>, or every Raku code block already on the
+                page, becomes an editor with a Run button.
+              </p>
+              <p class="sr-more">
+                <a href="/builder/">The embed builder</a>
+                <span class="sep">·</span>
+                <a href="/demo/">every pattern, side by side</a>
+              </p>
+            </div>
+
+            <div class="sr-card link">
+              <h3><a href="/embed/wordpress/">Raku on WordPress</a></h3>
+              <p>
+                The Raku Snippets plugin: give a code block the class
+                <code>raku</code> and readers can edit and run it in the post.
+                It runs the Raku posts on andrewshitov.com.
+              </p>
+              <p class="sr-more">
+                <a href="/embed/wordpress/raku-snippets.zip">Download the plugin</a>
+                <span class="sep">·</span>
+                <a href="https://andrewshitov.com/2026/07/20/raku-in-a-browser/">a post that uses it ↗</a>
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section class="sr-sec" id="adoptions">
           <p class="sr-kicker">Elsewhere</p>
           <h2>Adoptions <a class="anchor" href="#adoptions" aria-label="link">#</a></h2>

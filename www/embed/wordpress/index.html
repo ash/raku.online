@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raku on WordPress — runnable code blocks in your posts</title>
+<meta name="description" content="Raku Snippets, a WordPress plugin: add the class raku to a code block and your readers can edit and run it in the browser. No server, no account.">
+<script src="/theme/boot.js?v=ba1dadba"></script>
+<link rel="stylesheet" href="/theme/base.css?v=ba1dadba">
+<link rel="stylesheet" href="/theme/shell.css?v=ba1dadba">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<p class="crumb"><a href="/embed/">← Embed Raku</a></p>
+
+<h1>Raku on WordPress</h1>
+<p class="tagline">
+  <strong>Raku Snippets</strong> is a WordPress plugin. Give a code block the
+  class <code>raku</code>, and your readers can edit the program and run it,
+  right in the post.
+</p>
+
+<p>This is what a reader sees — change the code and press ▶ Run:</p>
+<pre class="wp-block-code raku"><code>sub postfix:&lt;!&gt;($n) { [*] 1..$n }
+
+say 5!;
+say 30!;</code></pre>
+
+<p class="hero-links">
+  <a class="btn-start" href="raku-snippets.zip" download>Download raku-snippets.zip</a>
+  <span style="color:var(--muted);display:inline-block">version 1.0.0 · 1 KB · WordPress 5.0+, PHP 7.0+</span>
+</p>
+
+<h2 id="install">Install <a class="anchor" href="#install" aria-label="link">#</a></h2>
+<ol>
+  <li>In WordPress, go to <strong>Plugins → Add New → Upload Plugin</strong> and choose <code>raku-snippets.zip</code>.</li>
+  <li>Press <strong>Install Now</strong>, then <strong>Activate</strong>.</li>
+</ol>
+<p>
+  There are no settings. With shell access to your server, you can unpack the
+  zip into <code>wp-content/plugins/</code> instead.
+</p>
+
+<h2 id="mark-a-block">Mark a block <a class="anchor" href="#mark-a-block" aria-label="link">#</a></h2>
+<p>
+  In the block editor, add a <strong>Code</strong> or <strong>Preformatted</strong>
+  block with your program. In the block's settings, open <strong>Advanced</strong>
+  and type <code>raku</code> into <strong>Additional CSS class(es)</strong>.
+  That's the switch: blocks with the class run, blocks without it stay as they were.
+</p>
+<p>In the HTML editor, or in the Classic editor, the same thing is:</p>
+<pre class="native-code"><code>&lt;pre class="raku"&gt;say "Hello from my blog!";&lt;/pre&gt;</code></pre>
+<p>
+  Only <code>raku</code> counts, and <code>language-raku</code> — the form Markdown
+  plugins and syntax highlighters write. A block labelled <code>perl6</code> stays
+  plain text.
+</p>
+
+<h3 id="more-control">More control <a class="anchor" href="#more-control" aria-label="link">#</a></h3>
+<p>
+  In HTML you can also use the <code>data-raku</code> attribute with any of
+  raku.js's <a href="/embed/#options">options</a> — run on load, preset input,
+  hide parts of the editor:
+</p>
+<pre class="native-code"><code>&lt;pre data-raku data-run data-hide="playground"&gt;say 0.1 + 0.2 == 0.3;&lt;/pre&gt;</code></pre>
+
+<h2 id="what-it-does">What the plugin does <a class="anchor" href="#what-it-does" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><strong>It loads one script, and only where it is needed.</strong> On a single post or page whose content has a <code>raku</code> block or a <code>data-raku</code> attribute, it adds <code>https://raku.online/raku.js</code> at the end of the page. Your front page, archives and every other post stay exactly as they were.</li>
+  <li><strong>Nothing runs on your server.</strong> Programs run in your readers' browsers, in Raku++ compiled to WebAssembly. There is no account, no API key and nothing to pay for.</li>
+  <li><strong>It cannot break your theme.</strong> Each editor lives in its own Shadow DOM, so your styles cannot reach in and ours cannot leak out.</li>
+  <li><strong>It is one small PHP file.</strong> No settings page, no database tables. Deactivating the plugin removes it completely.</li>
+</ul>
+
+<h2 id="colours">Match your colours <a class="anchor" href="#colours" aria-label="link">#</a></h2>
+<p>
+  The ▶ Run button is magenta because raku.online is. To use your theme's colour,
+  go to <strong>Appearance → Customize → Additional CSS</strong> and add:
+</p>
+<pre class="native-code"><code>:root { --rk-embed-accent: #0969da; }</code></pre>
+
+<h2 id="for-developers">For theme and plugin developers <a class="anchor" href="#for-developers" aria-label="link">#</a></h2>
+<p>
+  The <code>raku_snippets_needed</code> filter overrides the decision to load the
+  script — for example, to load it on every page of a custom post type:
+</p>
+<pre class="native-code"><code>add_filter( 'raku_snippets_needed', function ( $needed ) {
+    return $needed || is_singular( 'lesson' );
+} );</code></pre>
+
+<h2 id="see-it-running">See it running <a class="anchor" href="#see-it-running" aria-label="link">#</a></h2>
+<p>
+  Andrew Shitov's blog uses the plugin for its Raku posts — for example,
+  <a href="https://andrewshitov.com/2026/07/20/raku-in-a-browser/">Raku in a Browser</a>.
+  The source is in the Raku++ repository, in
+  <a href="https://github.com/ash/rakupp/tree/main/editors/wordpress">editors/wordpress</a>.
+</p>
+
+<h2 id="next">Next <a class="anchor" href="#next" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><a href="/embed/">Embed Raku</a> — the same editor on any site, with one script tag.</li>
+  <li><a href="/builder/">The embed builder</a> — set the options, see a live preview, copy the snippet.</li>
+  <li><a href="/in-use/">Raku++ in use</a> — what people have built with it.</li>
+</ul>
+
+<footer>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/raku.js?v=7aa17191" data-auto="raku"></script>
+<script src="/theme/shell.js?v=ba1dadba" defer></script>
+</body>
+</html>
