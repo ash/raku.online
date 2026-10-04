@@ -23,6 +23,9 @@
     // After Install: once rakupp is on your machine, the next thing is your
     // editor — VS Code, Emacs, Neovim, a WordPress blog, a notebook, an agent.
     { href: '/editors/', label: 'Editors', hue: 'editors' },
+    // Beside Editors, the other way in: Raku inside a Python, Go, Rust, C++,
+    // JavaScript or Wolfram program, through librakupp.
+    { href: '/bindings/', label: 'Bindings', hue: 'bindings' },
     // One tab for the three rooms that show the language in use: the example
     // gallery, the showcase and /live. It lands on the hub and stays lit in
     // all of them, so the group reads as one place with three shelves.

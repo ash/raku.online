@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bindings — Raku inside Python, Wolfram, JavaScript, Go, Rust and C++</title>
+<meta name="description" content="Run Raku code and Raku grammars inside your own program. pip install rakulang for Python; a paclet for the Wolfram Language; previews for JavaScript, Go, Rust and C++.">
+<script src="/theme/boot.js?v=3161bf42"></script>
+<link rel="stylesheet" href="/theme/base.css?v=3161bf42">
+<link rel="stylesheet" href="/theme/shell.css?v=3161bf42">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<h1>Bindings</h1>
+<p class="tagline">
+  Raku inside your own program. Run Raku code, call Raku subs with your values,
+  and parse text with Raku grammars — the results come back as your language's
+  own types.
+</p>
+
+<table class="opts">
+  <tr><td><a href="#python">Python</a></td><td><strong>Ready.</strong> <code>pip install rakulang</code> — macOS, Linux and Windows, the engine inside the package.</td></tr>
+  <tr><td><a href="#wolfram">Wolfram Language</a></td><td><strong>Available</strong> as the RakuppLink paclet in Wolfram's Paclet Repository.</td></tr>
+  <tr><td><a href="#previews">JavaScript</a></td><td>Preview, for Bun. Built from the repository.</td></tr>
+  <tr><td><a href="#previews">Go</a></td><td>Preview, with cgo. Built from the repository.</td></tr>
+  <tr><td><a href="#previews">Rust</a></td><td>Preview, a crate built from the repository.</td></tr>
+  <tr><td><a href="#previews">C++</a></td><td>Preview, two headers that ship with the engine.</td></tr>
+</table>
+
+<h2 id="python">Python <a class="anchor" href="#python" aria-label="link">#</a></h2>
+<p class="hero-links">
+  <a class="btn-start" href="https://pypi.org/project/rakulang/">rakulang on PyPI</a>
+</p>
+<pre class="native-code"><code>pip install rakulang</code></pre>
+<p>
+  Python 3.9 or later, on macOS, Linux or Windows. Nothing to compile and nothing
+  else to install: the package carries its own Raku engine.
+</p>
+<pre class="native-code"><code>import rakulang
+
+raku = rakulang.interpreter()
+
+raku.eval('say "Hello from Raku!"')
+
+print(raku.eval("(1..10).sum"))
+print(raku.eval("2 ** 100"))
+print(raku.eval("&lt;apple banana cherry&gt;.map(*.uc)"))</code></pre>
+<pre class="native-code"><code>Hello from Raku!
+55
+1267650600228229401496703205376
+['APPLE', 'BANANA', 'CHERRY']</code></pre>
+<p>
+  <code>eval</code> returns ordinary Python values — numbers, strings, lists, dicts —
+  and integers of any size arrive exactly. Everything you declare stays in the
+  interpreter, so a sub defined in one call can be used in the next, or called
+  straight from Python with <code>raku.call("name", …)</code>.
+</p>
+
+<h3 id="python-grammars">Parsing with a grammar <a class="anchor" href="#python-grammars" aria-label="link">#</a></h3>
+<pre class="native-code"><code>import rakulang
+
+source = """
+grammar Shopping {
+    rule  TOP  { &lt;item&gt;+ }
+    rule  item { &lt;name&gt; '=' &lt;qty&gt; }
+    token name { \\w+ }
+    token qty  { \\d+ }
+}
+
+class ShoppingActions {
+    method item($/) { make $&lt;qty&gt;.Int }
+    method TOP($/)  { make $&lt;item&gt;.map(*.made).sum }
+}
+"""
+
+shopping = rakulang.Grammar.from_source(source, name="Shopping",
+                                        actions="ShoppingActions")
+
+m = shopping.parse("milk=2  bread = 1\neggs=12")
+
+for item in m["item"]:
+    print(item["name"].str(), item["qty"].int())
+
+print("total:", m.made)</code></pre>
+<pre class="native-code"><code>milk 2
+bread 1
+eggs 12
+total: 15</code></pre>
+<p>
+  The guide,
+  <a href="https://github.com/ash/rakupp/blob/main/bindings/python/README.md">rakulang — Raku from Python</a>,
+  goes on to your own operators, grammars kept in their own <code>.raku</code> file,
+  errors, and how every type converts.
+</p>
+
+<h2 id="wolfram">Wolfram Language <a class="anchor" href="#wolfram" aria-label="link">#</a></h2>
+<p>
+  Raku from Mathematica or the Wolfram Engine 13.3+, published in Wolfram's own
+  Paclet Repository as
+  <a href="https://resources.wolframcloud.com/PacletRepository/resources/AntonAntonov/RakuppLink/">RakuppLink</a>
+  by Anton Antonov:
+</p>
+<pre class="native-code"><code>PacletInstall["AntonAntonov/RakuppLink"]
+Needs["AntonAntonov`RakuppLink`"]
+
+RakuppEval["[*] 1..20"]    (* 2432902008176640000 *)</code></pre>
+<p>
+  It needs <a href="/install/"><code>rakupp</code> installed</a>, whose library it
+  loads. More on the <a href="/editors/#wolfram">Editors</a> page and in
+  <a href="https://github.com/ash/rakupp/blob/main/bindings/wolfram/README.md">the binding's guide</a>.
+</p>
+
+<h2 id="previews">Previews: JavaScript, Go, Rust and C++ <a class="anchor" href="#previews" aria-label="link">#</a></h2>
+<p>
+  These four work and are tested on every push, but they are not published as
+  packages yet and their surface may still change. They load
+  <code>librakupp</code>, the engine as a shared library, which you build from the
+  <a href="https://github.com/ash/rakupp">repository</a>:
+</p>
+<pre class="native-code"><code>cmake -B build -DCMAKE_BUILD_TYPE=Release -DRAKUPP_BUILD_SHARED=ON
+cmake --build build -j</code></pre>
+<table class="opts">
+  <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/js/README.md">JavaScript</a></td><td>A single-file ES module over <code>bun:ffi</code>. Bun only: plain Node.js cannot run it.</td></tr>
+  <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/go/README.md">Go</a></td><td>A single-file cgo package. Go 1.18+ and a C compiler.</td></tr>
+  <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/rust/README.md">Rust</a></td><td>A small crate: hand-declared <code>extern "C"</code> bindings and a <code>build.rs</code> that finds the library.</td></tr>
+  <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/cpp/README.md">C++</a></td><td>Header-only <code>&lt;rakupp/raku.hpp&gt;</code> and <code>&lt;rakupp/grammar.hpp&gt;</code>, linked against the library.</td></tr>
+</table>
+<p>
+  Every guide has the same nine sections in the same order, so you can read one and
+  skim the rest. <a href="https://github.com/ash/rakupp/blob/main/bindings/README.md">The overview</a>
+  puts the six APIs side by side.
+</p>
+
+<h2 id="how-it-works">How it works <a class="anchor" href="#how-it-works" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><strong>One engine, nothing re-implemented.</strong> Each binding is a thin layer over <code>librakupp</code>'s C API, so the Raku is exactly what plain <code>rakupp</code> runs. A test byte-compares the two to keep it that way.</li>
+  <li><strong>The same program in every language.</strong> The <code>calc</code> example is written six times and prints the same seven lines in each, <code>30!</code> included.</li>
+  <li><strong>Your own types.</strong> An <code>Int</code> arrives as your integer, a <code>Hash</code> as your dict or map; a Raku <code>die</code> arrives as your language's own error.</li>
+  <li><strong>Your own C or C++ program</strong> can embed the engine directly, through the same C API: see <a href="https://github.com/ash/rakupp/blob/main/docs/guide/EMBEDDING.md">EMBEDDING.md</a>.</li>
+</ul>
+
+<footer>
+  <span>The bindings live in <a href="https://github.com/ash/rakupp/tree/main/bindings">bindings/</a> in the Raku++ repository. For editors, notebooks and AI agents, see <a href="/editors/">Editors</a>.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=3161bf42" defer></script>
+</body>
+</html>
