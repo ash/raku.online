@@ -43,7 +43,7 @@ program still runs in a fraction of a second:
 | `/modules/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/modules/` |
 | `/modules/ecosystem/` | Every distribution in the REA index and how each one ran under Raku++ | generated from `sites/modules/` |
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
-| `/editors/` | The Editors tab: Raku++ in VS Code (the DeepSoft.rakupp extension on the Marketplace), Emacs, Neovim, WordPress, Jupyter and AI agents, each linking its guide in `rakupp/docs/guide/integrations` | `www/editors/` |
+| `/editors/` | The Editors tab: Raku++ in VS Code (the DeepSoft.rakupp extension on the Marketplace), Emacs, Neovim, WordPress, Jupyter, the Wolfram Language (the RakuppLink paclet) and AI agents, each linking its guide in rakupp | `www/editors/` |
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
 | `/embed/wordpress/` | Raku Snippets, the WordPress plugin, and its `raku-snippets.zip`. The zip is built by `sites/wordpress/zip.sh` from `rakupp/editors/wordpress` — never edit it here; change the plugin there and re-run the script | `www/embed/wordpress/` |
 | `/builder/` | Paste code → copy an embed snippet | `www/builder/` |
