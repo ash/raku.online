@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editors — Raku++ in VS Code, Emacs, Neovim, WordPress, Jupyter and AI agents</title>
+<meta name="description" content="Raku in the tools you already use: errors underlined as you type, hover, completion and go-to-definition in VS Code, Emacs and Neovim; runnable code blocks on WordPress; a Jupyter kernel; an MCP server for AI agents.">
+<script src="/theme/boot.js?v=920b320c"></script>
+<link rel="stylesheet" href="/theme/base.css?v=920b320c">
+<link rel="stylesheet" href="/theme/shell.css?v=920b320c">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<h1>Editors</h1>
+<p class="tagline">
+  Raku in the tools you already use. The same <code>rakupp</code> binary that
+  runs your programs checks them in your editor, runs them in a notebook and
+  hands them to an AI agent.
+</p>
+
+<table class="opts">
+  <tr><td><a href="#vs-code">VS Code</a></td><td>Mistakes underlined as you type, hover, completion, go to definition, syntax highlighting.</td></tr>
+  <tr><td><a href="#emacs">Emacs</a></td><td>The same, through eglot or lsp-mode, plus a Raku REPL in an Emacs buffer.</td></tr>
+  <tr><td><a href="#neovim">Neovim</a></td><td>The same language server, through Neovim's built-in LSP client.</td></tr>
+  <tr><td><a href="#wordpress">WordPress</a></td><td>Code blocks in your posts that readers can edit and run.</td></tr>
+  <tr><td><a href="#jupyter">Jupyter</a></td><td>Raku cells in JupyterLab, Notebook and VS Code notebooks.</td></tr>
+  <tr><td><a href="#ai-agents">AI agents</a></td><td>Claude Code, Claude Desktop, Cursor and others run Raku and parse with grammars.</td></tr>
+</table>
+
+<h2 id="the-language-server">One server behind the editors <a class="anchor" href="#the-language-server" aria-label="link">#</a></h2>
+<p>
+  VS Code, Emacs and Neovim all talk to <code>rakupp --lsp</code>, a
+  <a href="https://microsoft.github.io/language-server-protocol/">Language Server Protocol</a>
+  server built into <code>rakupp</code>. Its checks are the ones
+  <code>rakupp --lint</code> runs, so the editor and the command line always agree.
+  It reads your file but never runs it.
+</p>
+<ul class="home-nav">
+  <li><strong>Mistakes underlined as you type:</strong> syntax errors, undeclared variables, unused variables, redundant <code>return</code>, unreachable code — each on the token it is about.</li>
+  <li><strong>Hover:</strong> the declaration of the name under the cursor with its <code>#|</code> comment, or for a built-in, its entry in the reference.</li>
+  <li><strong>Completion:</strong> variables in scope, your subs, classes and methods, keywords, and every built-in sub and method.</li>
+  <li><strong>Go to definition:</strong> from a use of a name to where the file declares it.</li>
+</ul>
+<p>
+  First, <a href="/install/">install <code>rakupp</code></a>. Version 5.2.1, the current
+  release, gives the underlines. Hover, completion and go to definition arrive in the
+  next release; until then they need a build of the
+  <a href="https://github.com/ash/rakupp">repository</a>.
+</p>
+
+<h2 id="vs-code">VS Code <a class="anchor" href="#vs-code" aria-label="link">#</a></h2>
+<p>
+  Install <a href="https://marketplace.visualstudio.com/items?itemName=DeepSoft.rakupp">Raku++ (rakupp)</a>
+  from the Marketplace: search for <strong>Raku++</strong> in the Extensions view, or run
+</p>
+<pre class="native-code"><code>code --install-extension DeepSoft.rakupp</code></pre>
+<p>
+  The extension starts <code>rakupp --lsp</code> for you. If VS Code cannot find
+  <code>rakupp</code> — likely when you start it from the Dock or Spotlight, which do not
+  always see your shell's <code>PATH</code> — open your user settings as JSON
+  (Command Palette → <strong>Preferences: Open User Settings (JSON)</strong>), add the
+  path that <code>command -v rakupp</code> prints, and reload the window:
+</p>
+<pre class="native-code"><code>"rakupp.path": "/absolute/path/to/rakupp"</code></pre>
+<p>
+  The extension also highlights <code>.raku</code>, <code>.rakumod</code>,
+  <code>.rakutest</code>, <code>.p6</code> and <code>.pm6</code> files.
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/LSP.md">The full guide</a>
+  has what you should see, and troubleshooting.
+</p>
+
+<h2 id="emacs">Emacs <a class="anchor" href="#emacs" aria-label="link">#</a></h2>
+<p>
+  Emacs 29 or later, which has eglot and <code>use-package</code> built in. Add this
+  to your init file (<code>~/.emacs.d/init.el</code>) and restart Emacs:
+</p>
+<pre class="native-code"><code>(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+
+(use-package raku-mode
+  :ensure t
+  :custom (raku-exec-path "rakupp"))
+
+(use-package eglot
+  :hook (raku-mode . eglot-ensure)
+  :config
+  (add-to-list 'eglot-server-programs '(raku-mode . ("rakupp" "--lsp"))))</code></pre>
+<p>
+  You get highlighting and indentation from <code>raku-mode</code>, everything the
+  language server offers, and <code>M-x run-raku</code>: a REPL in a buffer that you
+  can send lines, regions and whole files to.
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/EMACS.md">The Emacs guide</a>
+  also covers lsp-mode. Never used Emacs?
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/EMACS-101.md">Emacs 101</a>
+  starts from installing it.
+</p>
+
+<h2 id="neovim">Neovim <a class="anchor" href="#neovim" aria-label="link">#</a></h2>
+<pre class="native-code"><code>vim.lsp.start({
+  name = "rakupp",
+  cmd = { "rakupp", "--lsp" },
+  filetypes = { "raku" },
+  root_dir = vim.fn.getcwd(),
+})</code></pre>
+<p>
+  VS Code and Emacs are tested with the server; this Neovim setup is not yet.
+  Any other editor with an LSP client works the same way: the command is always
+  <code>rakupp --lsp</code>, over stdin and stdout.
+</p>
+
+<h2 id="wordpress">WordPress <a class="anchor" href="#wordpress" aria-label="link">#</a></h2>
+<p>
+  The <a href="/embed/wordpress/">Raku Snippets plugin</a>: install it, give a code
+  block the class <code>raku</code>, and readers can edit the program and run it in
+  the post. It runs in their browsers, so nothing runs on your server. For any other
+  site, <a href="/embed/">one script tag</a> does the same.
+</p>
+
+<h2 id="jupyter">Jupyter <a class="anchor" href="#jupyter" aria-label="link">#</a></h2>
+<pre class="native-code"><code>rakupp --jupyter-install
+jupyter lab</code></pre>
+<p>
+  Then pick <strong>Raku++</strong> in the launcher. One interpreter serves the whole
+  notebook, so a sub defined in one cell is callable in the next. You need Jupyter
+  itself, and nothing more on the Raku side.
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/JUPYTER.md">The Jupyter guide</a>
+  has the details.
+</p>
+
+<h2 id="ai-agents">AI agents <a class="anchor" href="#ai-agents" aria-label="link">#</a></h2>
+<p>
+  <code>rakupp --mcp</code> serves the interpreter over the
+  <a href="https://modelcontextprotocol.io">Model Context Protocol</a>. In Claude Code:
+</p>
+<pre class="native-code"><code>claude mcp add raku -- "$(command -v rakupp)" --mcp</code></pre>
+<p>
+  The agent gets two tools: <code>raku</code>, which evaluates code in one session
+  that keeps its state between calls, and <code>raku-parse</code>, which compiles a
+  grammar and returns the match as JSON, or the line, column and rule where it failed.
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/MCP.md">The MCP guide</a>
+  covers Claude Desktop and other clients.
+</p>
+
+<footer>
+  <span>Every integration is in the <a href="https://github.com/ash/rakupp">Raku++ repository</a>: the editors in <a href="https://github.com/ash/rakupp/tree/main/editors">editors/</a>, the guides in <a href="https://github.com/ash/rakupp/tree/main/docs/guide/integrations">docs/guide/integrations</a>.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=920b320c" defer></script>
+</body>
+</html>

@@ -20,6 +20,9 @@
     // home. Everything after them is a room you go to once you have one or the
     // other. /install.sh is a file, not a section, and does not light this up.
     { href: '/install/', label: 'Install', hue: 'install' },
+    // After Install: once rakupp is on your machine, the next thing is your
+    // editor — VS Code, Emacs, Neovim, a WordPress blog, a notebook, an agent.
+    { href: '/editors/', label: 'Editors', hue: 'editors' },
     // One tab for the three rooms that show the language in use: the example
     // gallery, the showcase and /live. It lands on the hub and stays lit in
     // all of them, so the group reads as one place with three shelves.
