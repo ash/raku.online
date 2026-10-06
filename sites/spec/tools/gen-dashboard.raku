@@ -184,7 +184,7 @@ sub roast-at(Str $repo, Str $ref --> Hash) {
 # on six refs before anyone noticed it reached no chart. Add a new kernel in
 # all three, plus KERNEL_ORDER in theme/dashboard.js, which is a fourth.
 constant @KERNELS = <fib loopsum strcat hash hashfill bigint sortnums regex arrayops streq startup
-                     sortby textsplit arraypush rats objects multiwhere mainwhen>;
+                     sortby textsplit arraypush rats objects multiwhere mainwhen intcat>;
 
 #| The revision BENCHMARKS.md says the sitting was taken at, out of its own
 #| methodology line ("re-measured 2026-08-22 at `v3.6.0-8-g56de2be`"). That is
