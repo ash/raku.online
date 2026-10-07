@@ -246,7 +246,7 @@
       // declines a `where` on a multi candidate and bundles the interpreter,
       // so that lane is the interpreter plus binary startup. The card title
       // links to the kernel, whose comment says so.
-      var KERNEL_ORDER = ['strcat', 'hash', 'sortby', 'bigint', 'sortnums',
+      var KERNEL_ORDER = ['strcat', 'intcat', 'hash', 'sortby', 'bigint', 'sortnums',
                           'regex', 'textsplit', 'arrayops', 'mainwhen',
                           'hashfill', 'arraypush', 'loopsum', 'rats', 'fib',
                           'streq', 'objects', 'multiwhere', 'startup'];

@@ -59,7 +59,7 @@
   var script = document.currentScript
     || (function () { var s = document.getElementsByTagName('script'); return s[s.length - 1]; })();
   var BASE = new URL('.', script.src).href;         // e.g. https://raku.online/
-  var VER = '?v=47ff4480';                            // cache tag, stamped by build.sh
+  var VER = '?v=b99933a6';                            // cache tag, stamped by build.sh
   var SELECTOR = script.getAttribute('data-selector') || '[data-raku]';
 
   // Where the ↗ button hands the current program: the full playground.

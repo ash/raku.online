@@ -259,8 +259,8 @@ stamp_cache_tag() {
     # untouched instead of validating them. (The truncated character is a
     # separate bug in the operator-matrix cell — see tools/matrix.raku.)
     tag=$(cat "$WWW"/rakujs.wasm "$WWW"/rakujs.js \
-              "$WWW"/play/examples.js "$WWW"/play/worker.js | md5 -q | cut -c1-8)
-    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js
+              "$WWW"/play/examples.js "$WWW"/play/worker.js "$WWW"/editors/lsp/worker.js | md5 -q | cut -c1-8)
+    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$tag/g" "$WWW"/play/index.html "$WWW"/raku.js "$WWW"/editors/lsp/index.html
     echo "cache tag: ?v=$tag"
 
     # The drills ship their own JS and CSS and had no tag at all, so a returning
