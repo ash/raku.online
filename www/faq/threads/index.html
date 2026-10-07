@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — threads, and is there a GIL?</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=bad2d6a9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=bad2d6a9">
+<link rel="stylesheet" href="/theme/shell.css?v=bad2d6a9">
+<link rel="stylesheet" href="/theme/faq.css?v=bad2d6a9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Threads, and is there a GIL?</h1>
+
+<p>Short answers about running Raku on more than one core: whether a global interpreter lock stands in the way, how to tell that threads really ran at once, why a <code>start</code> sometimes makes a program slower, and what is yours to guard. The engine side is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>; how to measure a speed-up you can defend is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">PARALLEL-SPEEDUP.md</a>.</p>
+<p>Measured 2026-10-07 on an Apple M3 (4 performance + 4 efficiency cores): Raku++ 5.2.1 (main) and Rakudo v2026.09.</p>
+<h2 id="is-there-a-global-interpreter-lock">Is there a global interpreter lock? <a class="anchor" href="#is-there-a-global-interpreter-lock" aria-label="link">#</a></h2>
+<p>Not by default. <code>start</code> blocks and the iterations of <code>hyper for</code> and <code>race for</code> run Raku on separate cores at the same time. Rakudo works the same way, and has no lock to turn on.</p>
+<p>Raku++ has one switch, read once at startup: <code>RAKUPP_GIL=1</code> runs the program under a global interpreter lock, so one thread runs Raku at a time. (<code>RAKUPP_PARALLEL=0</code> means the same.) Nothing in the program changes; the same source runs in either mode.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">work</span>(<span class="nv">$n</span>) {
+    <span class="k">my</span> <span class="nb">int</span> <span class="nv">$s</span> = <span class="mi">0</span>;
+    <span class="k">for</span> ^<span class="mi">2_000_000</span> -&gt; <span class="nv">$i</span> { <span class="nv">$s</span> = <span class="nv">$s</span> + <span class="nv">$i</span> % <span class="mi">7</span> }
+    <span class="nv">$s</span> + <span class="nv">$n</span>
+}
+<span class="k">my</span> <span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="k">my</span> <span class="nv">@plain</span> = (^<span class="mi">4</span>).<span class="nb">map</span>({ <span class="n">work</span>(<span class="nv">$_</span>) });
+<span class="k">my</span> <span class="nv">$plain</span> = <span class="nb">now</span> - <span class="nv">$t0</span>;
+<span class="nv">$t0</span> = <span class="nb">now</span>;
+<span class="k">my</span> <span class="nv">@threads</span> = <span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>({ <span class="k">start</span> <span class="n">work</span>(<span class="nv">$_</span>) });
+<span class="k">my</span> <span class="nv">$threads</span> = <span class="nb">now</span> - <span class="nv">$t0</span>;
+<span class="nb">say</span> <span class="nv">@plain</span> <span class="n">eqv</span> <span class="nv">@threads</span>;
+<span class="nb">say</span> <span class="nb">sprintf</span> <span class="s">'%.3fs plain, %.3fs with start: %.2f×'</span>, <span class="nv">$plain</span>, <span class="nv">$threads</span>, <span class="nv">$plain</span> / <span class="nv">$threads</span>;</code></pre>
+<p>Both engines print <code>True</code> and a speed-up; over five runs each:</p>
+<pre class="native-code"><code>Raku++   0.827s plain, 0.368s with start: 2.25×    (2.20× to 2.60×)
+Rakudo   0.692s plain, 0.350s with start: 1.98×    (1.98× to 2.14×)</code></pre>
+<p>Under <code>RAKUPP_GIL=1</code> the same program measures 0.98× to 1.00×: the threads exist, and take turns.</p>
+<h2 id="how-do-i-know-my-threads-really-ran-at-the-same-time">How do I know my threads really ran at the same time? <a class="anchor" href="#how-do-i-know-my-threads-really-ran-at-the-same-time" aria-label="link">#</a></h2>
+<p>Time it. The same work as a plain loop and as <code>start</code> blocks, the same answer from both, and the wall clock between them, as in the program above. That is the only test that answers the question.</p>
+<p><code>$*THREAD.id</code> says <em>where</em> a block ran, not whether it overlapped another one:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$main</span> = <span class="nv">$*THREAD</span>.<span class="n">id</span>;
+<span class="k">my</span> <span class="nv">@ids</span> = <span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: { <span class="k">start</span> { <span class="nb">sleep</span> <span class="mf">0.1</span>; <span class="nv">$*THREAD</span>.<span class="n">id</span> } };
+<span class="nb">say</span> <span class="nv">@ids</span>.<span class="nb">grep</span>(* != <span class="nv">$main</span>).<span class="nb">elems</span>, <span class="s">' of 4 ran off the main thread'</span>;
+<span class="nb">say</span> <span class="nv">@ids</span>.<span class="nb">unique</span>.<span class="nb">elems</span>, <span class="s">' distinct threads'</span>;</code></pre>
+<pre class="native-code"><code>4 of 4 ran off the main thread
+4 distinct threads</code></pre>
+<p>Both engines print that, and Raku++ prints the same under <code>RAKUPP_GIL=1</code>, where the four took turns.</p>
+<h2 id="why-did-start-make-my-program-slower">Why did <code>start</code> make my program slower? <a class="anchor" href="#why-did-start-make-my-program-slower" aria-label="link">#</a></h2>
+<p>Four reasons cover nearly every case, all measured in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">PARALLEL-SPEEDUP.md</a>:</p>
+<ul><li><strong>The workers share a write.</strong> Four threads incrementing one <code>atomicint</code> finish at 0.76× — slower than one thread doing all of it. Give each worker its own tally and add them up after the <code>await</code>: 3.13× for the same work.</li><li><strong>More workers than fast cores.</strong> On this 4+4 machine, eight workers reach 3.58× against four workers' 3.25×. <code>$*KERNEL.cpu-cores</code> counts every core (8 here); fan out to the performance cores.</li><li><strong>The plain loop is compiled and the threaded one is not.</strong> Raku++ compiles some loops into kernels that work on machine integers directly, and a loop compiled on its own runs that way only while no other thread is live. Its plain run can then beat four threads: 0.143s against 0.372s. A routine that takes its inputs as parameters and keeps its work in its own locals is compiled whole, and runs compiled on every thread: 3.76× on the same work. <code>RAKUPP_KERNEL_TRACE=1</code> shows which loops and routines were compiled.</li><li><strong>One worker costs something on its own.</strong> While any worker is live, interpreted code runs about 15% slower on every thread, so a single <code>start</code> measures 0.85×. It takes two workers to come out ahead.</li></ul>
+<h2 id="what-does-the-runtime-protect-and-what-is-mine-to-guard">What does the runtime protect, and what is mine to guard? <a class="anchor" href="#what-does-the-runtime-protect-and-what-is-mine-to-guard" aria-label="link">#</a></h2>
+<p>The runtime protects its own state: every thread has its own scopes and dynamic variables, the symbol tables are fixed once threads start, and reference counts are atomic. Your variables are yours. Two threads writing the same one without a lock is a data race, on both engines:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: { <span class="k">start</span> { <span class="nv">$n</span>++ <span class="k">for</span> ^<span class="mi">100_000</span> } };
+<span class="nb">say</span> <span class="nv">$n</span>;</code></pre>
+<p>This should print 400000, and does not:</p>
+<pre class="native-code"><code>Raku++   141245, 163593, 161042    (three runs)
+Rakudo   248537, 260403, 263266</code></pre>
+<p>A <code>Lock</code> makes it exact, and so does an <code>atomicint</code> with <code>⚛++</code>; both print 400000 every time, on both engines:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$lock</span> = <span class="nb">Lock</span>.<span class="nb">new</span>;
+<span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: { <span class="k">start</span> { <span class="k">for</span> ^<span class="mi">100_000</span> { <span class="nv">$lock</span>.<span class="n">protect</span>: { <span class="nv">$n</span>++ } } } };
+<span class="nb">say</span> <span class="nv">$n</span>;                                   <span class="c1"># 400000</span></code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="n">atomicint</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+<span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: { <span class="k">start</span> { <span class="nv">$n</span>⚛++ <span class="k">for</span> ^<span class="mi">100_000</span> } };
+<span class="nb">say</span> <span class="nv">$n</span>;                                   <span class="c1"># 400000</span></code></pre>
+<p>Both are correct, and both send every increment through one shared point, which is where the time goes: four threads on one <code>atomicint</code> measure 0.76× against one thread doing all of it. When the workers only need to be added up at the end, one counter per worker and a sum after the <code>await</code> needs no synchronisation at all.</p>
+<h2 id="do-hyper-and-race-use-more-than-one-core">Do <code>hyper</code> and <code>race</code> use more than one core? <a class="anchor" href="#do-hyper-and-race-use-more-than-one-core" aria-label="link">#</a></h2>
+<p>The statement forms do; the methods do not on Raku++:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$main</span> = <span class="nv">$*THREAD</span>.<span class="n">id</span>;
+<span class="k">my</span> <span class="nv">@a</span> = <span class="nb">hyper</span> <span class="k">for</span> ^<span class="mi">1000</span> { <span class="nv">$*THREAD</span>.<span class="n">id</span> };
+<span class="k">my</span> <span class="nv">@b</span> = (^<span class="mi">1000</span>).<span class="nb">hyper</span>.<span class="nb">map</span>({ <span class="nv">$*THREAD</span>.<span class="n">id</span> });
+<span class="nb">say</span> <span class="s">'hyper for: '</span>, <span class="nv">@a</span>.<span class="nb">grep</span>(* != <span class="nv">$main</span>).<span class="nb">elems</span>, <span class="s">' of 1000 off the main thread'</span>;
+<span class="nb">say</span> <span class="s">'.hyper:    '</span>, <span class="nv">@b</span>.<span class="nb">grep</span>(* != <span class="nv">$main</span>).<span class="nb">elems</span>, <span class="s">' of 1000 off the main thread'</span>;</code></pre>
+<pre class="native-code"><code>Raku++                                      Rakudo
+hyper for: 1000 of 1000 off the main thread  hyper for: 1000 of 1000 off the main thread
+.hyper:    0 of 1000 off the main thread     .hyper:    1000 of 1000 off the main thread</code></pre>
+<p><code>race for</code> and <code>.race</code> behave the same way on each engine. On Raku++, <code>.hyper</code> and <code>.race</code> give the right answer serially. To fan a loop out, write <code>hyper for</code> / <code>race for</code>, or <code>start</code> and <code>await</code>.</p>
+<h2 id="when-is-rakupp-gil-1-worth-setting">When is <code>RAKUPP_GIL=1</code> worth setting? <a class="anchor" href="#when-is-rakupp-gil-1-worth-setting" aria-label="link">#</a></h2>
+<p><strong>To tell whether a wrong answer is a race.</strong> The unguarded counter above printed 400000 in five runs of five under <code>RAKUPP_GIL=1</code>. A result that is wrong by default and right under the lock means two threads are writing the same thing.</p>
+<p><strong>Not for speed.</strong> A CPU-bound fan-out gains nothing under it, and work that mostly waits — on <code>sleep</code>, a child process, a socket — overlaps in both modes, because a thread that waits lets the others run.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=bad2d6a9" defer></script>
+</body>
+</html>

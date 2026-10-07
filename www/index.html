@@ -574,30 +574,33 @@ say so "Ωμέγα" ~~ /^&lt;:Script&lt;Greek&gt;&gt;+$/;</pre>
       <th class="num">With <code>start</code></th>
       <th class="num">Speed-up</th>
     </tr>
-    <tr><td>1</td><td class="num">59 ms</td><td class="num">69 ms</td><td class="num">0.85×</td></tr>
-    <tr><td>2</td><td class="num">114 ms</td><td class="num win">71 ms</td><td class="num">1.62×</td></tr>
-    <tr><td>4</td><td class="num">227 ms</td><td class="num win">78 ms</td><td class="num win">2.93×</td></tr>
-    <tr><td>8</td><td class="num">450 ms</td><td class="num win">163 ms</td><td class="num">2.76×</td></tr>
+    <tr><td>1</td><td class="num">61 ms</td><td class="num">72 ms</td><td class="num">0.85×</td></tr>
+    <tr><td>2</td><td class="num">123 ms</td><td class="num win">74 ms</td><td class="num">1.66×</td></tr>
+    <tr><td>4</td><td class="num">250 ms</td><td class="num win">77 ms</td><td class="num">3.25×</td></tr>
+    <tr><td>8</td><td class="num">491 ms</td><td class="num win">137 ms</td><td class="num win">3.58×</td></tr>
   </table>
   </div>
 
   <p class="sr-fine">
     300,000 iterations per unit, on a contention-free fan-out, measured with no
     env var — this is the shipping default; under <code>RAKUPP_GIL=1</code>
-    every row sits at 0.98–0.99×. Timed from inside the program with
-    <code>now</code>, and quoted against a tax the table names: a worker
-    thread's own loop runs about 15% slower than the main thread's, which is
-    why one <code>start</code> block is a loss (0.85×) and four workers on four
-    performance cores give 2.93× rather than 4. The 8-worker row spills onto
-    the efficiency cores of a 4P+4E machine and comes out <em>below</em> the
-    4-worker one. Change the shape and the number changes with it: four
-    threads incrementing one shared <code>atomicint</code> finish at 0.79× —
-    slower than one thread doing all the work — while a counter per worker
-    gives 2.27×; that is why
+    every row sits at 0.98–1.00×. Timed from inside the program with
+    <code>now</code> on an Apple M3 (4 performance + 4 efficiency cores),
+    2026-10-07. One <code>start</code> block is a loss (0.85×) because
+    interpreted code runs about 15% slower on every thread while any worker is
+    live; four workers on the four performance cores give 3.25×, and eight —
+    half of them on the slower efficiency cores — only a tenth more. Change
+    the shape and the number changes with it: four threads incrementing one
+    shared <code>atomicint</code> finish at 0.76× — slower than one thread
+    doing all the work — while a counter per worker gives 3.13×; and a loop
+    that Raku++ compiles in a plain run, but not while other threads are live,
+    loses to its own plain loop (0.38×) until its routine takes its inputs as
+    parameters and is compiled whole (3.76×). That is why
     <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">the method page</a>
-    insists you report the thread count beside the ratio. This is also the one
-    section here you cannot try in the editors above: a browser tab runs the
-    interpreter single-threaded.
+    insists you report the thread count beside the ratio, and
+    <a href="/faq/threads/">the threads FAQ</a> has the short answers. This is
+    also the one section here you cannot try in the editors above: a browser
+    tab runs the interpreter single-threaded.
   </p>
 </section>
 
