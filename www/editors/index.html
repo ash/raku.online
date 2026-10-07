@@ -8,6 +8,52 @@
 <script src="/theme/boot.js?v=bad2d6a9"></script>
 <link rel="stylesheet" href="/theme/base.css?v=bad2d6a9">
 <link rel="stylesheet" href="/theme/shell.css?v=bad2d6a9">
+<style>
+  /* The language server: its own section, set off from the per-editor ones. */
+  .lsp-section {
+    margin: 2.2rem 0 1rem; padding: 1.3rem 1.6rem 1.1rem;
+    border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px;
+    background: var(--card-bg);
+  }
+  .lsp-section h2 { margin-top: 0; border-bottom: 0; }
+  .lsp-section h3 { margin: 1.1rem 0 .4rem; font-size: 1rem; }
+  .lsp-section ul { margin-top: .3rem; }
+  .lsp-lead { font-size: 1.05rem; }
+  .lsp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.8rem; align-items: start; }
+  @media (max-width: 760px) { .lsp-grid { grid-template-columns: minmax(0, 1fr); gap: .4rem; } .lsp-section { padding: 1rem .9rem .8rem; } .lsp-section ul { padding-left: 1.1rem; } .lsp-flow { --lane: 3.2rem; } .lsp-flow .m { padding: 0 .4rem .3rem; } }
+  .lsp-cta { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin: 1.4rem 0 .4rem; }
+  .lsp-cta .btn-start { margin: 0; }
+  .lsp-cta span { color: var(--muted); font-size: .92rem; }
+
+  /* The message diagram: the editor on the left, the server on the right,
+     each message an arrow between their lifelines. */
+  .lsp-flow {
+    --lane: 3.7rem;
+    margin: 1.1rem 0 0; padding: 0 0 .4rem; display: grid; grid-template-columns: minmax(0, 1fr); row-gap: .6rem; font-size: .8rem;
+    background:
+      linear-gradient(var(--border), var(--border)) var(--lane) 0 / 2px 100% no-repeat,
+      linear-gradient(var(--border), var(--border)) calc(100% - var(--lane)) 0 / 2px 100% no-repeat;
+  }
+  .lsp-flow .ends { display: flex; justify-content: space-between; }
+  .lsp-flow .who {
+    width: calc(2 * var(--lane)); padding: .3rem 0; text-align: center; font-weight: 600; font-size: .78rem;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+  }
+  .lsp-flow .who code { background: none; padding: 0; font-size: .74rem; }
+  .lsp-flow .m { position: relative; margin: 0 var(--lane); padding: 0 .9rem .3rem; text-align: center; border-bottom: 2px solid var(--c); }
+  .lsp-flow .m::after {
+    content: ""; position: absolute; bottom: -6px; border: 5px solid transparent;
+  }
+  .lsp-flow .out { --c: #3e7bd6; }
+  .lsp-flow .out::after { right: -2px; border-left: 8px solid var(--c); border-right: 0; }
+  .lsp-flow .in { --c: #1a7f37; }
+  .lsp-flow .in::after { left: -2px; border-right: 8px solid var(--c); border-left: 0; }
+  html[data-theme-active="dark"] .lsp-flow .out { --c: #7fb0ff; }
+  html[data-theme-active="dark"] .lsp-flow .in { --c: #57d383; }
+  .lsp-flow .m b { display: block; overflow-wrap: anywhere; font-family: ui-monospace, Menlo, monospace; font-weight: 600; font-size: .76rem; color: var(--c); }
+  .lsp-flow .m span { color: var(--muted); }
+  .lsp-flow figcaption { margin-top: .5rem; padding: .2rem 0; background: var(--card-bg); position: relative; text-align: center; color: var(--muted); font-size: .78rem; }
+</style>
 </head>
 <body class="home">
 
@@ -31,15 +77,71 @@
 </p>
 
 <table class="opts">
+  <tr><td><a href="#language-server">Language server</a></td><td>How your editor talks to Raku++, and a live demo that shows every message as you type.</td></tr>
   <tr><td><a href="#vs-code">VS Code</a></td><td>The Raku++ extension from the Marketplace: mistakes underlined as you type, hover, completion, go to definition, syntax highlighting.</td></tr>
   <tr><td><a href="#emacs">Emacs</a></td><td>The same, through eglot or lsp-mode, plus a Raku REPL in an Emacs buffer.</td></tr>
   <tr><td><a href="#neovim">Neovim</a></td><td>The same language server, through Neovim's built-in LSP client.</td></tr>
-  <tr><td><a href="/editors/lsp/">How LSP works</a></td><td>The language server running in your browser, with every message it exchanges with the editor shown as you type.</td></tr>
   <tr><td><a href="#wordpress">WordPress</a></td><td>Code blocks in your posts that readers can edit and run.</td></tr>
   <tr><td><a href="#jupyter">Jupyter</a></td><td>Raku cells in JupyterLab, Notebook and VS Code notebooks.</td></tr>
   <tr><td><a href="#wolfram">Wolfram Language</a></td><td>Raku called from Mathematica and the Wolfram Engine, with values crossing as Wolfram expressions.</td></tr>
   <tr><td><a href="#ai-agents">AI agents</a></td><td>Claude Code, Claude Desktop, Cursor and others run Raku and parse with grammars.</td></tr>
 </table>
+
+<section class="lsp-section">
+<h2 id="language-server">The language server <a class="anchor" href="#language-server" aria-label="link">#</a></h2>
+<span id="the-language-server"></span>
+<p class="lsp-lead">
+  VS Code, Emacs and Neovim all get their Raku support from one place:
+  <code>rakupp --lsp</code>, a
+  <a href="https://microsoft.github.io/language-server-protocol/">Language Server Protocol</a>
+  server built into <code>rakupp</code>. Its checks are the ones <code>rakupp --lint</code>
+  runs, so the editor and the command line always agree. It reads your file but never
+  runs it.
+</p>
+
+<div class="lsp-grid">
+<div>
+  <h3>What it does</h3>
+  <ul class="home-nav">
+    <li><strong>Mistakes underlined as you type:</strong> syntax errors, undeclared variables, unused variables, redundant <code>return</code>, unreachable code — each on the token it is about.</li>
+    <li><strong>Hover:</strong> the declaration of the name under the cursor with its <code>#|</code> comment, or for a built-in, its entry in the reference.</li>
+    <li><strong>Completion:</strong> variables in scope, your subs, classes and methods, keywords, and every built-in sub and method.</li>
+    <li><strong>Go to definition:</strong> from a use of a name to where the file declares it.</li>
+  </ul>
+
+  <h3>How it works</h3>
+  <p>
+    The editor starts <code>rakupp --lsp</code> and the two talk in JSON messages over the
+    server's standard input and output. The editor sends the file, then each change, and
+    the server answers with the mistakes it found. Hover, completion and go to definition
+    are questions: the editor sends the cursor position and the server sends back the
+    answer.
+  </p>
+</div>
+
+<figure class="lsp-flow" aria-label="A conversation between the editor and the language server">
+  <div class="ends"><div class="who">Editor</div><div class="who"><code>rakupp --lsp</code></div></div>
+  <div class="m out"><b>textDocument/<wbr>didOpen</b><span>here is demo.raku</span></div>
+  <div class="m in"><b>publishDiagnostics</b><span>'@pionts' is not declared</span></div>
+  <div class="m out"><b>textDocument/<wbr>hover</b><span>what is at line 20, column 25?</span></div>
+  <div class="m in"><b>response</b><span>method distance(): how far the point is from the origin</span></div>
+  <div class="m out"><b>textDocument/<wbr>completion</b><span>what can follow <code>$p.</code>?</span></div>
+  <div class="m in"><b>response</b><span>distance, x, y, and the built-in methods</span></div>
+  <figcaption>Six messages from the live demo.</figcaption>
+</figure>
+</div>
+
+<div class="lsp-cta">
+  <a class="btn-start" href="/editors/lsp/">Watch the language server at work</a>
+  <span>The same server, running in your browser, with every message shown as you type. Nothing to install.</span>
+</div>
+<p>
+  To use it in your editor, <a href="/install/">install <code>rakupp</code></a> and follow
+  the section for your editor below. Version 5.2.1, the current release, gives the
+  underlines. Hover, completion and go to definition arrive in the next release; until
+  then they need a build of the <a href="https://github.com/ash/rakupp">repository</a>.
+</p>
+</section>
 
 <h2 id="vs-code">VS Code <a class="anchor" href="#vs-code" aria-label="link">#</a></h2>
 <p>
@@ -66,43 +168,11 @@
 </p>
 <p>
   <strong>Rather wire it up yourself?</strong> The extension is a thin client for
-  <a href="#the-language-server"><code>rakupp --lsp</code></a>, so any generic LSP client
+  <a href="#language-server"><code>rakupp --lsp</code></a>, so any generic LSP client
   extension pointed at that command gets the same checks. To build the extension from
   source instead, see
   <a href="https://github.com/ash/rakupp/blob/main/docs/guide/integrations/LSP.md">the full guide</a>,
   which also has what you should see, and troubleshooting.
-</p>
-
-<h2 id="the-language-server">The language server behind them <a class="anchor" href="#the-language-server" aria-label="link">#</a></h2>
-<p>
-  The VS Code extension, Emacs and Neovim all talk to <code>rakupp --lsp</code>, a
-  <a href="https://microsoft.github.io/language-server-protocol/">Language Server Protocol</a>
-  server built into <code>rakupp</code>. Its checks are the ones
-  <code>rakupp --lint</code> runs, so the editor and the command line always agree.
-  It reads your file but never runs it.
-</p>
-<ul class="home-nav">
-  <li><strong>Mistakes underlined as you type:</strong> syntax errors, undeclared variables, unused variables, redundant <code>return</code>, unreachable code — each on the token it is about.</li>
-  <li><strong>Hover:</strong> the declaration of the name under the cursor with its <code>#|</code> comment, or for a built-in, its entry in the reference.</li>
-  <li><strong>Completion:</strong> variables in scope, your subs, classes and methods, keywords, and every built-in sub and method.</li>
-  <li><strong>Go to definition:</strong> from a use of a name to where the file declares it.</li>
-</ul>
-<p>
-  <strong>How it works.</strong> The editor and the server talk in JSON messages. The
-  editor sends the file and then every change; the server answers each change with the
-  mistakes it found. When you hover a name or type a dot, the editor asks, and the
-  server replies with the documentation or the list of completions. The live demo runs
-  this same server in your browser, compiled to WebAssembly, and shows every one of
-  those messages as you type.
-</p>
-<p class="hero-links">
-  <a class="btn-start" href="/editors/lsp/">Watch the language server at work</a>
-</p>
-<p>
-  First, <a href="/install/">install <code>rakupp</code></a>. Version 5.2.1, the current
-  release, gives the underlines. Hover, completion and go to definition arrive in the
-  next release; until then they need a build of the
-  <a href="https://github.com/ash/rakupp">repository</a>.
 </p>
 
 <h2 id="emacs">Emacs <a class="anchor" href="#emacs" aria-label="link">#</a></h2>
