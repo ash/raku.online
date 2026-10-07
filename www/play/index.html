@@ -122,6 +122,12 @@
   label.live:hover { color: var(--ink); }
   label.live.on { color: var(--accent); }
   label.live input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+  /* Check: the language server's underlines, hover and completion. Its count
+     sits in the source pane's label bar; a click there selects the first one. */
+  .probs { margin-left: 10px; letter-spacing: normal; text-transform: none; cursor: pointer; }
+  .probs .e { color: #e5484d; }
+  .probs .w { color: #b88a00; }
+  html[data-theme-active="dark"] .probs .w { color: #e0b030; }
   .spinner { width: 12px; height: 12px; border-radius: 50%;
              border: 2px solid var(--border); border-top-color: var(--accent);
              animation: spin .7s linear infinite; }
@@ -261,6 +267,10 @@
         <a href="/demo/" target="_blank" rel="noopener">Guide</a></div>
     </div>
   </span>
+  <label class="live" id="checkLbl"
+         title="Underline mistakes and offer help on hover and completions as you type: the Raku++ language server, running in your browser">
+    <input type="checkbox" id="checkChk">Check
+  </label>
   <label class="live" id="liveLbl"
          title="Run the program automatically a moment after you stop typing">
     <input type="checkbox" id="liveChk">Live
@@ -269,7 +279,7 @@
 </header>
 <main>
   <section class="pane">
-    <div class="label">Raku source <button class="copy-btn" id="copyCodeBtn" title="Copy the source code">Copy</button></div>
+    <div class="label">Raku source <span class="probs" id="probs"></span><button class="copy-btn" id="copyCodeBtn" title="Copy the source code">Copy</button></div>
     <div class="editor">
       <pre id="hl" aria-hidden="true"></pre>
       <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
@@ -306,7 +316,8 @@
 
 <!-- The ?v= tag busts caches on new releases: build.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
-<script src="examples.js?v=b99933a6"></script>
+<script src="examples.js?v=efc0ad8c"></script>
+<script src="/editors/lsp/client.js?l=3b93c728"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
 // stays free to animate the spinner and stream output live. See worker.js.
@@ -328,6 +339,46 @@ const sampleSel = document.getElementById('samples');
 const sampleLabel = document.getElementById('sampleLabel');
 const liveChk = document.getElementById('liveChk');
 const liveLbl = document.getElementById('liveLbl');
+
+// Check: the Raku++ language server (/editors/lsp/client.js) underlines
+// mistakes, answers hover and offers completions. It runs in a worker of its
+// own, so a running program never blocks it, and it starts only when the
+// editor first gets focus, so a visitor who only presses Run never loads it.
+// On by default; the choice is remembered.
+const CHECK_KEY = 'raku-play-check';
+const checkChk = document.getElementById('checkChk');
+const checkLbl = document.getElementById('checkLbl');
+const probsEl = document.getElementById('probs');
+let lsp = null;
+if (window.RakuLsp) {
+  lsp = RakuLsp.attach({
+    textarea: codeEl,
+    workerUrl: '/editors/lsp/worker.js?v=efc0ad8c&l=3b93c728',   // both tags stamped by build.sh
+    uri: 'file:///playground.raku',
+    lazy: true,
+    onDiagnostics(list) {
+      const e = list.filter(d => d.severity === 1).length, w = list.length - e;
+      probsEl.innerHTML = (e ? `<span class="e">● ${e}</span> ` : '') + (w ? `<span class="w">▲ ${w}</span>` : '');
+      probsEl.title = list.length ? list.map(d => `line ${d.range.start.line + 1}: ${d.message}`).join("\n") + "\n(click to select the first)" : "";
+    },
+  });
+  probsEl.addEventListener('click', () => {
+    const first = lsp.diagnostics[0];
+    if (first) lsp.selectRange(first.range);
+  });
+  const setCheck = (on, persist) => {
+    checkChk.checked = on;
+    checkLbl.classList.toggle('on', on);
+    lsp.setEnabled(on);
+    if (persist) { try { localStorage.setItem(CHECK_KEY, on ? '1' : '0'); } catch (e) {} }
+  };
+  let stored = null;
+  try { stored = localStorage.getItem(CHECK_KEY); } catch (e) {}
+  setCheck(stored !== '0', false);
+  checkChk.addEventListener('change', () => setCheck(checkChk.checked, true));
+} else {
+  checkLbl.hidden = true;
+}
 
 // Live mode: the program runs itself a beat after typing stops, so the output
 // pane always shows what the source in front of you does. Three things make that
@@ -477,7 +528,7 @@ function syncScroll() { hlEl.scrollTop = codeEl.scrollTop; hlEl.scrollLeft = cod
 // Every path that changes the editor ends here — typing, Tab/Enter handling,
 // loading an example or a shared link — so this is also where live mode arms its
 // debounce (a no-op when the mode is off).
-function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); scheduleLive(); }
+function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); scheduleLive(); if (lsp) lsp.changed(); }
 codeEl.addEventListener('scroll', syncScroll);
 
 // Build the dropdown as <optgroup>s in first-seen category order. Each <option>
@@ -899,7 +950,7 @@ let worker = null, ready = false, running = false, pendingRun = false, spinTimer
 let loadTimer = null, loadTries = 0;
 const LOAD_TIMEOUT = 12000, MAX_LOAD_TRIES = 2;
 // The main-thread fallback ("the deeper stack", below the run/stop functions):
-const ENGINE_TAG = '?v=b99933a6';      // the worker's tag: build.sh stamps both
+const ENGINE_TAG = '?v=efc0ad8c';      // the worker's tag: build.sh stamps both
 const needsMain = new Set();           // src + stdin of programs that overflowed the worker
 let mainEngine = null;                 // Promise of the main-thread module
 let mainSink = null;                   // where its output goes during a run
@@ -960,7 +1011,7 @@ function onLoadStuck() {
 }
 
 function createWorker() {
-  worker = new Worker('worker.js?v=b99933a6');   // tag kept in sync by build.sh
+  worker = new Worker('worker.js?v=efc0ad8c');   // tag kept in sync by build.sh
   clearTimeout(loadTimer);
   loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
   worker.onmessage = ({ data: m }) => {

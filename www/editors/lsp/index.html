@@ -50,15 +50,6 @@
     background: transparent; color: transparent; caret-color: var(--fg);
   }
   .ed textarea::selection { background: rgba(80, 140, 255, .28); color: transparent; }
-  .ed-diag { color: transparent !important; }
-  .ed-diag .e, .ed-diag .w, .ed-diag .i {
-    text-decoration-line: underline; text-decoration-style: wavy;
-    text-decoration-thickness: 1.5px; text-decoration-skip-ink: none; text-underline-offset: 3px;
-  }
-  .ed-diag .e { text-decoration-color: #e5484d; }
-  .ed-diag .w { text-decoration-color: #d39e00; }
-  .ed-diag .i { text-decoration-color: #3e8ed0; }
-  .ed-diag .flash { background: rgba(255, 200, 0, .35); border-radius: 2px; transition: background .8s; }
 
   .ed-hl { --tk: #0000ff; --tnb: #267f99; --tv: #001080; --ts: #a31515; --tm: #098658; --tc: #008000; }
   html[data-theme-active="dark"] .ed-hl { --tk: #569cd6; --tnb: #4ec9b0; --tv: #9cdcfe; --ts: #ce9178; --tm: #b5cea8; --tc: #6a9955; }
@@ -70,30 +61,6 @@
   .ed-hl .mi, .ed-hl .mf, .ed-hl .mh, .ed-hl .mo, .ed-hl .mb, .ed-hl .il, .ed-hl .m { color: var(--tm); }
   .ed-hl .c, .ed-hl .c1, .ed-hl .cm, .ed-hl .cp, .ed-hl .cs, .ed-hl .cpf { color: var(--tc); font-style: italic; }
 
-  /* hover card and completion list, positioned inside .ed */
-  .ed-tip, .ed-complete {
-    position: absolute; z-index: 5; background: var(--card-bg); color: var(--fg);
-    border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.18);
-    font-size: .85rem; line-height: 1.45;
-  }
-  .ed-tip[hidden], .ed-complete[hidden] { display: none; }
-  .ed-tip { max-width: 30rem; max-height: 16rem; overflow: auto; padding: .5rem .7rem; }
-  .ed-tip p { margin: .3rem 0; }
-  .ed-tip pre, .cdoc pre { position: static; margin: .3rem 0; padding: .35rem .5rem; background: var(--code-bg); border-radius: 4px; white-space: pre-wrap; font-size: .8rem; line-height: 1.4; }
-  .ed-tip code, .cdoc code { font-size: .8rem; background: var(--code-bg); padding: 0 .25em; border-radius: 3px; }
-  .ed-tip pre code, .cdoc pre code { background: none; padding: 0; }
-  .ed-tip hr { border: 0; border-top: 1px solid var(--border); margin: .4rem 0; }
-  .ed-complete { display: flex; flex-direction: column; overflow: hidden; width: min(27rem, calc(100% - 8px)); }
-  .ed-complete ul { list-style: none; margin: 0; padding: .2rem 0; max-height: 11rem; overflow-y: auto; }
-  .ed-complete li { display: flex; gap: .5rem; align-items: baseline; padding: .12rem .55rem; cursor: pointer; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: .8rem; }
-  .ed-complete li.sel { background: rgba(80, 140, 255, .18); }
-  .ed-complete .kind { flex: none; width: 1.2rem; text-align: center; font-size: .7rem; border-radius: 3px; color: var(--muted); }
-  .ed-complete .lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  .ed-complete .lbl b { color: var(--accent); font-weight: 600; }
-  .ed-complete .det { color: var(--muted); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; max-width: 12rem; }
-  .cdoc { border-top: 1px solid var(--border); padding: .3rem .6rem; max-height: 7rem; overflow: auto; }
-  .cdoc:empty { display: none; }
-  .cdoc p { margin: .25rem 0; }
 
   .problems { border-top: 1px solid var(--border); height: 6rem; overflow: auto; font-size: .85rem; }
   .problems:empty::before { content: "No problems."; display: block; padding: .45rem .7rem; color: var(--muted); }
@@ -190,10 +157,7 @@
     </div>
     <div class="ed" id="ed">
       <pre class="ed-hl" id="hl" aria-hidden="true"></pre>
-      <pre class="ed-diag" id="diag" aria-hidden="true"></pre>
       <textarea id="src" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Raku source"></textarea>
-      <div class="ed-tip" id="tip" hidden></div>
-      <div class="ed-complete" id="complete" hidden><ul id="clist"></ul><div class="cdoc" id="cdoc"></div></div>
     </div>
     <div class="problems" id="problems"></div>
   </section>
@@ -254,12 +218,13 @@
 </div>
 </main>
 
+<script src="client.js?l=3b93c728"></script>
 <script>
 (() => {
 'use strict';
 
-const ENGINE_TAG = '?v=b99933a6';   // stamped by build.sh with the engine's tag
-const URI = 'file:///demo.raku';
+const ENGINE_TAG = '?v=efc0ad8c';   // stamped by build.sh: the engine's files
+const LSP_TAG = 'l=3b93c728';       // stamped by build.sh: this directory's files
 const SAMPLE = `#| A point on the plane.
 class Point {
     has $.x = 0;
@@ -284,275 +249,83 @@ say @pionts.elems;
 `;
 
 const $ = id => document.getElementById(id);
-const src = $('src'), hl = $('hl'), diag = $('diag'), ed = $('ed');
-const tip = $('tip'), complete = $('complete'), clist = $('clist'), cdoc = $('cdoc');
-const wire = $('wire'), problemsEl = $('problems');
-
+const src = $('src'), hl = $('hl'), wire = $('wire'), problemsEl = $('problems');
 const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const utf8len = s => new TextEncoder().encode(s).length;
 
-// ---------------------------------------------------------------------------
-// Positions. LSP counts lines from 0 and characters in UTF-16 code units,
-// which is exactly how a JavaScript string indexes, so a position is a line
-// number plus an index into that line.
-// ---------------------------------------------------------------------------
-function posToIndex(text, p) {
-  let i = 0;
-  for (let l = 0; l < p.line; l++) {
-    const nl = text.indexOf('\n', i);
-    if (nl < 0) return text.length;
-    i = nl + 1;
-  }
-  const end = text.indexOf('\n', i);
-  return Math.min(i + p.character, end < 0 ? text.length : end);
-}
-function indexToPos(text, idx) {
-  const before = text.slice(0, idx);
-  const line = (before.match(/\n/g) || []).length;
-  return { line, character: idx - (before.lastIndexOf('\n') + 1) };
-}
-
-// The editor is monospaced and never wraps, so a pixel is a column.
-let cw = 8, lh = 21, pad = 12;
-function measure() {
-  const probe = document.createElement('span');
-  probe.textContent = 'M'.repeat(100);
-  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:inherit';
-  hl.appendChild(probe);
-  cw = probe.getBoundingClientRect().width / 100;
-  probe.remove();
-  const cs = getComputedStyle(src);
-  lh = parseFloat(cs.lineHeight);
-  pad = parseFloat(cs.paddingLeft);
-}
-// Visual column -> index within a line (a column is one code point).
-function colToIndex(line, col) {
-  let i = 0, c = 0;
-  while (i < line.length && c < col) { i += line.codePointAt(i) > 0xffff ? 2 : 1; c++; }
-  return i;
-}
-function indexToCol(line, idx) { return [...line.slice(0, idx)].length; }
-function pointToPos(clientX, clientY) {
-  const r = src.getBoundingClientRect();
-  const x = clientX - r.left - pad + src.scrollLeft;
-  const y = clientY - r.top - pad + src.scrollTop;
-  const lines = src.value.split('\n');
-  const line = Math.floor(y / lh);
-  if (line < 0 || line >= lines.length || x < 0) return null;
-  const col = Math.floor(x / cw);
-  const text = lines[line];
-  if (col >= [...text].length) return null;       // past the end of the line
-  return { line, character: colToIndex(text, col) };
-}
-function posToPoint(p) {
-  const line = src.value.split('\n')[p.line] || '';
-  return {
-    x: pad + indexToCol(line, p.character) * cw - src.scrollLeft,
-    y: pad + p.line * lh - src.scrollTop,
-  };
-}
+src.value = SAMPLE;
+const lsp = RakuLsp.attach({
+  textarea: src,
+  workerUrl: 'worker.js' + ENGINE_TAG + '&' + LSP_TAG,
+  uri: 'file:///demo.raku',
+  onMessage: logMessage,
+  onServerTime: noteServerTime,
+  onDiagnostics: showProblems,
+  onStatus(state, text) {
+    $('status').textContent = text;
+    $('dot').className = 'dot' + (state === 'ready' ? ' on' : state === 'error' ? ' err' : '');
+    if (state === 'ready') paint();
+  },
+});
 
 // ---------------------------------------------------------------------------
-// Painting: the highlighter's spans in one layer, the diagnostics' underlines
-// in another, both scrolled with the textarea.
+// Colours, from the engine's highlighter. Plain text until it answers, and an
+// answer for text that has changed since is dropped.
 // ---------------------------------------------------------------------------
-let hlSeq = 0, hlShown = -1, diagnostics = [];
-const hlTexts = new Map();
-function paint() {
+let hlSeq = 0;
+async function paint() {
   const text = src.value;
-  hl.innerHTML = esc(text) + '\n';   // plain until the highlighter answers
-  requestHighlight(text);
-  paintDiagnostics();
-}
-function paintDiagnostics(flash) {
-  const text = src.value;
-  const marks = diagnostics.map(d => {
-    let a = posToIndex(text, d.range.start), b = posToIndex(text, d.range.end);
-    if (b <= a) b = Math.min(a + 1, text.length);
-    return { a, b, cls: d.severity === 1 ? 'e' : d.severity === 2 ? 'w' : 'i' };
-  });
-  if (flash) marks.push({ a: flash.a, b: Math.max(flash.b, flash.a + 1), cls: 'flash' });
-  marks.sort((m, n) => m.a - n.a);
-  let html = '', at = 0;
-  for (const m of marks) {
-    const a = Math.max(m.a, at);
-    if (a >= m.b) continue;
-    html += esc(text.slice(at, a)) + `<span class="${m.cls}">${esc(text.slice(a, m.b))}</span>`;
-    at = m.b;
-  }
-  diag.innerHTML = html + esc(text.slice(at)) + '\n';
+  hl.innerHTML = esc(text) + '\n';
+  const seq = ++hlSeq;
+  const html = await lsp.highlight(text);
+  if (!html || seq !== hlSeq || text !== src.value) return;
+  const m = html.match(/<pre>([\s\S]*)<\/pre>/);
+  if (m) hl.innerHTML = m[1].replace(/^<span><\/span>/, '') + '\n';
   syncScroll();
 }
-function syncScroll() {
-  hl.scrollTop = diag.scrollTop = src.scrollTop;
-  hl.scrollLeft = diag.scrollLeft = src.scrollLeft;
-}
-src.addEventListener('scroll', () => { syncScroll(); hideTip(); closeCompletion(); });
+function syncScroll() { hl.scrollTop = src.scrollTop; hl.scrollLeft = src.scrollLeft; }
+src.addEventListener('scroll', syncScroll);
+function onEdit() { paint(); lsp.changed(); }
+src.addEventListener('input', onEdit);
 
-// ---------------------------------------------------------------------------
-// The client: JSON-RPC over a worker.
-// ---------------------------------------------------------------------------
-let worker = null, ready = false, nextId = 1, version = 1;
-let pending = new Map();                // id -> { method, resolve }
-let serverCaps = {};
-let changeTimer = null, changeDirty = false;
-
-function startServer() {
-  ready = false;
-  pending = new Map();
-  nextId = 1;
-  setStatus('loading the server…', '');
-  worker = new Worker('worker.js' + ENGINE_TAG);
-  worker.onmessage = onWorker;
-  worker.onerror = e => setStatus('the server failed to load: ' + (e.message || 'unknown error'), 'err');
-}
-function setStatus(text, state) {
-  $('status').textContent = text;
-  $('dot').className = 'dot' + (state ? ' ' + state : '');
-}
-
-function onWorker(e) {
-  const d = e.data;
-  if (d.type === 'ready') {
-    ready = true;
-    setStatus(`rakupp ${d.version}, WebAssembly`, 'on');
-    handshake();
-  } else if (d.type === 'loaderror' || d.type === 'servererror') {
-    setStatus('server error: ' + d.message, 'err');
-  } else if (d.type === 'lsp') {
-    noteServerTime(d.for, d.ms);
-    for (const body of d.bodies) receive(body);
-  } else if (d.type === 'highlight') {
-    const text = hlTexts.get(d.seq);
-    hlTexts.delete(d.seq);
-    if (d.seq < hlShown || text !== src.value) return;   // a later edit overtook it
-    hlShown = d.seq;
-    const m = d.html.match(/<pre>([\s\S]*)<\/pre>/);
-    if (m) hl.innerHTML = m[1].replace(/^<span><\/span>/, '') + '\n';
-    syncScroll();
-  }
-}
-function requestHighlight(text) {
-  if (!ready) return;
-  const seq = ++hlSeq;
-  worker.postMessage({ type: 'highlight', src: text, seq });
-  hlTexts.set(seq, text);   // which text each answer belongs to
-}
-
-let seqOut = 0;
-function send(msg) {
-  const body = JSON.stringify(msg);
-  const seq = ++seqOut;
-  logMessage('out', msg, body, seq);
-  worker.postMessage({ type: 'lsp', body, seq });
-}
-function request(method, params) {
-  const id = nextId++;
-  return new Promise(resolve => {
-    pending.set(id, { method, resolve });
-    send({ jsonrpc: '2.0', id, method, params });
-  });
-}
-function notify(method, params) {
-  send({ jsonrpc: '2.0', method, params });
-}
-function receive(body) {
-  const msg = JSON.parse(body);
-  let method = msg.method;
-  if (msg.id !== undefined && !msg.method) {
-    const p = pending.get(msg.id);
-    pending.delete(msg.id);
-    method = p ? p.method : '?';
-    logMessage('in', msg, body, 0, method);
-    if (p) p.resolve(msg.error ? null : msg.result);
-    return;
-  }
-  logMessage('in', msg, body, 0, method);
-  if (method === 'textDocument/publishDiagnostics' && msg.params.uri === URI) {
-    diagnostics = msg.params.diagnostics || [];
-    paintDiagnostics();
-    showProblems();
-  }
-}
-
-async function handshake() {
-  const result = await request('initialize', {
-    processId: null,
-    clientInfo: { name: 'raku.online LSP demo' },
-    rootUri: null,
-    capabilities: {
-      textDocument: {
-        hover: { contentFormat: ['markdown', 'plaintext'] },
-        completion: { completionItem: { documentationFormat: ['markdown', 'plaintext'] } },
-        publishDiagnostics: {},
-      },
-    },
-  });
-  serverCaps = (result && result.capabilities) || {};
-  notify('initialized', {});
-  version = 1;
-  notify('textDocument/didOpen', {
-    textDocument: { uri: URI, languageId: 'raku', version, text: src.value },
-  });
-  paint();
-}
-
-// Edits: one didChange after a pause, or at once when a request needs the
-// server to have the current text.
-function scheduleChange() {
-  changeDirty = true;
-  clearTimeout(changeTimer);
-  changeTimer = setTimeout(flushChange, 250);
-}
-function flushChange() {
-  clearTimeout(changeTimer);
-  if (!changeDirty || !ready) return;
-  changeDirty = false;
-  notify('textDocument/didChange', {
-    textDocument: { uri: URI, version: ++version },
-    contentChanges: [{ text: src.value }],
-  });
-}
-function docPosition(p) { return { textDocument: { uri: URI }, position: p }; }
+// Tab indents; Enter keeps the line's indentation. (With the completion list
+// open, the client takes these keys first.)
+src.addEventListener('keydown', e => {
+  if (e.key !== 'Tab' && e.key !== 'Enter') return;
+  e.preventDefault();
+  const t = src.value, at = src.selectionStart;
+  const text = e.key === 'Tab' ? '    '
+    : '\n' + t.slice(t.lastIndexOf('\n', at - 1) + 1, at).match(/^[ \t]*/)[0];
+  document.execCommand('insertText', false, text);
+});
 
 $('restart').addEventListener('click', async () => {
-  if (ready) {
-    flushChange();
-    await request('shutdown', null);
-    notify('exit', null);
-  }
-  closeCompletion(); hideTip();
-  setTimeout(() => {
-    worker.terminate();
-    diagnostics = []; paintDiagnostics(); showProblems();
-    logDivider('server restarted');
-    startServer();
-  }, 50);
+  await lsp.restart();
+  logDivider('server restarted');
 });
 
 // ---------------------------------------------------------------------------
 // The message log.
 // ---------------------------------------------------------------------------
 let shown = 0;
-const outRows = new Map();   // seq -> the row of a client message, for the server time
+const outRows = new Map();   // seq -> the row of an editor message, for the server time
 function kindOf(msg) {
   if (msg.method && msg.id !== undefined) return 'req';
   if (msg.method) return 'note';
   return 'resp';
 }
-function logMessage(dir, msg, body, seq, methodForResponse) {
+function logMessage(dir, msg, body, seq, method) {
   if (shown === 0) wire.innerHTML = '';
   shown++;
   const k = kindOf(msg);
   const row = document.createElement('details');
   row.className = `msg-row ${dir} k-${k === 'resp' ? 'req' : k} fresh`;
   const tag = k === 'req' ? `request #${msg.id}` : k === 'resp' ? `response #${msg.id}` : 'notification';
-  const method = msg.method || methodForResponse || '';
   const bytes = utf8len(body);
   row.innerHTML =
     `<summary><span class="dir" title="${dir === 'out' ? 'editor to server' : 'server to editor'}">${dir === 'out' ? '→' : '←'}</span>` +
     `<span class="kind-tag">${tag}</span>` +
-    `<span class="method">${esc(method)}<span class="note">${summaryNote(msg, method)}</span></span>` +
+    `<span class="method">${esc(method || '')}<span class="note">${summaryNote(msg, method)}</span></span>` +
     `<span class="meta">${bytes} B<span class="ms"></span></span></summary>`;
   row.addEventListener('toggle', () => {
     if (row.open && !row.querySelector('.body')) {
@@ -561,7 +334,7 @@ function logMessage(dir, msg, body, seq, methodForResponse) {
       pre.innerHTML = `<span class="hdr">Content-Length: ${bytes}\n\n</span>` + prettyJson(msg);
       row.appendChild(pre);
     }
-  }, { once: false });
+  });
   if (dir === 'out') outRows.set(seq, row);
   applyFilter(row);
   const atBottom = wire.scrollHeight - wire.scrollTop - wire.clientHeight < 40;
@@ -581,15 +354,10 @@ function summaryNote(msg, method) {
       const p = msg.params.position;
       return `at ${p.line + 1}:${p.character + 1}`;
     }
-    if (method === 'textDocument/completion' && msg.result) {
-      return `${msg.result.items.length} items`;
-    }
-    if ((method === 'textDocument/hover' || method === 'textDocument/definition') && 'result' in msg) {
-      return msg.result === null ? "no result" : "";
-    }
-    if (method === 'textDocument/didChange' && msg.params) {
-      return `version ${msg.params.textDocument.version}`;
-    }
+    if (method === 'textDocument/completion' && msg.result) return `${msg.result.items.length} items`;
+    if ((method === 'textDocument/hover' || method === 'textDocument/definition') && 'result' in msg)
+      return msg.result === null ? 'no result' : '';
+    if (method === 'textDocument/didChange' && msg.params) return `version ${msg.params.textDocument.version}`;
   } catch (_) { /* a summary is a courtesy */ }
   return '';
 }
@@ -597,8 +365,9 @@ function noteServerTime(seq, ms) {
   const row = outRows.get(seq);
   outRows.delete(seq);
   if (!row) return;
-  row.querySelector('.ms').textContent = ` · ${ms < 1 ? ms.toFixed(2) : ms.toFixed(1)} ms`;
-  row.querySelector('.ms').title = 'time the server took to handle this message';
+  const el = row.querySelector('.ms');
+  el.textContent = ` · ${ms < 1 ? ms.toFixed(2) : ms.toFixed(1)} ms`;
+  el.title = 'time the server took to handle this message';
 }
 function logDivider(text) {
   const div = document.createElement('div');
@@ -628,7 +397,7 @@ $('clear').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Problems under the editor.
 // ---------------------------------------------------------------------------
-function showProblems() {
+function showProblems(diagnostics) {
   problemsEl.innerHTML = '';
   for (const d of diagnostics) {
     const row = document.createElement('div');
@@ -637,242 +406,12 @@ function showProblems() {
       `<span class="msg">${esc(d.message)}</span>` +
       (d.code ? `<span class="code">${esc(String(d.code))}</span>` : '') +
       `<span class="where">${d.range.start.line + 1}:${d.range.start.character + 1}</span>`;
-    row.addEventListener('click', () => selectRange(d.range));
+    row.addEventListener('click', () => lsp.selectRange(d.range));
     problemsEl.appendChild(row);
   }
 }
-function selectRange(range) {
-  const text = src.value;
-  const a = posToIndex(text, range.start), b = posToIndex(text, range.end);
-  src.focus();
-  src.setSelectionRange(a, b);
-  // Bring the line into view.
-  const y = range.start.line * lh;
-  if (y < src.scrollTop || y > src.scrollTop + src.clientHeight - 2 * lh)
-    src.scrollTop = Math.max(0, y - src.clientHeight / 3);
-  paintDiagnostics({ a, b });
-  setTimeout(() => paintDiagnostics(), 900);
-}
 
-// ---------------------------------------------------------------------------
-// Markdown, as much as the server writes: fenced code, inline code, bold,
-// rules and paragraphs.
-// ---------------------------------------------------------------------------
-function markdown(md) {
-  const out = [];
-  const parts = md.split(/```[a-z0-9]*\n([\s\S]*?)```/);
-  parts.forEach((part, i) => {
-    if (i % 2) { out.push(`<pre><code>${esc(part.replace(/\n$/, ''))}</code></pre>`); return; }
-    for (const para of part.split(/\n\s*\n/)) {
-      const t = para.trim();
-      if (!t) continue;
-      if (/^-{3,}$/.test(t)) { out.push('<hr>'); continue; }
-      out.push('<p>' + esc(t)
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-        .replace(/\*([^*\s][^*]*)\*/g, '<i>$1</i>')
-        .replace(/\n/g, '<br>') + '</p>');
-    }
-  });
-  return out.join('');
-}
-function markup(c) {
-  if (!c) return '';
-  if (typeof c === 'string') return markdown(c);
-  if (Array.isArray(c)) return c.map(markup).join('');
-  return c.kind === 'markdown' ? markdown(c.value) : `<p>${esc(c.value)}</p>`;
-}
-
-// ---------------------------------------------------------------------------
-// Hover.
-// ---------------------------------------------------------------------------
-let hoverTimer = null, hoverSeq = 0, hoverAt = null;
-src.addEventListener('mousemove', e => {
-  const p = pointToPos(e.clientX, e.clientY);
-  if (p && hoverAt && p.line === hoverAt.line && p.character === hoverAt.character) return;
-  clearTimeout(hoverTimer);
-  if (!tip.hidden && tipRange && !(p && inRange(p, tipRange))) hideTip();
-  if (!p || !ready || !complete.hidden) return;
-  hoverTimer = setTimeout(() => doHover(p, e.clientX, e.clientY), 400);
-});
-src.addEventListener('mouseleave', () => { clearTimeout(hoverTimer); setTimeout(() => { if (!tip.matches(':hover')) hideTip(); }, 200); });
-tip.addEventListener('mouseleave', hideTip);
-let tipRange = null;
-function inRange(p, r) {
-  const after = (a, b) => a.line > b.line || (a.line === b.line && a.character >= b.character);
-  return after(p, r.start) && !after(p, r.end);
-}
-async function doHover(p) {
-  hoverAt = p;
-  flushChange();
-  const seq = ++hoverSeq;
-  const res = await request('textDocument/hover', docPosition(p));
-  if (seq !== hoverSeq || !res || !res.contents) return;
-  tip.innerHTML = markup(res.contents);
-  tipRange = res.range || { start: p, end: { line: p.line, character: p.character + 1 } };
-  const pt = posToPoint(tipRange.start);
-  tip.hidden = false;
-  const below = pt.y + lh + 4;
-  const top = below + tip.offsetHeight > ed.clientHeight ? Math.max(4, pt.y - tip.offsetHeight - 4) : below;
-  tip.style.top = top + 'px';
-  tip.style.left = Math.max(4, Math.min(pt.x, ed.clientWidth - tip.offsetWidth - 8)) + 'px';
-}
-function hideTip() { tip.hidden = true; tipRange = null; hoverAt = null; }
-
-// ---------------------------------------------------------------------------
-// Completion.
-// ---------------------------------------------------------------------------
-const KIND = { 2: ['m', 'method'], 3: ['ƒ', 'function'], 4: ['ƒ', 'constructor'], 5: ['·', 'field'],
-  6: ['$', 'variable'], 7: ['C', 'class'], 8: ['R', 'role'], 9: ['M', 'module'], 10: ['.', 'property'],
-  13: ['E', 'enum'], 14: ['k', 'keyword'], 20: ['e', 'enum member'], 21: ['c', 'constant'],
-  22: ['S', 'struct'], 25: ['T', 'type'] };
-let comp = null;   // { items, start (index where the replaced text begins), shown, sel }
-let compSeq = 0;
-
-async function triggerCompletion() {
-  flushChange();
-  hideTip();
-  const caret = src.selectionStart;
-  const seq = ++compSeq;
-  const res = await request('textDocument/completion', docPosition(indexToPos(src.value, caret)));
-  if (seq !== compSeq || src.selectionStart !== caret && src.selectionStart < caret) return;
-  const items = Array.isArray(res) ? res : (res && res.items) || [];
-  if (!items.length) { closeCompletion(); return; }
-  const first = items.find(i => i.textEdit);
-  const start = first ? posToIndex(src.value, first.textEdit.range.start) : wordStart(caret);
-  items.sort((a, b) => (a.sortText || a.label).localeCompare(b.sortText || b.label));
-  comp = { items, start, sel: 0, shown: [] };
-  refilter();
-}
-function wordStart(i) {
-  const t = src.value;
-  while (i > 0 && /[\w\-'$@%&!.*^?:<]/.test(t[i - 1]) && t[i - 1] !== '.') i--;
-  return i;
-}
-function refilter() {
-  if (!comp) return;
-  const caret = src.selectionStart;
-  if (caret < comp.start) { closeCompletion(); return; }
-  const typed = src.value.slice(comp.start, caret).toLowerCase();
-  const pre = [], sub = [];
-  for (const it of comp.items) {
-    const f = (it.filterText || it.label).toLowerCase();
-    if (f.startsWith(typed)) pre.push(it);
-    else if (typed.length > 1 && f.includes(typed)) sub.push(it);
-  }
-  comp.shown = pre.concat(sub).slice(0, 200);
-  comp.typed = typed;
-  if (!comp.shown.length || (comp.shown.length === 1 && (comp.shown[0].filterText || comp.shown[0].label).toLowerCase() === typed)) {
-    closeCompletion(); return;
-  }
-  comp.sel = Math.min(comp.sel, comp.shown.length - 1);
-  renderCompletion();
-}
-function renderCompletion() {
-  clist.innerHTML = '';
-  comp.shown.forEach((it, i) => {
-    const li = document.createElement('li');
-    if (i === comp.sel) li.className = 'sel';
-    const [sym, name] = KIND[it.kind] || ['·', 'text'];
-    const lab = it.label, n = comp.typed.length;
-    const hit = lab.toLowerCase().startsWith(comp.typed) && n ? `<b>${esc(lab.slice(0, n))}</b>${esc(lab.slice(n))}` : esc(lab);
-    li.innerHTML = `<span class="kind" title="${name}">${sym}</span><span class="lbl">${hit}</span>` +
-      (it.detail ? `<span class="det">${esc(it.detail)}</span>` : '');
-    li.addEventListener('mousedown', e => { e.preventDefault(); comp.sel = i; accept(); });
-    clist.appendChild(li);
-  });
-  const sel = comp.shown[comp.sel];
-  cdoc.innerHTML = sel && sel.documentation ? markup(sel.documentation) : '';
-  complete.hidden = false;
-  const pt = posToPoint(indexToPos(src.value, comp.start));
-  const below = pt.y + lh + 2;
-  complete.style.top = (below + complete.offsetHeight > ed.clientHeight ? Math.max(2, pt.y - complete.offsetHeight - 2) : below) + 'px';
-  complete.style.left = Math.max(2, Math.min(pt.x, ed.clientWidth - complete.offsetWidth - 4)) + 'px';
-  const selLi = clist.children[comp.sel];
-  if (selLi) selLi.scrollIntoView({ block: 'nearest' });
-}
-function accept() {
-  const it = comp.shown[comp.sel];
-  const text = it.textEdit ? it.textEdit.newText : (it.insertText || it.label);
-  const caret = src.selectionStart;
-  src.setRangeText(text, comp.start, caret, 'end');
-  closeCompletion();
-  onEdit();
-}
-function closeCompletion() { comp = null; complete.hidden = true; }
-
-// ---------------------------------------------------------------------------
-// Go to definition.
-// ---------------------------------------------------------------------------
-async function goToDefinition(p) {
-  flushChange();
-  hideTip();
-  const res = await request('textDocument/definition', docPosition(p));
-  const loc = Array.isArray(res) ? res[0] : res;
-  if (loc && loc.range) selectRange(loc.range);
-}
-src.addEventListener('mousedown', e => {
-  if (!(e.metaKey || e.ctrlKey) || !ready) return;
-  const p = pointToPos(e.clientX, e.clientY);
-  if (!p) return;
-  e.preventDefault();
-  goToDefinition(p);
-});
-
-// ---------------------------------------------------------------------------
-// Typing.
-// ---------------------------------------------------------------------------
-function onEdit() {
-  paint();
-  scheduleChange();
-}
-src.addEventListener('input', e => {
-  onEdit();
-  hideTip();
-  const ch = e.data && e.data.slice(-1);
-  const triggers = (serverCaps.completionProvider && serverCaps.completionProvider.triggerCharacters) || [];
-  if (ch && triggers.includes(ch)) { triggerCompletion(); return; }
-  if (comp) { refilter(); return; }
-  // Like VS Code's quick suggestions: two letters of a word open the list.
-  if (ch && /\w/.test(ch) && e.inputType === 'insertText') {
-    const caret = src.selectionStart;
-    const word = src.value.slice(0, caret).match(/[\w-]+$/);
-    if (word && word[0].length === 2) triggerCompletion();
-  }
-});
-src.addEventListener('keydown', e => {
-  if (comp && !complete.hidden) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); comp.sel = (comp.sel + 1) % comp.shown.length; renderCompletion(); return; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); comp.sel = (comp.sel - 1 + comp.shown.length) % comp.shown.length; renderCompletion(); return; }
-    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); accept(); return; }
-    if (e.key === 'Escape') { e.preventDefault(); closeCompletion(); return; }
-  }
-  if (e.key === 'Escape') { hideTip(); return; }
-  if (e.key === ' ' && e.ctrlKey) { e.preventDefault(); triggerCompletion(); return; }
-  if (e.key === 'F12') { e.preventDefault(); goToDefinition(indexToPos(src.value, src.selectionStart)); return; }
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    src.setRangeText('    ', src.selectionStart, src.selectionEnd, 'end');
-    onEdit();
-    return;
-  }
-  if (e.key === 'Enter') {
-    // Keep the current line's indentation.
-    e.preventDefault();
-    const t = src.value, at = src.selectionStart;
-    const indent = t.slice(t.lastIndexOf('\n', at - 1) + 1, at).match(/^[ \t]*/)[0];
-    src.setRangeText('\n' + indent, at, src.selectionEnd, 'end');
-    onEdit();
-  }
-});
-src.addEventListener('click', () => { if (comp && src.selectionStart < comp.start) closeCompletion(); });
-src.addEventListener('blur', () => setTimeout(closeCompletion, 150));
-
-src.value = SAMPLE;
-measure();
 paint();
-startServer();
-window.addEventListener('resize', measure);
 })();
 </script>
 <script src="/theme/shell.js?v=bad2d6a9" defer></script>

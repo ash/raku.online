@@ -12,7 +12,10 @@
 // highlighter behind `rakupp --highlight`, called directly.
 
 /* global RakuJS */
-const V = self.location.search;      // the page's cache tag, passed on to the engine
+// The page passes two cache tags: v= is the engine's (shared with the
+// playground and raku.js, so the 13 MB engine is fetched once), l= is ours.
+const P = new URLSearchParams(self.location.search);
+const V = P.get('v') ? '?v=' + P.get('v') : '';
 importScripts('/rakujs.js' + V);
 
 const post = (type, extra = {}) => self.postMessage({ type, ...extra });
@@ -26,7 +29,7 @@ const ready = Promise.all([
     print: t => console.log(t),
     printErr: t => console.warn(t),
   }),
-  fetch('reference.md' + V).then(r => (r.ok ? r.text() : '')).catch(() => ''),
+  fetch('reference.md' + (P.get('l') ? '?l=' + P.get('l') : '')).then(r => (r.ok ? r.text() : '')).catch(() => ''),
 ]).then(([m, ref]) => {
   Module = m;
   reference = ref;
