@@ -1,8 +1,8 @@
 #!/bin/sh
 # Build www/embed/excel/ — the Excel add-in behind =RAKU.EVAL formulas, as
-# raku.online serves it — and www/embed/spreadsheets/raku-google-sheets.zip,
-# the Google Sheets script ready to paste or `clasp push`, from the rakupp
-# repo's bindings/spreadsheets.
+# raku.online serves it, and the engine the Google Sheets sidebar loads — and
+# www/embed/spreadsheets/raku-google-sheets.zip, the Google Sheets script
+# ready to paste or `clasp push`, from the rakupp repo's bindings/spreadsheets.
 #
 #   ./sync.sh [path-to-rakupp-checkout]
 #
@@ -33,10 +33,10 @@ cmp -s "$WWW/rakujs.wasm" "$WWW/embed/excel/rakujs.wasm" \
     || { echo "embed/excel/rakujs.wasm is not www/rakujs.wasm" >&2; exit 1; }
 echo "www/embed/excel <- $BUILD"
 
-# The Sheets project, one folder in a zip. Its engine is gzip and base64 inside
-# five .gs files, so it cannot share the root's blob the way the add-in does;
-# fixed timestamps keep an unchanged engine's zip byte-identical instead, and
-# the zip's comment names the engine it carries, for build.sh to check.
+# The Sheets project, one folder in a zip: two files and a manifest, with no
+# engine; its sidebar loads the one in embed/excel/. Fixed timestamps keep an
+# unchanged project's zip byte-identical, and the zip's comment names the
+# engine it was built beside, for build.sh to check.
 ZIP="$WWW/embed/spreadsheets/raku-google-sheets.zip"
 mkdir -p "$TMP/zip"
 cp -R "$TMP/google-sheets" "$TMP/zip/raku-google-sheets"

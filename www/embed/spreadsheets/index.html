@@ -29,8 +29,9 @@
 <p class="tagline">
   Write a spreadsheet formula in Raku. Decimals are exact, integers have no
   size limit, and regexes and grammars work on the text in your cells. The
-  engine runs inside the spreadsheet, in WebAssembly: nothing to install on
-  your computer, and the formulas send nothing anywhere.
+  engine, in WebAssembly, runs inside Excel, and for Google Sheets in a
+  sidebar in your browser: nothing to install on your computer, and the
+  formulas send nothing outside the spreadsheet.
 </p>
 
 <pre class="native-code"><code>=RAKU.EVAL("($^a - $^b) + 1", 43.1, 43.2)      Excel
@@ -85,15 +86,16 @@
 
 <h2 id="google-sheets">Google Sheets <a class="anchor" href="#google-sheets" aria-label="link">#</a></h2>
 <p>
-  In Sheets the formula is <code>=RAKU</code>, and the engine runs inside an
-  Apps Script attached to the spreadsheet, which also adds a
-  <strong>Raku</strong> menu. The script comes ready-built:
+  In Sheets the formula is <code>=RAKU</code>, and the engine runs in the
+  <strong>Raku sidebar</strong>, a page in your browser that loads it once and
+  keeps it. A small script attached to the spreadsheet adds the formula, the
+  sidebar and a <strong>Raku</strong> menu. It comes ready-built:
 </p>
 <ol>
-  <li>Download <a href="raku-google-sheets.zip" download>raku-google-sheets.zip</a> (3.7 MB) and unzip it: a folder of nine <code>.gs</code> files and an <code>appsscript.json</code>.</li>
+  <li>Download <a href="raku-google-sheets.zip" download>raku-google-sheets.zip</a> (9 KB) and unzip it: a folder with <code>Raku.gs</code>, <code>RakuSidebar.html</code> and <code>appsscript.json</code>.</li>
   <li>In the spreadsheet, open <strong>Extensions → Apps Script</strong>.</li>
-  <li>Give every <code>.gs</code> file a script file of the same name, and paste its contents in whole. <code>Raku.gs</code> goes into the <code>Code.gs</code> that is already there, renamed <code>Raku</code>; for each of the other eight, choose <strong>+ → Script</strong> and name it after the file, without <code>.gs</code>. The five <code>RakuWasm</code> files are the engine, about 1 MB each. <code>appsscript.json</code> can be left out.</li>
-  <li>Save, and reload the spreadsheet. The <strong>Raku</strong> menu appears, and <code>=RAKU("6 * 7")</code> gives <code>42</code>. The first time you use a menu item, Google asks you to authorize the script for this one spreadsheet.</li>
+  <li>Paste <code>Raku.gs</code> into the <code>Code.gs</code> that is already there, and rename it <code>Raku</code>. Choose <strong>+ → HTML</strong>, name the file <code>RakuSidebar</code>, and paste <code>RakuSidebar.html</code> into it. <code>appsscript.json</code> can be left out.</li>
+  <li>Save, and reload the spreadsheet. Choose <strong>Raku → Open the Raku sidebar</strong>; the first time, Google asks you to let the script show its sidebar and work on this one spreadsheet. Then <code>=RAKU("6 * 7")</code> gives <code>42</code>.</li>
 </ol>
 <p>
   With <a href="https://github.com/google/clasp">clasp</a>, Google's command
@@ -106,17 +108,20 @@
 <pre class="native-code"><code>clasp create-script --parentId SPREADSHEET-ID --rootDir raku-google-sheets
 clasp push</code></pre>
 <p>
-  Every Sheets formula is its own script run, and each may load the engine
-  again, so give one formula a whole range rather than writing one formula per
-  cell: one load, and a column or a table of results.
+  Keep the sidebar open while you work. A new or changed formula shows
+  <code>⏳ Raku sidebar</code> until the sidebar has calculated it; the sidebar
+  looks for such cells every second and runs them as one batch. Results
+  already calculated stay in their cells, for anyone who opens the
+  spreadsheet. The sidebar also has the examples, the Raku sheet's buttons,
+  and what formulas printed with <code>say</code>.
 </p>
 
 <h2 id="raku-sheet">Your own subs: the Raku sheet <a class="anchor" href="#raku-sheet" aria-label="link">#</a></h2>
 <p>
   Add a sheet named <code>Raku</code> and write Raku in column A, one line per
   row. Every formula in the file can call what it defines. The Raku pane in
-  Excel and the Raku menu in Sheets both have a button that adds the sheet with
-  two examples on it:
+  Excel and the Raku sidebar in Sheets both have a button that adds the sheet
+  with two examples on it:
 </p>
 <pre class="native-code"><code># =RAKU.EVAL("iban-ok($^s)", A2) is TRUE for a valid IBAN: 30 digits, modulo 97, exactly.
 sub iban-ok(Str $iban) {
@@ -125,9 +130,10 @@ sub iban-ok(Str $iban) {
     $digits % 97 == 1
 }</code></pre>
 <p>
-  The spreadsheet does not know that a formula depends on the Raku sheet. After
-  you change it, press <strong>Recalculate</strong> in Excel's Raku pane, or
-  choose <strong>Raku → Recalculate RAKU formulas</strong> in Sheets.
+  The spreadsheet does not know that a formula depends on the Raku sheet. In
+  Sheets, the Raku sidebar notices a change to it and calculates the formulas
+  again; in Excel, press <strong>Recalculate</strong> in the Raku pane after
+  you change it.
 </p>
 
 <h2 id="more">More <a class="anchor" href="#more" aria-label="link">#</a></h2>
