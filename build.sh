@@ -198,6 +198,22 @@ check_frozen() {
     for f in $FROZEN; do
         [ -s "$WWW/$f" ] || { echo "FROZEN FILE MISSING: www/$f" >&2; exit 1; }
     done
+    check_excel_engine
+}
+
+# The Excel add-in (www/embed/excel/, written by sites/spreadsheets/sync.sh)
+# carries a copy of the engine, so it has to be rebuilt whenever www/rakujs.*
+# is replaced. A release that forgets would leave spreadsheets on the old
+# engine while /play/ moved on, and nothing else would notice.
+check_excel_engine() {
+    [ -d "$WWW/embed/excel" ] || return 0
+    for f in rakujs.js rakujs.wasm; do
+        cmp -s "$WWW/$f" "$WWW/embed/excel/$f" \
+            || { echo "www/embed/excel/$f is not www/$f: run sites/spreadsheets/sync.sh" >&2; exit 1; }
+    done
+    grep -q 'https://raku.online/embed/excel/' "$WWW/embed/excel/manifest.xml" \
+        || { echo "www/embed/excel/manifest.xml does not point at https://raku.online/embed/excel/" >&2; exit 1; }
+    echo "check: the Excel add-in runs the site's engine"
     echo "check: the frozen engine URLs are intact ($FROZEN)"
 }
 
