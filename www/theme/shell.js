@@ -27,6 +27,10 @@
     // JavaScript or Wolfram program, through librakupp. The page is Bindings;
     // the tab says SDK, which is shorter and what a developer looks for.
     { href: '/bindings/', label: 'SDK', hue: 'bindings' },
+    // After SDK, Raku inside other people's software for those who write no
+    // host program: a web page, a WordPress blog, an Excel workbook. A prefix
+    // match, so it stays lit on /embed/wordpress/ as well.
+    { href: '/embed/', label: 'Embed', hue: 'embed' },
     // One tab for the three rooms that show the language in use: the example
     // gallery, the showcase and /live. It lands on the hub and stays lit in
     // all of them, so the group reads as one place with three shelves.
