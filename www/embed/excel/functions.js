@@ -11,7 +11,7 @@
 var RakuExcel = (function () {
   'use strict';
 
-  var TAG = '5a37003381';                 // build stamp; see rakusheet-worker.js
+  var TAG = '3bbdc31ce3';                 // build stamp; see rakusheet-worker.js
   var TIMEOUT_MS = 15000;            // one batch; a longer one is stopped
   var BATCH_DELAY_MS = 10;
   var MAX_BATCH = 500;
