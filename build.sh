@@ -202,6 +202,19 @@ check_frozen() {
     done
     echo "check: the frozen engine URLs are intact ($FROZEN)"
     check_excel_engine
+    check_sheets_engine
+}
+
+# The Google Sheets download, written by the same sync, cannot be compared
+# byte for byte — its engine is gzip and base64 inside .gs files — so the
+# sync names the engine in the zip's comment and this compares that.
+check_sheets_engine() {
+    zip="$WWW/embed/spreadsheets/raku-google-sheets.zip"
+    [ -f "$zip" ] || return 0
+    want=$(shasum -a 256 "$WWW/rakujs.wasm" | cut -d' ' -f1)
+    unzip -z "$zip" | grep -q "rakujs.wasm sha256 $want" \
+        || { echo "www/embed/spreadsheets/raku-google-sheets.zip is not built from www/rakujs.wasm: run sites/spreadsheets/sync.sh" >&2; exit 1; }
+    echo "check: the Google Sheets download carries the site's engine"
 }
 
 # The Excel add-in (www/embed/excel/, written by sites/spreadsheets/sync.sh)

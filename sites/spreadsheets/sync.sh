@@ -1,6 +1,8 @@
 #!/bin/sh
 # Build www/embed/excel/ — the Excel add-in behind =RAKU.EVAL formulas, as
-# raku.online serves it — from the rakupp repo's bindings/spreadsheets.
+# raku.online serves it — and www/embed/spreadsheets/raku-google-sheets.zip,
+# the Google Sheets script ready to paste or `clasp push`, from the rakupp
+# repo's bindings/spreadsheets.
 #
 #   ./sync.sh [path-to-rakupp-checkout]
 #
@@ -30,3 +32,16 @@ cp -R "$TMP/excel" "$WWW/embed/excel"
 cmp -s "$WWW/rakujs.wasm" "$WWW/embed/excel/rakujs.wasm" \
     || { echo "embed/excel/rakujs.wasm is not www/rakujs.wasm" >&2; exit 1; }
 echo "www/embed/excel <- $BUILD"
+
+# The Sheets project, one folder in a zip. Its engine is gzip and base64 inside
+# five .gs files, so it cannot share the root's blob the way the add-in does;
+# fixed timestamps keep an unchanged engine's zip byte-identical instead, and
+# the zip's comment names the engine it carries, for build.sh to check.
+ZIP="$WWW/embed/spreadsheets/raku-google-sheets.zip"
+mkdir -p "$TMP/zip"
+cp -R "$TMP/google-sheets" "$TMP/zip/raku-google-sheets"
+find "$TMP/zip" -exec touch -t 202001010000 {} +
+rm -f "$ZIP"
+( cd "$TMP/zip" && zip -q -X -r "$ZIP" raku-google-sheets )
+printf 'rakujs.wasm sha256 %s\n' "$(shasum -a 256 "$WWW/rakujs.wasm" | cut -d' ' -f1)" | zip -q -z "$ZIP"
+echo "www/embed/spreadsheets/raku-google-sheets.zip <- $BUILD"
