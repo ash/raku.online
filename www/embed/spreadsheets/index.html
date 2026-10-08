@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raku formulas in Excel and Google Sheets</title>
+<meta name="description" content="Write spreadsheet formulas in Raku: exact decimals, integers of any size, regexes and grammars on the text in your cells, and your own subs on a sheet named Raku. An add-in for Excel, a script for Google Sheets; the engine runs inside the spreadsheet.">
+<script src="/theme/boot.js?v=b91765a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b91765a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b91765a0">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<p class="crumb"><a href="/embed/">← Embed Raku</a></p>
+
+<h1>Raku in Excel and Google Sheets</h1>
+<p class="tagline">
+  Write a spreadsheet formula in Raku. Decimals are exact, integers have no
+  size limit, and regexes and grammars work on the text in your cells. The
+  engine runs inside the spreadsheet, in WebAssembly: nothing to install on
+  your computer, and the formulas send nothing anywhere.
+</p>
+
+<pre class="native-code"><code>=RAKU.EVAL("($^a - $^b) + 1", 43.1, 43.2)      Excel
+=RAKU("($^a - $^b) + 1", 43.1, 43.2)           Google Sheets</code></pre>
+<p>
+  Both are exactly <code>0.9</code>. Excel itself works in doubles, which
+  cannot hold these decimals, and Microsoft's own example,
+  <code>=(43.1-43.2)+1</code>, shows <code>0.899999999999999</code>
+  (<a href="https://learn.microsoft.com/troubleshoot/microsoft-365-apps/excel/floating-point-arithmetic-inaccurate-result">Floating-point arithmetic may give inaccurate results in Excel</a>).
+</p>
+
+<h2 id="formulas">What a formula looks like <a class="anchor" href="#formulas" aria-label="link">#</a></h2>
+<p>
+  The code comes first. <code>$^a</code>, <code>$^b</code>, … are the values
+  after it, in order, and <code>@_</code> is all of them, with ranges flattened
+  into their cells. These are the Excel spellings; in Google Sheets, write
+  <code>RAKU</code> for <code>RAKU.EVAL</code>.
+</p>
+<table class="opts">
+  <tr><td><code>=RAKU.EVAL("$^a - $^b - $^c", 0.5, 0.4, 0.1)</code></td><td><code>0</code></td></tr>
+  <tr><td><code>=RAKU.EVAL("[+] @_", A1:A10)</code>, with 0.1 in every cell</td><td><code>1</code></td></tr>
+  <tr><td><code>=RAKU.EVAL("[*] 1..$^n", 30)</code></td><td><code>265252859812191058636308480000000</code>, as text</td></tr>
+  <tr><td><code>=RAKU.EVAL("(1/3 + 1/7).raku")</code></td><td><code>&lt;10/21&gt;</code></td></tr>
+  <tr><td><code>=RAKU.EVAL("(1..4).map(* ** 2)")</code></td><td>1, 4, 9 and 16, down a column</td></tr>
+  <tr><td><code>=RAKU.EVAL("~($^s ~~ / \d+ ' kg' /)", "Box of 12 kg flour")</code></td><td><code>12 kg</code></td></tr>
+  <tr><td><code>=RAKU.EVAL("1/0")</code></td><td><code>#DIV/0!</code> in Excel; an error saying so in Sheets</td></tr>
+</table>
+
+<h2 id="excel">Excel <a class="anchor" href="#excel" aria-label="link">#</a></h2>
+<p>The Raku add-in gives Excel one more function, <code>=RAKU.EVAL</code>.</p>
+<ol>
+  <li>Download the add-in's manifest, <a href="/embed/excel/manifest.xml" download>manifest.xml</a>.</li>
+  <li>Load it into Excel (Microsoft calls this sideloading):
+    <ul>
+      <li><strong>Excel on the web:</strong> open the Add-ins dialog, choose <strong>Upload My Add-in</strong> and pick the file (<a href="https://learn.microsoft.com/office/dev/add-ins/testing/sideload-office-add-ins-for-testing">how</a>).</li>
+      <li><strong>Excel for Mac:</strong> copy the file into <code>~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/</code>, making the folder if it is not there, and restart Excel. Then choose <strong>Home → Add-ins</strong> and pick <strong>Raku formulas</strong> from the menu (<a href="https://learn.microsoft.com/office/dev/add-ins/testing/sideload-an-office-add-in-on-mac">how</a>).</li>
+      <li><strong>Excel for Windows:</strong> put the file in a shared folder and add that folder under <strong>File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs</strong> (<a href="https://learn.microsoft.com/office/dev/add-ins/testing/create-a-network-shared-folder-catalog-for-task-pane-and-content-add-ins">how</a>).</li>
+    </ul>
+  </li>
+  <li>Click the <strong>Raku</strong> button on the Home tab, once. That starts the add-in for the first time, which is when Excel registers <code>=RAKU.EVAL</code>, for you and every workbook from then on. Until then a formula shows <code>#NAME?</code>, and a cell that already does keeps it until you enter the formula again.</li>
+  <li>Type <code>=RAKU.EVAL(</code> in a cell.</li>
+</ol>
+<p>
+  The pane the Raku button opens has examples to insert into the selected cell,
+  the engine's version, and what formulas printed with <code>say</code>. The
+  engine loads once per session, in a second or two; formulas that arrive
+  together run as one batch, so 200 of them cost about as much as one. Only
+  <code>#VALUE!</code> and <code>#N/A</code> can carry a message in Excel, so
+  most errors are <code>#VALUE!</code> with Raku's message under the cell's
+  error flag.
+</p>
+
+<h2 id="google-sheets">Google Sheets <a class="anchor" href="#google-sheets" aria-label="link">#</a></h2>
+<p>
+  In Sheets the formula is <code>=RAKU</code>, and the engine runs inside an
+  Apps Script attached to the spreadsheet, which also adds a
+  <strong>Raku</strong> menu. For now that script is added from
+  <a href="https://github.com/ash/rakupp/tree/main/bindings/spreadsheets#google-sheets">the guide</a>:
+  build it with Raku++ and upload it with Google's <code>clasp</code>, or paste
+  its files into <strong>Extensions → Apps Script</strong>.
+</p>
+<p>
+  Every Sheets formula is its own script run, and each may load the engine
+  again, so give one formula a whole range rather than writing one formula per
+  cell: one load, and a column or a table of results.
+</p>
+
+<h2 id="raku-sheet">Your own subs: the Raku sheet <a class="anchor" href="#raku-sheet" aria-label="link">#</a></h2>
+<p>
+  Add a sheet named <code>Raku</code> and write Raku in column A, one line per
+  row. Every formula in the file can call what it defines. The Raku pane in
+  Excel and the Raku menu in Sheets both have a button that adds the sheet with
+  two examples on it:
+</p>
+<pre class="native-code"><code># =RAKU.EVAL("iban-ok($^s)", A2) is TRUE for a valid IBAN: 30 digits, modulo 97, exactly.
+sub iban-ok(Str $iban) {
+    my $t = $iban.uc.comb(/&lt;alnum&gt;/).join;
+    my $digits = ($t.substr(4) ~ $t.substr(0, 4)).comb.map({ /\d/ ?? $_ !! .ord - 55 }).join;
+    $digits % 97 == 1
+}</code></pre>
+<p>
+  The spreadsheet does not know that a formula depends on the Raku sheet. After
+  you change it, press <strong>Recalculate</strong> in Excel's Raku pane, or
+  choose <strong>Raku → Recalculate RAKU formulas</strong> in Sheets.
+</p>
+
+<h2 id="more">More <a class="anchor" href="#more" aria-label="link">#</a></h2>
+<p>
+  <a href="https://github.com/ash/rakupp/tree/main/bindings/spreadsheets">The guide</a>
+  covers the rest: how values go in and come out (an empty cell, a date, a
+  range, a result too big for a double), the limits (no files or network, about
+  a hundred levels of recursion), and how the add-in and the script are built.
+</p>
+
+<footer>
+  <span>The engine in these formulas is the one behind <a href="/play/">the playground</a>: the same Raku++, compiled to WebAssembly.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=b91765a0" defer></script>
+</body>
+</html>

@@ -181,6 +181,7 @@ check_shell() {
     missing=""
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/embed/js/index.html" \
+                "$WWW/embed/spreadsheets/index.html" \
                 "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
