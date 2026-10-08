@@ -180,7 +180,8 @@ check_theme_refs() {
 check_shell() {
     missing=""
     for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
-                "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/install/index.html" \
+                "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/embed/js/index.html" \
+                "$WWW/install/index.html" \
                 "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
                 "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
                 "$WWW/deep/index.html" \
@@ -198,6 +199,7 @@ check_frozen() {
     for f in $FROZEN; do
         [ -s "$WWW/$f" ] || { echo "FROZEN FILE MISSING: www/$f" >&2; exit 1; }
     done
+    echo "check: the frozen engine URLs are intact ($FROZEN)"
     check_excel_engine
 }
 
@@ -214,7 +216,6 @@ check_excel_engine() {
     grep -q 'https://raku.online/embed/excel/' "$WWW/embed/excel/manifest.xml" \
         || { echo "www/embed/excel/manifest.xml does not point at https://raku.online/embed/excel/" >&2; exit 1; }
     echo "check: the Excel add-in runs the site's engine"
-    echo "check: the frozen engine URLs are intact ($FROZEN)"
 }
 
 # No page may link to a sub-site's old root-absolute paths. Both generators take
