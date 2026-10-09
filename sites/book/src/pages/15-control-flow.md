@@ -32,7 +32,7 @@ Every activation bumps `frameTop`. A routine records the value at its own
 entry. So the test is an equality:
 
 ```cpp
-// src/Interpreter.cpp — return
+// src/InterpreterCore.cpp — return
 if (tctx_.curRoutineFrame != 0 && tctx_.frameTop == tctx_.curRoutineFrame) {
     tctx_.returning = true; tctx_.returnV = std::move(v);
     return Value::any();                       // set a flag, do not throw
@@ -44,7 +44,7 @@ The statement loops check the flag after each statement and bail out, and
 `callCallableRaw` consumes it at the routine boundary:
 
 ```cpp
-// src/Interpreter.cpp — after each statement in the activation loop
+// src/InterpreterCore.cpp — after each statement in the activation loop
 if (tctx_.returning) {
     if (isRoutine) { tctx_.returning = false; last = std::move(tctx_.returnV); }
     break;               // a bare block just propagates it to its routine
@@ -68,7 +68,7 @@ uint64_t curLoopFrame = kNoFrame;    // frameTop of the innermost native loop
 ```
 
 ```cpp
-// src/Interpreter.cpp — LastStmt
+// src/InterpreterCore.cpp — LastStmt
 if (t.empty() && tctx_.frameTop == tctx_.curLoopFrame) {
     tctx_.loopCtl = 2; return Value::any();
 }
@@ -171,6 +171,50 @@ populated and can be matched on class rather than on message text. That
 distinction matters: the project's rule is that error *message* wording is only
 copied from Rakudo where Roast or the documentation actually asserts it — the
 behaviour is what must match, not the prose.
+
+### An error that reaches its CATCH without a throw
+
+A `die` is a throw too, and Roast measures what that costs.
+`S04-exception-handlers/catch.t` dies half a million times inside two blocks:
+
+```raku
+for ^500000 {
+    CATCH { default { } }
+    { CATCH { }; die "foo" }
+}
+```
+
+Each iteration raised four C++ exceptions: the `die`; two more to get it out of
+the inner block, whose `CATCH` matched nothing; and a `BreakGivenEx` for the
+`default` that took it. The file ran for 37 seconds, against Rakudo's 2.5.
+
+The `when` or `default` in a handler now matches the way one in a `given`
+does: the handler runs with `curGivenFrame` set to its own frame, and reads
+`givenCtl` after each of its statements. The rest follows the pattern this
+chapter started with. A block with a `CATCH` runs its statements through
+`execStmtHanding`, which lets an error arrive as a value wherever no other C++
+frame stands between it and the handler:
+
+```cpp
+// src/Interpreter.h
+struct HandedError { RakuError err; std::exception_ptr raised; };
+```
+
+A statement that is only a call of the built-in `die` has its error made by
+`dieError`, the same function the built-in throws from, and never thrown. A
+bare block nested in such a block runs with a `handOff` slot: an error that
+leaves it is put there, after the inner block's own `CATCH`, `LEAVE`s and
+`let`s have had their turn, and the enclosing statement loop takes it as if it
+had caught it. Anything else, a `die` inside a called routine for instance,
+still raises, and the loop catches it as before. When no handler within reach
+takes the error, the outermost block that has no caller to hand it to raises
+it once. `raised` keeps the original C++ exception when there was one, so the
+object that propagates is the object that was thrown.
+
+The loop above now runs without a throw, and the file takes 0.4 seconds. Only
+`execBlock`'s statement loop works this way. A routine body, and therefore a
+`try` block, runs its statements in `callCallableRaw`, where a `die` still
+raises.
 
 ## Backtraces
 

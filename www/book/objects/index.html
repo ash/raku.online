@@ -72,7 +72,7 @@ std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
 <p>so <code>Globber::Match</code> inside <code>unit class IO::Glob</code> finds <code>IO::Glob::Globber::Match</code>. Only qualified names take that road — a bare <code>Match</code> must not silently find a nested one — and an ambiguous suffix is left alone rather than guessed at. The successful answer is memoised into the alias map.</p>
 <h2 id="construction">Construction</h2>
 <p>The default <code>new</code> and <code>bless</code> share one path. It walks the class chain <strong>parent-first</strong>, gives each attribute its default, folds named arguments into the attribute map, and then runs <code>BUILD</code> and <code>TWEAK</code>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — default construction, abridged</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodCallPart2.cpp — default construction, abridged</span>
 <span class="k">for</span> (<span class="k">auto</span> it = chain.rbegin(); it != chain.rend(); ++it)      <span class="c1">// parent-first</span>
     <span class="k">for</span> (<span class="k">auto</span>&amp; at : (*it)-&gt;attrs) {
         Value dv = at.hasDefVal ? at.defVal
@@ -90,7 +90,7 @@ std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
 <p><code>is required</code> throws when construction supplies no value, carrying the reason string from <code>is required("it is a good idea")</code> into the message. <code>is built</code> makes a <em>private</em> attribute settable by name at construction anyway.</p>
 <h2 id="attributes-and-accessors">Attributes and accessors</h2>
 <p><code>$!x</code> is a direct read or write of the attribute map. <code>$.x</code> is a public accessor: method lookup runs first, and on a miss <code>findAttr</code> supplies the attribute. The compiled backend uses the same map through two helpers:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterBinding.cpp</span>
 Value rtAttrGet(<span class="k">const</span> Value&amp; self, <span class="k">const</span> std::string&amp; name) {
     <span class="k">if</span> (self.t == VT::Object &amp;&amp; self.obj) {
         <span class="k">auto</span> it = self.obj-&gt;attrs.find(name);
@@ -110,7 +110,7 @@ std::string lastLvalueAttrType;</code></pre>
 <h2 id="roles">Roles</h2>
 <p>A role is a <code>ClassInfo</code> with <code>isRole</code> set, a set of <code>requiredMethods</code>, and a set of <code>doneRoles</code>. Composition copies the role's methods and attributes into the class and records membership.</p>
 <p>Required methods are checked <strong>at class declaration</strong>, and the check is more generous than a lookup, because there are four honest ways to satisfy a requirement:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — for each name a role requires</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterModules.cpp — for each name a role requires</span>
 ok = hasImpl(ci, rq, <span class="kc">nullptr</span>)      <span class="c1">// a non-stub implementation anywhere in the type</span>
   || classOwn.count(rq);           <span class="c1">// …or the class's own stub: a deliberate promise</span>
 <span class="k">if</span> (!ok &amp;&amp; attrCovers(ci, rq)) ok = <span class="kc">true</span>;   <span class="c1">// …or a public attribute's accessor,</span>
@@ -138,7 +138,7 @@ std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; roleParamBindings;</code>
 <h2 id="mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></h2>
 <p><code>5 but Role</code> and <code>%h does R</code> add a role to a value at run time.</p>
 <p>For a value that is already an object, the role is composed into a fresh anonymous subclass. For a <strong>non-object base</strong> there is no <code>ObjectData</code> to extend, so the value is <em>boxed</em>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — mixinValue</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterOperators.cpp — mixinValue</span>
 obj = std::make_shared&lt;ObjectData&gt;();
 obj-&gt;boxed = base;          <span class="c1">// the original 5 is kept here</span>
 obj-&gt;hasBoxed = <span class="kc">true</span>;

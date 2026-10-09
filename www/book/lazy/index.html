@@ -55,7 +55,7 @@ st-&gt;appendNext = [next](ValueList&amp; cache) -&gt; <span class="kt">bool</sp
 a.ext = st;</code></pre>
 <h3>Forcing elements</h3>
 <p>Consumers grow the prefix on demand:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterBinding.cpp</span>
 <span class="kt">void</span> Interpreter::materializeLazy(<span class="k">const</span> Value&amp; v, <span class="kt">size_t</span> n) {
     <span class="k">auto</span> st = std::static_pointer_cast&lt;LazySeqState&gt;(v.ext);
     <span class="k">while</span> (v.arr-&gt;size() &lt; n &amp;&amp; v.arr-&gt;size() &lt; CAP)
@@ -63,7 +63,7 @@ a.ext = st;</code></pre>
 }</code></pre>
 <p>So <code>@lazy[5]</code> materialises six elements and then indexes; <code>.head(3)</code> materialises three; <code>.first(&amp;pred)</code> pulls one at a time until the predicate matches.</p>
 <p>Operations that need the <em>end</em> of an infinite list cannot complete, and say so:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodCallTail.cpp</span>
 <span class="k">if</span> (m == <span class="s2">"elems"</span> || m == <span class="s2">"end"</span> || m == <span class="s2">"pop"</span> || m == <span class="s2">"tail"</span> ||
     m == <span class="s2">"reverse"</span> || m == <span class="s2">"sort"</span> || m == <span class="s2">"sum"</span> || m == <span class="s2">"min"</span> ||
     m == <span class="s2">"max"</span> || m == <span class="s2">"join"</span> || m == <span class="s2">"Str"</span> || m == <span class="s2">"gist"</span>)
@@ -72,7 +72,7 @@ a.ext = st;</code></pre>
 <p>A <em>finite</em> lazy value — a <code>gather</code> that outgrew its probe — instead forces full materialisation, which is the right answer for it.</p>
 <h3>Lazy <code>.map</code> and <code>.grep</code></h3>
 <p><code>.map</code> over a lazy source builds a <strong>new</strong> <code>LazySeqState</code> that pulls from the source on demand, which is what makes <code>(1..Inf).grep(*.is-prime).head(5)</code> terminate:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — .map over a lazy source</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodCallTail.cpp — .map over a lazy source</span>
 st-&gt;appendNext = [self, src, fn](ValueList&amp; cache) -&gt; <span class="kt">bool</span> {
     <span class="kt">size_t</span> si = cache.size();
     self-&gt;materializeLazy(src, si + <span class="mi">1</span>);          <span class="c1">// pull one more</span>
@@ -101,7 +101,7 @@ st-&gt;appendNext = [self, src, fn](ValueList&amp; cache) -&gt; <span class="kt"
 <p>The sign rule for <code>*</code> is the one case that needs care. A <code>Range</code> is bounded below, so it has finitely many negative elements, and their count settles the sign of an otherwise unbounded product — three of them in <code>-2.5..Inf</code>, hence <code>-Inf</code>. Zero overrides all of it, but only when the walk actually lands on zero: <code>-3..Inf</code> does, <code>-2.5..Inf</code> steps straight from <code>-0.5</code> to <code>0.5</code> and does not.</p>
 <p>The check lives in one function, <code>endlessReduce</code>, and every entry point calls it <em>before</em> flattening — the <code>[op]</code> metaoperator, <code>prefix:&lt;[op]&gt;(…)</code>, an <code>&amp;prefix:&lt;[op]&gt;</code> reference, <code>.reduce</code>, and <code>rtReduce</code>, the one the native code generator emits, so a compiled binary agrees with the interpreter. <code>.sum</code> and the <code>sum</code> builtin answer from the bounds too, rather than from a truncated <code>toList</code>.</p>
 <p>An endless <strong>lazy</strong> list is a different matter: its elements do not follow from any bounds, so there is nothing to compute a limit from and every operator refuses. A <em>merely</em> lazy one — finite, but holding only the prefix something has pulled so far — must not be folded from its cache either, or <code>[+] @lazy</code> answers for whatever happened to be materialised. It is drained first, and refused only if it will not drain:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — endlessReduce, the lazy arm</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterOperators.cpp — endlessReduce, the lazy arm</span>
 <span class="k">auto</span> st = std::static_pointer_cast&lt;LazySeqState&gt;(v.ext);
 <span class="k">const</span> <span class="kt">size_t</span> CAP = <span class="mi">1000000</span>;                       <span class="c1">// materializeLazy's ceiling</span>
 <span class="k">if</span> (st-&gt;appendNext)
@@ -133,7 +133,7 @@ st-&gt;appendNext = [<span class="k">this</span>, runGather](ValueList&amp; out)
     <span class="k">return</span> more;
 };</code></pre>
 <p>Doubling keeps the re-run cost amortised linear. A <code>take</code> that pushes past the current cap unwinds the block with an empty marker exception:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — take</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCalls.cpp — take</span>
 <span class="k">auto</span>&amp; coll = *tctx_.gatherStack.back();
 <span class="k">for</span> (<span class="k">auto</span>&amp; x : a) coll.push_back(x);
 <span class="k">if</span> (lim &amp;&amp; coll.size() &gt;= lim) <span class="k">throw</span> StopGatherEx{};</code></pre>
@@ -147,7 +147,7 @@ st-&gt;appendNext = [<span class="k">this</span>, runGather](ValueList&amp; out)
 <p>They are built by the <code>any</code>/<code>all</code>/<code>one</code>/<code>none</code> routines, the matching methods, and the <code>|</code>, <code>&amp;</code>, <code>^</code> infix operators.</p>
 <p><strong>Autothreading</strong> — distributing an operation over the eigenstates and recombining — happens at each place a value is consumed, and there are four such places.</p>
 <p><strong>Operators.</strong> A comparison <em>collapses</em> to a single <code>Bool</code> according to the junction type; any other operator produces a <strong>new</strong> junction of the per-eigenstate results:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — applyArith</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — applyArith</span>
 Value out = Value::array(); out.enumName = j.enumName;
 <span class="k">for</span> (<span class="k">auto</span>&amp; e : *j.arr)
     out.arr-&gt;push_back(applyArith(op, jleft ? e : l, jleft ? r : e));

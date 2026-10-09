@@ -89,13 +89,13 @@ say <span class="nv">@a</span>;          <span class="c1"># (1 2 3) — unchange
 <h2 id="binding-and-the-proxy">Binding: <code>:=</code> and the <code>Proxy</code></h2>
 <p><code>=</code> copies a value into an existing container. <code>:=</code> rebinds the container itself: after <code>$y := $x</code>, the two names <em>are</em> the same container and a write to either is seen by both.</p>
 <p>But <code>Env</code> stores <code>Value</code>s by value in a map, so two map slots cannot literally be the same storage. The alias is faked with a <code>Proxy</code>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — $y := $x, scalar case</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — $y := $x, scalar case</span>
 Value proxy = Value::makeHash(); proxy.hashKind = <span class="s2">"Proxy"</span>;
 (*proxy.hash)[<span class="s2">"FETCH"</span>] = fetch;    <span class="c1">// a builtin Code closing over the owning Env</span>
 (*proxy.hash)[<span class="s2">"STORE"</span>] = store;
 *lvalue(target) = proxy;</code></pre>
 <p><code>$y</code>'s slot holds a <code>Hash</code> tagged <code>Proxy</code> whose two closures read and write <code>$x</code>'s slot in the environment that owns it. Reading a variable notices the tag and calls <code>FETCH</code> instead of returning the hash:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — reading a variable</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — reading a variable</span>
 Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <span class="k">if</span> (p) {
     <span class="k">if</span> (p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span> &amp;&amp; p-&gt;hash) {
@@ -108,7 +108,7 @@ Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <p>Binding chains dereference one extra level so <code>$z := $y := $x</code> works.</p>
 <p>This costs a call on every read of a bound variable, which is why the check is placed inside the <em>slow</em> half of the variable-read path and why the fast paths in <a href="/book/node-specialization/">Chapter 19</a> decline any value with a non-empty <code>hashKind</code>.</p>
 <p><strong>Array binding is much cheaper</strong>, because sharing a buffer is exactly what a <code>shared_ptr</code> copy already does:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — @a := @b</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — @a := @b</span>
 <span class="k">if</span> (a-&gt;op == <span class="s2">":="</span> &amp;&amp; rhs.t == VT::Array) {
     Value b = rhs; b.itemized = <span class="kc">false</span>; *lv = b;
 }</code></pre>
@@ -119,7 +119,7 @@ Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <p>Raku's <code>$</code> variable is really a <em>Scalar container</em> holding a value, with introspectable machinery: <code>.VAR</code>, <code>is default</code>, type constraints. Raku++ models that without a separate container object, using flags on the <code>Value</code> plus per-<code>Env</code> side tables.</p>
 <p><strong><code>.VAR</code></strong> builds a <code>Hash</code> tagged <code>"Scalar"</code> reporting the variable's name, value and default.</p>
 <p><strong><code>is default(v)</code> and typed defaults</strong> live in <code>EnvExtras::varDefault</code>, a per-scope map. <code>my Int $x</code> stores <code>(Int)</code> as both the initial value and the reset default. Assigning <code>Nil</code> walks the chain to find it:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — $x = Nil restores the container's default</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — $x = Nil restores the container's default</span>
 <span class="k">for</span> (Env* en = tctx_.cur.get(); en; en = en-&gt;parent.get()) {
     <span class="k">auto</span> di = en-&gt;varDefault.find(nm);
     <span class="k">if</span> (di != en-&gt;varDefault.end()) { dv = di-&gt;second; <span class="k">break</span>; }

@@ -33,14 +33,14 @@
 <span class="kt">uint64_t</span> frameTop = <span class="mi">0</span>;         <span class="c1">// incremented per callCallableRaw activation</span>
 <span class="kt">uint64_t</span> curRoutineFrame = <span class="mi">0</span>;  <span class="c1">// frameTop at the enclosing ROUTINE entry</span></code></pre>
 <p>Every activation bumps <code>frameTop</code>. A routine records the value at its own entry. So the test is an equality:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — return</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — return</span>
 <span class="k">if</span> (tctx_.curRoutineFrame != <span class="mi">0</span> &amp;&amp; tctx_.frameTop == tctx_.curRoutineFrame) {
     tctx_.returning = <span class="kc">true</span>; tctx_.returnV = std::move(v);
     <span class="k">return</span> Value::any();                       <span class="c1">// set a flag, do not throw</span>
 }
 <span class="k">throw</span> ReturnEx{v};                             <span class="c1">// a boundary was crossed</span></code></pre>
 <p>The statement loops check the flag after each statement and bail out, and <code>callCallableRaw</code> consumes it at the routine boundary:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — after each statement in the activation loop</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — after each statement in the activation loop</span>
 <span class="k">if</span> (tctx_.returning) {
     <span class="k">if</span> (isRoutine) { tctx_.returning = <span class="kc">false</span>; last = std::move(tctx_.returnV); }
     <span class="k">break</span>;               <span class="c1">// a bare block just propagates it to its routine</span>
@@ -52,7 +52,7 @@
 <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">uint64_t</span> kNoFrame = ~<span class="kt">uint64_t</span>(<span class="mi">0</span>);  <span class="c1">// "no frame is armed"</span>
 <span class="kt">int</span> loopCtl = <span class="mi">0</span>;                     <span class="c1">// 0 none, 1 next, 2 last, 3 redo</span>
 <span class="kt">uint64_t</span> curLoopFrame = kNoFrame;    <span class="c1">// frameTop of the innermost native loop</span></code></pre>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — LastStmt</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — LastStmt</span>
 <span class="k">if</span> (t.empty() &amp;&amp; tctx_.frameTop == tctx_.curLoopFrame) {
     tctx_.loopCtl = <span class="mi">2</span>; <span class="k">return</span> Value::any();
 }
@@ -99,6 +99,18 @@ Value makeTypedEx(<span class="k">const</span> std::string&amp; type,
         std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; attrs,
         <span class="k">const</span> std::string&amp; message);</code></pre>
 <p>so <code>X::TypeCheck::Binding</code> arrives with its <code>got</code> and <code>expected</code> attributes populated and can be matched on class rather than on message text. That distinction matters: the project's rule is that error <em>message</em> wording is only copied from Rakudo where Roast or the documentation actually asserts it — the behaviour is what must match, not the prose.</p>
+<h3>An error that reaches its CATCH without a throw</h3>
+<p>A <code>die</code> is a throw too, and Roast measures what that costs. <code>S04-exception-handlers/catch.t</code> dies half a million times inside two blocks:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">for</span> ^<span class="mi">500000</span> {
+    CATCH { <span class="k">default</span> { } }
+    { CATCH { }; die <span class="s2">"foo"</span> }
+}</code></pre>
+<p>Each iteration raised four C++ exceptions: the <code>die</code>; two more to get it out of the inner block, whose <code>CATCH</code> matched nothing; and a <code>BreakGivenEx</code> for the <code>default</code> that took it. The file ran for 37 seconds, against Rakudo's 2.5.</p>
+<p>The <code>when</code> or <code>default</code> in a handler now matches the way one in a <code>given</code> does: the handler runs with <code>curGivenFrame</code> set to its own frame, and reads <code>givenCtl</code> after each of its statements. The rest follows the pattern this chapter started with. A block with a <code>CATCH</code> runs its statements through <code>execStmtHanding</code>, which lets an error arrive as a value wherever no other C++ frame stands between it and the handler:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="k">struct</span> HandedError { RakuError err; std::exception_ptr raised; };</code></pre>
+<p>A statement that is only a call of the built-in <code>die</code> has its error made by <code>dieError</code>, the same function the built-in throws from, and never thrown. A bare block nested in such a block runs with a <code>handOff</code> slot: an error that leaves it is put there, after the inner block's own <code>CATCH</code>, <code>LEAVE</code>s and <code>let</code>s have had their turn, and the enclosing statement loop takes it as if it had caught it. Anything else, a <code>die</code> inside a called routine for instance, still raises, and the loop catches it as before. When no handler within reach takes the error, the outermost block that has no caller to hand it to raises it once. <code>raised</code> keeps the original C++ exception when there was one, so the object that propagates is the object that was thrown.</p>
+<p>The loop above now runs without a throw, and the file takes 0.4 seconds. Only <code>execBlock</code>'s statement loop works this way. A routine body, and therefore a <code>try</code> block, runs its statements in <code>callCallableRaw</code>, where a <code>die</code> still raises.</p>
 <h2 id="backtraces">Backtraces</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
 <span class="k">struct</span> CallSite { <span class="kt">int</span> line; <span class="k">const</span> Value* code; };

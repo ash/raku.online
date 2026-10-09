@@ -82,7 +82,7 @@ straightforward recursion.
 and a copy:
 
 ```cpp
-// src/Interpreter.cpp — eval(VarExpr), the plain-lexical fast path
+// src/InterpreterCore.cpp — eval(VarExpr), the plain-lexical fast path
 if (Value* p = tctx_.cur->find(ve->name))
     if (!(p->t == VT::Hash && p->hashKind == "Proxy"))
         return *p;
@@ -96,7 +96,10 @@ the second character of the name.
 **`Binary`** dispatches through `applyArith`, but first consults two
 decided-once fields on the node: `simpleOp`, which records whether this operator
 needs special handling at all, and `fastShape`, which records the syntactic
-shape of the operands. Chapter 19 is entirely about those.
+shape of the operands. Chapter 19 is entirely about those. A third,
+`specialArm`, names which special-cased arm handles the operator, so `~~` or
+`|` goes straight there instead of past a hundred tests for other spellings;
+`Unary` has the same thing as `evalPath`.
 
 **`Index`** reads a container element, and has a matching `fastShape`.
 

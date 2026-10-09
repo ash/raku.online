@@ -62,12 +62,12 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
 <h2 id="evaluating-an-expression">Evaluating an expression</h2>
 <p><code>eval</code> is a switch. The interesting arms are the ones that are <em>not</em> a straightforward recursion.</p>
 <p><strong><code>VarExpr</code></strong> is the hottest node in most programs. Its fast path is a <code>find</code> and a copy:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.cpp — eval(VarExpr), the plain-lexical fast path</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — eval(VarExpr), the plain-lexical fast path</span>
 <span class="k">if</span> (Value* p = tctx_.cur-&gt;find(ve-&gt;name))
     <span class="k">if</span> (!(p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span>))
         <span class="k">return</span> *p;</code></pre>
 <p>with the <code>Proxy</code> check placed so that the common case is one comparison. Names with a twigil — <code>$*dyn</code>, <code>$?FILE</code>, <code>$^a</code>, <code>$/</code> — never reach this path; each has its own lookup rule, and the fast paths in <a href="/book/node-specialization/">Chapter 19</a> exclude them by testing the second character of the name.</p>
-<p><strong><code>Binary</code></strong> dispatches through <code>applyArith</code>, but first consults two decided-once fields on the node: <code>simpleOp</code>, which records whether this operator needs special handling at all, and <code>fastShape</code>, which records the syntactic shape of the operands. <a href="/book/node-specialization/">Chapter 19</a> is entirely about those.</p>
+<p><strong><code>Binary</code></strong> dispatches through <code>applyArith</code>, but first consults two decided-once fields on the node: <code>simpleOp</code>, which records whether this operator needs special handling at all, and <code>fastShape</code>, which records the syntactic shape of the operands. <a href="/book/node-specialization/">Chapter 19</a> is entirely about those. A third, <code>specialArm</code>, names which special-cased arm handles the operator, so <code>~~</code> or <code>|</code> goes straight there instead of past a hundred tests for other spellings; <code>Unary</code> has the same thing as <code>evalPath</code>.</p>
 <p><strong><code>Index</code></strong> reads a container element, and has a matching <code>fastShape</code>.</p>
 <p><strong><code>Call</code></strong> and <strong><code>MethodCall</code></strong> are <a href="/book/calls/">Chapters 14</a> and <a href="/book/dispatch/">16</a>.</p>
 <p><strong><code>InterpStr</code></strong> evaluates each part and concatenates. The parts were already parsed into sub-expressions by the front end, so there is no string scanning here at all.</p>
