@@ -17,7 +17,7 @@
     # other.
     groups => (
         'Writing Raku'                  => <containers parametric-roles modules l10n 6e>,
-        'Talking to the outside world'  => <shell background-processes http buffering>,
+        'Talking to the outside world'  => <shell background-processes http native-libraries buffering>,
         'Compiling, and making it fast' => <compiling optimizer performance threads>,
         'When something goes wrong'     => <debugging garbage-collection>,
         'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations differences>,
@@ -29,6 +29,7 @@
     # of them in one line rather than a paragraph each.
     blurbs => {
         shell       => 'Running external commands: run vs shell, capturing output, feeding input, exit codes.',
+        'native-libraries' => 'Naming a native library so it loads on every OS: what is native(\'foo\') becomes on Linux, macOS and Windows, why the version matters, and where the system looks.',
         buffering   => 'Why output does not appear when you expect it: out-buffer and flush, the three places output can sit, and the child\'s own buffer you cannot set from outside.',
         'background-processes' => 'Proc::Async: fire-and-forget processes that outlive the program, bind-stdin pipelines, kill — and where Raku\'s own docs stand on the survival.',
         http        => 'Is HTTP built into the engine? Sockets are and HTTP is not: what you get with no use, writing a request by hand, and which HTTP modules work on each engine.',

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — naming a native library so it loads on every OS</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=b91765a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b91765a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b91765a0">
+<link rel="stylesheet" href="/theme/faq.css?v=b91765a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Naming a native library so it loads on every OS</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#the-short-answer">The short answer</a></li><li><a href="#what-does-a-name-turn-into">What does a name turn into?</a></li><li><a href="#why-give-the-version">Why give the version?</a></li><li><a href="#when-the-files-break-the-pattern-choose-per-os">When the files break the pattern: choose per OS</a></li><li><a href="#let-the-user-point-at-the-file">Let the user point at the file</a></li><li><a href="#functions-from-the-c-library-itself">Functions from the C library itself</a></li><li><a href="#where-the-system-looks">Where the system looks</a></li><li><a href="#shipping-the-library-with-your-module">Shipping the library with your module</a></li><li><a href="#which-file-did-it-try">Which file did it try?</a></li><li><a href="#where-the-engines-differ">Where the engines differ</a></li></ul></nav>
+<p><code>is native('foo')</code> names a library, not a file. Each system spells the file differently, so a name that loads on one machine can fail on the next. This page is about writing the name once so that it loads on Linux, macOS and Windows. <a href="https://github.com/ash/rakupp/blob/main/docs/guide/FFI.md">FFI.md</a> covers the rest of NativeCall.</p>
+<p>The snippets were run on macOS (Rakudo 2026.09) and on Linux (Rakudo 2022.12), and under Raku++ on both. Windows was not run: its spellings below are read from the two engines' sources. Where the engines differ, the page says so.</p>
+<h2 id="the-short-answer">The short answer <a class="anchor" href="#the-short-answer" aria-label="link">#</a></h2>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">glib_check_version</span>(<span class="nb">uint32</span>, <span class="nb">uint32</span>, <span class="nb">uint32</span> --&gt; <span class="nb">Str</span>) <span class="k">is</span> <span class="n">native</span>(<span class="s">'glib-2.0'</span>, <span class="n">v0</span>) {*}</code></pre>
+<ul><li>Write the name without <code>lib</code> and without an extension.</li><li>Give the version: the number after <code>.so.</code> in the Linux file name.</li><li>Don't write a file name such as <code>libglib-2.0.so.0</code>. That is a Linux file, and only a Linux machine has it.</li><li>For Windows, or any library whose files break the pattern, choose the name per OS (see below).</li><li>For functions from the C library itself (<code>strlen</code>, <code>pow</code>), leave the name out.</li></ul>
+<h2 id="what-does-a-name-turn-into">What does a name turn into? <a class="anchor" href="#what-does-a-name-turn-into" aria-label="link">#</a></h2>
+<p>The engine turns a bare name into the platform's file name. Both engines spell the Linux and macOS columns this way. The Windows column is Rakudo's; Raku++ differs there (see the last section).</p>
+<div class="tablewrap"><table><tr><th>you write</th><th>Linux</th><th>macOS</th><th>Windows</th></tr><tr><td><code>is native('glib-2.0')</code></td><td><code>libglib-2.0.so</code></td><td><code>libglib-2.0.dylib</code></td><td><code>glib-2.0.dll</code></td></tr>
+<tr><td><code>is native('glib-2.0', v0)</code></td><td><code>libglib-2.0.so.0</code></td><td><code>libglib-2.0.0.dylib</code></td><td><code>glib-2.0.dll</code></td></tr>
+<tr><td><code>is native('libglib-2.0.so.0')</code></td><td>as written</td><td>as written</td><td>as written</td></tr>
+<tr><td><code>is native('/opt/lib/libfoo.so')</code></td><td>as written</td><td>as written</td><td>as written</td></tr></table></div>
+<p>A name that ends in an extension made of letters (<code>.so</code>, <code>.dylib</code>, <code>.dll</code>), or in <code>.so.</code> and a number, is a file name and is used untouched. Everything else is decorated. A Windows DLL name carries no version, so Rakudo drops it there.</p>
+<p>Ask the engine what it will look for:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="nv">$*VM</span>.<span class="n">platform-library-name</span>(<span class="s">'glib-2.0'</span>.<span class="nb">IO</span>);                 <span class="c1"># &quot;libglib-2.0.dylib&quot;.IO on macOS</span>
+<span class="nb">say</span> <span class="nv">$*VM</span>.<span class="n">platform-library-name</span>(<span class="s">'glib-2.0'</span>.<span class="nb">IO</span>, :<span class="n">version</span>(<span class="n">v0</span>));   <span class="c1"># &quot;libglib-2.0.0.dylib&quot;.IO on macOS</span></code></pre>
+<p>On Linux the same two lines print <code>"libglib-2.0.so".IO</code> and <code>"libglib-2.0.so.0".IO</code>.</p>
+<p>Don't add the <code>lib</code> yourself. <code>is native('libglib-2.0')</code> makes Rakudo look for <code>liblibglib-2.0.dylib</code>, and it does not load under Raku++ either.</p>
+<h2 id="why-give-the-version">Why give the version? <a class="anchor" href="#why-give-the-version" aria-label="link">#</a></h2>
+<p>On Linux, the file without a version, <code>libglib-2.0.so</code>, is a symlink that comes with the development package (<code>libglib2.0-dev</code> on Debian and Ubuntu). A machine that only runs programs has the versioned file and nothing else:</p>
+<pre class="native-code"><code class="lang-sh">ls /usr/lib/x86_64-linux-gnu/libglib-2.0.so*</code></pre>
+<pre class="native-code"><code>/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0
+/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.8000.0</code></pre>
+<p>On that machine Rakudo cannot load <code>is native('glib-2.0')</code>:</p>
+<pre class="native-code"><code>Cannot locate native library 'libglib-2.0.so': libglib-2.0.so: cannot open shared object file: No such file or directory</code></pre>
+<p><code>is native('glib-2.0', v0)</code> loads on both engines. Raku++ loads the first form too: when the unversioned file is missing, it tries <code>libglib-2.0.so.8</code> down to <code>.so.0</code>. A program that relies on that runs on Raku++ only, so give the version.</p>
+<p>The number is the one after <code>.so.</code> in the runtime file; <code>ldconfig -p</code> lists them. Homebrew on macOS names the same library <code>libglib-2.0.0.dylib</code>. The two numbers are usually the same, but check both:</p>
+<pre class="native-code"><code class="lang-sh">ldconfig -p | grep libglib-2.0          # Linux
+ls /opt/homebrew/lib/libglib-2.0.*      # macOS, Homebrew on Apple silicon</code></pre>
+<h2 id="when-the-files-break-the-pattern-choose-per-os">When the files break the pattern: choose per OS <a class="anchor" href="#when-the-files-break-the-pattern-choose-per-os" aria-label="link">#</a></h2>
+<p>Neither engine can guess a DLL's name. GTK's Windows builds call GLib <code>libglib-2.0-0.dll</code>, with the <code>lib</code> and the version, and the decoration gives <code>glib-2.0.dll</code>. Name that file yourself:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">constant</span> <span class="n">GLIB</span> = <span class="nv">$*DISTRO</span>.<span class="n">is-win</span> ?? <span class="s">'libglib-2.0-0.dll'</span> !! (<span class="s">'glib-2.0'</span>, <span class="n">v0</span>);
+<span class="k">sub</span> <span class="n">glib_check_version</span>(<span class="nb">uint32</span>, <span class="nb">uint32</span>, <span class="nb">uint32</span> --&gt; <span class="nb">Str</span>) <span class="k">is</span> <span class="n">native</span>(<span class="n">GLIB</span>) {*}
+<span class="nb">say</span> <span class="n">glib_check_version</span>(<span class="mi">2</span>, <span class="mi">0</span>, <span class="mi">0</span>);    <span class="c1"># (Str) — NULL: the installed GLib is new enough</span>
+<span class="nb">say</span> <span class="n">glib_check_version</span>(<span class="mi">99</span>, <span class="mi">0</span>, <span class="mi">0</span>);   <span class="c1"># GLib version too old (major mismatch)</span></code></pre>
+<p><code>('glib-2.0', v0)</code> is the two arguments of <code>is native('glib-2.0', v0)</code> held in one constant. When macOS needs a name of its own, test <code>$*KERNEL.name eq 'darwin'</code> the same way.</p>
+<p>A <code>constant</code> is worked out when the file is compiled. That happens on the machine that runs it, so <code>$*DISTRO</code> describes the right system.</p>
+<h2 id="let-the-user-point-at-the-file">Let the user point at the file <a class="anchor" href="#let-the-user-point-at-the-file" aria-label="link">#</a></h2>
+<p>Give <code>is native</code> a routine, and it is called at the first native call. Its answer is used exactly as returned, so it must be a whole file name. A <code>('glib-2.0', v0)</code> list returned from a routine fails on both engines. <code>$*VM.platform-library-name</code> does the decorating:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">glib</span> {
+    <span class="nv">%*ENV</span><span class="s">&lt;GLIB_LIBRARY&gt;</span>
+      // (<span class="nv">$*DISTRO</span>.<span class="n">is-win</span> ?? <span class="s">'libglib-2.0-0.dll'</span>
+                          !! <span class="nv">$*VM</span>.<span class="n">platform-library-name</span>(<span class="s">'glib-2.0'</span>.<span class="nb">IO</span>, :<span class="n">version</span>(<span class="n">v0</span>)).<span class="nb">Str</span>)
+}
+<span class="k">sub</span> <span class="n">glib_check_version</span>(<span class="nb">uint32</span>, <span class="nb">uint32</span>, <span class="nb">uint32</span> --&gt; <span class="nb">Str</span>) <span class="k">is</span> <span class="n">native</span>(<span class="nv">&amp;glib</span>) {*}
+<span class="nb">say</span> <span class="n">glib_check_version</span>(<span class="mi">2</span>, <span class="mi">0</span>, <span class="mi">0</span>);    <span class="c1"># (Str)</span></code></pre>
+<p>Whoever runs the program can now name the file when it is somewhere unusual, without editing your code:</p>
+<pre class="native-code"><code class="lang-sh">GLIB_LIBRARY=/opt/homebrew/lib/libglib-2.0.0.dylib rakudo prog.raku</code></pre>
+<h2 id="functions-from-the-c-library-itself">Functions from the C library itself <a class="anchor" href="#functions-from-the-c-library-itself" aria-label="link">#</a></h2>
+<p>Leave the name out. <code>is native</code> with no argument looks in the running program, which has the C library and the maths library loaded already:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">strlen</span>(<span class="nb">Str</span> --&gt; <span class="n">size_t</span>) <span class="k">is</span> <span class="n">native</span> {*}
+<span class="k">sub</span> <span class="n">pow</span>(<span class="nb">num64</span>, <span class="nb">num64</span> --&gt; <span class="nb">num64</span>) <span class="k">is</span> <span class="n">native</span> {*}
+<span class="nb">say</span> <span class="n">strlen</span>(<span class="s">'hello'</span>);    <span class="c1"># 5</span>
+<span class="nb">say</span> <span class="n">pow</span>(<span class="mf">2e0</span>, <span class="mf">10e0</span>);     <span class="c1"># 1024</span></code></pre>
+<p>Don't write <code>is native('m')</code>. On Linux <code>libm.so</code> is a linker script, not a library, and Rakudo stops at it:</p>
+<pre class="native-code"><code>Cannot locate native library 'libm.so': /lib/x86_64-linux-gnu/libm.so: invalid ELF header</code></pre>
+<p>Raku++ goes on to <code>libm.so.6</code> and loads it.</p>
+<h2 id="where-the-system-looks">Where the system looks <a class="anchor" href="#where-the-system-looks" aria-label="link">#</a></h2>
+<p>The decorated name goes to the system's loader (<code>dlopen</code>, or <code>LoadLibrary</code> on Windows), and the loader searches its own list of directories:</p>
+<ul><li><strong>Linux</strong>: the directories in <code>LD_LIBRARY_PATH</code>, then the ones <code>ldconfig</code> knows (<code>/etc/ld.so.conf</code>), then <code>/lib</code> and <code>/usr/lib</code>.</li><li><strong>macOS</strong>: the directories in <code>DYLD_LIBRARY_PATH</code>, then <code>/usr/lib</code> and the system's shared cache. Homebrew's <code>/opt/homebrew/lib</code> is not on the list.</li><li><strong>Windows</strong>: the program's own directory, the system directories, then <code>PATH</code>.</li></ul>
+<p>So a library somewhere else needs its directory named when the program runs:</p>
+<pre class="native-code"><code class="lang-sh">LD_LIBRARY_PATH=$HOME/mylibs rakudo prog.raku            # Linux
+DYLD_LIBRARY_PATH=/opt/homebrew/lib rakudo prog.raku     # macOS with Homebrew</code></pre>
+<p>A full path in the code, <code>is native('/opt/homebrew/lib/libglib-2.0.0.dylib')</code>, works too. It ties the program to that one machine: fine for a script, wrong for a module.</p>
+<p>On macOS, <code>DYLD_LIBRARY_PATH</code> is dropped from the environment when a program is started through a system binary such as <code>/usr/bin/env</code>. That is macOS's System Integrity Protection, and it means a script that begins with <code>#!/usr/bin/env rakudo</code> never sees the variable:</p>
+<pre class="native-code"><code class="lang-sh">DYLD_LIBRARY_PATH=/opt/homebrew/lib ./prog.raku          # via #!/usr/bin/env: dropped
+DYLD_LIBRARY_PATH=/opt/homebrew/lib rakudo prog.raku     # passed on</code></pre>
+<p>Raku++ also searches Homebrew's directories itself, after the system has found nothing: <code>/opt/homebrew/lib</code>, <code>/usr/local/lib</code>, and a keg-only formula's own <code>opt/&lt;formula&gt;/lib</code>. A Homebrew library loads under <code>rakupp</code> with no environment variable. Rakudo needs the variable.</p>
+<h2 id="shipping-the-library-with-your-module">Shipping the library with your module <a class="anchor" href="#shipping-the-library-with-your-module" aria-label="link">#</a></h2>
+<p>A distribution can carry its own compiled library. List it under <code>resources</code> without decoration, put the platform's file in <code>resources/libraries/</code>, and name it through <code>%?RESOURCES</code>:</p>
+<pre class="native-code"><code class="lang-json">{ "name": "Answer", "version": "0.1", "auth": "zef:you",
+  "provides": { "Answer": "lib/Answer.rakumod" },
+  "resources": [ "libraries/answer" ] }</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">unit</span> <span class="k">module</span> <span class="n">Answer</span>;
+<span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">answer</span>(--&gt; <span class="nb">int32</span>) <span class="k">is</span> <span class="n">native</span>(<span class="nv">%?RESOURCES</span>&lt;<span class="n">libraries</span>/<span class="n">answer</span>&gt;) <span class="k">is</span> <span class="n">export</span> {*}</code></pre>
+<p><code>libraries/answer</code> is decorated like any other name. The file in the distribution is <code>resources/libraries/libanswer.so</code> on Linux, <code>libanswer.dylib</code> on macOS and <code>answer.dll</code> on Windows. One compiled file runs on one OS only, so a distribution usually ships the C source and builds the library at install time with a <code>Build.rakumod</code>.</p>
+<p>With <code>int answer(void) { return 42; }</code> compiled under the right name, this prints 42 on both engines:</p>
+<pre class="native-code"><code class="lang-sh">rakudo -I. -e 'use Answer; say answer()'
+rakupp -I. -e 'use Answer; say answer()'</code></pre>
+<h2 id="which-file-did-it-try">Which file did it try? <a class="anchor" href="#which-file-did-it-try" aria-label="link">#</a></h2>
+<p>The error names it, then gives the system loader's own list of the places it looked. Rakudo quotes the decorated file, and Raku++ quotes the name as you wrote it:</p>
+<pre class="native-code"><code>Cannot locate native library 'libno-such-lib.dylib': dlopen(libno-such-lib.dylib, …   # Rakudo
+Cannot locate native library 'no-such-lib': dlopen(no-such-lib, …                       # Raku++</code></pre>
+<p>Both throw <code>X::AdHoc</code>. To fall back to another library, catch it by the start of the message, which the two engines share:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">NativeCall</span>;
+<span class="k">sub</span> <span class="n">nope</span>(--&gt; <span class="nb">int32</span>) <span class="k">is</span> <span class="n">native</span>(<span class="s">'no-such-lib'</span>) {*}
+<span class="k">try</span> <span class="n">nope</span>();
+<span class="nb">say</span> <span class="nv">$!</span>.^<span class="n">name</span>;                                                  <span class="c1"># X::AdHoc</span>
+<span class="nb">say</span> <span class="nv">$!</span>.<span class="n">message</span>.<span class="n">starts-with</span>(<span class="s">'Cannot locate native library'</span>);   <span class="c1"># True</span></code></pre>
+<h2 id="where-the-engines-differ">Where the engines differ <a class="anchor" href="#where-the-engines-differ" aria-label="link">#</a></h2>
+<p>Raku++ looks in more places than Rakudo, so a name can load under <code>rakupp</code> and fail under <code>rakudo</code>. Code that has to run on both should follow Rakudo's rules, and everything in the sections above does.</p>
+<div class="tablewrap"><table><tr><th></th><th>Rakudo</th><th>Raku++</th></tr><tr><td><code>is native('glib-2.0')</code> with only <code>libglib-2.0.so.0</code> installed (Linux)</td><td>not found</td><td>tries <code>.so.8</code> down to <code>.so.0</code>, loads <code>.so.0</code></td></tr>
+<tr><td><code>is native('m')</code> on Linux</td><td>stops at the <code>libm.so</code> linker script</td><td>loads <code>libm.so.6</code></td></tr>
+<tr><td>a Homebrew library on macOS</td><td>needs <code>DYLD_LIBRARY_PATH</code></td><td>found in Homebrew's directories</td></tr>
+<tr><td><code>is native('uuid')</code> on macOS, where <code>uuid_generate</code> is part of the system library</td><td>not found</td><td>loads</td></tr>
+<tr><td><code>$*VM.platform-library-name('libfoo'.IO)</code></td><td><code>liblibfoo.dylib</code></td><td><code>libfoo.dylib</code></td></tr>
+<tr><td><code>$*VM.platform-library-name</code> of a path with a directory</td><td>a <code>Str</code></td><td>an <code>IO::Path</code>; call <code>.Str</code></td></tr>
+<tr><td><code>is native('cairo', v2)</code> on Windows (read from the source)</td><td><code>cairo.dll</code></td><td><code>cairo-2.dll</code></td></tr>
+<tr><td><code>is native('glib-2.0')</code> on Windows (read from the source)</td><td><code>glib-2.0.dll</code></td><td><code>glib-2.0</code> as written; Windows adds <code>.dll</code> only to a name with no dot in it</td></tr>
+<tr><td>the name in "Cannot locate native library"</td><td>the decorated file</td><td>the name as written</td></tr></table></div>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b91765a0" defer></script>
+</body>
+</html>
