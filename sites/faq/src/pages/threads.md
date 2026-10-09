@@ -4,15 +4,17 @@ Short answers about running Raku on more than one core: whether a global
 interpreter lock stands in the way, how to tell that threads really ran at
 once, why a `start` sometimes makes a program slower, and what is yours to
 guard. The engine side is [ASYNC.md](../ASYNC.md); how to measure a speed-up
-you can defend is [PARALLEL-SPEEDUP.md](../PARALLEL-SPEEDUP.md).
+you can defend is [PARALLEL-SPEEDUP.md](../PARALLEL-SPEEDUP.md); the hyper
+operators, `hyper for` and `.hyper` have [hyper.md](hyper.md) to themselves.
 
 Measured 2026-10-07 on an Apple M3 (4 performance + 4 efficiency cores):
 Raku++ 5.2.1 (main) and Rakudo v2026.09.
 
 ## Is there a global interpreter lock?
 
-Not by default. `start` blocks and the iterations of `hyper for` and
-`race for` run Raku on separate cores at the same time. Rakudo works the same
+Not by default. `start` blocks, the iterations of `hyper for` and
+`race for`, and the blocks of `.hyper.map` and `.race.map` run Raku on
+separate cores at the same time. Rakudo works the same
 way, and has no lock to turn on.
 
 Raku++ has one switch, read once at startup: `RAKUPP_GIL=1` runs the program
@@ -135,7 +137,7 @@ synchronisation at all.
 
 ## Do `hyper` and `race` use more than one core?
 
-The statement forms do; the methods do not on Raku++:
+The statement forms and the methods both do:
 
 ```raku
 my $main = $*THREAD.id;
@@ -145,15 +147,20 @@ say 'hyper for: ', @a.grep(* != $main).elems, ' of 1000 off the main thread';
 say '.hyper:    ', @b.grep(* != $main).elems, ' of 1000 off the main thread';
 ```
 
+Raku++ and Rakudo print the same two lines:
+
 ```
-Raku++                                      Rakudo
-hyper for: 1000 of 1000 off the main thread  hyper for: 1000 of 1000 off the main thread
-.hyper:    0 of 1000 off the main thread     .hyper:    1000 of 1000 off the main thread
+hyper for: 1000 of 1000 off the main thread
+.hyper:    1000 of 1000 off the main thread
 ```
 
-`race for` and `.race` behave the same way on each engine. On Raku++,
-`.hyper` and `.race` give the right answer serially. To fan a loop out, write
-`hyper for` / `race for`, or `start` and `await`.
+`race for` and `.race` behave the same way. The methods spread `.map` and
+`.grep`: the block runs in batches of 64 on one worker per core less one
+(`:batch` and `:degree` set both), and the values come back in the order of
+the list. On Raku++ the hyper *operators* use the cores too, when the work is
+arithmetic on long lists of plain numbers (`@a »*« @b`, `@a».sqrt`). Which
+form to reach for, with measured numbers, and what keeps a block on one
+thread, is [hyper.md](hyper.md).
 
 ## When is `RAKUPP_GIL=1` worth setting?
 

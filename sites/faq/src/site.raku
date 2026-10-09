@@ -18,7 +18,7 @@
     groups => (
         'Writing Raku'                  => <containers parametric-roles modules l10n 6e>,
         'Talking to the outside world'  => <shell background-processes http native-libraries buffering>,
-        'Compiling, and making it fast' => <compiling optimizer performance threads>,
+        'Compiling, and making it fast' => <compiling optimizer performance threads hyper>,
         'When something goes wrong'     => <debugging garbage-collection>,
         'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations differences>,
     ),
@@ -39,6 +39,7 @@
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
         threads     => 'Is there a GIL? Not by default: how to tell that threads ran at once, why start can make a program slower, and what is yours to guard.',
+        hyper       => 'The hyper operators, hyper for and .hyper: which way the arrows point, which forms use more than one core, and which to reach for, with measured numbers.',
         'garbage-collection' => 'There isn\'t one: what reference counting buys, what a cycle costs, and when DESTROY actually runs.',
         debugging   => 'When something goes wrong: what a die tells you, --lint, --ast, --cpp, and telling your bug from ours.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',

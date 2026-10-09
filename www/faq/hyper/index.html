@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — hyper: the operators, the loop and the method</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=b91765a0"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b91765a0">
+<link rel="stylesheet" href="/theme/shell.css?v=b91765a0">
+<link rel="stylesheet" href="/theme/faq.css?v=b91765a0">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Hyper: the operators, the loop and the method</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#what-does-hyper-mean-in-raku">What does "hyper" mean in Raku?</a></li><li><a href="#which-way-do-the-arrows-point">Which way do the arrows point?</a></li><li><a href="#do-the-hyper-operators-use-more-than-one-core">Do the hyper operators use more than one core?</a></li><li><a href="#map-hyper-map-hyper-for-or-a-hyper-operator"><code>.map</code>, <code>.hyper.map</code>, <code>hyper for</code> or a hyper operator?</a></li><li><a href="#why-isn-t-it-eight-times-faster-on-eight-cores">Why isn't it eight times faster on eight cores?</a></li><li><a href="#when-is-hyper-slower">When is <code>.hyper</code> slower?</a></li><li><a href="#what-do-batch-and-degree-do">What do <code>:batch</code> and <code>:degree</code> do?</a></li><li><a href="#what-stays-on-the-calling-thread">What stays on the calling thread?</a></li><li><a href="#what-happens-when-the-block-dies">What happens when the block dies?</a></li><li><a href="#can-the-block-write-to">Can the block write to <code>$_</code>?</a></li><li><a href="#is-a-regex-in-the-block-safe">Is a regex in the block safe?</a></li><li><a href="#how-do-i-see-what-ran-in-parallel">How do I see what ran in parallel?</a></li></ul></nav>
+<p>Short answers about the three things Raku calls <em>hyper</em> — the hyper operators, the <code>hyper for</code> loop and the <code>.hyper</code> method — and their <code>race</code> twins: which way the arrows point, which of them use more than one core, and which to reach for. Threads in general are <a href="/faq/threads/">threads, and is there a GIL?</a>; measuring a speed-up you can defend is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">PARALLEL-SPEEDUP.md</a>.</p>
+<p>Measured 2026-10-09 on an Apple M3 (4 performance + 4 efficiency cores): Raku++ 5.3.0 (main) and Rakudo v2026.09.</p>
+<h2 id="what-does-hyper-mean-in-raku">What does "hyper" mean in Raku? <a class="anchor" href="#what-does-hyper-mean-in-raku" aria-label="link">#</a></h2>
+<p>Three things share the word:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span>, <span class="mi">4</span>, <span class="mi">9</span>;
+<span class="nb">say</span> <span class="nv">@a</span> »+« (<span class="mi">10</span>, <span class="mi">20</span>, <span class="mi">30</span>);        <span class="c1"># a hyper operator: element by element</span>
+<span class="nb">say</span> <span class="nv">@a</span>».<span class="nb">sqrt</span>;                   <span class="c1"># a hyper method call: the method on each element</span>
+<span class="nb">say</span> (<span class="nb">hyper</span> <span class="k">for</span> <span class="nv">@a</span> { <span class="nv">$_</span> * <span class="mi">2</span> });  <span class="c1"># the hyper loop: iterations on worker threads</span>
+<span class="nb">say</span> <span class="nv">@a</span>.<span class="nb">hyper</span>.<span class="nb">map</span>(* * <span class="mi">2</span>);        <span class="c1"># the .hyper method: .map and .grep on worker threads</span></code></pre>
+<p>Both engines print:</p>
+<pre class="native-code"><code>[11 24 39]
+[1 2 3]
+(2 8 18)
+(2 8 18)</code></pre>
+<p>The operators say <em>what</em> to compute for every element and leave the order open. The loop and the method say <em>how</em>: in batches, on worker threads. <code>race for</code> and <code>.race</code> are the same with the order of the answers left open too. Raku++ gives them back in order anyway. <code>&gt;&gt;</code> and <code>&lt;&lt;</code> are the ASCII spellings of <code>»</code> and <code>«</code>.</p>
+<h2 id="which-way-do-the-arrows-point">Which way do the arrows point? <a class="anchor" href="#which-way-do-the-arrows-point" aria-label="link">#</a></h2>
+<p>At a side that may be stretched — repeated until it is as long as the other side. <code>»*«</code> stretches neither, so both sides must be the same length; <code>«*»</code> stretches either:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>;
+<span class="nb">say</span> <span class="nv">@a</span> »*» <span class="mi">2</span>;                      <span class="c1"># [2 4 6]</span>
+<span class="nb">say</span> <span class="mi">2</span> «*« <span class="nv">@a</span>;                      <span class="c1"># [2 4 6]</span>
+<span class="nb">say</span> <span class="nv">@a</span> «*» <span class="mi">2</span>;                      <span class="c1"># [2 4 6]</span>
+<span class="nb">say</span> (<span class="k">try</span> <span class="nv">@a</span> »*« <span class="mi">2</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;    <span class="c1"># X::HyperOp::NonDWIM</span>
+<span class="nb">say</span> (<span class="k">try</span> <span class="mi">2</span> »*» <span class="nv">@a</span>) // <span class="nv">$!</span>.^<span class="n">name</span>;    <span class="c1"># X::HyperOp::NonDWIM</span></code></pre>
+<p>The last line is the common mistake: the arrows point at the list and away from the number, so the number is not stretched, and one element cannot meet three. Both engines die there.</p>
+<h2 id="do-the-hyper-operators-use-more-than-one-core">Do the hyper operators use more than one core? <a class="anchor" href="#do-the-hyper-operators-use-more-than-one-core" aria-label="link">#</a></h2>
+<p>The language allows it — a hyper operator promises nothing about the order it computes in. Rakudo computes one element at a time. Raku++ runs arithmetic on plain numbers as a native loop, split over the cores:</p>
+<ul><li>the operators <code>+ - * /</code> and the six comparisons, and the methods <code>.sqrt</code>, <code>.abs</code>, <code>.exp</code> and the trigonometric ones,</li><li>over lists whose elements are all plain Int or Num values,</li><li>on more than one core once a list holds 32,768 elements.</li></ul>
+<p>Over a million Nums, median of three runs:</p>
+<div class="tablewrap"><table><tr><th></th><th>Raku++</th><th>Rakudo</th></tr><tr><td><code>my @c = (4 «*» @a) «*» @b</code></td><td>28 ms</td><td>866 ms</td></tr>
+<tr><td><code>my @c = (@a »+» 3)».sqrt</code></td><td>24 ms</td><td>1149 ms</td></tr></table></div>
+<p>Anything else takes the element-by-element path and gives the same answer it always did: another operator, a Rat or a string among the elements, a nested list, an operator of your own, an Int that overflows, a division by zero. Code of your own in a hyper — <code>@objects».frobnicate</code>, <code>@a »my-op« @b</code> — runs one element at a time, in order, on both engines. The language does not promise that order, so do not lean on it.</p>
+<h2 id="map-hyper-map-hyper-for-or-a-hyper-operator"><code>.map</code>, <code>.hyper.map</code>, <code>hyper for</code> or a hyper operator? <a class="anchor" href="#map-hyper-map-hyper-for-or-a-hyper-operator" aria-label="link">#</a></h2>
+<p>The same work four ways, over a million Nums:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@e</span> = <span class="nv">@a</span>.<span class="nb">map</span>({ (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> });
+<span class="k">my</span> <span class="nv">@f</span> = <span class="nv">@a</span>.<span class="nb">hyper</span>.<span class="nb">map</span>({ (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> });
+<span class="k">my</span> <span class="nv">@g</span> = <span class="nb">hyper</span> <span class="k">for</span> <span class="nv">@a</span> { (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> };
+<span class="k">my</span> <span class="nv">@d</span> = (<span class="nv">@a</span> »+» <span class="mi">3</span>)».<span class="nb">sqrt</span>;</code></pre>
+<div class="tablewrap"><table><tr><th></th><th>Raku++</th><th>Rakudo</th></tr><tr><td><code>.map</code></td><td>322 ms</td><td>483 ms</td></tr>
+<tr><td><code>.hyper.map</code></td><td>162 ms</td><td>342–786 ms</td></tr>
+<tr><td><code>hyper for</code></td><td>90 ms</td><td>400–743 ms</td></tr>
+<tr><td><code>(@a »+» 3)».sqrt</code></td><td>24 ms</td><td>1149 ms</td></tr></table></div>
+<p>All four give the same list. <code>.map</code> runs in order on one thread; that is what it means, and it stays that way. When the work is arithmetic, the operators are the fast form. When the block does real work per element, <code>hyper for</code> and <code>.hyper.map</code> spread it over the cores. <code>hyper for</code> keeps one scope per worker, where <code>.hyper.map</code> makes a call of the block for each element, which is most of the difference between the two.</p>
+<h2 id="why-isn-t-it-eight-times-faster-on-eight-cores">Why isn't it eight times faster on eight cores? <a class="anchor" href="#why-isn-t-it-eight-times-faster-on-eight-cores" aria-label="link">#</a></h2>
+<p><code>.hyper.map</code> over the same million Nums, by number of workers:</p>
+<div class="tablewrap"><table><tr><th><code>:degree</code></th><th>Raku++</th><th>against <code>.map</code></th></tr><tr><td>1</td><td>337 ms</td><td>1.0×</td></tr>
+<tr><td>2</td><td>236 ms</td><td>1.4×</td></tr>
+<tr><td>4</td><td>134 ms</td><td>2.4×</td></tr>
+<tr><td>7</td><td>155 ms</td><td>2.1×</td></tr></table></div>
+<p>Four of the M3's cores are efficiency cores, at about a third of the speed, and the workers past four land on them. The rest is per-call work: each call of the block builds and frees a frame of its own, and that does not get cheaper with more threads. The native operator loops have a different limit, memory: a million answers are 80 MB of values to write.</p>
+<h2 id="when-is-hyper-slower">When is <code>.hyper</code> slower? <a class="anchor" href="#when-is-hyper-slower" aria-label="link">#</a></h2>
+<p>On a short list. Handing work to the workers costs about 40 µs a call on Raku++:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@a</span> = ^<span class="mi">100</span>;
+<span class="k">for</span> ^<span class="mi">1000</span> { <span class="k">my</span> <span class="nv">@r</span> = <span class="nv">@a</span>.<span class="nb">map</span>(* + <span class="mi">1</span>) }         <span class="c1"># Raku++ 10 ms, Rakudo 19 ms</span>
+<span class="k">for</span> ^<span class="mi">1000</span> { <span class="k">my</span> <span class="nv">@r</span> = <span class="nv">@a</span>.<span class="nb">hyper</span>.<span class="nb">map</span>(* + <span class="mi">1</span>) }   <span class="c1"># Raku++ 50 ms, Rakudo 390 ms</span></code></pre>
+<p>A list of a few hundred elements, or less work per element than a call costs, is <code>.map</code>'s job.</p>
+<h2 id="what-do-batch-and-degree-do">What do <code>:batch</code> and <code>:degree</code> do? <a class="anchor" href="#what-do-batch-and-degree-do" aria-label="link">#</a></h2>
+<p><code>:batch</code> is how many elements a worker takes at a time (64 by default), and <code>:degree</code> how many workers there are (the number of cores less one). Both carry on through <code>.map</code> and <code>.grep</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$h</span> = (^<span class="mi">10</span>).<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">2</span>), :<span class="n">degree</span>(<span class="mi">3</span>));
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="nb">map</span>(* * <span class="mi">10</span>);                                         <span class="c1"># (0 10 20 30 40 50 60 70 80 90)</span>
+<span class="nb">say</span> <span class="nv">$h</span>.<span class="n">configuration</span>.<span class="nb">batch</span>, <span class="s">' '</span>, <span class="nv">$h</span>.<span class="n">configuration</span>.<span class="n">degree</span>;   <span class="c1"># 2 3</span></code></pre>
+<p>A larger batch means fewer hand-offs. A smaller one shares the work out more evenly when some elements cost more than others.</p>
+<h2 id="what-stays-on-the-calling-thread">What stays on the calling thread? <a class="anchor" href="#what-stays-on-the-calling-thread" aria-label="link">#</a></h2>
+<p>On Raku++, <code>.hyper.map</code> and <code>.hyper.grep</code> keep to the calling thread — the same answer, without the speed-up — for:</p>
+<ul><li>a block with a <code>state</code> variable: there is one variable, and every worker would initialise and bump it at once;</li><li>a block with a <code>FIRST</code>, <code>NEXT</code> or <code>LAST</code> phaser (Rakudo refuses those in a hyper: "Phasers in hyper/race not yet implemented");</li><li>a block that <code>return</code>s;</li><li>a matcher that is not a block — <code>.hyper.grep(/re/)</code>, <code>.hyper.grep(Int)</code> — and <code>.grep</code> with <code>:k</code>, <code>:kv</code> or <code>:p</code>.</li></ul>
+<p><code>hyper for</code> keeps to the calling thread with a <code>state</code> variable or a loop phaser in its body.</p>
+<h2 id="what-happens-when-the-block-dies">What happens when the block dies? <a class="anchor" href="#what-happens-when-the-block-dies" aria-label="link">#</a></h2>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$e</span> = <span class="k">do</span> { <span class="k">try</span> (<span class="mi">1</span>.<span class="mf">.10</span>).<span class="nb">hyper</span>.<span class="nb">map</span>({ <span class="nb">die</span> <span class="s">&quot;boom at $_&quot;</span> <span class="k">if</span> <span class="nv">$_</span> == <span class="mi">3</span>; <span class="nv">$_</span> }).<span class="n">eager</span>; <span class="nv">$!</span> };
+<span class="nb">say</span> <span class="nv">$e</span>.^<span class="n">name</span>;     <span class="c1"># X::AdHoc+{X::HyperRace::Died}</span>
+<span class="nb">say</span> <span class="nv">$e</span>.<span class="n">message</span>;   <span class="c1"># boom at 3</span></code></pre>
+<p>Both engines print that. The exception is the one the block threw, with <code>X::HyperRace::Died</code> mixed in to say it came from a worker. When several calls die, Raku++ reports the first in the order of the list.</p>
+<h2 id="can-the-block-write-to">Can the block write to <code>$_</code>? <a class="anchor" href="#can-the-block-write-to" aria-label="link">#</a></h2>
+<p>Yes, as in <code>.map</code>: <code>$_</code> is the element.</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@m</span> = <span class="mi">1</span>.<span class="mf">.5</span>;
+<span class="nv">@m</span>.<span class="nb">hyper</span>.<span class="nb">map</span>({ <span class="nv">$_</span> *= <span class="mi">10</span> }).<span class="n">eager</span>;
+<span class="nb">say</span> <span class="nv">@m</span>;           <span class="c1"># [10 20 30 40 50]</span></code></pre>
+<p>Each element belongs to one call, so those writes do not race each other. Writing to anything the calls share — a counter, a hash — is yours to guard (<a href="/faq/threads/#what-does-the-runtime-protect-and-what-is-mine-to-guard">threads.md</a>).</p>
+<h2 id="is-a-regex-in-the-block-safe">Is a regex in the block safe? <a class="anchor" href="#is-a-regex-in-the-block-safe" aria-label="link">#</a></h2>
+<p>On Raku++ each call has its own <code>$/</code>. Over 5,000 strings, the numbers read back through <code>$0</code>:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@w</span> = (^<span class="mi">5000</span>).<span class="nb">map</span>({ <span class="s">&quot;x$_&quot;</span> });
+<span class="k">my</span> <span class="nv">@n</span> = <span class="nv">@w</span>.<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">8</span>)).<span class="nb">map</span>({ <span class="sr">/x(\d+)/</span>; +<span class="nv">$0</span> });
+<span class="nb">say</span> (<span class="nv">@n</span> <span class="n">Z</span>!= ^<span class="mi">5000</span>).<span class="nb">grep</span>(*.<span class="nb">so</span>).<span class="nb">elems</span>, <span class="s">' wrong'</span>;</code></pre>
+<p>Raku++ prints <code>0 wrong</code>. Rakudo 2026.09 printed between 11 and 21 wrong in four runs: there, the calls on different workers share one <code>$/</code>. Taking the match as a value is right on both:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">@m</span> = <span class="nv">@w</span>.<span class="nb">hyper</span>(:<span class="nb">batch</span>(<span class="mi">8</span>)).<span class="nb">map</span>({ +.<span class="n">match</span>(<span class="sr">/x(\d+)/</span>)[<span class="mi">0</span>] });   <span class="c1"># 0 wrong on both</span></code></pre>
+<h2 id="how-do-i-see-what-ran-in-parallel">How do I see what ran in parallel? <a class="anchor" href="#how-do-i-see-what-ran-in-parallel" aria-label="link">#</a></h2>
+<p><code>$*THREAD.id</code> inside the block says where it ran. <code>RAKUPP_KERNEL_TRACE=1</code> prints a line for each hyper operator that ran as a native loop, with the number of threads, or that declined:</p>
+<pre class="native-code"><code>$ RAKUPP_KERNEL_TRACE=1 rakupp -e 'my @a = (^100000).map(*.Num); my @b = @a »*» 2; my @c = (1, 2, 9223372036854775807) »+» 1'
+kernel: hyper infix:&lt;*&gt; over 100000 element(s) on 6 threads
+kernel: hyper infix:&lt;+&gt; over 3 element(s) declined</code></pre>
+<p>The second declined because <code>9223372036854775807 + 1</code> needs a big integer, which the element-by-element path makes. <code>RAKUPP_HYPER_THREADS=1</code> keeps the native loops on one thread, <code>RAKUPP_NO_KERNELS=1</code> turns them off, and <code>RAKUPP_GIL=1</code> runs everything, workers included, one thread at a time.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b91765a0" defer></script>
+</body>
+</html>

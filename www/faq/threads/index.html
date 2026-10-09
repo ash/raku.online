@@ -24,10 +24,10 @@
 <p class="crumb"><a href="/faq/">← All questions</a></p>
 <h1>Threads, and is there a GIL?</h1>
 
-<p>Short answers about running Raku on more than one core: whether a global interpreter lock stands in the way, how to tell that threads really ran at once, why a <code>start</code> sometimes makes a program slower, and what is yours to guard. The engine side is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>; how to measure a speed-up you can defend is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">PARALLEL-SPEEDUP.md</a>.</p>
+<p>Short answers about running Raku on more than one core: whether a global interpreter lock stands in the way, how to tell that threads really ran at once, why a <code>start</code> sometimes makes a program slower, and what is yours to guard. The engine side is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>; how to measure a speed-up you can defend is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/PARALLEL-SPEEDUP.md">PARALLEL-SPEEDUP.md</a>; the hyper operators, <code>hyper for</code> and <code>.hyper</code> have <a href="/faq/hyper/">hyper: the operators, the loop and the method</a> to themselves.</p>
 <p>Measured 2026-10-07 on an Apple M3 (4 performance + 4 efficiency cores): Raku++ 5.2.1 (main) and Rakudo v2026.09.</p>
 <h2 id="is-there-a-global-interpreter-lock">Is there a global interpreter lock? <a class="anchor" href="#is-there-a-global-interpreter-lock" aria-label="link">#</a></h2>
-<p>Not by default. <code>start</code> blocks and the iterations of <code>hyper for</code> and <code>race for</code> run Raku on separate cores at the same time. Rakudo works the same way, and has no lock to turn on.</p>
+<p>Not by default. <code>start</code> blocks, the iterations of <code>hyper for</code> and <code>race for</code>, and the blocks of <code>.hyper.map</code> and <code>.race.map</code> run Raku on separate cores at the same time. Rakudo works the same way, and has no lock to turn on.</p>
 <p>Raku++ has one switch, read once at startup: <code>RAKUPP_GIL=1</code> runs the program under a global interpreter lock, so one thread runs Raku at a time. (<code>RAKUPP_PARALLEL=0</code> means the same.) Nothing in the program changes; the same source runs in either mode.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">work</span>(<span class="nv">$n</span>) {
     <span class="k">my</span> <span class="nb">int</span> <span class="nv">$s</span> = <span class="mi">0</span>;
@@ -77,16 +77,16 @@ Rakudo   248537, 260403, 263266</code></pre>
 <span class="nb">say</span> <span class="nv">$n</span>;                                   <span class="c1"># 400000</span></code></pre>
 <p>Both are correct, and both send every increment through one shared point, which is where the time goes: four threads on one <code>atomicint</code> measure 0.76× against one thread doing all of it. When the workers only need to be added up at the end, one counter per worker and a sum after the <code>await</code> needs no synchronisation at all.</p>
 <h2 id="do-hyper-and-race-use-more-than-one-core">Do <code>hyper</code> and <code>race</code> use more than one core? <a class="anchor" href="#do-hyper-and-race-use-more-than-one-core" aria-label="link">#</a></h2>
-<p>The statement forms do; the methods do not on Raku++:</p>
+<p>The statement forms and the methods both do:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$main</span> = <span class="nv">$*THREAD</span>.<span class="n">id</span>;
 <span class="k">my</span> <span class="nv">@a</span> = <span class="nb">hyper</span> <span class="k">for</span> ^<span class="mi">1000</span> { <span class="nv">$*THREAD</span>.<span class="n">id</span> };
 <span class="k">my</span> <span class="nv">@b</span> = (^<span class="mi">1000</span>).<span class="nb">hyper</span>.<span class="nb">map</span>({ <span class="nv">$*THREAD</span>.<span class="n">id</span> });
 <span class="nb">say</span> <span class="s">'hyper for: '</span>, <span class="nv">@a</span>.<span class="nb">grep</span>(* != <span class="nv">$main</span>).<span class="nb">elems</span>, <span class="s">' of 1000 off the main thread'</span>;
 <span class="nb">say</span> <span class="s">'.hyper:    '</span>, <span class="nv">@b</span>.<span class="nb">grep</span>(* != <span class="nv">$main</span>).<span class="nb">elems</span>, <span class="s">' of 1000 off the main thread'</span>;</code></pre>
-<pre class="native-code"><code>Raku++                                      Rakudo
-hyper for: 1000 of 1000 off the main thread  hyper for: 1000 of 1000 off the main thread
-.hyper:    0 of 1000 off the main thread     .hyper:    1000 of 1000 off the main thread</code></pre>
-<p><code>race for</code> and <code>.race</code> behave the same way on each engine. On Raku++, <code>.hyper</code> and <code>.race</code> give the right answer serially. To fan a loop out, write <code>hyper for</code> / <code>race for</code>, or <code>start</code> and <code>await</code>.</p>
+<p>Raku++ and Rakudo print the same two lines:</p>
+<pre class="native-code"><code>hyper for: 1000 of 1000 off the main thread
+.hyper:    1000 of 1000 off the main thread</code></pre>
+<p><code>race for</code> and <code>.race</code> behave the same way. The methods spread <code>.map</code> and <code>.grep</code>: the block runs in batches of 64 on one worker per core less one (<code>:batch</code> and <code>:degree</code> set both), and the values come back in the order of the list. On Raku++ the hyper <em>operators</em> use the cores too, when the work is arithmetic on long lists of plain numbers (<code>@a »*« @b</code>, <code>@a».sqrt</code>). Which form to reach for, with measured numbers, and what keeps a block on one thread, is <a href="/faq/hyper/">hyper: the operators, the loop and the method</a>.</p>
 <h2 id="when-is-rakupp-gil-1-worth-setting">When is <code>RAKUPP_GIL=1</code> worth setting? <a class="anchor" href="#when-is-rakupp-gil-1-worth-setting" aria-label="link">#</a></h2>
 <p><strong>To tell whether a wrong answer is a race.</strong> The unguarded counter above printed 400000 in five runs of five under <code>RAKUPP_GIL=1</code>. A result that is wrong by default and right under the lock means two threads are writing the same thing.</p>
 <p>It is a diagnosis, not a fix. <code>Lock</code> and <code>Semaphore</code> do nothing under it, and a thread that waits — <code>sleep</code>, <code>await</code>, I/O — hands the lock to the next one, so a protected section that waits stops being exclusive: two workers that log, sleep and log again inside one <code>$lock.protect</code> print <code>in 0, out 0, in 1, out 1</code> by default and on Rakudo, and <code>in 0, in 1, out 0, out 1</code> under <code>RAKUPP_GIL=1</code>.</p>

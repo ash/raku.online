@@ -47,11 +47,11 @@ await in the loop : 200 200 200 200 in 8023 ms</code></pre>
 });
 <span class="k">my</span> <span class="nv">$parallel</span> = ([+] <span class="nb">await</span> <span class="nv">@promises</span>);</code></pre>
 <pre class="native-code"><code class="lang-output">primes below 400000
-  one thread    : 33860 in 145 ms
+  one thread    : 33860 in 150 ms
   8 promises   : 33860 in 32 ms
-  ratio         : 4.5x
-  race(:degree(8)) : 33860 in 158 ms</code></pre>
-<p>4.5× out of 8 cores on a machine that was already busy, and both answers agree. The last line is the same computation written as <code>race</code>, which is the idiom you will see everywhere else — see the note under <a href="#four-things-that-bite">things that bite</a> for what it currently does here.</p>
+  ratio         : 4.7x
+  race(:degree(8)) : 33860 in 34 ms</code></pre>
+<p>4.7× out of 8 cores, and the answers agree. The last line is the same computation written as <code>race</code>, the idiom you will see everywhere else: its <code>.grep</code> runs in batches of 4096 on eight worker threads, and takes about as long as the promises written out by hand.</p>
 <h2 id="results-in-the-order-they-arrive">Results in the order they arrive <a class="anchor" href="#results-in-the-order-they-arrive" aria-label="link">#</a></h2>
 <p><code>await</code> gives you everything at once, in the order you started it. When the point is to act on each result as it lands — and to stop waiting at some point — that is <code>react</code> and <code>whenever</code>:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">react</span> {
@@ -121,10 +121,9 @@ Array + Lock   : expected 16000, got 16000
 one list each  : expected 16000, got 16000</code></pre>
 <p>732 numbers gone, silently. <code>Array</code> is not thread-safe by specification, so whether a given engine loses elements is a question about that engine's internals and this run's timing — not a licence. The first form is a bug on both, and it is the kind that shows up in production and never in testing.</p>
 <p>Of the two fixes, prefer the third: a thread that shares nothing needs no lock, and 16,000 lock acquisitions are 16,000 chances to become the bottleneck. Reach for <code>Lock</code> when the state genuinely is shared — a cache, a counter — and keep what it protects small.</p>
-<h2 id="four-things-that-bite">Four things that bite <a class="anchor" href="#four-things-that-bite" aria-label="link">#</a></h2>
+<h2 id="three-things-that-bite">Three things that bite <a class="anchor" href="#three-things-that-bite" aria-label="link">#</a></h2>
 <p><strong><code>await</code> inside the loop.</strong> Covered above, and worth repeating because it looks concurrent and reads as concurrent: 8023 ms against 2021 ms for the same four requests.</p>
-<p><strong><code>race</code> and <code>hyper</code> do not fan out on Raku++ 3.27.</strong> They give the right answer, in one thread, at serial speed: 158 ms against 145 ms for the loop they replace, where <code>start</code>/<code>await</code> over the same chunks took 32 ms. The same <code>race</code> under Rakudo 2026.08 took 51 ms against 220 ms serial. If a program here needs parallelism today, express it with <code>start</code> and <code>await</code>.</p>
-<p><strong>Counting threads will not tell you whether you are parallel.</strong> <code>$*THREAD.id</code> answers <code>1</code> inside every <code>start</code> block on Raku++ 3.27, including the ones that demonstrably run at the same time. Rakudo answers the real ids. Measure the wall clock instead — the ratio in <code>cpu.raku</code> is the honest test.</p>
+<p><strong>Counting threads will not tell you whether you are parallel.</strong> Every <code>start</code> block runs on a thread of its own on Raku++, so each one reports a new <code>$*THREAD.id</code> whether or not it overlapped with any other; Rakudo reuses a pool, so its ids repeat. Neither count says what ran at the same time. Measure the wall clock instead — the ratio in <code>cpu.raku</code> is the honest test.</p>
 <p><strong>An exception in a <code>start</code> block waits for you.</strong> The promise is broken, not thrown; nothing appears until something awaits it, and a promise that is never awaited fails silently:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$p</span> = <span class="k">start</span> { <span class="nb">die</span> <span class="s">&quot;worker failed&quot;</span> };
 <span class="k">my</span> <span class="nv">$r</span> = <span class="k">try</span> <span class="nb">await</span> <span class="nv">$p</span>;

@@ -605,6 +605,49 @@ say so "Ωμέγα" ~~ /^&lt;:Script&lt;Greek&gt;&gt;+$/;</pre>
     also the one section here you cannot try in the editors above: a browser
     tab runs the interpreter single-threaded.
   </p>
+
+  <h3 id="without-a-start">Without a <code>start</code> <a class="anchor" href="#without-a-start" aria-label="link">#</a></h3>
+  <p class="sr-intro">
+    <code>hyper for</code> and <code>.hyper</code> hand a block to the worker
+    threads in batches, and a hyper operator over plain numbers runs as a
+    native loop split over the cores. The same work four ways:
+  </p>
+
+  <div class="sr-code">
+    <span class="lbl">One computation, four forms — all four give the same list</span>
+<pre class="native-code"><code><span class="k">my</span> <span class="nv">@a</span> = (^<span class="mi">1_000_000</span>).<span class="nb">map</span>(*.<span class="nb">Num</span>);
+<span class="k">my</span> <span class="nv">@m</span> = <span class="nv">@a</span>.<span class="nb">map</span>({ (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> });          <span class="c1"># one thread, in order</span>
+<span class="k">my</span> <span class="nv">@h</span> = <span class="nv">@a</span>.<span class="nb">hyper</span>.<span class="nb">map</span>({ (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> });    <span class="c1"># the block on worker threads</span>
+<span class="k">my</span> <span class="nv">@f</span> = <span class="nb">hyper</span> <span class="k">for</span> <span class="nv">@a</span> { (<span class="nv">$_</span> + <span class="mi">3</span>).<span class="nb">sqrt</span> };     <span class="c1"># the loop on worker threads</span>
+<span class="k">my</span> <span class="nv">@o</span> = (<span class="nv">@a</span> »+» <span class="mi">3</span>)».<span class="nb">sqrt</span>;                   <span class="c1"># a native loop over the cores</span></code></pre>
+  </div>
+
+  <div class="table-wrap">
+  <table class="sr-table narrow">
+    <tr>
+      <th>Form</th>
+      <th class="num">Time</th>
+      <th class="num">Against <code>.map</code></th>
+    </tr>
+    <tr><td><code>.map</code></td><td class="num">322 ms</td><td class="num">1.0×</td></tr>
+    <tr><td><code>.hyper.map</code></td><td class="num win">162 ms</td><td class="num">2.0×</td></tr>
+    <tr><td><code>hyper for</code></td><td class="num win">90 ms</td><td class="num">3.6×</td></tr>
+    <tr><td><code>(@a »+» 3)».sqrt</code></td><td class="num win">24 ms</td><td class="num win">13×</td></tr>
+  </table>
+  </div>
+
+  <p class="sr-fine">
+    A million Nums, median of three runs on the same M3, 2026-10-09.
+    <code>.map</code> keeps to one thread because it promises order.
+    <code>.hyper.map</code> calls the block afresh for each element, where
+    <code>hyper for</code> keeps one scope per worker. The operator form is
+    no interpreted code at all: Int and Num lists under <code>+ - * /</code>,
+    the comparisons, <code>.sqrt</code> and the other numeric methods run
+    natively, on several cores from 32,768 elements, and anything else takes
+    the element-by-element path with the same answer.
+    <a href="/faq/hyper/">The hyper FAQ</a> has which form to reach for, and
+    when each one loses.
+  </p>
 </section>
 
 <!-- ============================== build ============================== -->
