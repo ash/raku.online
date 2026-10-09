@@ -1796,8 +1796,8 @@ sub verify-examples(@entries, Str $rakupp, Str $oracle --> Int) {
                 $failed++;
                 my $where = $e.path || ('(stub) ' ~ $e.slug);
                 note "  MISMATCH $where:$line";
-                note "    expected: {$expected.trim-trailing.subst(\"\n\", '⏎', :g)}";
-                note "    got     : {$got.subst(\"\n\", '⏎', :g)}";
+                note "    expected: {$expected.trim-trailing.subst("\n", '⏎', :g)}";
+                note "    got     : {$got.subst("\n", '⏎', :g)}";
                 note "    stderr  : {$err.lines[0] // ''}" if $err;
             }
             if $oracle {
@@ -1805,8 +1805,8 @@ sub verify-examples(@entries, Str $rakupp, Str $oracle --> Int) {
                 if $ogot ne $expected.trim-trailing {
                     $ofail++;
                     note "  ORACLE MISMATCH ($oracle) {$e.path}:$line";
-                    note "    declared: {$expected.trim-trailing.subst(\"\n\", '⏎', :g)}";
-                    note "    rakudo  : {$ogot.subst(\"\n\", '⏎', :g)}";
+                    note "    declared: {$expected.trim-trailing.subst("\n", '⏎', :g)}";
+                    note "    rakudo  : {$ogot.subst("\n", '⏎', :g)}";
                 }
             }
         }

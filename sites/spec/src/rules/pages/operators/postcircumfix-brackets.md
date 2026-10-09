@@ -187,10 +187,9 @@ For a character, index the `.comb` list — `$s.comb[0]` — or use `.substr(0, 
 
 ### Negative indices are not "from the end"
 
-`@a[-1]` is an error, not the last element. Raku spells that `@a[*-1]`. Rakudo
-rejects it at compile time with a message pointing you at `*-1`; Raku++ accepts the
-parse and throws `X::OutOfRange` when the subscript runs. Either way the code is
-wrong — but the two implementations tell you at different moments.
+`@a[-1]` is an error, not the last element. Raku spells that `@a[*-1]`, and a
+literal negative subscript is refused at compile time, with a message pointing
+you at `*-1`.
 
 ```bad
 my @a = 1, 2, 3;
@@ -209,25 +208,22 @@ say @a[(0, 1)];
 (10 20)
 ```
 
-But a list nested among other indices is a different matter, and this is where the
-two implementations part company. Rakudo mirrors the shape of the subscript into the
-result, so `@a[0, (1, 2)]` returns a two-element list whose second element is itself
-a list:
+But a list nested among other indices keeps its shape: the result mirrors the
+subscript, so `@a[0, (1, 2)]` returns a two-element list whose second element is
+itself a list:
 
-```diverge
+```raku
 my @a = 10, 20, 30;
 say @a[0, (1, 2)];
 ```
-```text
-Rakudo:  (10 (20 30))
-Raku++:  (10 20 30)
+```output
+(10 (20 30))
 ```
 
-Raku++ flattens. If the shape matters, do not rely on the subscript to preserve it —
-build it explicitly. To index into a *nested array*, chain the subscripts
-(`@a[0][1]`) or use the semicolon form below.
+To index into a *nested array*, chain the subscripts (`@a[0][1]`) or use the
+semicolon form below.
 
-### `;` inside a subscript is the multi-dimensional form, and Raku++ differs on flat arrays
+### `;` inside a subscript is the multi-dimensional form
 
 `@a[0;1]` indexes dimension by dimension. On a genuinely nested array both
 implementations agree:
@@ -240,38 +236,34 @@ say @a[0; 1];
 2
 ```
 
-On a *flat* array, Rakudo lets a trailing dimension degenerate — `@a[1;0]` gives
-`@a[1]` — while Raku++ returns `Any`. Treat `;` on a one-dimensional array as
-undefined territory rather than relying on either answer.
+On a *flat* array a trailing dimension degenerates: `@a[1;0]` gives `@a[1]`.
 
-```diverge
+```raku
 my @a = 1, 2, 3;
 say @a[1; 0];
 ```
+```output
+2
+```
 
-### Binding a slice: the same type with different rights
+### Binding a slice writes through
 
-`my @b := @a[0, 1]` binds a `List` in both implementations — but not the same
-kind of `List`. Rakudo's slice holds `@a`'s own containers, so assigning to an
-element of `@b` writes through into `@a`. Raku++ hands back a detached
-immutable `List`, and refuses the assignment. Assign (`=`) instead of bind
-(`:=`) unless you specifically need the binding.
+`my @b := @a[0, 1]` binds a `List` that holds `@a`'s own containers, so
+assigning to an element of `@b` writes through into `@a`. Assign (`=`) instead
+of bind (`:=`) when the copy should be independent.
 
-```diverge
+```raku
 my @a = 1, 2, 3;
 my @b := @a[0, 1];
 @b[0] = 9;
 say @a;
 ```
-```text
-Rakudo:  [9 2 3] — the slice elements are @a's own containers
-Raku++:  Cannot modify an immutable List ((1 2))
+```output
+[9 2 3]
 ```
 
-*Growing* the bound slice is refused by both: `@b.push(9)` raises
-`Cannot call 'push' on an immutable 'List'` on either engine. That pair used to
-disagree — Raku++ allowed the `push` its own immutability should have stopped —
-and the engine was fixed, so only the assignment above still divides them.
+*Growing* the bound slice is refused: `@b.push(9)` raises
+`Cannot call 'push' on an immutable 'List'`.
 
 ## See also
 
