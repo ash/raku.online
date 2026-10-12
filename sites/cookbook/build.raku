@@ -159,23 +159,58 @@ sub bullet-of(Str $line) {
 }
 
 
+sub indent-of(Str $line --> Int) { ($line ~~ / ^ (\s*) /)[0].chars }
+
+# The next non-blank line from $i, or the end.
+sub next-filled(@lines, Int $i is copy --> Int) {
+    $i++ while $i < @lines.elems && @lines[$i].trim eq '';
+    $i
+}
+
+# A list may be LOOSE: items separated by blank lines, and an item that goes
+# on after a blank line with more blocks indented under its text — a second
+# paragraph, a fenced code block. Those blocks are rendered as a page of their
+# own inside the item, and blank lines between items do not end the list. A
+# blank line used to end it: every item of a loose numbered list came out as a
+# list of its own ("1." each), and a fence indented under an item fell through
+# to a paragraph, its backticks and all.
 sub list-html(@lines, Int $start) {
     my $i = $start;
     my $ordered = so @lines[$i] ~~ / ^ \s* \d+ '. ' /;
+    my $first-number = $ordered ?? +(@lines[$i] ~~ / \d+ /) !! 1;
+    my $top = bullet-of(@lines[$i])[0];
     my @items;
     while $i < @lines.elems {
+        # a blank line between two items of this list does not end it
+        if @lines[$i].trim eq '' {
+            my $j = next-filled(@lines, $i);
+            my $nb = $j < @lines.elems ?? bullet-of(@lines[$j]) !! Nil;
+            last unless $nb && $nb[0] == $top
+                && (so @lines[$j] ~~ / ^ \s* \d+ '. ' /) == $ordered;
+            $i = $j;
+        }
         my $b = bullet-of(@lines[$i]);
         last unless $b;
-        if $b[0] > 0 && @items {
+        if $b[0] > $top && @items {
             # one level of nesting: collect it into the item just closed
+            # (a nested item may wrap too; the nested list goes INSIDE the
+            # item it belongs to, not beside it)
             my @sub;
-            while $i < @lines.elems && (my $s = bullet-of(@lines[$i])) && $s[0] > 0 {
-                @sub.push('<li>' ~ inline(@lines[$i].substr($s[1])) ~ '</li>');
+            while $i < @lines.elems && (my $s = bullet-of(@lines[$i])) && $s[0] > $top {
+                my $t = @lines[$i].substr($s[1]);
                 $i++;
+                while $i < @lines.elems && @lines[$i].trim ne ''
+                      && !bullet-of(@lines[$i]) && indent-of(@lines[$i]) > $s[0] {
+                    $t ~= ' ' ~ @lines[$i].trim;
+                    $i++;
+                }
+                @sub.push('<li>' ~ inline($t) ~ '</li>');
             }
-            @items[@items.end] ~= '<ul>' ~ @sub.join ~ '</ul>';
+            @items[@items.end] = @items[@items.end].subst(/ '</li>' $ /, '')
+                                 ~ '<ul>' ~ @sub.join ~ '</ul></li>';
             next;
         }
+        last if $b[0] < $top;
         my $text = @lines[$i].substr($b[1]);
         $i++;
         # continuation lines: an item wrapped over several lines in the source
@@ -185,9 +220,27 @@ sub list-html(@lines, Int $start) {
             $text ~= ' ' ~ @lines[$i].trim;
             $i++;
         }
-        @items.push('<li>' ~ inline($text) ~ '</li>');
+        # more blocks under the item, after a blank line and indented to its
+        # text: everything up to the first line that is not
+        my @more;
+        loop {
+            my $j = next-filled(@lines, $i);
+            last unless $j > $i && $j < @lines.elems && indent-of(@lines[$j]) >= $b[1];
+            while $j < @lines.elems
+                  && (@lines[$j].trim eq '' || indent-of(@lines[$j]) >= $b[1]) {
+                @more.push(@lines[$j].trim eq '' ?? '' !! @lines[$j].substr($b[1]));
+                $j++;
+            }
+            $i = $j;
+        }
+        @items.push(@more
+            ?? '<li><p>' ~ inline($text) ~ '</p>' ~ render(@more.join("\n")) ~ '</li>'
+            !! '<li>' ~ inline($text) ~ '</li>');
     }
-    my $html = ($ordered ?? Q[<ol>] !! Q[<ul>]) ~ @items.join ~ ($ordered ?? Q[</ol>] !! Q[</ul>]);
+    my $open = $ordered
+        ?? ($first-number == 1 ?? Q[<ol>] !! '<ol start="' ~ $first-number ~ '">')
+        !! Q[<ul>];
+    my $html = $open ~ @items.join ~ ($ordered ?? Q[</ol>] !! Q[</ul>]);
     ($html, $i)
 }
 
