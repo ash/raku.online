@@ -153,45 +153,81 @@ body { padding-top: var(--shell-h); }
 .shell-tab:hover { color: var(--fg); background: var(--bg); text-decoration: none; }
 .shell-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 
-/* Where you are, in that section's colour. */
-.shell-tab[aria-current="page"] { color: var(--fg); font-weight: 680; }
-.shell-tab[data-hue="play"][aria-current="page"]   { border-bottom-color: var(--hue-play); }
-.shell-tab[data-hue="inuse"][aria-current="page"]  { border-bottom-color: var(--hue-inuse); }
-.shell-tab[data-hue="tour"][aria-current="page"]   { border-bottom-color: var(--hue-tour); }
-.shell-tab[data-hue="drills"][aria-current="page"] { border-bottom-color: var(--hue-drills); }
-.shell-tab[data-hue="spec"][aria-current="page"]   { border-bottom-color: var(--hue-spec); }
-.shell-tab[data-hue="grid"][aria-current="page"]   { border-bottom-color: var(--hue-grid); }
-.shell-tab[data-hue="map"][aria-current="page"]    { border-bottom-color: var(--hue-map); }
-.shell-tab[data-hue="faq"][aria-current="page"]    { border-bottom-color: var(--hue-faq); }
-.shell-tab[data-hue="install"][aria-current="page"] { border-bottom-color: var(--hue-install); }
-.shell-tab[data-hue="cook"][aria-current="page"]   { border-bottom-color: var(--hue-cook); }
-.shell-tab[data-hue="book"][aria-current="page"]   { border-bottom-color: var(--hue-book); }
-.shell-tab[data-hue="deep"][aria-current="page"]   { border-bottom-color: var(--hue-deep); }
-.shell-tab[data-hue="eco"][aria-current="page"]    { border-bottom-color: var(--hue-eco); }
-.shell-tab[data-hue="pace"][aria-current="page"]   { border-bottom-color: var(--hue-pace); }
-.shell-tab[data-hue="film"][aria-current="page"]   { border-bottom-color: var(--hue-film); }
-.shell-tab[data-hue="support"][aria-current="page"] { border-bottom-color: var(--hue-support); }
-.shell-tab[data-hue="editors"][aria-current="page"] { border-bottom-color: var(--hue-editors); }
-.shell-tab[data-hue="bindings"][aria-current="page"] { border-bottom-color: var(--hue-bindings); }
-.shell-tab[data-hue="embed"][aria-current="page"] { border-bottom-color: var(--hue-embed); }
+/* Where you are, in that section's colour. shell.js sets --h on every tab,
+   group and panel entry to its section's hue; a group takes the hue of the
+   section inside it that you are in. */
+.shell-tab[aria-current="page"] { color: var(--fg); font-weight: 680; border-bottom-color: var(--h, var(--muted)); }
 .shell-mark[aria-current="page"] { background: var(--bg); border-bottom: 3px solid var(--muted); }
 
 .shell-spacer { flex: 1 1 auto; }
 
-/* Off-site, and marked as such. */
-.shell-out {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  padding: 0 .9rem;
-  color: var(--muted);
-  font-size: 13px;
-  text-decoration: none;
-  border-left: 1px solid var(--border);
-  white-space: nowrap;
+/* A group is a button that looks like a tab and opens a panel of sections. */
+button.shell-tab {
+  font: inherit;
+  font-weight: 550;
+  margin: 0;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
 }
-.shell-out:hover { color: var(--fg); background: var(--bg); text-decoration: none; }
-.shell-out .arr { font-size: 10px; }
+.shell-group .caret {
+  margin-left: .3rem;
+  font-size: 10px;
+  opacity: .7;
+  transition: transform .12s;
+}
+.shell-group[aria-expanded="true"] { color: var(--fg); background: var(--bg); }
+.shell-group[aria-expanded="true"] .caret { transform: rotate(180deg); }
+
+/* shell.js sets left to line the panel up under its button. */
+.shell-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  width: 19rem;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  padding: 5px;
+  background: var(--card-bg, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .22);
+  user-select: auto;
+}
+.shell-menu[hidden] { display: none; }
+
+.shell-item {
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  column-gap: .35rem;
+  align-items: baseline;
+  padding: .45rem .6rem;
+  border-radius: 7px;
+  color: var(--fg);
+  text-decoration: none;
+}
+.shell-item:hover, .shell-item:focus-visible {
+  background: var(--code-bg, var(--bg));
+  text-decoration: none;
+  outline: none;
+}
+.shell-item .dot {
+  grid-row: 1 / span 2;
+  justify-self: center;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--h, var(--muted));
+}
+.shell-item.out .dot {
+  width: auto; height: auto;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+.shell-item .t { font-weight: 600; }
+.shell-item .d { grid-column: 2; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.shell-item[aria-current="page"] { background: var(--code-bg, var(--bg)); }
+.shell-item[aria-current="page"] .t { color: var(--h); }
 
 /* The interpreter everything here runs on, and the way to read about it. */
 .shell-engine {
@@ -212,7 +248,6 @@ body { padding-top: var(--shell-h); }
 
 @media (max-width: 46rem) {
   .shell-mark .tld { display: none; }
-  .shell-out { display: none; }
   .shell-engine { display: none; }
   .shell-tab { padding: 0 .7rem; }
 }

@@ -13,6 +13,11 @@
 (function () {
   'use strict';
 
+  // Eighteen sections no longer fit in one row even on a laptop, so all but the
+  // two "get started" tabs and Support live in groups: a group is one button in
+  // the bar that opens a panel of its sections, each with a line saying what is
+  // behind it. A group lights up in the colour of whichever of its sections you
+  // are in, so the bar still answers "which room am I in" at a glance.
   var SECTIONS = [
     { href: '/play/',   label: 'Play',   hue: 'play'   },
     // Next to Play on purpose: those two are the whole of "get started", and
@@ -20,39 +25,47 @@
     // home. Everything after them is a room you go to once you have one or the
     // other. /install.sh is a file, not a section, and does not light this up.
     { href: '/install/', label: 'Install', hue: 'install' },
-    // After Install: once rakupp is on your machine, the next thing is your
-    // editor — VS Code, Emacs, Neovim, a WordPress blog, a notebook, an agent.
-    { href: '/editors/', label: 'Editors', hue: 'editors' },
-    // Between Editors and SDK: Raku inside software you use rather than
-    // write — a web page, a WordPress blog, Excel, Google Sheets. A prefix
-    // match, so it stays lit on /embed/js/ and /embed/wordpress/ as well.
-    { href: '/embed/', label: 'Embed', hue: 'embed' },
-    // Then the developer's way in: Raku inside a Python, Go, Rust, C++,
-    // JavaScript or Wolfram program, through librakupp. The page is Bindings;
-    // the tab says SDK, which is shorter and what a developer looks for.
-    { href: '/bindings/', label: 'SDK', hue: 'bindings' },
-    // One tab for the three rooms that show the language in use: the example
-    // gallery, the showcase and /live. It lands on the hub and stays lit in
-    // all of them, so the group reads as one place with three shelves.
-    { href: '/in-use/', label: 'In use', hue: 'inuse',
-      match: ['/in-use/', '/examples/', '/showcase/', '/live/'] },
-    { href: '/tour/',   label: 'Tour',   hue: 'tour'   },
-    { href: '/drills/', label: 'Drills', hue: 'drills' },
-    { href: '/spec/',   label: 'Spec',   hue: 'spec'   },
-    { href: '/grid/',   label: 'Grid',   hue: 'grid'   },
-    { href: '/map/',    label: 'Map',    hue: 'map'    },
-    { href: '/faq/',    label: 'FAQ',    hue: 'faq'    },
-    // "Cook" rather than "Cookbook": the bar is ten tabs wide on a laptop and
-    // the long form is the one that pushes it to wrap.
-    { href: '/cookbook/', label: 'Cook', hue: 'cook'  },
+    { label: 'Learn', items: [
+      { href: '/tour/',     label: 'Tour',     hue: 'tour',   note: 'Eighteen short lessons, live code' },
+      { href: '/drills/',   label: 'Drills',   hue: 'drills', note: 'Practice questions' },
+      { href: '/cookbook/', label: 'Cookbook', hue: 'cook',   note: 'Whole tasks, worked end to end' },
+      { href: '/faq/',      label: 'FAQ',      hue: 'faq',    note: 'Task-shaped answers' },
+      // course.raku.org is a separate project on a separate domain, so it is
+      // marked as leaving the site rather than dressed up as another section.
+      { href: 'https://course.raku.org', label: 'Course', out: true, note: 'course.raku.org' }
+    ] },
+    // The rooms that show the language in use. The hub is the first entry, and
+    // the group stays lit in all of them, so it reads as one place with shelves.
+    { label: 'In use', items: [
+      { href: '/in-use/',   label: 'Overview', hue: 'inuse', note: 'Adoptions, and everything below' },
+      { href: '/examples/', label: 'Examples', hue: 'inuse', note: 'Raku by example, one program a page' },
+      { href: '/showcase/', label: 'Showcase', hue: 'inuse', note: 'Projects built on Raku++' },
+      { href: '/live/',     label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' }
+    ] },
+    // Raku inside something else: your editor, software you use rather than
+    // write (a web page, a WordPress blog, a spreadsheet), and finally another
+    // language's program through librakupp. /embed/ is a prefix match, so it
+    // stays lit on /embed/js/ and /embed/wordpress/ as well.
+    { label: 'Integrate', items: [
+      { href: '/editors/',  label: 'Editors', hue: 'editors',  note: 'VS Code, Emacs, Neovim, Jupyter, agents' },
+      { href: '/embed/',    label: 'Embed',   hue: 'embed',    note: 'Web pages, WordPress, spreadsheets' },
+      { href: '/bindings/', label: 'SDK',     hue: 'bindings', note: 'Python, JS, Go, Rust, C++, Wolfram' }
+    ] },
+    { label: 'Reference', items: [
+      { href: '/spec/',    label: 'Spec',    hue: 'spec', note: 'The Raku++ specification' },
+      { href: '/modules/', label: 'Modules', hue: 'eco',  note: 'raku.land distributions that run' },
+      { href: '/grid/',    label: 'Grid',    hue: 'grid', note: 'Every recorded test on every engine' },
+      { href: '/map/',     label: 'Map',     hue: 'map',  note: 'Rakudo and Raku++, program by program' }
+    ] },
     // Pace is the project's history, chapter by chapter, so it opens the reading
-    // shelf: the story first, then the books.
-    { href: '/pace/',   label: 'Pace',   hue: 'pace'   },
-    { href: '/book/',   label: 'Book',   hue: 'book'   },
-    // Raku Behind the Docs: the verified-behaviour book, built in its own
-    // repository and copied in by `build.sh deep`. Beside Book, the other book.
-    { href: '/deep/',   label: 'Deep',   hue: 'deep'   },
-    { href: '/modules/', label: 'Modules', hue: 'eco' },
+    // shelf: the story first, then the books. Deep is Raku Behind the Docs, the
+    // verified-behaviour book, built in its own repository and copied in by
+    // `build.sh deep`.
+    { label: 'Read', items: [
+      { href: '/pace/', label: 'Pace', hue: 'pace', note: 'The project, chapter by chapter' },
+      { href: '/book/', label: 'Book', hue: 'book', note: 'Raku++ Internals, the compiler book' },
+      { href: '/deep/', label: 'Deep', hue: 'deep', note: 'Raku Behind the Docs' }
+    ] },
     // Last, as the way out of the reading rooms: where to ask when something
     // breaks — GitHub issues, or DeepSoft's commercial support.
     { href: '/support/', label: 'Support', hue: 'support' }
@@ -73,6 +86,25 @@
     return n;
   }
 
+  function here(path, href) {
+    return path === href || path.indexOf(href) === 0;
+  }
+
+  function hue(n, h) { if (h) n.style.setProperty('--h', 'var(--hue-' + h + ')'); }
+
+  // One entry in a group's panel: a dot in the section's colour, its name, and
+  // a line on what is behind it.
+  function item(s, path) {
+    var a = el('a', { class: 'shell-item', href: s.href });
+    hue(a, s.hue);
+    a.appendChild(el('span', { class: 'dot', 'aria-hidden': 'true' }, s.out ? '↗' : null));
+    a.appendChild(el('span', { class: 't' }, s.label));
+    if (s.note) a.appendChild(el('span', { class: 'd' }, s.note));
+    if (s.out) a.classList.add('out');
+    else if (here(path, s.href)) a.setAttribute('aria-current', 'page');
+    return a;
+  }
+
   function build() {
     if (document.querySelector('.shell')) return;      // already there
 
@@ -87,23 +119,39 @@
     bar.appendChild(mark);
 
     var nav = el('div', { class: 'shell-nav' });
-    SECTIONS.forEach(function (s) {
-      var a = el('a', { class: 'shell-tab', href: s.href, 'data-hue': s.hue }, s.label);
-      var here = (s.match || [s.href]).some(function (p) {
-        return path === p || path.indexOf(p) === 0;
+    var groups = [];
+    SECTIONS.forEach(function (s, i) {
+      if (!s.items) {
+        var a = el('a', { class: 'shell-tab', href: s.href }, s.label);
+        hue(a, s.hue);
+        if (here(path, s.href)) a.setAttribute('aria-current', 'page');
+        nav.appendChild(a);
+        return;
+      }
+      // The panel is a child of the bar, not of the button's row: the row
+      // scrolls sideways on phones, and anything inside an overflow box is
+      // clipped by it. open() lines the panel up under its button instead.
+      var id = 'shell-menu-' + i;
+      var btn = el('button', { class: 'shell-tab shell-group', type: 'button',
+                               'aria-expanded': 'false', 'aria-controls': id }, s.label);
+      btn.appendChild(el('span', { class: 'caret', 'aria-hidden': 'true' }, '▾'));
+      var panel = el('div', { class: 'shell-menu', id: id });
+      panel.hidden = true;
+      s.items.forEach(function (it) {
+        var a = item(it, path);
+        if (a.getAttribute('aria-current')) {
+          btn.setAttribute('aria-current', 'page');
+          hue(btn, it.hue);
+        }
+        panel.appendChild(a);
       });
-      if (here) a.setAttribute('aria-current', 'page');
-      nav.appendChild(a);
+      nav.appendChild(btn);
+      groups.push({ btn: btn, panel: panel });
     });
     bar.appendChild(nav);
+    groups.forEach(function (g) { bar.appendChild(g.panel); });
 
     bar.appendChild(el('span', { class: 'shell-spacer' }));
-
-    // course.raku.org is a separate project on a separate domain, so it is
-    // marked as leaving the site rather than dressed up as another tab.
-    var course = el('a', { class: 'shell-out', href: 'https://course.raku.org' }, 'Course');
-    course.appendChild(el('span', { class: 'arr' }, '↗'));
-    bar.appendChild(course);
 
     var engine = el('a', { class: 'shell-engine', href: '/rakupp/' }, ENGINE);
     if (path.indexOf('/rakupp/') === 0) engine.setAttribute('aria-current', 'page');
@@ -124,6 +172,72 @@
     // listeners live on the element, not on its position in the document.
     var sw = document.querySelector('.theme-switch');
     if (sw) bar.appendChild(sw);
+
+    // The groups behave like a desktop menu bar: a click opens one, and while
+    // one is open, pointing at another switches to it. Escape, a click
+    // anywhere else, or tabbing away closes it.
+    var open = null;
+
+    function close(refocus) {
+      if (!open) return;
+      open.panel.hidden = true;
+      open.btn.setAttribute('aria-expanded', 'false');
+      if (refocus) open.btn.focus();
+      open = null;
+    }
+
+    function show(g) {
+      if (open === g) return;
+      close();
+      g.panel.hidden = false;
+      g.btn.setAttribute('aria-expanded', 'true');
+      var r = g.btn.getBoundingClientRect();
+      var w = g.panel.offsetWidth;
+      g.panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+      open = g;
+    }
+
+    function links(g) { return Array.prototype.slice.call(g.panel.querySelectorAll('a')); }
+
+    groups.forEach(function (g) {
+      g.btn.addEventListener('click', function () {
+        if (open === g) close(); else show(g);
+      });
+      g.btn.addEventListener('mouseenter', function () {
+        if (open && open !== g) show(g);
+      });
+      g.btn.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          show(g);
+          links(g)[0].focus();
+        }
+      });
+      g.panel.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        var all = links(g), k = all.indexOf(document.activeElement);
+        k = e.key === 'ArrowDown' ? Math.min(k + 1, all.length - 1) : k - 1;
+        if (k < 0) g.btn.focus(); else all[k].focus();
+      });
+      [g.btn, g.panel].forEach(function (n) {
+        n.addEventListener('focusout', function (e) {
+          var to = e.relatedTarget;
+          if (open === g && to && !g.btn.contains(to) && !g.panel.contains(to)) close();
+        });
+      });
+    });
+
+    document.addEventListener('click', function (e) {
+      if (open && !open.btn.contains(e.target) && !open.panel.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && open) close(true);
+    });
+    // The panel is placed once, under its button; if the row scrolls or the
+    // window changes width it would be left pointing at the wrong place.
+    nav.addEventListener('scroll', function () { close(); });
+    window.addEventListener('resize', function () { close(); });
 
     // The tab row scrolls on narrow screens; make sure the section you are in
     // is not the one hiding past the edge. Last, so the row is measured with

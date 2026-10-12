@@ -38,7 +38,7 @@ program still runs in a fraction of a second:
 | `/grid/` | Rakugrid, browsable — every recorded test on every engine, with the divergences, rulings and crashes | generated from `sites/grid/` |
 | `/map/` | Rakumap’s generated programs, grouped by topic, each showing what Rakudo and Raku++ printed and whether they agree. The outputs come from `rakupp build.raku --record` (committed as `sites/map/src/results.raku`); re-record when the corpus or the engine changes | generated from `sites/map/` |
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
-| `/cookbook/` | The Cookbook — whole tasks worked end to end; the programs are linked to the rakupp repo, not copied here. The site bar calls it **Cook** | generated from `sites/cookbook/` |
+| `/cookbook/` | The Cookbook — whole tasks worked end to end; the programs are linked to the rakupp repo, not copied here. | generated from `sites/cookbook/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
 | `/film/` | **Not published yet** (`www/film/` is in `.gitignore` and the tab is out of the site bar while the narration is reworked). Short narrated films, one per mechanism of the interpreter (the pad, errors without C++ throws, big integers, gather as a coroutine). Scenes, scripts and subtitles come from `rakupp/docs/film`; the narration audio lives here, in `sites/film/audio/` | generated from `sites/film/` |
 | `/modules/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/modules/` |
