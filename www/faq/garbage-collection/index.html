@@ -23,9 +23,10 @@
 <div class="content">
 <p class="crumb"><a href="/faq/">← All questions</a></p>
 <h1>The garbage collector</h1>
-
-<p>There isn't one. Raku++ has no tracing, generational or incremental collector, no heap to size, no GC knobs and no GC log. Lifetime is <code>shared_ptr</code> reference counting: a value is freed the moment the last reference to it goes away. How the counting itself works, in Raku terms, is <a href="/faq/refcounting/">how reference counting works</a>.</p>
-<p>That answers most of the questions on this page in one line, but the consequences are worth spelling out, because two of them will eventually bite you: <strong>reference cycles are never reclaimed</strong>, and <strong><code>DESTROY</code> still is not a destructor you can schedule</strong>.</p>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#what-refcounting-buys">What refcounting buys</a></li><li><a href="#what-it-costs">What it costs</a></li><li><a href="#what-about-cycles">What about cycles?</a></li><li><a href="#how-do-i-avoid-a-cycle">How do I avoid a cycle?</a></li><li><a href="#my-long-running-program-grows-is-it-a-cycle">My long-running program grows. Is it a cycle?</a></li><li><a href="#when-does-destroy-run">When does <code>DESTROY</code> run?</a></li><li><a href="#does-dropping-a-filehandle-close-it">Does dropping a filehandle close it?</a></li><li><a href="#can-i-force-a-collection">Can I force a collection?</a></li><li><a href="#do-threads-change-any-of-this">Do threads change any of this?</a></li><li><a href="#does-exe-behave-differently">Does <code>--exe</code> behave differently?</a></li></ul></nav>
+<p>Not a tracing one. Raku++ has no tracing, generational or incremental collector, no heap to size and no GC log. Lifetime is reference counting: a value is freed the moment the last reference to it goes away. How the counting itself works, in Raku terms, is <a href="/faq/refcounting/">how reference counting works</a>.</p>
+<p>Reference counting alone cannot free two things that point at each other, so beside it runs a <strong>backup cycle collector</strong> that looks only for such groups and frees them (since 2026-10, issue #151). It never pauses the program to walk the heap: it looks at what was let go of recently, a bounded amount at a time. The section <a href="#what-about-cycles">What about cycles?</a> below has the details.</p>
+<p>That answers most of the questions on this page in one line, but the consequences are worth spelling out. The one that will eventually bite you: <strong><code>DESTROY</code> is not a destructor you can schedule</strong>.</p>
 <p>Figures below were measured on macOS arm64 (M-series), 2026-08-30, rakupp 3.23.0 against Rakudo v2026.08 / MoarVM 2026.08, with <code>/usr/bin/time -l</code>.</p>
 <h2 id="what-refcounting-buys">What refcounting buys <a class="anchor" href="#what-refcounting-buys" aria-label="link">#</a></h2>
 <p><strong>A small floor.</strong> Nothing is reserved for a heap, so the baseline is the program, not the collector. The program here is a file containing one statement, <code>say 1</code>, measured whole-process from launch to exit:</p>
@@ -70,58 +71,61 @@
 <tr><td>Rakudo</td><td>2685 ms</td><td><strong>0 ms</strong></td></tr></table></div>
 <p>(Three runs per engine, 2026-09-07; both columns repeated to within 25 ms.) Rakudo's free column is zero because the work has not happened yet, not because it was cheap. Rakudo's 2 ms is not free memory, it is postponed work — but if a half-second lands in the wrong place, move the drop somewhere it does not matter, or let the structure die with the process.</p>
 <p>Deep structures are safe to drop: a 500,000-node linked list released by setting its head to <code>Nil</code> tears down without exhausting the stack.</p>
-<p><strong>Cycles are never reclaimed.</strong> This is the real limitation. Two objects pointing at each other keep each other's count above zero, and nothing ever goes looking for them:</p>
+<h2 id="what-about-cycles">What about cycles? <a class="anchor" href="#what-about-cycles" aria-label="link">#</a></h2>
+<p>Two objects pointing at each other keep each other's count above zero after the program has let go of both. Reference counting cannot free them; the cycle collector does:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Node</span> { <span class="k">has</span> <span class="nv">$.name</span> <span class="k">is</span> <span class="n">rw</span>; <span class="k">has</span> <span class="nv">$.peer</span> <span class="k">is</span> <span class="n">rw</span>; }
 <span class="k">sub</span> <span class="n">cyc</span>() {
     <span class="k">my</span> <span class="nv">$a</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'a'</span>);
     <span class="k">my</span> <span class="nv">$b</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'b'</span>);
     <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nv">$b</span>;
-    <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nv">$a</span>;      <span class="c1"># ← the cycle: neither is ever freed</span>
+    <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nv">$a</span>;      <span class="c1"># ← the cycle</span>
 }</code></pre>
-<p>Peak footprint of <code>for ^N { cyc() }</code> — the block form of <code>for</code>, so the loop itself allocates nothing — against the same routine with the last line removed:</p>
-<div class="tablewrap"><table><tr><th>iterations</th><th>no cycle</th><th>cycle</th><th>Rakudo, cycle</th></tr><tr><td>100,000</td><td>2 MB</td><td>857 MB</td><td>163 MB</td></tr>
-<tr><td>400,000</td><td>2 MB</td><td>3423 MB</td><td>189 MB</td></tr></table></div>
-<p>About 8.6 KB per cycle, growing forever. Rakudo's collector finds them, which is exactly what a collector is for.</p>
-<p>The same loop, with the body replaced by a container that contains itself:</p>
-<div class="tablewrap"><table><tr><th>shape</th><th>leaked per iteration</th></tr><tr><td><code>%h&lt;self&gt; = %h</code></td><td>~4 KB</td></tr>
-<tr><td><code>@a[0] = @a</code></td><td>~180 B</td></tr>
-<tr><td><code>$x = [$x]</code> (not a cycle — the old value is captured, not referenced back)</td><td>nothing</td></tr></table></div>
-<p><strong>One cycle is broken for you.</strong> A named sub nested in another routine closes over the enclosing frame and is stored back into it — a cycle the language makes, not you. When a frame exits without that closure having escaped, the interpreter drops the back-edge (<code>breakSelfClosures</code>, src/Interpreter.cpp), so this stays flat at 1.6 MB at any iteration count:</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">outer</span>(<span class="nv">$x</span>) {
-    <span class="k">my</span> <span class="k">sub</span> <span class="n">helper</span>(<span class="nv">$y</span>) { <span class="nv">$y</span> * <span class="mi">2</span> }    <span class="c1"># would otherwise retain outer's frame</span>
-    <span class="n">helper</span>(<span class="nv">$x</span>) + <span class="mi">1</span>;
-}</code></pre>
-<p><strong>Not in 4.0.0 to 5.0.0:</strong> a regression makes the interpreter skip that cut once <code>helper</code> has been called, so today the routine above keeps every frame it makes: about 1.5 KB per call, 1.5 GB over a million calls. Declaring <code>helper</code> at unit scope avoids it. The shapes affected are measured in <a href="/faq/refcounting/">how reference counting works</a>.</p>
-<p>That is the only cycle handled automatically. Cycles in <em>your</em> data are yours.</p>
+<p>Peak footprint of <code>for ^N { cyc() }</code> (the block form of <code>for</code>, so the loop itself allocates nothing), against the same routine with the last line removed, and with the collector switched off (<code>RAKUPP_CYCLE=0</code>):</p>
+<div class="tablewrap"><table><tr><th>iterations</th><th>no cycle</th><th>cycle</th><th>cycle, <code>RAKUPP_CYCLE=0</code></th><th>Rakudo, cycle</th></tr><tr><td>100,000</td><td>2.1 MB</td><td>3.2 MB</td><td>94 MB</td><td>146 MB</td></tr>
+<tr><td>400,000</td><td>2.0 MB</td><td>3.2 MB</td><td>371 MB</td><td>146 MB</td></tr></table></div>
+<p>(rakupp after 5.3.0, Rakudo 2026.09, macOS arm64, 2026-10-12, peak memory footprint.) Without the collector each cycle leaks about 0.9 KB, growing for as long as the program runs; with it, memory stays flat.</p>
+<p>The same holds for a container that contains itself:</p>
+<div class="tablewrap"><table><tr><th>shape, 200,000 iterations</th><th>collector on</th><th><code>RAKUPP_CYCLE=0</code></th></tr><tr><td><code>%h&lt;self&gt; = %h</code></td><td>2.8 MB</td><td>115 MB</td></tr>
+<tr><td><code>@a[0] = @a</code></td><td>2.4 MB</td><td>26 MB</td></tr></table></div>
+<p>and for the cycles closures make: a block kept in a variable of the frame it was made in, or an object that stores a callback mentioning that object. Those are measured in <a href="/faq/refcounting/#which-cycles-do-i-make-without-noticing">refcounting.md</a>.</p>
+<h3 id="how-it-works">How it works <a class="anchor" href="#how-it-works" aria-label="link">#</a></h3>
+<p>A group of objects becomes garbage at the moment its last outside reference goes away. The collector keeps a list of <strong>candidates</strong>, the containers that may just have lost such a reference:</p>
+<ul><li>an object, every time a reference to it is released and the object stays alive;</li><li>an array, hash, Pair or container cell, when a scope that held it exits;</li><li>the variables of a scope a closure keeps alive, when the routine or loop that made the scope lets go of it.</li></ul>
+<p>The list holds no reference of its own: a candidate that is freed in the ordinary way simply leaves it. When enough candidates have gathered, at the end of a scope, the collector walks what they reference and counts how many of each object's references come from inside the walk. An object referenced more often than that is held from outside, and so is everything it reaches. What is left is referenced only by itself, so it is garbage. Its <code>DESTROY</code>s run first, with every link intact; then its contents are cleared, and reference counting frees the rest. <a href="https://github.com/ash/rakupp/blob/main/docs/internals/RUNTIME.md#memory-reference-counts-and-the-cycle-collector">RUNTIME.md</a> has the engineering, and the Internals book a chapter of its own (<a href="https://github.com/ash/rakupp/blob/main/docs/book/ch/12-containers.md#freeing-cycles">Chapter 12</a>).</p>
+<h3 id="what-it-costs">What it costs <a class="anchor" href="#what-it-costs" aria-label="link">#</a></h3>
+<p>The cost is paid where candidates are made, mostly on objects. On the benchmark kernels (instructions retired, 2026-10-12) twenty of twenty-two moved by under 0.6%; the kernel that builds 200,000 objects and calls methods on them costs 1.3–1.5% more. A class whose attributes are all typed with a value type (<code>has Int $.x</code>, <code>has str $.s</code>, …) cannot be part of a cycle, and its objects are not tracked at all; on the same kernel with typed attributes the cost is 0.7%.</p>
+<p>A collection walks at most a bounded amount from each candidate (1,024 new objects, 16,384 values read), so a large structure that is still in use is looked at in slices, never re-read whole. The price of that bound is the first item in the next list.</p>
+<h3 id="what-it-does-not-free">What it does not free <a class="anchor" href="#what-it-does-not-free" aria-label="link">#</a></h3>
+<ul><li><strong>A cycle larger than one walk.</strong> A ring of 30,000 objects is still leaked. It is reported nowhere, and nothing else slows down.</li><li><strong>A cycle through a promise, a channel, a lazy sequence's generator or a native callback.</strong> The collector cannot see inside those, so a cycle that passes through one is treated as held from outside.</li><li><strong>A cycle built while worker threads run, until they stop.</strong> A collection needs the program to be quiet: the main thread, with no <code>start</code> block or supply worker running. A server that always has a worker live collects only at the moments it has none.</li></ul>
+<p>When a cycle is still a problem, the structural fixes below free it at once and need no collector at all.</p>
 <h2 id="how-do-i-avoid-a-cycle">How do I avoid a cycle? <a class="anchor" href="#how-do-i-avoid-a-cycle" aria-label="link">#</a></h2>
-<p>Raku has no weak reference in either implementation, so the fix is structural, not a keyword:</p>
+<p>Usually you do not need to: the collector frees them. Avoid one when you want the memory back at a precise moment, or when the cycle is one of the shapes above that the collector cannot free. Raku has no weak reference in either implementation, so the fix is structural, not a keyword:</p>
 <ul><li><strong>Prefer one direction.</strong> Parent → children, and look the parent up by id or index instead of storing a back-pointer.</li><li><strong>Break the link when you are done with the graph</strong>, in a <code>LEAVE</code> if the scope is what defines "done":</li></ul>
 <pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Node</span> { <span class="k">has</span> <span class="nv">$.name</span> <span class="k">is</span> <span class="n">rw</span>; <span class="k">has</span> <span class="nv">$.peer</span> <span class="k">is</span> <span class="n">rw</span>; }
 <span class="k">sub</span> <span class="n">build</span>() {
     <span class="k">my</span> <span class="nv">$a</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'a'</span>);
     <span class="k">my</span> <span class="nv">$b</span> = <span class="n">Node</span>.<span class="nb">new</span>(<span class="n">name</span> =&gt; <span class="s">'b'</span>);
-    <span class="k">LEAVE</span> { <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nb">Nil</span>; <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nb">Nil</span> }   <span class="c1"># frees both</span>
+    <span class="k">LEAVE</span> { <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nb">Nil</span>; <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nb">Nil</span> }   <span class="c1"># frees both, right here</span>
     <span class="nv">$a</span>.<span class="n">peer</span> = <span class="nv">$b</span>;
     <span class="nv">$b</span>.<span class="n">peer</span> = <span class="nv">$a</span>;
     <span class="s">&quot;$a.name() ↔ $b.name()&quot;</span>;
 }
 <span class="nb">say</span> <span class="n">build</span>();       <span class="c1"># a ↔ b</span></code></pre>
-<p>  In a 400,000-iteration loop that routine stays flat at 1.7 MB, against the   3423 MB it takes with the links left in place.</p>
-<ul><li><strong>Let the process end.</strong> A short-lived script that leaks a bounded number of cycles is fine; the OS reclaims everything at exit. It is long-lived processes — servers, daemons, watchers — where a per-request cycle matters.</li></ul>
+<ul><li><strong>Let the process end.</strong> A short-lived script that leaks a bounded number of cycles is fine; the OS reclaims everything at exit.</li></ul>
 <h2 id="my-long-running-program-grows-is-it-a-cycle">My long-running program grows. Is it a cycle? <a class="anchor" href="#my-long-running-program-grows-is-it-a-cycle" aria-label="link">#</a></h2>
 <p>Check three things, in this order, because the first two are far more common:</p>
 <ol><li><strong>Are you still holding it?</strong> A cache, a <code>state</code> variable, an array you append to and never trim, a class attribute. Nothing here is a collector's job — a tracing GC would keep it alive too.</li></ol>
 <ol><li><strong>Are you materialising a list?</strong> Memory that is proportional to the <em>data</em> is not a leak. The statement-modifier form of <code>for</code> builds the list first, in both engines; the block form streams it:</li></ol>
 <p>   ``<code>raku    $s += $_ for ^300_000;      # rakupp 102 MB, Rakudo 180 MB    for ^300_000 { $s += $_ }   # rakupp 1.6 MB    </code>``</p>
 <p>   The modifier's cost is per element of the list, not per iteration: three    million iterations of <code>$s += $_ for ^10</code> stay at 1.6 MB.</p>
-<ol><li><strong>Then look for a cycle</strong> — a back-pointer, a parent link, a callback an object stores that closes over that same object.</li></ol>
+<ol><li><strong>Then look for a cycle the collector cannot free</strong> (see <a href="#what-it-does-not-free">What it does not free</a>): a ring of tens of thousands of objects, a cycle through a promise or a channel, or a program that always has a worker thread running. <code>RAKUPP_CYCLE_STATS=1</code> prints what the collector did at exit: how many collections ran, and how many containers they freed.</li></ol>
 <h3 id="measuring-it">Measuring it <a class="anchor" href="#measuring-it" aria-label="link">#</a></h3>
 <p>On macOS use <strong>peak memory footprint</strong>, not resident set size:</p>
 <pre class="native-code"><code class="lang-bash">/usr/bin/time -l rakupp prog.raku 2&gt;&amp;1 | grep "peak memory footprint"</code></pre>
 <p>RSS will actively mislead you here. Leaked pages are never touched again, so macOS compresses them and RSS <em>falls</em> — the cycle loop above wobbled between 231 MB and 24 MB resident while its footprint climbed linearly past 3 GB. On Linux, <code>/usr/bin/time -v</code> and "Maximum resident set size" are honest.</p>
 <p>Then bisect by shape: delete the suspected back-pointer, re-run, compare. A leak that is a cycle changes slope; one that is a cache does not.</p>
 <h2 id="when-does-destroy-run">When does <code>DESTROY</code> run? <a class="anchor" href="#when-does-destroy-run" aria-label="link">#</a></h2>
-<p>Not at the drop. Raku does not promise timely destruction, and Raku++ does not provide it: instances of classes that declare a <code>DESTROY</code> submethod are parked in a registry, and a sweep runs the destructor of every entry the registry alone still holds. Sweeps happen at three moments — when the program asks, when enough instances have piled up since the last sweep, and at program end.</p>
+<p>Not at the drop. Raku does not promise timely destruction, and Raku++ does not provide it: instances of classes that declare a <code>DESTROY</code> submethod are parked in a registry, and a sweep runs the destructor of every entry the registry alone still holds. Sweeps happen at three moments — when the program asks, when enough instances have piled up since the last sweep, and at program end. A cycle collection, which starts on its own at the end of a scope once enough candidates are waiting, also runs <code>DESTROY</code> for the dropped instances it finds, whether or not they are in a cycle.</p>
 <p>Asking explicitly works the same in both engines:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">class</span> <span class="n">Res</span> {
     <span class="k">has</span> <span class="nv">$.name</span>;
@@ -159,7 +163,8 @@ after gc request</code></pre>
 <tr><td></td><td><code>bye 2</code></td></tr></table></div>
 <p>Both are within spec, and neither is a contract. Two rules survive the difference:</p>
 <ul><li><strong>An object still reachable at exit is never destroyed.</strong> <code>my $r = R.new</code> in the mainline prints nothing at all, on either engine.</li><li><strong>A dropped one is destroyed at some point you did not choose.</strong> At program end rakupp sweeps before the <code>END</code> blocks run; Rakudo, in the same program, may not run <code>DESTROY</code> at all.</li></ul>
-<p>So: <strong>use <code>DESTROY</code> for a diagnostic, never for a release.</strong> Close the file, release the lock, return the connection in a <code>LEAVE</code> block, or with an explicit call. That is the advice on the Rakudo side too, and it is the same advice here for a stronger reason — nothing looks for cycles, so a leaked object never even reaches the registry sweep.</p>
+<p>So: <strong>use <code>DESTROY</code> for a diagnostic, never for a release.</strong> Close the file, release the lock, return the connection in a <code>LEAVE</code> block, or with an explicit call. That is the advice on the Rakudo side too.</p>
+<p>An object in a cycle gets its <code>DESTROY</code> when the cycle collector finds the cycle, before anything in the cycle is cleared, so it still sees its attributes. If <code>DESTROY</code> stores <code>self</code> somewhere, the object stays alive, and its <code>DESTROY</code> does not run a second time when it is dropped again.</p>
 <h2 id="does-dropping-a-filehandle-close-it">Does dropping a filehandle close it? <a class="anchor" href="#does-dropping-a-filehandle-close-it" aria-label="link">#</a></h2>
 <p><strong>No — and this is a difference from Rakudo.</strong> Writes accumulate in the handle, and an open write handle is registered so that its contents are flushed if the program ends without a <code>close</code>. That registration is itself a reference, so letting the variable go does not flush anything:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">sub</span> <span class="n">writer</span>() {
@@ -179,14 +184,19 @@ after gc request</code></pre>
 <span class="nb">say</span> <span class="s">&quot;size right after: &quot;</span>, <span class="s">&quot;out.txt&quot;</span>.<span class="nb">IO</span>.<span class="n">s</span>;      <span class="c1"># 5, on both</span></code></pre>
 <p>Note also that opening write handles in a long-running loop grows memory even when you close them: the exit-flush registry keeps every handle it was given (~4 KB each, measured over 40,000 open/close pairs). For a program that opens tens of thousands of files, that is worth knowing about.</p>
 <h2 id="can-i-force-a-collection">Can I force a collection? <a class="anchor" href="#can-i-force-a-collection" aria-label="link">#</a></h2>
-<p><code>$*VM.request-garbage-collection</code> runs the pending-<code>DESTROY</code> sweep, as in the snippet above. It does not collect cycles — there is nothing that does.</p>
-<p><code>nqp::force_gc()</code> is not implemented; it works on Rakudo. There are no other knobs: no heap size, no nursery, no generation count, no GC environment variables, because there is nothing to tune.</p>
+<p><code>$*VM.request-garbage-collection</code> runs a cycle collection over whatever candidates are waiting, then the pending-<code>DESTROY</code> sweep, as in the snippet above.</p>
+<p><code>nqp::force_gc()</code> is not implemented; it works on Rakudo. There is no heap size, nursery or generation count to tune. The environment variables are switches for checking the collector, not tuning knobs:</p>
+<div class="tablewrap"><table><tr><th>variable</th><th>effect</th></tr><tr><td><code>RAKUPP_CYCLE=0</code></td><td>no cycle collection; reference counting alone</td></tr>
+<tr><td><code>RAKUPP_CYCLE=dry</code></td><td>find cyclic garbage and count it, free nothing</td></tr>
+<tr><td><code>RAKUPP_CYCLE_STATS=1</code></td><td>at exit, print what the collector did</td></tr>
+<tr><td><code>RAKUPP_CYCLE_POISON=1</code></td><td>instead of clearing a collected object, give it a class whose every method dies with <code>CYCLE-COLLECTED[…]</code> in the message; for checking that nothing collected is used again</td></tr>
+<tr><td><code>RAKUPP_CYCLE_TRIGGER=N</code></td><td>collect whenever N candidates wait (default: 1,024, rising while collections find nothing); <code>1</code> collects at nearly every scope exit</td></tr></table></div>
 <h2 id="do-threads-change-any-of-this">Do threads change any of this? <a class="anchor" href="#do-threads-change-any-of-this" aria-label="link">#</a></h2>
-<p>No collector means no global pause and no collector-side synchronisation. Reference counts are atomic, and a value is freed by whichever thread drops the last reference. Your own shared data is a different question — two <code>start</code> blocks writing the same array without a <code>Lock</code> is a data race here exactly as it is under Rakudo. See <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>.</p>
+<p>There is no global pause. Reference counts are atomic, and a value is freed by whichever thread drops the last reference. The cycle collector runs only on the main thread while no worker thread is live; while workers run, candidates wait, and the next quiet moment collects them. Your own shared data is a different question — two <code>start</code> blocks writing the same array without a <code>Lock</code> is a data race here exactly as it is under Rakudo. See <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ASYNC.md">ASYNC.md</a>.</p>
 <h2 id="does-exe-behave-differently">Does <code>--exe</code> behave differently? <a class="anchor" href="#does-exe-behave-differently" aria-label="link">#</a></h2>
-<p>No. Compiled binaries link the same runtime and use the same reference counting, so the floor, the cycles and the <code>DESTROY</code> sweep all behave as they do in the interpreter. The same holds for the WebAssembly build.</p>
+<p>No. Compiled binaries link the same runtime and use the same reference counting and the same cycle collector, so the floor, the cycles and the <code>DESTROY</code> sweep all behave as they do in the interpreter; a compiled program collects at the top of each loop iteration that calls user code. The same holds for the WebAssembly build.</p>
 <hr>
-<p>Deeper detail: <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MEMORY.md">MEMORY.md</a> for stacks, recursion depth and the data-side guardrails; <a href="https://github.com/ash/rakupp/blob/main/docs/internals/RUNTIME.md">RUNTIME.md</a> for what a <code>Value</code> is and why its payloads are behind <code>shared_ptr</code>.</p>
+<p>Deeper detail: <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MEMORY.md">MEMORY.md</a> for stacks, recursion depth and the data-side guardrails; <a href="https://github.com/ash/rakupp/blob/main/docs/internals/RUNTIME.md">RUNTIME.md</a> for what a <code>Value</code> is and how its payloads are counted; <a href="https://github.com/ash/rakupp/blob/main/docs/dev/plans/CYCLE-GC-PLAN.md">CYCLE-GC-PLAN.md</a> for the collector's design and measurements.</p>
 <p>Back to the <a href="/faq/">FAQ index</a>.</p>
 <footer>
 <span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
