@@ -134,7 +134,7 @@
       var id = 'shell-menu-' + i;
       var btn = el('button', { class: 'shell-tab shell-group', type: 'button',
                                'aria-expanded': 'false', 'aria-controls': id }, s.label);
-      btn.appendChild(el('span', { class: 'caret', 'aria-hidden': 'true' }, '▾'));
+      btn.appendChild(el('span', { class: 'caret', 'aria-hidden': 'true' }));
       var panel = el('div', { class: 'shell-menu', id: id });
       panel.hidden = true;
       s.items.forEach(function (it) {
