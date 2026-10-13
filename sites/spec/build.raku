@@ -220,7 +220,7 @@ sub parse-frontmatter(Str $text, Str $path) {
     die "$path: missing '---' frontmatter block" unless $text.starts-with('---');
     my $end = $text.index("\n---", 3);
     die "$path: unterminated frontmatter block" unless $end.defined;
-    my $head = $text.substr(3, $end - 3).trim("\n");
+    my $head = $text.substr(3, $end - 3).subst(/^ \n+ | \n+ $/, '', :g);
     my $body = $text.substr($end + 4).subst(/ ^ \n+ /, '');
     my %meta;
     for $head.lines -> $raw {
