@@ -20,7 +20,7 @@
         'Talking to the outside world'  => <shell background-processes http native-libraries buffering>,
         'Compiling, and making it fast' => <compiling optimizer performance threads hyper>,
         'When something goes wrong'     => <debugging garbage-collection>,
-        'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations differences>,
+        'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations dependencies differences>,
     ),
     catch-all => 'Everything else',
 
@@ -42,6 +42,7 @@
         hyper       => 'The hyper operators, hyper for and .hyper: which way the arrows point, which forms use more than one core, and which to reach for, with measured numbers.',
         'garbage-collection' => 'There isn\'t one: what reference counting buys, what a cycle costs, and when DESTROY actually runs.',
         debugging   => 'When something goes wrong: what a die tells you, --lint, --ast, --cpp, and telling your bug from ours.',
+        dependencies => 'Is Raku++ really dependency-free? What the binary links on each OS, what is written in-house instead, and what is loaded only on demand: libffi, OpenSSL, database clients, curl, a C++ compiler.',
         differences => 'Where Raku++ and Rakudo differ, in both directions, and the few you will actually meet.',
         '6e'        => 'What the 6.e language revision adds to 6.d, and what use v6.e.PREVIEW actually turns on.',
         'hand-written' => 'Is "hand-written" honest for an AI-built project? The term of art it invokes, and the authorship answer behind it.',

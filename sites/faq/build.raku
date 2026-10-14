@@ -71,7 +71,8 @@ sub link-text(Str $text, Str $target --> Str) {
 my constant @HOME-DIR = <guide faq>;
 
 sub link-target(Str $t --> Str) {
-    return $t if $t.starts-with('http') || $t.starts-with('#');
+    # a URL, not merely a name that starts with "http": http.md is an article
+    return $t if $t ~~ / ^ 'http' 's'? '://' / || $t.starts-with('#');
     # ../SOMETHING.md — a rakupp doc that does not live on this site. The
     # articles are written as if they sat in docs/guide/faq/ of the rakupp
     # repo, so ../LINT.md is docs/guide/LINT.md and ../../status/ROAST.md is

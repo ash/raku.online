@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — what does Raku++ depend on?</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=a61c94b9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a61c94b9">
+<link rel="stylesheet" href="/theme/shell.css?v=a61c94b9">
+<link rel="stylesheet" href="/theme/faq.css?v=a61c94b9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>What does Raku++ depend on?</h1>
+
+<p><strong>Nothing third-party.</strong> The <code>rakupp</code> executable links only the libraries that the operating system already has: the C library, the C++ runtime (on Linux and Windows this is linked into the binary), threads, the dynamic loader, and, on macOS, <code>libiconv</code>. It does not link OpenSSL, libcurl, libffi, zlib, ICU, GMP, PCRE, readline, SQLite, libuv or LLVM, and it does not vendor any of them either.</p>
+<p>That does not mean Raku++ cannot do HTTPS or talk to a database. It can, but the engine does not do it alone: a module drives the system's own library through NativeCall. The rest of this page lists what is linked, what is written in-house instead, and what the engine loads only when a program asks for it.</p>
+<h2 id="building-it">Building it <a class="anchor" href="#building-it" aria-label="link">#</a></h2>
+<p>You need two things:</p>
+<ul><li><strong>CMake 3.16 or newer</strong></li><li><strong>a C++17 compiler</strong>: Clang, GCC, MSVC or MinGW-w64</li></ul>
+<pre class="native-code"><code class="lang-bash">cmake -S . -B build &amp;&amp; cmake --build build</code></pre>
+<p>There is no bootstrap, so you do not need a Raku to build Raku++. Nothing else runs during the build either: no Python, no Perl, no code generator. The Unicode tables are generated C++ that is checked into <code>src/</code>, and the tools baked into the binary (<code>rakupp install</code>, <code>rakupp doc</code>, <code>rakupp upgrade</code>) are embedded by a CMake script. <code>git</code> is optional. When it is present, the build stamps its <code>describe</code> string into <code>$*RAKU.compiler.build</code>.</p>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/guide/COMPILERS.md">COMPILERS.md</a> explains which compiler to prefer on each platform and why.</p>
+<h2 id="what-the-binary-links">What the binary links <a class="anchor" href="#what-the-binary-links" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th>Platform</th><th>Linked at load time</th><th>Inside the binary</th></tr><tr><td><strong>macOS</strong></td><td><code>libSystem</code> (libc, libm, pthreads, <code>dlopen</code>), <code>libc++</code>, <code>libiconv</code>, all shipped with macOS</td><td>—</td></tr>
+<tr><td><strong>Linux</strong> (release)</td><td>glibc 2.28 or newer: <code>libc</code>, <code>libm</code>, <code>libpthread</code>, <code>libdl</code>, the loader</td><td><code>libstdc++</code>, <code>libgcc</code></td></tr>
+<tr><td><strong>Windows</strong>, MSVC</td><td>Windows system DLLs, including <code>ws2_32</code> (Winsock) and <code>bcrypt</code> (random bytes)</td><td>the C runtime (<code>/MT</code>), so you do not need the VC++ Redistributable</td></tr>
+<tr><td><strong>Windows</strong>, MinGW</td><td>the same system DLLs</td><td><code>libstdc++</code>, <code>libgcc</code>, <code>winpthread</code> (<code>-static</code>)</td></tr>
+<tr><td><strong>BSDs</strong></td><td>the base system's libc and libc++</td><td>—</td></tr></table></div>
+<p>Here it is on a Mac, read from a fresh build (version numbers trimmed):</p>
+<pre class="native-code"><code>$ otool -L build/rakupp
+build/rakupp:
+	/usr/lib/libiconv.2.dylib
+	/usr/lib/libc++.1.dylib
+	/usr/lib/libSystem.B.dylib</code></pre>
+<p>Each release checks the Linux row. <code>tools/floor-gate.raku</code> reads the packaged binaries back and fails the release if they need a glibc newer than 2.28 or a shared <code>libstdc++</code>. (Issue #82 is why: v3.26.0 shipped needing glibc 2.38 even though the docs said "no dependencies".) On Windows, the release workflow lists the MinGW binary's DLL imports and fails if a MinGW runtime DLL appears in them.</p>
+<h3 id="what-each-system-library-is-for">What each system library is for <a class="anchor" href="#what-each-system-library-is-for" aria-label="link">#</a></h3>
+<div class="tablewrap"><table><tr><th>Library</th><th>Used for</th></tr><tr><td>libc</td><td>files, processes, sockets, DNS (<code>getaddrinfo</code>), time, locale, <code>inotify</code> on Linux</td></tr>
+<tr><td>pthreads</td><td><code>start</code>, <code>Promise</code>, <code>hyper</code>/<code>race</code>, <code>Supply</code> schedulers, <code>Lock</code></td></tr>
+<tr><td><code>dlopen</code></td><td>NativeCall, native extensions, <code>--jit</code> kernels</td></tr>
+<tr><td>libm</td><td><code>Num</code> maths</td></tr>
+<tr><td>iconv</td><td>the gb2312, gb18030 and windows-932 encodings, and nothing else. iconv is not available on OpenBSD or Windows, so those three encodings are missing there and everything else works</td></tr>
+<tr><td>Winsock, <code>bcrypt</code></td><td>sockets and the OS random-number generator on Windows</td></tr></table></div>
+<h2 id="written-in-house-instead-of-linked">Written in-house instead of linked <a class="anchor" href="#written-in-house-instead-of-linked" aria-label="link">#</a></h2>
+<p>Usually an interpreter gets these from a library. In Raku++ they are part of the engine:</p>
+<div class="tablewrap"><table><tr><th>Feature</th><th>Instead of</th></tr><tr><td><code>Int</code> of any size, <code>Rat</code>, <code>FatRat</code></td><td>GMP / libtommath</td></tr>
+<tr><td>regexes and grammars, including longest-token matching</td><td>PCRE / a regex library</td></tr>
+<tr><td>the Unicode database: properties, names, normalisation, collation, case mapping, grapheme breaks</td><td>ICU</td></tr>
+<tr><td>zlib, gzip and raw deflate (<code>Data::Native</code>)</td><td>zlib</td></tr>
+<tr><td>MD5, SHA-1, SHA-2 and HMAC</td><td>OpenSSL's <code>libcrypto</code></td></tr>
+<tr><td>JSON, which also powers <code>Rakudo::Internals::JSON</code>, and CSV</td><td>a JSON library</td></tr>
+<tr><td>random bytes</td><td>the OS CSPRNG directly: <code>getentropy</code>, <code>getrandom</code>, <code>BCryptGenRandom</code></td></tr>
+<tr><td>TCP and UDP sockets, <code>IO::Socket::Async</code></td><td>libuv</td></tr>
+<tr><td>line editing in the REPL</td><td>readline / libedit</td></tr></table></div>
+<h2 id="loaded-only-when-a-program-asks">Loaded only when a program asks <a class="anchor" href="#loaded-only-when-a-program-asks" aria-label="link">#</a></h2>
+<p>You will not find these in <code>otool -L</code> or <code>ldd</code>. They are either loaded at run time or run as separate programs, and only on the code path that needs them. If one is missing, that one feature fails with an error. Everything else keeps working.</p>
+<div class="tablewrap"><table><tr><th>Need</th><th>What the engine uses</th><th>When it is missing</th></tr><tr><td><strong>NativeCall</strong> (<code>is native</code>)</td><td>the system <strong>libffi</strong>, loaded with <code>dlopen</code>. Set <code>RAKUPP_FFI</code> to a path to choose one, or to <code>0</code> to turn it off</td><td>a built-in fallback handles a narrower set of signatures and throws for the rest. <a href="https://github.com/ash/rakupp/blob/main/docs/guide/FFI.md">FFI.md</a> has the details</td></tr>
+<tr><td><strong>TLS / HTTPS</strong></td><td>not the engine. The <code>IO::Socket::Async::SSL</code> module calls the system <strong>OpenSSL</strong> (<code>libssl</code>) through NativeCall</td><td>the module cannot load. Plain sockets still work</td></tr>
+<tr><td><strong>HTTP</strong></td><td>not the engine. Use a module such as <code>HTTP::Tiny</code> or Cro. See <a href="/faq/http/">is HTTP built into the engine?</a></td><td>—</td></tr>
+<tr><td><strong>databases</strong></td><td>not the engine. The <code>DBIish</code> drivers call <strong>libsqlite3</strong>, <strong>libpq</strong> or <strong>libmysqlclient</strong> through NativeCall. Their own test suites pass unmodified</td><td><code>connect</code> fails with the driver's usual error</td></tr>
+<tr><td>any other C library</td><td>whatever you name in <code>is native('foo')</code>. See <a href="/faq/native-libraries/">naming a native library so it loads on every OS</a></td><td>the usual NativeCall error</td></tr>
+<tr><td>file watching on macOS</td><td>the <strong>CoreServices</strong> framework (FSEvents), loaded with <code>dlopen</code>. It ships with macOS</td><td>—</td></tr>
+<tr><td><code>rakupp install</code> / <code>upgrade</code></td><td><strong>curl</strong> and <strong>tar</strong>, run as separate programs</td><td>the install fails with the command's own error</td></tr>
+<tr><td><code>--exe</code>, <code>--bundle</code>, <code>--jit</code></td><td>a <strong>C++ compiler</strong> on the machine running the command. See <a href="/faq/compiling/">turning a program into a binary</a></td><td>they fail. Running a script never needs a compiler</td></tr></table></div>
+<p>In short:</p>
+<div class="tablewrap"><table><tr><th>Is it built in?</th><th></th></tr><tr><td>sockets, DNS, JSON, compression, hashing, Unicode, big numbers</td><td><strong>yes</strong>, no <code>use</code> needed</td></tr>
+<tr><td>HTTP</td><td>no. Use a module</td></tr>
+<tr><td>TLS</td><td>no. Use a module and the system OpenSSL</td></tr>
+<tr><td>database connectors</td><td>no. Use <code>DBIish</code> and the database's own client library</td></tr></table></div>
+<h2 id="why-it-is-built-this-way">Why it is built this way <a class="anchor" href="#why-it-is-built-this-way" aria-label="link">#</a></h2>
+<p>Raku++ ships as one file. You can copy <code>bin/rakupp</code> on its own to another machine with the same OS and architecture, or <code>COPY</code> it into a container, and it runs. The release CI tests a lone copy with nothing beside it. It does not depend on any particular version of OpenSSL or libffi.</p>
+<p>There is also less to keep up to date. A TLS stack, its certificate store and its protocol versions are security-critical code that changes often. Raku++ leaves that work to the system's OpenSSL and curl, which the OS updates. If Raku++ carried its own copy, that copy would age with each Raku++ release.</p>
+<h2 id="checking-it-yourself">Checking it yourself <a class="anchor" href="#checking-it-yourself" aria-label="link">#</a></h2>
+<pre class="native-code"><code class="lang-bash">otool -L "$(command -v rakupp)"                     # macOS</code></pre>
+<pre class="native-code"><code class="lang-bash">readelf -d "$(command -v rakupp)" | grep NEEDED     # Linux</code></pre>
+<pre class="native-code"><code class="lang-bash">objdump -p rakupp.exe | grep -i 'DLL Name'          # Windows (MinGW binutils)</code></pre>
+<p>To check that nothing from the "Loaded only when a program asks" table is linked, search the output for <code>ssl</code>, <code>crypto</code>, <code>ffi</code>, <code>z</code>, <code>icu</code>, <code>curl</code> or <code>sqlite</code>. None of them appear.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=a61c94b9" defer></script>
+</body>
+</html>

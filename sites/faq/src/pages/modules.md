@@ -33,6 +33,20 @@ rakupp install --list           # what is installed: identity, installer,
 rakupp uninstall Foo            # remove what THIS installer put there
 ```
 
+## A program printed `installed Foo… for app.raku`. Where did that come from?
+
+It was run with `--auto`, which installs the modules a program uses that are
+missing from the ecosystem into `~/.raku`, and then runs it
+([MODULES.md](../MODULES.md#when-a-module-is-missing)). The line names the
+exact distribution, auth included, and goes to stderr, so the program's own
+output is untouched. `rakupp install --list` shows it with everything else in
+the store, and `rakupp uninstall Foo` removes it. Nothing is fetched without
+`--auto`.
+
+If the `use` was a typo of a far more popular module, nothing is fetched: the
+error asks "did you mean …?" and shows the `:auth<…>` spelling that installs
+the name you wrote, if you really meant it.
+
 ## Can I install something that is not in the ecosystem?
 
 Yes — give a path or a URL where a name would go.
