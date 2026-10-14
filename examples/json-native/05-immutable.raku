@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
-# JSON::Native — `:immutable` is claimed; everything else is delegated
-# https://raku.online/modules/json-native/#immutable-is-claimed-everything-else-is-delegated
+# JSON::Native — `:immutable`, and the import options
+# https://raku.online/modules/json-native/#immutable-and-the-import-options
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Native

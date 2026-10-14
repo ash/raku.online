@@ -1,6 +1,6 @@
 #!/usr/bin/env rakupp
-# JSON::Native — Three backends, and who is answering
-# https://raku.online/modules/json-native/#three-backends-and-who-is-answering
+# JSON::Native — Which path answers, on which engine
+# https://raku.online/modules/json-native/#which-path-answers-on-which-engine
 #
 # Install what it needs, then run it:
 #     rakupp install JSON::Native
@@ -14,4 +14,4 @@ use JSON::Native;
 say json-backend;
 
 # One run printed:
-#     native
+#     engine
