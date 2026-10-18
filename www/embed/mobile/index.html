@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raku in a mobile app — Raku++ inside iOS and Android apps</title>
+<meta name="description" content="Compile Raku++ into an iOS or Android app and run Raku programs on the phone itself: native code through the engine's C API, with threads and deep recursion. No server, no web view.">
+<script src="/theme/boot.js?v=a61c94b9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a61c94b9">
+<link rel="stylesheet" href="/theme/shell.css?v=a61c94b9">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<p class="crumb"><a href="/embed/">← Embed Raku</a></p>
+
+<h1>Raku in a mobile app</h1>
+<p class="tagline">
+  Raku++ compiled into an iOS or Android app. The app runs Raku programs on the
+  phone itself, as native code: no server, no web view, nothing sent anywhere.
+</p>
+
+<p>
+  The engine becomes a library inside the app — a framework on iOS, a
+  <code>.so</code> on Android — and the app calls it through the same C API every
+  other host uses (<a href="https://github.com/ash/rakupp/blob/main/include/rakupp/rakupp.h"><code>rakupp.h</code></a>).
+  Swift, Kotlin and Flutter's <code>dart:ffi</code> all reach it the same way.
+</p>
+
+<h2 id="why-native">Native, not WebAssembly <a class="anchor" href="#why-native" aria-label="link">#</a></h2>
+<p>
+  On a web page the engine is WebAssembly. In an app it can be native code,
+  which gives Raku programs more:
+</p>
+<table class="opts">
+  <tr><td><strong>Threads</strong></td><td><code>start</code>, <code>await</code> and <code>hyper</code> run on real threads; the WebAssembly build is single-threaded.</td></tr>
+  <tr><td><strong>Recursion</strong></td><td>as deep as the stack the app gives it — 5,000 nested calls on a 512 MB stack — where the WebAssembly build stops at about 200.</td></tr>
+  <tr><td><strong>No bridge</strong></td><td>the UI calls the engine directly, with no web view and no JavaScript in between.</td></tr>
+  <tr><td><strong>Size</strong></td><td>about 16 MB per architecture on iOS and 17–20 MB per ABI on Android; the stores send each device only its own.</td></tr>
+</table>
+<p>
+  Neither form has a JIT: a phone app may not map executable memory, so Raku++
+  interprets, as <code>rakupp</code> does by default.
+</p>
+
+<h2 id="build">Build the engine <a class="anchor" href="#build" aria-label="link">#</a></h2>
+<p>
+  There is no CMake preset for phones: the runtime's sources are compiled with
+  Xcode's clang or the Android NDK's, into an <code>.xcframework</code> for iOS
+  and a <code>librakuengine.so</code> per Android ABI.
+</p>
+<table class="opts">
+  <tr><td><strong>iOS</strong></td><td><code>arm64</code> for devices; <code>arm64</code> and <code>x86_64</code> for the simulator; iOS 13+. A dynamic framework per slice, combined with <code>xcodebuild -create-xcframework</code>.</td></tr>
+  <tr><td><strong>Android</strong></td><td><code>arm64-v8a</code>, <code>armeabi-v7a</code> and <code>x86_64</code>; Android 7 (API 24) and later. Static libc++, aligned to the 16 KB pages Google Play requires.</td></tr>
+</table>
+<p>
+  The source list, the compiler and linker flags for both platforms, and the
+  four small source changes that version 5.4.1 needs on them are in
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/EMBEDDING.md#mobile-apps-ios-and-android">EMBEDDING.md</a>.
+</p>
+
+<h2 id="call">Call it from the app <a class="anchor" href="#call" aria-label="link">#</a></h2>
+<p>
+  <code>rk_run</code> runs a whole program and returns when it ends, so it goes
+  on a thread of the app's own, with a big stack, and never on the UI thread:
+</p>
+<pre class="native-code"><code>#include &lt;rakupp/rakupp.h&gt;
+
+static void on_output(void* ud, const char* text, size_t len, int is_err) {
+    keep(text, len, is_err);   /* copy: the bytes live only for this call */
+}
+
+static void* run_program(void* source) {
+    RkInterp rk = rk_new(NULL);          /* a fresh interpreter per run */
+    int exit_code = 0;
+    rk_set_output(rk, on_output, NULL);
+    rk_set_input(rk, "", 0);             /* or what the user typed */
+    rk_run(rk, (const char*)source, "main.raku", &amp;exit_code);
+    rk_free(rk);
+    return NULL;
+}
+
+/* elsewhere, when the user taps Run */
+pthread_attr_t attr;
+pthread_attr_init(&amp;attr);
+pthread_attr_setstacksize(&amp;attr, 512u &lt;&lt; 20);
+pthread_create(&amp;thread, &amp;attr, run_program, (void*)source);</code></pre>
+<ul class="home-nav">
+  <li><strong>Collect output on a timer.</strong> Keep what <code>on_output</code> copies in a buffer guarded by a mutex, and let the UI take it every 40 ms or so: the output appears live, and a loop of <code>say</code>s arrives as a few updates. Cap the buffer, so a runaway program cannot fill memory.</li>
+  <li><strong>Input.</strong> <code>rk_set_input</code> feeds a preset. For a <code>prompt</code> that waits for the user, as a terminal does, give <code>std::cin</code> a buffer that blocks until the app sends a line.</li>
+  <li><strong>Stop.</strong> The 5.4.1 API has no interrupt yet. The Learn Raku app adds one — a flag the engine checks at every statement and loop iteration — and EMBEDDING.md describes it.</li>
+</ul>
+
+<h2 id="on-a-phone">What a program can do on a phone <a class="anchor" href="#on-a-phone" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><strong>Most of the language, unchanged.</strong> Nearly every example in the Course of Raku runs as it does under <code>rakupp</code> on a desktop.</li>
+  <li><strong>Files</strong> are the app's own: its sandbox, and the working directory the app chooses for the run.</li>
+  <li><strong>Processes:</strong> <code>run</code>, <code>shell</code> and <code>Proc::Async</code> cannot start anything on iOS.</li>
+  <li><strong>Network:</strong> sockets work; HTTPS does not, because it goes through the system's OpenSSL, which neither platform offers an app.</li>
+</ul>
+
+<h2 id="stores">The App Store and Google Play <a class="anchor" href="#stores" aria-label="link">#</a></h2>
+<p>
+  Apple's App Review guideline 2.5.2 allows an educational app to run code that
+  the user writes, provided the app does not download code to run. Google Play
+  restricts downloading native code, which an interpreter running programs typed
+  into the app is not. In both cases the engine is inside the app as submitted.
+</p>
+
+<h2 id="see-it-running">See it running <a class="anchor" href="#see-it-running" aria-label="link">#</a></h2>
+<p>
+  <strong>Learn Raku</strong>, the Course of Raku for iOS and Android, is built
+  this way: every runnable example in the course has a Run button, a program
+  that asks for input waits for the reader's answer, and there is a playground
+  with the example programs from the Raku++ repository. Nothing in it needs a
+  network connection.
+</p>
+
+<h2 id="next">Next <a class="anchor" href="#next" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><a href="https://github.com/ash/rakupp/blob/main/docs/guide/EMBEDDING.md#mobile-apps-ios-and-android">EMBEDDING.md</a> — the C API, and the full recipe for both platforms.</li>
+  <li><a href="/faq/mobile/">FAQ: Raku++ in an iOS or Android app</a> — the questions that come first.</li>
+  <li><a href="/bindings/">Bindings</a> — the same engine inside Python, the Wolfram Language, Go, Rust and C++.</li>
+  <li><a href="/embed/js/">Raku on a web page</a> — the WebAssembly form, with one script tag.</li>
+</ul>
+
+<footer>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=a61c94b9" defer></script>
+</body>
+</html>

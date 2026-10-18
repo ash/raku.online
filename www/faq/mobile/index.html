@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — Raku++ in an iOS or Android app</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=a61c94b9"></script>
+<link rel="stylesheet" href="/theme/base.css?v=a61c94b9">
+<link rel="stylesheet" href="/theme/shell.css?v=a61c94b9">
+<link rel="stylesheet" href="/theme/faq.css?v=a61c94b9">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Raku++ in an iOS or Android app</h1>
+
+<p>Yes, an app can carry the engine. It runs as native code, built for the phone's processor and called through the same C ABI any other host uses, not as WebAssembly in a web view. This page answers the questions that come first; the build flags, the source changes and the host-side details are in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/EMBEDDING.md#mobile-apps-ios-and-android">EMBEDDING.md</a>.</p>
+<h2 id="the-short-answer">The short answer <a class="anchor" href="#the-short-answer" aria-label="link">#</a></h2>
+<ul><li>Compile the runtime's sources with Xcode's clang (iOS) or the NDK's clang (Android) into a framework or a <code>.so</code>, and call <code>rk_new</code>, <code>rk_run</code> and <code>rk_set_output</code> from Swift, Kotlin or Flutter's <code>dart:ffi</code>.</li><li>Run every program on a thread of your own with a large stack, never on the UI thread, and with a fresh interpreter each time.</li><li>Expect about 16 MB per architecture on iOS and 17–20 MB per ABI on Android. The stores send each device only its own.</li></ul>
+<p>The Learn Raku app, the Course of Raku for iOS and Android, works this way: the course's examples have Run buttons, and there is a playground.</p>
+<h2 id="native-or-raku-js-in-a-web-view">Native, or Raku.js in a web view? <a class="anchor" href="#native-or-raku-js-in-a-web-view" aria-label="link">#</a></h2>
+<p>Both run Raku++. Natively, Raku code gets what the browser build cannot give it:</p>
+<div class="tablewrap"><table><tr><th></th><th>native library</th><th>Raku.js in a web view</th></tr><tr><td><code>start</code>, <code>await</code>, <code>hyper</code></td><td>work: real threads</td><td>no: the WebAssembly build is single-threaded</td></tr>
+<tr><td>recursion depth</td><td>as deep as the stack you give it</td><td>about 200 nested calls</td></tr>
+<tr><td>speed</td><td>the <code>rakupp</code> interpreter</td><td>the same interpreter, as WebAssembly</td></tr>
+<tr><td>between the UI and the engine</td><td>a C call</td><td>JavaScript and a message bridge</td></tr>
+<tr><td>added size</td><td>16–20 MB per architecture</td><td>about 7 MB of <code>.wasm</code>, plus the web view</td></tr></table></div>
+<p>Neither has a JIT. Both platforms forbid an app to map executable memory, and the browser build has none either.</p>
+<h2 id="what-can-a-program-do-on-a-phone">What can a program do on a phone? <a class="anchor" href="#what-can-a-program-do-on-a-phone" aria-label="link">#</a></h2>
+<p>Most of the language is unaffected, and nearly every example in the Course of Raku runs unchanged. The differences are about the platform:</p>
+<ul><li><strong>Files</strong> are the app's own: its sandbox, and the working directory the host chooses for the run.</li><li><strong>Processes</strong>: <code>run</code>, <code>shell</code> and <code>Proc::Async</code> cannot start anything on iOS.</li><li><strong>Network</strong>: sockets work. HTTPS does not, because it goes through the system's OpenSSL by NativeCall and neither platform offers an app one.</li><li><strong>Input</strong>: <code>get</code>, <code>lines</code> and <code>prompt</code> read whatever the host feeds them, as a preset string or line by line as the user types.</li></ul>
+<h2 id="can-the-app-stop-a-runaway-program">Can the app stop a runaway program? <a class="anchor" href="#can-the-app-stop-a-runaway-program" aria-label="link">#</a></h2>
+<p>Not with the 5.4.1 ABI alone: there is no <code>rk_interrupt</code> yet, and an interpreter cannot be freed while it is running. Learn Raku adds one with a small patch: a flag checked at each statement, block entry and loop iteration, which ends the program with <code>X::AdHoc "Interrupted"</code>. It also caps the output it buffers, so a <code>loop { say 1 }</code> stops at a megabyte instead of filling memory.</p>
+<h2 id="will-the-app-store-and-google-play-accept-it">Will the App Store and Google Play accept it? <a class="anchor" href="#will-the-app-store-and-google-play-accept-it" aria-label="link">#</a></h2>
+<p>Apple's App Review guideline 2.5.2 allows an educational app to run code that the user writes, provided the app does not download code to run. Google Play restricts downloading native code; an interpreter running programs typed into the app is not that. In both cases the interpreter has to be inside the app as submitted, which a native library is.</p>
+<h2 id="where-do-i-start">Where do I start? <a class="anchor" href="#where-do-i-start" aria-label="link">#</a></h2>
+<p><a href="https://github.com/ash/rakupp/blob/main/docs/guide/EMBEDDING.md#mobile-apps-ios-and-android">EMBEDDING.md</a> has the source list, the compiler and linker flags for both platforms, the four source changes 5.4.1 needs on them, and how the host side handles threads, output, input and stopping.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=a61c94b9" defer></script>
+</body>
+</html>
