@@ -40,7 +40,8 @@
       { href: '/in-use/',   label: 'Overview', hue: 'inuse', note: 'Adoptions, and everything below' },
       { href: '/examples/', label: 'Examples', hue: 'inuse', note: 'Raku by example, one program a page' },
       { href: '/showcase/', label: 'Showcase', hue: 'inuse', note: 'Projects built on Raku++' },
-      { href: '/live/',     label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' }
+      { href: '/live/',     label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' },
+      { href: '/webraku/',  label: 'Webraku',  hue: 'inuse', note: 'Web apps in one Raku program, live' }
     ] },
     // Raku inside something else: your editor, software you use rather than
     // write (a web page, a WordPress blog, a spreadsheet), and finally another

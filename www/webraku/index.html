@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webraku — one Raku program, on the server and in the browser</title>
+<meta name="description" content="Webraku is a full-stack web framework for Raku: Raku++ renders each page on the server, and rakupp --target=js compiles the same file into the script the browser runs. Live demos: Sudoku, a Unicode explorer, a shared pixel board, wavelets.">
+<script src="/theme/boot.js?v=9b63da84"></script>
+<link rel="stylesheet" href="/theme/base.css?v=9b63da84">
+<link rel="stylesheet" href="/theme/shell.css?v=9b63da84">
+<link rel="stylesheet" href="/theme/showroom.css?v=9b63da84">
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<p class="crumb"><a href="/in-use/">← In use</a></p>
+
+<h1>Webraku</h1>
+<p class="tagline">
+  One Raku program, on the server and in the browser. Raku++ runs each page
+  on the server to answer the request with finished HTML, and
+  <code>rakupp --target=js</code> compiles the same file into the script the
+  browser runs, which picks the page up where the server left it.
+</p>
+
+<p style="margin:1.2rem 0 1.6rem">
+  <a class="sr-btn" href="https://webraku.raku.online/">Open the live demos</a>
+  <a class="sr-btn ghost" href="https://github.com/ash/webraku">Webraku on GitHub</a>
+</p>
+
+<pre class="native-code"><code><span class="k">use</span> <span class="n">Webraku</span>;
+
+<span class="k">sub</span> <span class="n">rendered-at</span>(--&gt; <span class="nb">Str</span>) <span class="k">is</span> <span class="n">server</span> { <span class="nb">DateTime</span>.<span class="nb">now</span>.<span class="n">hh-mm-ss</span> }
+
+<span class="n">page</span> <span class="s">'/'</span>, :<span class="n">title</span>(<span class="s">'Counter'</span>), {
+    <span class="k">my</span> <span class="nv">$n</span> = <span class="mi">0</span>;
+    <span class="n">main</span> {
+        <span class="n">h1</span> <span class="s">'Camelia counts'</span>;
+        <span class="k">my</span> <span class="nv">$out</span> = <span class="n">p</span> <span class="s">'clicked 0 times'</span>;
+        <span class="k">my</span> <span class="nv">$up</span>  = <span class="n">button</span> <span class="s">'Click me'</span>;
+        <span class="n">p</span> <span class="s">&quot;rendered on the server at {rendered-at()}&quot;</span>;
+
+        <span class="k">react</span> {
+            <span class="k">whenever</span> <span class="nv">$up</span>.<span class="n">clicks</span> { <span class="nv">$out</span>.<span class="n">text</span> = <span class="s">&quot;clicked {++$n} times&quot;</span> }
+        }
+    }
+}
+
+<span class="n">serve</span>;</code></pre>
+
+<p>
+  The clicks are counted in the browser, with no request after the page
+  loads. <code>rendered-at</code> is marked <code>is server</code>: its body
+  stays on the server, and the browser calls it over HTTP without anyone
+  writing a request, a route or a line of JSON. Its answer was written into
+  the page when the server rendered it, so the browser's first render does
+  not ask again, and the page is complete with JavaScript switched off.
+</p>
+
+<h2 id="demos">The demos <a class="anchor" href="#demos" aria-label="link">#</a></h2>
+<p>
+  Each demo is one Raku program with a module or two beside it, and each
+  draws the line between the two halves in a different place, for a
+  different reason. The front page of the demo site shows, for every demo,
+  which subs and modules stay on the server — read from its source by
+  Webraku's own bundler.
+</p>
+
+<div class="sr-grid two">
+  <div class="sr-card link">
+    <h3><a href="https://webraku.raku.online/sudoku/">Sudoku</a></h3>
+    <p><strong>A secret on the server.</strong> The rules are compiled into the page, so a repeated digit turns red on the keystroke. The solver is used only by server subs, so it is not in the browser&rsquo;s script, and the solution is never sent: hints and checks are questions the server answers.</p>
+    <p><a href="https://github.com/ash/webraku/tree/main/examples/sudoku">Source</a></p>
+  </div>
+  <div class="sr-card link">
+    <h3><a href="https://webraku.raku.online/unicode/">Unicode explorer</a></h3>
+    <p><strong>Data on the server.</strong> All 172,808 character names, from Raku++&rsquo;s <code>uniname</code>, are searched on the server, with <code>uniprop</code> for the properties. UTF-8 bytes, UTF-16 units and the four ways to count a string are arithmetic, done in your browser as you type.</p>
+    <p><a href="https://github.com/ash/webraku/tree/main/examples/unicode">Source</a></p>
+  </div>
+  <div class="sr-card link">
+    <h3><a href="https://webraku.raku.online/pixels/">Pixels</a></h3>
+    <p><strong>State on the server, shared.</strong> One picture for everyone who has the page open. Painting is local and instant; once a second one server call sends your strokes and brings back everyone else&rsquo;s.</p>
+    <p><a href="https://github.com/ash/webraku/tree/main/examples/pixels">Source</a></p>
+  </div>
+  <div class="sr-card link">
+    <h3><a href="https://webraku.raku.online/wavelet/">Wavelet shrinkage</a></h3>
+    <p><strong>A library on both sides.</strong> <a href="https://raku.land/zef:ash/Math::Wavelet">Math::Wavelet</a> is compiled into the page, so the discrete transform redraws on every slider step with no request; the continuous transform is computed on the server and sent as a picture.</p>
+    <p><a href="https://github.com/ash/webraku/tree/main/examples/wavelet">Source</a></p>
+  </div>
+</div>
+<p class="sr-fine" style="margin-top:1rem">
+  Two small ones show the extremes:
+  <a href="https://webraku.raku.online/sieve/">a sieve</a> whose code never
+  reaches the browser, only its answer, and
+  <a href="https://webraku.raku.online/counter/">a counter</a> that needs
+  nothing from the server once the page has loaded.
+</p>
+
+<h2 id="how">How one file becomes two programs <a class="anchor" href="#how" aria-label="link">#</a></h2>
+<table class="opts">
+  <tr><td><strong>Pages</strong></td><td>a <code>page</code> block builds the HTML with a sub per tag: <code>div :class&lt;card&gt;, { h2 $title; p $text }</code>. On the server it renders; in the browser the same block adopts the nodes the server sent.</td></tr>
+  <tr><td><strong>State</strong></td><td>plain Raku variables. A changed element is written into the page after the event that changed it; there is no virtual DOM.</td></tr>
+  <tr><td><strong>Events</strong></td><td>Supplies: <code>whenever $button.clicks { … }</code> in a <code>react</code> block, which in the browser is the page for as long as it is open.</td></tr>
+  <tr><td><strong>Server code</strong></td><td><code>sub load() is server { … }</code>. Its body, and any module beside the program that only server code uses, stays out of the browser&rsquo;s script.</td></tr>
+  <tr><td><strong>Modules</strong></td><td>a module the browser&rsquo;s code calls is compiled into the script by <code>rakupp --target=js</code>, installed ones included.</td></tr>
+</table>
+<p>
+  <code>--target=js</code> exists in no other Raku, so Webraku needs Raku++;
+  there are no other dependencies — no npm, no bundler, no JavaScript to
+  write. The HTTP server is Webraku&rsquo;s own, in Raku. Webraku is version
+  0.0.1 and a work in progress.
+</p>
+
+<h2 id="try">Run it yourself <a class="anchor" href="#try" aria-label="link">#</a></h2>
+<pre class="native-code"><code><span class="sh-p">$</span> rakupp install Webraku
+<span class="sh-p">$</span> webraku run hello.raku --port=8080</code></pre>
+<p>
+  With a checkout of the repository, <code>rakupp demo/run.raku --proxy=8080</code>
+  serves every demo on one port, the way the demo site runs them, and
+  <a href="https://github.com/ash/webraku/blob/main/demo/README.md">demo/README.md</a>
+  says how to put them behind a proxy on a server of your own.
+</p>
+
+<h2 id="next">Next <a class="anchor" href="#next" aria-label="link">#</a></h2>
+<ul class="home-nav">
+  <li><a href="https://github.com/ash/webraku">The README</a> — writing a page, the command, the modules, what is left out.</li>
+  <li><a href="/embed/js/">Raku on a web page</a> — the other way round: the whole interpreter in the browser, as WebAssembly, with no server at all.</li>
+  <li><a href="/showcase/">The showcase</a> — servers and tools written in Raku and run by Raku++.</li>
+</ul>
+
+<footer>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=9b63da84" defer></script>
+</body>
+</html>
