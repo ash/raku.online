@@ -457,7 +457,12 @@
         var optPresent = {};
         rel.forEach(function (r) {
           if (r.optbench) Object.keys(r.optbench).forEach(function (k) { optPresent[k] = true; });
+          if (r.optbench_m4) Object.keys(r.optbench_m4).forEach(function (k) { optPresent[k] = true; });
         });
+        // The M4's readings of the same harness (see m4From above): lines of
+        // their own, hollow, from the first point that carries one.
+        var optM4From = -1;
+        rel.forEach(function (r, i) { if (optM4From < 0 && r.optbench_m4) optM4From = i; });
         var optKernels = OPT_ORDER.filter(function (k) { return optPresent[k]; });
         Object.keys(optPresent).forEach(function (k) {
           if (OPT_ORDER.indexOf(k) < 0) optKernels.push(k);
@@ -466,14 +471,19 @@
         var drawOpt = function () {
           optHost.textContent = '';
           optKernels.forEach(function (kernel) {
-            var vals = function (key) {
+            var valsIn = function (block, key) {
               return rel.map(function (r) {
-                return r.optbench && r.optbench[kernel] && r.optbench[kernel][key] != null
-                  ? r.optbench[kernel][key] : null;
+                var b = r[block];
+                return b && b[kernel] && b[kernel][key] != null ? b[kernel][key] : null;
               });
             };
+            var vals = function (key) { return valsIn('optbench', key); };
             var exe = vals('exe'), opt = vals('opt'), rakudo = vals('rakudo');
-            var all = [].concat(exe, opt, rakudo).filter(function (v) { return v != null; });
+            var exe4 = valsIn('optbench_m4', 'exe'), opt4 = valsIn('optbench_m4', 'opt'),
+                rakudo4 = valsIn('optbench_m4', 'rakudo');
+            var hasM4 = [].concat(exe4, opt4, rakudo4).some(function (v) { return v != null; });
+            var all = [].concat(exe, opt, rakudo, exe4, opt4, rakudo4)
+                        .filter(function (v) { return v != null; });
             if (!all.length) return;
             var max = Math.max.apply(null, all);
             var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
@@ -482,14 +492,26 @@
             var host = div('dash-chart', card);
             var names = ['--exe', '--exe -O', 'Rakudo'];
             var cols = [exe, opt, rakudo];
+            var series = [
+              { name: '--exe', cls: 's2', values: exe },
+              { name: '--exe -O', cls: 's1', values: opt },
+              { name: 'Rakudo', cls: 'sref', dash: true, values: rakudo }
+            ];
+            // Series 3-5 are the M4's, in the same order, so a series' own
+            // machine's columns are base, base+1 and base+2.
+            if (hasM4) {
+              series.push({ name: '--exe · M4', cls: 's2 m4', legend: false, values: exe4 },
+                          { name: '--exe -O · M4', cls: 's1 m4', legend: false, values: opt4 },
+                          { name: 'Rakudo · M4', cls: 'sref m4', dash: true, legend: false, values: rakudo4 });
+              names.push('--exe · M4', '--exe -O · M4', 'Rakudo · M4');
+              cols.push(exe4, opt4, rakudo4);
+            }
             lineChart(host, {
               labels: tagLabels,
               tickLabels: tagTicks,
-              series: [
-                { name: '--exe', cls: 's2', values: exe },
-                { name: '--exe -O', cls: 's1', values: opt },
-                { name: 'Rakudo', cls: 'sref', dash: true, values: rakudo }
-              ],
+              series: series,
+              legendNote: hasM4 ? { text: 'hollow: Apple M4, from 2026-10-21', cls: 'dash-swatch-ring' } : null,
+              marks: hasM4 && optM4From >= 0 ? [{ at: optM4From, label: 'Apple M4 →' }] : [],
               log: optScale.log,
               dataMin: min,
               yMax: optScale.log ? max : niceMax(max),
@@ -499,9 +521,10 @@
                 var v = cols[si][i];
                 if (v == null) return names[si] + ': not measured';
                 var row = names[si] + ': ' + v + ' ms';
-                if (si === 1 && cols[0][i]) row += ' · ' + (cols[0][i] / v).toFixed(1) + '\u00d7 over --exe';
-                if (si !== 2 && cols[2][i]) row += (si === 1 ? ', ' : ' · ') +
-                  (cols[2][i] / v).toFixed(1) + '\u00d7 Rakudo';
+                var base = si < 3 ? 0 : 3, at = si - base;   // its own machine's three columns
+                if (at === 1 && cols[base][i]) row += ' \u00b7 ' + (cols[base][i] / v).toFixed(1) + '\u00d7 over --exe';
+                if (at !== 2 && cols[base + 2][i]) row += (at === 1 ? ', ' : ' \u00b7 ') +
+                  (cols[base + 2][i] / v).toFixed(1) + '\u00d7 Rakudo';
                 return row;
               }
             });

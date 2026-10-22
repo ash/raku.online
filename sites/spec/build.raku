@@ -746,7 +746,11 @@ sub render-dashboard(%site, %by-cat --> Str) {
     — the <code>-O</code> table is not re-run every release, and it was carried
     forward unchanged from v1.0.0 to v3.6.0, so drawing a point per release
     would show a dozen sittings agreeing where there was one sitting repeated.
-    Gaps here mean "not measured", not "unchanged".</p>
+    Gaps here mean "not measured", not "unchanged". From 2026-10-21 the
+    Apple M4 that stands in for the M3 (see above) has its own readings,
+    drawn the same way as the kernels': hollow markers, a mark where they
+    begin, ratios within one machine. They start on v5.3.0's release binary,
+    the M3's last <code>-O</code> point, so the step there is the machine.</p>
     <div class="dash-bench" id="dash-optbench"></div>
     BODY
     # The DATA's own cache tag, not the theme's. dashboard.js used to reuse the

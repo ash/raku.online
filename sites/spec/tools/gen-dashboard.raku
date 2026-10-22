@@ -588,6 +588,21 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     say "  rakudo eras: {%rakudo-eras.keys.elems} release(s) from {RAKUDO_ERAS}" ~
         (%rakudo-eras-m4 ?? ", {%rakudo-eras-m4.keys.elems} on the M4" !! '');
 
+    # The `-O` harness's M4 readings. On the M3 they are mined from each
+    # ref's BENCHMARKS.md like the kernels were; the M4's have a file of
+    # their own, src/data/optbench-m4.tsv (label, program, exe|opt|rakudo,
+    # ms), and reach the chart as an optbench_m4 block beside the M3's.
+    my %opt-m4;
+    my $om4 = 'src/data/optbench-m4.tsv'.IO;
+    if $om4.e {
+        for $om4.lines -> $line {
+            next if $line.starts-with('#') || !$line.trim;
+            my @p = $line.words;
+            next unless @p.elems == 4 && @p[2] eq any(<exe opt rakudo>);
+            %opt-m4{@p[0]}{@p[1]}{@p[2]} = @p[3].Num;
+        }
+    }
+
     # One M4 bench block: the sitting's rows for $label, with the M4 Rakudo
     # assigned by date exactly as the M3 one is. Empty when the M4 has no rows
     # for that label, and the entry then carries no block at all.
@@ -692,6 +707,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                 $opt-here = True;
             }
         }
+        @f.push('"optbench_m4":' ~ optbench-json(%opt-m4{$label}))
+            if %opt-m4{$label}:exists;
         @entries.push('{' ~ @f.join(',') ~ '}');
         # the same entry, labelled by its date, is what the log keeps once
         # `main` has moved on to a newer commit
