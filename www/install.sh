@@ -118,6 +118,28 @@ ask() {
 # prints the source build and stops, because someone who typed a one-liner did
 # not ask for a ten-minute compile.
 # ---------------------------------------------------------------------------
+
+# musl or glibc. Linux has two builds, and neither starts on the other's
+# system: the glibc one asks for /lib64/ld-linux-x86-64.so.2, which Alpine does
+# not have, and the musl one for Alpine's ld-musl. What counts is the libc the
+# system RUNS on, not one that is merely installed beside it (Debian packages
+# musl too), so ask the system's own ldd, which names its libc in --version --
+# on musl on stderr, with exit 1. Without an ldd, the loader that is present
+# decides.
+is_musl() {
+    if have ldd; then
+        ldd --version 2>&1 | grep -qi musl
+        return
+    fi
+    for _l in /lib/ld-linux*.so.* /lib64/ld-linux*.so.*; do
+        if [ -e "$_l" ]; then return 1; fi
+    done
+    for _l in /lib/ld-musl-*.so.1; do
+        if [ -e "$_l" ]; then return 0; fi
+    done
+    return 1
+}
+
 detect_asset() {
     _os=$(uname -s 2>/dev/null || echo unknown)
     _arch=$(uname -m 2>/dev/null || echo unknown)
@@ -128,12 +150,20 @@ detect_asset() {
             # the same file.
             echo 'rakupp-macos-universal.tar.gz' ;;
         Linux)
-            case "$_arch" in
-                x86_64|amd64)  echo 'rakupp-linux-x86_64.tar.gz' ;;
-                aarch64|arm64) echo 'rakupp-linux-aarch64.tar.gz' ;;
-                riscv64)       echo 'rakupp-linux-riscv64.tar.gz' ;;
-                *) echo '' ;;
-            esac ;;
+            if is_musl; then
+                case "$_arch" in
+                    x86_64|amd64)  echo 'rakupp-linux-x86_64-musl.tar.gz' ;;
+                    aarch64|arm64) echo 'rakupp-linux-aarch64-musl.tar.gz' ;;
+                    *) echo '' ;;
+                esac
+            else
+                case "$_arch" in
+                    x86_64|amd64)  echo 'rakupp-linux-x86_64.tar.gz' ;;
+                    aarch64|arm64) echo 'rakupp-linux-aarch64.tar.gz' ;;
+                    riscv64)       echo 'rakupp-linux-riscv64.tar.gz' ;;
+                    *) echo '' ;;
+                esac
+            fi ;;
         OpenBSD)
             case "$_arch" in
                 x86_64|amd64) echo 'rakupp-openbsd-x86_64.tar.gz' ;;
@@ -143,10 +173,8 @@ detect_asset() {
     esac
 }
 
-no_binary_for_this_machine() {
+from_source_hint() {
     cat >&2 <<EOT
-rakupp install: no prebuilt archive for $(uname -s 2>/dev/null || echo '?') $(uname -m 2>/dev/null || echo '?').
-
     Raku++ has no third-party dependencies, so building it needs CMake and a
     C++17 compiler and nothing else:
 
@@ -155,10 +183,44 @@ rakupp install: no prebuilt archive for $(uname -s 2>/dev/null || echo '?') $(un
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
         cmake --build build
         cmake --install build --prefix "\$HOME/.local"
+EOT
+}
+
+no_binary_for_this_machine() {
+    _what="$(uname -s 2>/dev/null || echo '?') $(uname -m 2>/dev/null || echo '?')"
+    if [ "$(uname -s 2>/dev/null || true)" = Linux ] && is_musl; then _what="$_what (musl)"; fi
+    printf 'rakupp install: no prebuilt archive for %s.\n\n' "$_what" >&2
+    from_source_hint
+    cat >&2 <<EOT
 
     The platforms that do ship an archive are listed at
     https://raku.online/install/
 EOT
+    exit 1
+}
+
+# A glibc older than the archive's floor is the one failure to run with a
+# remedy to name: the floor is the build machine's, and a local build has the
+# local one. The loader says it two ways -- "version `GLIBC_2.xx' not found" at
+# startup, or, for a symbol bound lazily, a relocation error on first use
+# ("symbol ..., version GLIBC_2.18 not defined"), which lets --version through
+# on CentOS 7 and stops the 6 * 7 check instead. Both carry the version name.
+old_glibc_hint() { # what the binary said
+    case $1 in
+        *GLIBC_*)
+            printf '\n    This machine'\''s glibc is older than the release archive needs.\n' >&2
+            from_source_hint ;;
+    esac
+}
+
+# The binary is in place and will not start. The loader says why on stderr, so
+# pass its lines on: a bare "does not run" sent the user off to run it by hand
+# to learn what the installer had already been told.
+does_not_run() {
+    _why=$("$EXE" --version 2>&1 | head -3 || true)
+    printf 'rakupp install: %s does not run\n' "$EXE" >&2
+    [ -z "$_why" ] || printf '%s\n' "$_why" | sed 's/^/    /' >&2
+    old_glibc_hint "$_why"
     exit 1
 }
 
@@ -551,9 +613,13 @@ do_install() {
     # It has to RUN, not merely exist: a truncated download, a cut-down archive
     # and a half-copied runtime all pass a file-exists check.
     VER=$("$EXE" --version 2>/dev/null | head -1 || true)
-    [ -n "$VER" ] || fail "$EXE does not run"
+    [ -n "$VER" ] || does_not_run
     _check=$("$EXE" -e 'print 6 * 7' 2>&1 || true)
-    [ "$_check" = 42 ] || fail "$EXE ran but answered [$_check] where 42 was due"
+    if [ "$_check" != 42 ]; then
+        printf 'rakupp install: %s ran but answered [%s] where 42 was due\n' "$EXE" "$_check" >&2
+        old_glibc_hint "$_check"
+        exit 1
+    fi
     # The number alone, for the receipt: "Raku++ 3.27.0 (v3.27.0, ...) arm64-darwin".
     # The optional "(rakupp)" is the banner releases before the -v/-V split
     # printed, and `--version vX.Y.Z` can still install one of those.
