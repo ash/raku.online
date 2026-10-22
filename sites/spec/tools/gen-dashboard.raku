@@ -489,7 +489,12 @@ constant RAKUDO_ERAS = 'src/data/rakudo-eras.tsv';
 #| than one per backend: the two lanes are the same binary in the same sitting,
 #| and the methodology header they share is the reason their numbers can be put
 #| on one chart at all.
-sub load-rakudo-eras(--> Hash) {
+#|
+#| The sixth column is the MACHINE and defaults to `m3`, the box every row was
+#| measured on until the 2026-10-21 sitting. Only one machine's rows are read
+#| per call: a Rakudo timed on one machine is never the reference for a Raku++
+#| point timed on another.
+sub load-rakudo-eras(Str $machine = 'm3' --> Hash) {
     my %out;
     return %out unless RAKUDO_ERAS.IO.e;
     for RAKUDO_ERAS.IO.lines -> $line {
@@ -497,6 +502,8 @@ sub load-rakudo-eras(--> Hash) {
         my @c = $line.split("\t");
         next unless @c.elems >= 4;
         my $mode = @c.elems >= 5 && @c[4].trim ?? @c[4].trim !! 'legacy';
+        my $box  = @c.elems >= 6 && @c[5].trim ?? @c[5].trim !! 'm3';
+        next unless $box eq $machine;
         %out{@c[1]}{$mode}{@c[2]} = +@c[3];
     }
     %out
@@ -555,19 +562,49 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     # whatever machine that release had, and their rakudo column ran under
     # Rosetta 2 throughout, so mined and measured are two different scales.
     # Engines the sweep did not cover (mutsu, perl) keep their mined values.
+    #
+    # A fifth column names the MACHINE, `m3` when absent. Rows from another
+    # machine go to a table of their own and reach the chart as a separate
+    # `bench_m4` block: the two boxes differ by a factor that is not uniform
+    # across kernels, so their milliseconds never share a line. A label in
+    # that table is a tag, `main`, or the ISO date of a logged past sitting
+    # (bench-sittings.jsonl), for a re-measure of the build that sitting timed.
     my %backfill;
+    my %backfill-m4;
     my $bf = 'src/data/bench-backfill.tsv'.IO;
     if $bf.e {
         for $bf.lines -> $line {
             next if $line.starts-with('#') || !$line.trim;
             my @p = $line.words;
-            next unless @p.elems == 4;
-            %backfill{@p[0]}{@p[1]}{@p[2]} = @p[3].Num;
+            next unless @p.elems == 4 | 5;
+            my $box = @p[4] // 'm3';
+            if    $box eq 'm3' { %backfill{@p[0]}{@p[1]}{@p[2]}    = @p[3].Num }
+            elsif $box eq 'm4' { %backfill-m4{@p[0]}{@p[1]}{@p[2]} = @p[3].Num }
         }
     }
 
-    my %rakudo-eras = load-rakudo-eras();
-    say "  rakudo eras: {%rakudo-eras.keys.elems} release(s) from {RAKUDO_ERAS}";
+    my %rakudo-eras    = load-rakudo-eras();
+    my %rakudo-eras-m4 = load-rakudo-eras('m4');
+    say "  rakudo eras: {%rakudo-eras.keys.elems} release(s) from {RAKUDO_ERAS}" ~
+        (%rakudo-eras-m4 ?? ", {%rakudo-eras-m4.keys.elems} on the M4" !! '');
+
+    # One M4 bench block: the sitting's rows for $label, with the M4 Rakudo
+    # assigned by date exactly as the M3 one is. Empty when the M4 has no rows
+    # for that label, and the entry then carries no block at all.
+    my sub bench-m4(Str $label, Str $date --> Hash) {
+        return {} unless %backfill-m4{$label}:exists;
+        my %b;
+        for %backfill-m4{$label}.kv -> $kernel, %engines {
+            %b{$kernel}{.key} = .value for %engines.pairs;
+        }
+        my %rk  = rakudo-at-date(%rakudo-eras-m4, $date);
+        my %ast = rakudo-at-date(%rakudo-eras-m4, $date, 'rakuast');
+        for %b.keys -> $kern {
+            %b{$kern}<rakudo>  = %rk{$kern}  if %rk{$kern}:exists;
+            %b{$kern}<rakuast> = %ast{$kern} if %ast{$kern}:exists;
+        }
+        %b
+    }
 
     my @entries;
     # The `-O` table is re-measured RARELY — written once and carried forward
@@ -644,6 +681,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         @f.push('"files_pass":' ~ %roast<files-pass>)   if %roast<files-pass>:exists;
         @f.push('"files_total":' ~ %roast<files-total>) if %roast<files-total>:exists;
         @f.push('"bench":' ~ bench-json(%bench));
+        my %b4 = bench-m4($label, $date);
+        @f.push('"bench_m4":' ~ bench-json(%b4)) if %b4;
         my $opt-here = False;
         if %opt {
             my $oj = optbench-json(%opt);
@@ -684,6 +723,20 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                                  || (!$rev && !$main-rev && sitting-date($line) eq $main-date)
         };
         my @past = @log.grep({ !$is-main($_) });
+        # An M4 re-measure of a logged sitting's build joins that sitting's
+        # entry as its bench_m4 block, so the two machines sit on one x. The
+        # log line itself is never rewritten; only the charted copy carries
+        # it. Keyed by the sitting's date: when a date holds several sittings,
+        # the block goes on the LAST one logged, the reading that day settled on.
+        for %backfill-m4.keys.grep(/^ \d**4 '-' \d**2 '-' \d**2 $/) -> $day {
+            my $at = @past.first(:end, :k, { sitting-date($_) eq $day });
+            unless $at.defined {
+                note "  bench-backfill: M4 rows for $day, but no past sitting on that date";
+                next;
+            }
+            @past[$at] = @past[$at].subst(/ '}' \s* $ /,
+                ',"bench_m4":' ~ bench-json(bench-m4($day, $day)) ~ '}');
+        }
         # Each sitting goes in at its own DATE, not as a block before `main`:
         # a positional splice was right while nothing postdated the sittings,
         # but a release tagged after them (v3.20.x vs the Aug 21-22 sittings)

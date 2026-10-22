@@ -253,7 +253,18 @@
       var present = {};
       rel.forEach(function (r) {
         if (r.bench) Object.keys(r.bench).forEach(function (k) { present[k] = true; });
+        if (r.bench_m4) Object.keys(r.bench_m4).forEach(function (k) { present[k] = true; });
       });
+      // Every bench point up to 2026-10-13 was measured on ONE Apple M3. From
+      // the 2026-10-21 sitting that machine was out of reach (no access to the
+      // building, no power in it) and an Apple M4 stood in. The two machines
+      // differ by a factor that is not the same on every kernel, so the M4
+      // readings arrive in a block of their own, bench_m4, and are drawn as
+      // their own lines: same hues, hollow markers, a mark where they begin.
+      // They start on points the M3 also measured, so the step between the
+      // two lines there is the machine, read before the code changes again.
+      var m4From = -1;
+      rel.forEach(function (r, i) { if (m4From < 0 && r.bench_m4) m4From = i; });
       var kernels = KERNEL_ORDER.filter(function (k) { return present[k]; });
       Object.keys(present).forEach(function (k) {
         if (KERNEL_ORDER.indexOf(k) < 0) kernels.push(k);   // a kernel we have not ordered yet
@@ -288,12 +299,14 @@
       }
 
       function drawKernel(kernel) {
-        var vals = function (key) {
+        var valsIn = function (block, key) {
           return rel.map(function (r) {
-            return r.bench && r.bench[kernel] && r.bench[kernel][key] != null
-              ? r.bench[kernel][key] : null;
+            var b = r[block];
+            return b && b[kernel] && b[kernel][key] != null ? b[kernel][key] : null;
           });
         };
+        var vals = function (key) { return valsIn('bench', key); };
+        var some = function (vs) { return vs.some(function (v) { return v != null; }); };
         var interp = vals('interp'), native = vals('native'), rakudo = vals('rakudo');
         // mutsu — the second from-scratch Raku (Rust, bytecode VM + Cranelift
         // JIT). A reference lane like Rakudo's, not one of ours, and it starts
@@ -312,9 +325,19 @@
         // timed as the `perl` binary. Present only where the tables carry it.
         var perl = vals('perl');
         var hasPerl = perl.some(function (v) { return v != null; });
+        // The M4's lanes, in the M3's order; only those it carries.
+        var m4 = [
+          ['interp', 'interpreter', 's1', false], ['native', 'native --exe', 's2', false],
+          ['rakudo', 'Rakudo', 'sref', true], ['rakuast', 'Rakudo (RakuAST)', 'sast', true],
+          ['mutsu', 'mutsu', 'smutsu', true], ['perl', 'perl', 'sperl', true]
+        ].map(function (l) {
+          return { key: l[0], name: l[1] + ' · M4', cls: l[2] + ' m4', dash: l[3],
+                   legend: false, values: valsIn('bench_m4', l[0]) };
+        }).filter(function (s) { return some(s.values); });
         var all = [].concat(interp, native, rakudo,
                             hasRakuast ? rakuast : [],
-                            hasMutsu ? mutsu : [], hasPerl ? perl : [])
+                            hasMutsu ? mutsu : [], hasPerl ? perl : [],
+                            [].concat.apply([], m4.map(function (s) { return s.values; })))
                     .filter(function (v) { return v != null; });
         var max = Math.max.apply(null, all);
         var min = Math.min.apply(null, all.filter(function (v) { return v > 0; }));
@@ -346,7 +369,31 @@
           names.push('perl');
           cols.push(perl);
         }
+        // Per series: the column its ratio is read against (its OWN machine's
+        // Rakudo — an M4 lane against the M3 Rakudo would credit Raku++ with
+        // the faster box), the interpreter its --exe lane is compared to, and
+        // whether it is a RakuAST lane.
+        var refOf = series.map(function () { return 2; });
+        var interpOf = series.map(function (s, si) { return si === 1 ? 0 : -1; });
+        var astSet = {};
+        if (astIdx >= 0) astSet[astIdx] = true;
+        var m4Base = series.length, m4Ref = -1, m4Interp = -1;
+        m4.forEach(function (s, j) {
+          if (s.key === 'rakudo') m4Ref = m4Base + j;
+          if (s.key === 'interp') m4Interp = m4Base + j;
+        });
+        m4.forEach(function (s, j) {
+          var si = m4Base + j;
+          series.push(s);
+          names.push(s.name);
+          cols.push(s.values);
+          refOf[si] = m4Ref;
+          interpOf[si] = s.key === 'native' ? m4Interp : -1;
+          if (s.key === 'rakuast') astSet[si] = true;
+        });
         lineChart(host, {
+          legendNote: m4.length ? { text: 'hollow: Apple M4, from 2026-10-21', cls: 'dash-swatch-ring' } : null,
+          marks: m4.length && m4From >= 0 ? [{ at: m4From, label: 'Apple M4 →' }] : [],
           labels: tagLabels,
           tickLabels: tagTicks,
           series: series,
@@ -362,7 +409,7 @@
             var row = names[si] + ': ' + v + ' ms';
             // The ratio is the thing these charts are actually about, and on a
             // linear axis it is unreadable off the marks — so state it.
-            var ref = cols[2][i];                       // Rakudo, the reference
+            var ref = refOf[si] >= 0 ? cols[refOf[si]][i] : null;   // its Rakudo
             // The RakuAST lane is compared against the OTHER backend of that
             // same binary, and is named that way: "1.1x Rakudo" would read as a
             // rival engine rather than as the frontend swap it is. It also says
@@ -370,7 +417,7 @@
             // carry — that quotient is a SPEED multiple, and "0.47x legacy" for
             // a lane taking twice as long reads as the opposite of the truth on
             // the one lane whose whole subject is the comparison.
-            if (si === astIdx && ref) {
+            if (astSet[si] && ref) {
               row += v > ref ? ' · ' + (v / ref).toFixed(2) + '× slower than legacy'
                    : v < ref ? ' · ' + (ref / v).toFixed(2) + '× faster than legacy'
                    : ' · same as legacy';
@@ -382,12 +429,13 @@
             // the RakuAST lane above already words its way out of; it only became
             // visible on the other lanes once a kernel arrived that Rakudo leads
             // by a lot (multiwhere) with a mutsu column two orders out.
-            else if (si !== 2 && ref) {
+            else if (refOf[si] !== si && ref) {
               row += v < ref ? ' · ' + (ref / v).toFixed(1) + '\u00d7 Rakudo'
                    : v > ref ? ' · Rakudo ' + (v / ref).toFixed(1) + '\u00d7 faster'
                    : ' · level with Rakudo';
             }
-            if (si === 1 && cols[0][i]) row += ', ' + (cols[0][i] / v).toFixed(1) + '\u00d7 interp';
+            var ip = interpOf[si];
+            if (ip >= 0 && cols[ip][i]) row += ', ' + (cols[ip][i] / v).toFixed(1) + '\u00d7 interp';
             return row;
           }
         });

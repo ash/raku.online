@@ -44,9 +44,13 @@
   function hideTip() { if (tip) tip.hidden = true; }
 
   // ---- line chart -------------------------------------------------------
-  // opts: { labels: [x labels], series: [{name, cls, dash?, values: [num|null]}],
+  // opts: { labels: [x labels], series: [{name, cls, dash?, legend?, values: [num|null]}],
   //         yMax, yFmt(v), tipRow(seriesIdx, ptIdx) -> string, height?,
-  //         tickLabels?, log?, dataMin? }
+  //         tickLabels?, log?, dataMin?, legendNote?, marks? }
+  // A series with legend:false draws but gets no chip of its own — for a lane
+  // repeated in a second style, which legendNote ({text, cls}) explains once
+  // instead. marks ([{at: ptIdx, label}]) are vertical hairlines across the
+  // plot, for an event on the x axis such as a change of measuring machine.
   // Mark spec: 2px lines, small round markers, hairline grid, 0-based y axis
   // (log? swaps that for a decade-bounded axis — pass dataMin so the floor is
   // the decade below the smallest value rather than an arbitrary 1).
@@ -108,12 +112,20 @@
     if (opts.series.length > 1) {
       var leg = div('dash-legend', host);
       opts.series.forEach(function (s) {
+        if (s.legend === false) return;
         var chip = div('dash-chip', leg);
         div('dash-swatch ' + s.cls + (s.dash ? ' dashed' : ''), chip);
         var t = document.createElement('span');
         t.textContent = s.name;
         chip.appendChild(t);
       });
+      if (opts.legendNote) {
+        var note = div('dash-chip', leg);
+        div(opts.legendNote.cls || '', note);
+        var nt = document.createElement('span');
+        nt.textContent = opts.legendNote.text;
+        note.appendChild(nt);
+      }
     }
 
     // role="img" prunes the subtree from the accessibility tree, so the chart is
@@ -155,6 +167,19 @@
       }
       el('text', { x: X(i), y: H - 8, 'text-anchor': 'middle', 'class': 'dash-tick' }, svg)
         .textContent = lab;
+    });
+
+    // event marks, under the series so a line is never hidden by one
+    (opts.marks || []).forEach(function (m) {
+      if (!(m.at >= 0 && m.at < n)) return;
+      el('line', { x1: X(m.at), x2: X(m.at), y1: padT, y2: padT + ih, 'class': 'dash-mark' }, svg);
+      if (m.label) {
+        // the label reads away from the line, toward whichever side has room
+        var right = X(m.at) < W - padR - 70;
+        el('text', { x: X(m.at) + (right ? 4 : -4), y: padT + 9,
+                     'text-anchor': right ? 'start' : 'end', 'class': 'dash-mark-label' }, svg)
+          .textContent = m.label;
+      }
     });
 
     // series lines + markers

@@ -717,6 +717,20 @@ sub render-dashboard(%site, %by-cat --> Str) {
     milliseconds end to end. (Its <code>main</code> point comes from the
     committed tables like every other kernel's, so the last step carries
     ordinary sitting-to-sitting noise.)</p>
+    <p class="dash-note"><strong>From 2026-10-21, a second machine.</strong>
+    Every point up to 2026-10-13 was measured on one Apple M3. That machine is
+    out of reach for now, so an Apple M4 stands in, and its readings are drawn
+    as lines of their own: the same colours, <em>hollow</em> markers, and a
+    dotted mark where they begin. They are never joined to the M3's, because
+    the two machines differ by a factor that is not the same on every kernel:
+    on builds both timed, the M4 takes 0.75–1.03× of the M3's time, about 0.9×
+    at the median. The M4 lines begin on two points the M3 also measured, the
+    v5.3.0 release binary and the build of v5.4.0 the M3 timed on 2026-10-13,
+    so the step between the two lines there is the machine and nothing else.
+    Each machine has its own Rakudo lines, and the tooltips state every ratio
+    against the Rakudo of the same machine. Read those ratios across the
+    change, not milliseconds. The methodology is in
+    <code>bench-backfill.tsv</code> and <code>rakudo-eras.tsv</code>.</p>
     <div class="dash-bench" id="dash-bench"></div>
 
     <h2 id="optbench">The <code>-O</code> optimizer <a class="anchor" href="#optbench" aria-label="link">#</a></h2>
