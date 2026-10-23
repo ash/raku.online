@@ -12,6 +12,15 @@ set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 WWW="$ROOT/www"
+
+# The learning sections — the tour, the drills, the cookbook, Raku by example
+# and Raku Behind the Docs — moved to learn.raku.online on 23 October 2026.
+# They are still built here, into learn/, which GitHub Pages does not publish:
+# the learning site (RakuPress) serves them, and www/ keeps a redirect page at
+# every one of their old addresses (build_redirects), so no link breaks.
+LEARN="$ROOT/learn"
+LEARN_URL="https://learn.raku.online"
+MOVED="tour drills cookbook deep examples"
 RAKUPP="${RAKUPP:-rakupp}"
 
 # The three files the outside world depends on. Checked after every build so a
@@ -26,10 +35,10 @@ build_theme() {
 }
 
 build_tour() {
-    echo "tour -> www/tour"
+    echo "tour -> learn/tour"
     ( cd "$ROOT/sites/tour" && "$RAKUPP" build.raku --clean )
-    rm -rf "$WWW/tour"
-    cp -R "$ROOT/sites/tour/out" "$WWW/tour"
+    rm -rf "$LEARN/tour"
+    cp -R "$ROOT/sites/tour/out" "$LEARN/tour"
 }
 
 # Film: Raku++ Internals, one mechanism per animated episode. The scenes and
@@ -62,10 +71,10 @@ build_faq() {
 # cannot reach, so its pages are static — no editors, and nothing is run at
 # build time. What the pages claim was run was run before they were written.
 build_cookbook() {
-    echo "cookbook -> www/cookbook"
+    echo "cookbook -> learn/cookbook"
     ( cd "$ROOT/sites/cookbook" && "$RAKUPP" build.raku --clean )
-    rm -rf "$WWW/cookbook"
-    cp -R "$ROOT/sites/cookbook/out" "$WWW/cookbook"
+    rm -rf "$LEARN/cookbook"
+    cp -R "$ROOT/sites/cookbook/out" "$LEARN/cookbook"
 }
 
 build_book() {
@@ -78,16 +87,16 @@ build_book() {
 # Raku Behind the Docs is built and verified in its own repository
 # (github.com/ash/raku-behind-the-docs): that build runs every example on both
 # Rakudo and Raku++, which this one cannot, so its finished site is only copied
-# in here. Everywhere without that checkout the committed www/deep is the site.
+# in here. Everywhere without that checkout the committed learn/deep is the site.
 build_deep() {
     DEEP_SRC="${RAKU_DEEP:-/Users/ash/Books/All Corners of Raku}"
     if [ ! -f "$DEEP_SRC/out/index.html" ]; then
-        echo "deep: no built book at $DEEP_SRC/out — keeping the committed www/deep"
+        echo "deep: no built book at $DEEP_SRC/out — keeping the committed learn/deep"
         return 0
     fi
-    echo "deep -> www/deep"
-    rm -rf "$WWW/deep"
-    cp -R "$DEEP_SRC/out" "$WWW/deep"
+    echo "deep -> learn/deep"
+    rm -rf "$LEARN/deep"
+    cp -R "$DEEP_SRC/out" "$LEARN/deep"
 }
 
 # The handbook's examples need the modules they document to be INSTALLED, so
@@ -115,10 +124,10 @@ build_spec() {
 # separately (rakupp build.raku --capture, in sites/examples) and committed, so
 # an ordinary build is deterministic and runs nothing.
 build_examples() {
-    echo "examples -> www/examples"
+    echo "examples -> learn/examples"
     ( cd "$ROOT/sites/examples" && "$RAKUPP" build.raku --clean )
-    rm -rf "$WWW/examples"
-    cp -R "$ROOT/sites/examples/out" "$WWW/examples"
+    rm -rf "$LEARN/examples"
+    cp -R "$ROOT/sites/examples/out" "$LEARN/examples"
 }
 
 # One generator, three sections: the showcase, live/ beside it (two pages — not
@@ -169,7 +178,7 @@ build_map() {
 # a 404 that no page-existence check would catch.
 check_theme_refs() {
     missing=0
-    for a in $(grep -rho '/theme/[A-Za-z0-9._-]*' "$WWW" --include='*.html' | sort -u); do
+    for a in $(grep -rho '/theme/[A-Za-z0-9._-]*' "$WWW" "$LEARN" --include='*.html' | sort -u); do
         [ -s "$WWW$a" ] || { echo "missing asset: www$a" >&2; missing=1; }
     done
     [ "$missing" = 0 ] || exit 1
@@ -177,21 +186,28 @@ check_theme_refs() {
 }
 
 # Every page must carry the site bar, or a section quietly becomes a dead end.
+# The learning sections carry it too: the learning site puts its own bar in
+# place of this script, so a page without it would get no bar there either.
 check_shell() {
     missing=""
-    for page in "$WWW/index.html" "$WWW/play/index.html" "$WWW/drills/index.html" \
+    for page in "$WWW/index.html" "$WWW/play/index.html" \
                 "$WWW/rakupp/index.html" "$WWW/embed/index.html" "$WWW/embed/js/index.html" \
                 "$WWW/embed/spreadsheets/index.html" \
                 "$WWW/install/index.html" \
-                "$WWW/tour/index.html" "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
-                "$WWW/faq/index.html" "$WWW/cookbook/index.html" "$WWW/book/index.html" \
-                "$WWW/deep/index.html" \
+                "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
+                "$WWW/faq/index.html" "$WWW/book/index.html" \
                 "$WWW/modules/index.html" "$WWW/grid/index.html" "$WWW/map/index.html" \
-                "$WWW/in-use/index.html" "$WWW/film/index.html" \
-                "$WWW/examples/index.html" "$WWW/showcase/index.html" "$WWW/live/index.html"; do
-        [ -f "$page" ] || { missing="$missing ${page#$WWW}(absent)"; continue; }
-        grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$WWW}"
+                "$WWW/in-use/index.html" \
+                "$WWW/showcase/index.html" "$WWW/live/index.html" \
+                $(for s in $MOVED; do printf '%s ' "$LEARN/$s/index.html"; done); do
+        [ -f "$page" ] || { missing="$missing ${page#$ROOT/}(absent)"; continue; }
+        grep -q 'theme/shell.js' "$page" || missing="$missing ${page#$ROOT/}"
     done
+    # Film is built only for local preview (see .gitignore), so a checkout
+    # without it is fine; where it is built, it needs the bar like the rest.
+    if [ -f "$WWW/film/index.html" ]; then
+        grep -q 'theme/shell.js' "$WWW/film/index.html" || missing="$missing www/film/index.html"
+    fi
     [ -z "$missing" ] || { echo "pages without the site bar:$missing" >&2; exit 1; }
     echo "check: every section carries the site bar"
 }
@@ -235,7 +251,7 @@ check_excel_engine() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$WWW/tour" "$WWW/spec" "$WWW/faq" "$WWW/cookbook" "$WWW/book" "$WWW/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/film" "$WWW/map" "$WWW/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$LEARN/tour" "$WWW/spec" "$WWW/faq" "$LEARN/cookbook" "$WWW/book" "$LEARN/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/film" "$WWW/map" "$LEARN/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
             | grep -vE '^/(tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
@@ -306,9 +322,9 @@ stamp_cache_tag() {
     # The drills ship their own JS and CSS and had no tag at all, so a returning
     # visitor kept running whatever they cached the first time. Their own hash,
     # since they change independently of the engine.
-    dtag=$(cat "$WWW"/drills/js/*.js "$WWW"/drills/css/*.css "$WWW"/drills/data/*.js \
+    dtag=$(cat "$LEARN"/drills/js/*.js "$LEARN"/drills/css/*.css "$LEARN"/drills/data/*.js \
            | md5 -q | cut -c1-8)
-    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$WWW"/drills/index.html
+    LC_ALL=C sed -i '' -E "s/\?v=[0-9a-f]{8}/?v=$dtag/g" "$LEARN"/drills/index.html
     echo "drills cache tag: ?v=$dtag"
 
     # The shared theme, tagged once for the whole site. The generators used to
@@ -317,7 +333,7 @@ stamp_cache_tag() {
     # putting everything on one origin. Pages that are not generated had no tag
     # at all. One hash over theme/, applied to every page, fixes both.
     ttag=$(cat "$WWW"/theme/* | md5 -q | cut -c1-8)
-    find "$WWW" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
+    find "$WWW" "$LEARN" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
         "s|(/theme/[A-Za-z0-9._-]+)(\?v=[0-9a-f]{8})?|\1?v=$ttag|g"
     echo "theme cache tag: ?v=$ttag"
 
@@ -340,10 +356,52 @@ stamp_cache_tag() {
     # embed script reaches our readers without waiting for a cache to expire.
     # Hashed after the stamping above, since that rewrites raku.js.
     rtag=$(md5 -q "$WWW"/raku.js | cut -c1-8)
-    find "$WWW" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
+    find "$WWW" "$LEARN" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
         "s|(\"/raku\.js)(\?v=[0-9a-f]{8})?\"|\1?v=$rtag\"|g"
     echo "raku.js cache tag: ?v=$rtag"
 }
+# Every page of a moved section leaves a page at its old address that sends
+# the reader on: a meta refresh for any browser, a script that keeps the
+# #fragment (a meta refresh drops it), and the canonical address for crawlers.
+# Like the /ecosystem/ stubs, they carry no site bar and stay out of the
+# sitemap.
+build_redirects() {
+    for s in $MOVED; do
+        rm -rf "${WWW:?}/$s"
+        ( cd "$LEARN" && find "$s" -name index.html ) | while read -r page; do
+            path="/${page%index.html}"
+            to="$LEARN_URL$path"
+            mkdir -p "$WWW$path"
+            cat > "$WWW${path}index.html" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url=$to">
+<link rel="canonical" href="$to">
+<title>Moved to learn.raku.online$path</title>
+<script>location.replace('$to' + location.search + location.hash)</script>
+<p>This page lives at <a href="$to">learn.raku.online$path</a> now.</p>
+</html>
+EOF
+        done
+    done
+    n=$(for s in $MOVED; do find "$WWW/$s" -name index.html; done | wc -l | tr -d ' ')
+    echo "redirects: $n pages in www/ send readers to $LEARN_URL"
+}
+
+# raku.online's own pages link to the moved sections at their new addresses,
+# not through the redirects. The generators still write /tour/ and the rest,
+# so this runs after every build.
+relink_learn() {
+    moved=$(echo $MOVED | tr ' ' '|')
+    find "$WWW" -name '*.html' -print0 | LC_ALL=C xargs -0 sed -i '' -E \
+        "s,(href|src)=\"/($moved)([/\"#?]),\1=\"$LEARN_URL/\2\3,g"
+    echo "links: raku.online's pages point to $LEARN_URL for $MOVED"
+}
+
+build_redirects
+relink_learn
 stamp_cache_tag
 
 # One URL per page, so a crawler does not have to discover the site by walking

@@ -19,26 +19,22 @@
   // behind it. A group lights up in the colour of whichever of its sections you
   // are in, so the bar still answers "which room am I in" at a glance.
   var SECTIONS = [
+    // raku.online has two halves. Learning the language lives at
+    // learn.raku.online (since 23 October 2026), so it is one link out, first
+    // and set apart; a small label then opens the other half, Raku++ — the
+    // engine, and everything else in this bar.
+    { href: 'https://learn.raku.online/', label: 'Learn Raku', hue: 'tour', learn: true },
+    { split: 'Raku++' },
     { href: '/play/',   label: 'Play',   hue: 'play'   },
     // Next to Play on purpose: those two are the whole of "get started", and
     // they are the pair — Play runs it with nothing installed, Install takes it
     // home. Everything after them is a room you go to once you have one or the
     // other. /install.sh is a file, not a section, and does not light this up.
     { href: '/install/', label: 'Install', hue: 'install' },
-    { label: 'Learn', items: [
-      { href: '/tour/',     label: 'Tour',     hue: 'tour',   note: 'Eighteen short lessons, live code' },
-      { href: '/drills/',   label: 'Drills',   hue: 'drills', note: 'Practice questions' },
-      { href: '/cookbook/', label: 'Cookbook', hue: 'cook',   note: 'Whole tasks, worked end to end' },
-      { href: '/faq/',      label: 'FAQ',      hue: 'faq',    note: 'Task-shaped answers' },
-      // course.raku.org is a separate project on a separate domain, so it is
-      // marked as leaving the site rather than dressed up as another section.
-      { href: 'https://course.raku.org', label: 'Course', out: true, note: 'course.raku.org' }
-    ] },
     // The rooms that show the language in use. The hub is the first entry, and
     // the group stays lit in all of them, so it reads as one place with shelves.
     { label: 'In use', items: [
       { href: '/in-use/',   label: 'Overview', hue: 'inuse', note: 'Adoptions, and everything below' },
-      { href: '/examples/', label: 'Examples', hue: 'inuse', note: 'Raku by example, one program a page' },
       { href: '/showcase/', label: 'Showcase', hue: 'inuse', note: 'Projects built on Raku++' },
       { href: '/live/',     label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' },
       { href: '/webraku/',  label: 'Webraku',  hue: 'inuse', note: 'Web apps in one Raku program, live' }
@@ -52,20 +48,21 @@
       { href: '/embed/',    label: 'Embed',   hue: 'embed',    note: 'Web pages, WordPress, spreadsheets' },
       { href: '/bindings/', label: 'SDK',     hue: 'bindings', note: 'Python, JS, Go, Rust, C++, Wolfram' }
     ] },
+    // The FAQ stayed when the learning sections moved: half of it is about
+    // Raku++ itself, and the rest is looked up rather than learned in order.
     { label: 'Reference', items: [
+      { href: '/faq/',     label: 'FAQ',     hue: 'faq',  note: 'Task-shaped answers' },
       { href: '/spec/',    label: 'Spec',    hue: 'spec', note: 'The Raku++ specification' },
       { href: '/modules/', label: 'Modules', hue: 'eco',  note: 'raku.land distributions that run' },
       { href: '/grid/',    label: 'Grid',    hue: 'grid', note: 'Every recorded test on every engine' },
       { href: '/map/',     label: 'Map',     hue: 'map',  note: 'Rakudo and Raku++, program by program' }
     ] },
     // Pace is the project's history, chapter by chapter, so it opens the reading
-    // shelf: the story first, then the books. Deep is Raku Behind the Docs, the
-    // verified-behaviour book, built in its own repository and copied in by
-    // `build.sh deep`.
+    // shelf: the story first, then the book. (Deep, Raku Behind the Docs, is a
+    // book about the language rather than the engine, so it moved to Learn.)
     { label: 'Read', items: [
       { href: '/pace/', label: 'Pace', hue: 'pace', note: 'The project, chapter by chapter' },
-      { href: '/book/', label: 'Book', hue: 'book', note: 'Raku++ Internals, the compiler book' },
-      { href: '/deep/', label: 'Deep', hue: 'deep', note: 'Raku Behind the Docs' }
+      { href: '/book/', label: 'Book', hue: 'book', note: 'Raku++ Internals, the compiler book' }
     ] },
     // Last, as the way out of the reading rooms: where to ask when something
     // breaks — GitHub issues, or DeepSoft's commercial support.
@@ -122,6 +119,17 @@
     var nav = el('div', { class: 'shell-nav' });
     var groups = [];
     SECTIONS.forEach(function (s, i) {
+      if (s.split) {
+        nav.appendChild(el('span', { class: 'shell-split' }, s.split));
+        return;
+      }
+      if (s.learn) {
+        var l = el('a', { class: 'shell-tab shell-learn', href: s.href }, s.label);
+        hue(l, s.hue);
+        l.appendChild(el('span', { class: 'out', 'aria-hidden': 'true' }, '↗'));
+        nav.appendChild(l);
+        return;
+      }
       if (!s.items) {
         var a = el('a', { class: 'shell-tab', href: s.href }, s.label);
         hue(a, s.hue);
