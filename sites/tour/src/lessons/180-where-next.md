@@ -39,9 +39,9 @@ stay and experiment as long as you like.
 
 ## Keep going
 
-- [The playground](https://raku.online/) — the full-page editor this tour is built on, with sharable links.
+- [The playground](https://raku.online/play/) — the full-page editor this tour is built on, with sharable links.
 - [The Raku course](https://course.raku.org/) — a complete course of the language, from the very basics to the details, with exercises.
-- [The Raku++ specification](https://spec.raku.online/) — every feature of the interpreter behind these pages, documented with runnable examples.
+- [The Raku++ specification](https://raku.online/spec/) — every feature of the interpreter behind these pages, documented with runnable examples.
 - [raku.org](https://raku.org/) — the official home of the Raku language.
 - [docs.raku.org](https://docs.raku.org/) — the official Raku documentation.
 - [The interpreter itself](https://github.com/ash/rakupp) — Raku++, the C++ implementation of Raku that compiled to WebAssembly to run this tour.
