@@ -119,7 +119,9 @@ Needs["AntonAntonov`RakuppLink`"]
 RakuppEval["[*] 1..20"]    (* 2432902008176640000 *)</code></pre>
 <p>
   It needs <a href="/install/"><code>rakupp</code> installed</a>, whose library it
-  loads. More on the <a href="/editors/#wolfram">Editors</a> page and in
+  loads: a release archive, the install script and Homebrew on macOS all carry
+  it, and a build of your own needs it <a href="#library">built as below</a>.
+  More on the <a href="/editors/#wolfram">Editors</a> page and in
   <a href="https://github.com/ash/rakupp/blob/main/bindings/wolfram/README.md">the binding's guide</a>.
 </p>
 
@@ -127,11 +129,27 @@ RakuppEval["[*] 1..20"]    (* 2432902008176640000 *)</code></pre>
 <p>
   These four work and are tested on every push, but they are not published as
   packages yet and their surface may still change. They load
-  <code>librakupp</code>, the engine as a shared library, which you build from the
-  <a href="https://github.com/ash/rakupp">repository</a>:
+  <code>librakupp</code>, the engine as a shared library.
+</p>
+<p id="library">
+  Every <a href="https://github.com/ash/rakupp/releases">release archive</a>
+  except OpenBSD's carries it: <code>lib/librakupp.dylib</code> on macOS,
+  <code>lib/librakupp.so</code> on Linux, <code>bin/librakupp.dll</code> on Windows.
+  With the archive's <code>bin/</code> on PATH the bindings find it on their own;
+  otherwise set <code>RAKUPP_LIB</code> to the file. To build it from the
+  <a href="https://github.com/ash/rakupp">repository</a> instead:
 </p>
 <pre class="native-code"><code>cmake -B build -DCMAKE_BUILD_TYPE=Release -DRAKUPP_BUILD_SHARED=ON
 cmake --build build -j</code></pre>
+<p>
+  If you already build rakupp for everyday work, keep that <code>build/</code>
+  static: the shared library compiles every runtime source a second time. Build
+  the library alone, in a directory of its own, and set <code>RAKUPP_LIB</code> to
+  the full path of the <code>librakupp</code> it makes, since the
+  <code>rakupp</code> on your PATH has none beside it:
+</p>
+<pre class="native-code"><code>cmake -B build-shared -DCMAKE_BUILD_TYPE=Release -DRAKUPP_BUILD_SHARED=ON
+cmake --build build-shared -j --target rakupp_shared</code></pre>
 <table class="opts">
   <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/js/README.md">JavaScript</a></td><td>A single-file ES module over <code>bun:ffi</code>. Bun only: plain Node.js cannot run it.</td></tr>
   <tr><td><a href="https://github.com/ash/rakupp/blob/main/bindings/go/README.md">Go</a></td><td>A single-file cgo package. Go 1.18+ and a C compiler.</td></tr>
