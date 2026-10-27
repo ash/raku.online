@@ -75,7 +75,7 @@ target_link_libraries(rakupp_parse INTERFACE rakupp_rt)</code></pre>
 <tr><td><code>safe</code></td><td><strong>the default with no flag.</strong> Dead-strip and symbol strip. No feature removed, no analysis run.</td></tr>
 <tr><td><code>auto</code></td><td><strong>what bare <code>--slim</code> means.</strong> <code>safe</code>, plus every feature the scan <em>proves</em> unreachable. Sound.</td></tr>
 <tr><td><code>max</code></td><td><code>auto</code>, ignoring the force-full triggers. Unsound by design.</td></tr></table></div>
-<p><code>safe</code> being the default matters more than it sounds: it costs nothing analytically and takes <code>say "Hello"</code> from 9.9 MB to 8.1 MB, byte-identical in behaviour. Its only real cost is that a C++-level crash reports addresses rather than names, which is why <code>+symbols</code> exists.</p>
+<p><code>safe</code> being the default matters more than it sounds: it costs nothing analytically and takes <code>say "Hello"</code> from 21.1 MB to 17.2 MB, byte-identical in behaviour. Its only real cost is that a C++-level crash reports addresses rather than names, which is why <code>+symbols</code> exists.</p>
 <p>A spec naming no level means <code>auto</code>, so <code>--slim=+eval</code> reads as "automatic pruning, but keep eval".</p>
 <h2 id="the-scan">The scan</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/SlimScan.h</span>
@@ -105,34 +105,36 @@ an AST node the scan does not model</code></pre>
 <p>And the triggers are reported by name and line, rather than merely suppressing the cut:</p>
 <pre class="native-code grid"><code>$ rakupp --exe trig.raku --slim=list
 --slim=auto for trig.raku (--exe):
-  unicode-names      keep    3.1 MB   kept: a dynamic construct keeps everything
+  unicode-names      keep    2.0 MB   kept: a dynamic construct keeps everything
   …
 dynamic constructs keeping everything (--slim=max cuts anyway):
   an indirect method call (."$name"()) (in the program, line 2)
-would cut 0 KB of 5.0 MB cuttable (archive sizes)</code></pre>
+would cut 0 KB of 5.3 MB cuttable (the code and data in the archives)</code></pre>
 <h2 id="what-it-is-worth">What it is worth</h2>
 <pre class="native-code grid"><code>$ rakupp --exe hello.raku --slim=list
 --slim=auto for hello.raku (--exe):
-  unicode-names      cut     3.1 MB   proven unused
-  unicode-collation  cut     743 KB   proven unused
-  unicode-props      cut     141 KB   proven unused
-  eval               cut     971 KB   proven unused
-would cut 5.0 MB of 5.0 MB cuttable (archive sizes)</code></pre>
-<p><code>say "Hello"</code>: 9.9 MB unstripped, 8.1 MB at <code>safe</code>, <strong>4.6 MB</strong> under bare <code>--slim</code>. A program that uses one feature keeps one:</p>
+  unicode-names      cut     2.0 MB   proven unused
+  unicode-collation  cut     755 KB   proven unused
+  unicode-props      cut     628 KB   proven unused
+  eval               cut     2.0 MB   proven unused
+would cut 5.3 MB of 5.3 MB cuttable (the code and data in the archives)</code></pre>
+<p><code>say "Hello"</code>: 21.1 MB unstripped, 17.2 MB at <code>safe</code>, <strong>12.1 MB</strong> under bare <code>--slim</code> (arm64 macOS, October 2026; here, as in <code>--slim</code>'s own output, a MB is 2^20 bytes).</p>
+<p>The sizes <code>list</code> prints are the code and data in each feature's archive: what can reach a binary. The archive files themselves are bigger, because their symbol tables and relocation records never reach a binary; the unicode-names archive is a 3.5 MB file around 2.0 MB of tables. Measured against real links, the three Unicode figures land within 1%. eval's runs about 17% high, because dead-strip removes some parser code that nothing reaches even when eval is kept. So hello's 5.3 MB estimate is a 5.1 MB cut. If an archive holds a member <code>list</code> cannot read (LTO bitcode, say), it falls back to the file sizes and says they overestimate.</p>
+<p>A program that uses one feature keeps one:</p>
 <pre class="native-code grid"><code>$ rakupp --exe uses-names.raku --slim=list
-  unicode-names      keep    3.1 MB   used: uniname (line 1)
-  unicode-collation  cut     743 KB   proven unused
-  unicode-props      keep    141 KB   used: &lt;:Script&lt;…&gt;&gt; in a regex (line 2)
-  eval               cut     971 KB   proven unused</code></pre>
+  unicode-names      keep    2.0 MB   used: uniname (line 1)
+  unicode-collation  cut     755 KB   proven unused
+  unicode-props      keep    628 KB   used: &lt;:Script&lt;…&gt;&gt; in a regex (line 2)
+  eval               cut     2.0 MB   proven unused</code></pre>
 <h2 id="the-directives-and-the-one-that-proves-it">The directives, and the one that proves it</h2>
 <p>Four, one per spec:</p>
-<div class="tablewrap"><table><tr><th>directive</th><th></th></tr><tr><td><code>help</code></td><td>the grammar and the feature table, with the real archive sizes beside <em>this</em> rakupp</td></tr>
+<div class="tablewrap"><table><tr><th>directive</th><th></th></tr><tr><td><code>help</code></td><td>the grammar and the feature table, with what each feature adds to a binary, read from the archives beside <em>this</em> rakupp</td></tr>
 <tr><td><code>list</code></td><td>keep/cut per feature for this program, with the reason and the bytes. Analyses only; does not compile</td></tr>
 <tr><td><code>why:FEAT</code></td><td>every site — program or module, with the line — that forces FEAT to be kept</td></tr>
 <tr><td><code>verify</code></td><td>build the slim binary <strong>and</strong> a full reference, run both, and emit the slim one only if stdout, stderr and exit status agree</td></tr></table></div>
 <p><code>verify</code> is the interesting one, because it answers the objection the whole feature invites: how do you know the analysis was right? By not trusting it — build both, run both, compare. A nondeterministic program cannot agree with anything, so <code>verify</code> refuses that too rather than reporting a false difference.</p>
 <p>It composes with an explicit cut, which is exactly when you want the proof: <code>--slim=safe,-eval,verify</code> is "I claim this program never compiles code at run time; prove it".</p>
-<p><code>help</code> deserves a note of its own. It prints the real archive sizes measured from the rakupp you are running, not numbers baked into a string — so the documentation cannot drift from the build.</p>
+<p><code>help</code> deserves a note of its own. It reads the sizes from the archives beside the rakupp you are running, the same way <code>list</code> does, rather than printing numbers baked into a string — so the documentation cannot drift from the build.</p>
 <h2 id="where-it-declines">Where it declines</h2>
 <p>Two modes refuse the scan, loudly rather than quietly.</p>
 <p><strong><code>--bundle</code></strong> embeds source and parses it at run time, so nothing can be proven unused — and <code>--slim=-eval</code> is refused there outright, because bundling <em>is</em> the eval feature. <strong><code>--aot</code></strong> keeps every feature until the scan is wired for it. Explicit <code>±feature</code> still applies in both.</p>

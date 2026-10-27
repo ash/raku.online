@@ -56,14 +56,14 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
     <span class="kt">int</span> wantLvalue = <span class="mi">0</span>;  Value* lvalueOut = <span class="kc">nullptr</span>;
 };
 
-<span class="k">static</span> <span class="k">thread_local</span> ExecContext tctx_;</code></pre>
-<p>It is <code>static thread_local</code>, so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 38</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
+<span class="k">static</span> ExecContext&amp; tctx();   <span class="c1">// this thread's context</span></code></pre>
+<p>It is per thread — a <code>thread_local</code> context, reached through a constant-initialized <code>thread_local</code> pointer — so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 38</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
 <p>Two chains, not one. <strong><code>cur</code></strong> is the lexical chain: a callee's parent is the scope it was <em>written</em> in, reached through its <code>Callable::closure</code>. <strong><code>dynStack</code></strong> is the dynamic chain: the caller's scope, pushed on entry, walked only when resolving a <code>$*foo</code>. Keeping them separate is what makes lexical and dynamic scoping both correct and both cheap.</p>
 <h2 id="evaluating-an-expression">Evaluating an expression</h2>
 <p><code>eval</code> is a switch. The interesting arms are the ones that are <em>not</em> a straightforward recursion.</p>
 <p><strong><code>VarExpr</code></strong> is the hottest node in most programs. Its fast path is a <code>find</code> and a copy:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — eval(VarExpr), the plain-lexical fast path</span>
-<span class="k">if</span> (Value* p = tctx_.cur-&gt;find(ve-&gt;name))
+<span class="k">if</span> (Value* p = tctx().cur-&gt;find(ve-&gt;name))
     <span class="k">if</span> (!(p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span>))
         <span class="k">return</span> *p;</code></pre>
 <p>with the <code>Proxy</code> check placed so that the common case is one comparison. Names with a twigil — <code>$*dyn</code>, <code>$?FILE</code>, <code>$^a</code>, <code>$/</code> — never reach this path; each has its own lookup rule, and the fast paths in <a href="/book/node-specialization/">Chapter 19</a> exclude them by testing the second character of the name.</p>

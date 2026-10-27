@@ -28,7 +28,7 @@
 <h2 id="named-calls">Named calls</h2>
 <p><code>evalCall</code> resolves every named call the same way:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — evalCall, abridged</span>
-<span class="k">if</span> (Value* f = tctx_.cur-&gt;find(<span class="s2">"&amp;"</span> + c-&gt;name))
+<span class="k">if</span> (Value* f = tctx().cur-&gt;find(<span class="s2">"&amp;"</span> + c-&gt;name))
     <span class="k">return</span> callCallable(*f, std::move(args), &amp;c-&gt;args, <span class="kc">false</span>, …);
 …
 <span class="k">auto</span> it = builtins_.find(c-&gt;name);        <span class="c1">// built-in fallback</span></code></pre>
@@ -114,7 +114,7 @@ Value* findMethod(<span class="k">const</span> std::string&amp; m, ClassInfo** o
     ValueList sameArgs;
     <span class="kt">bool</span> lastcall = <span class="kc">false</span>; <span class="kt">bool</span> fromChain = <span class="kc">false</span>;
 };
-<span class="k">static</span> <span class="k">thread_local</span> std::vector&lt;RedispatchCtx&gt; redispatchStack_;</code></pre>
+<span class="k">static</span> std::vector&lt;RedispatchCtx&gt;&amp; redispatchStack();   <span class="c1">// this thread's chain</span></code></pre>
 <p>Each dispatch site that can be re-entered pushes a context knowing how to invoke the next thing, and the original arguments for the <code>*same</code> variants. <code>invokeMethodChain</code> is the method version: it invokes a method found from a given class and pushes a context that resumes from that class's parent, recursively.</p>
 <p>One field guards a subtle case:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>

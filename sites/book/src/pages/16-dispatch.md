@@ -14,7 +14,7 @@ and knowing which one is in play explains most of the surprises.
 
 ```cpp
 // src/InterpreterCore.cpp — evalCall, abridged
-if (Value* f = tctx_.cur->find("&" + c->name))
+if (Value* f = tctx().cur->find("&" + c->name))
     return callCallable(*f, std::move(args), &c->args, false, …);
 …
 auto it = builtins_.find(c->name);        // built-in fallback
@@ -193,7 +193,7 @@ struct RedispatchCtx {
     ValueList sameArgs;
     bool lastcall = false; bool fromChain = false;
 };
-static thread_local std::vector<RedispatchCtx> redispatchStack_;
+static std::vector<RedispatchCtx>& redispatchStack();   // this thread's chain
 ```
 
 Each dispatch site that can be re-entered pushes a context knowing how to invoke

@@ -34,15 +34,15 @@
 <span class="kt">uint64_t</span> curRoutineFrame = <span class="mi">0</span>;  <span class="c1">// frameTop at the enclosing ROUTINE entry</span></code></pre>
 <p>Every activation bumps <code>frameTop</code>. A routine records the value at its own entry. So the test is an equality:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — return</span>
-<span class="k">if</span> (tctx_.curRoutineFrame != <span class="mi">0</span> &amp;&amp; tctx_.frameTop == tctx_.curRoutineFrame) {
-    tctx_.returning = <span class="kc">true</span>; tctx_.returnV = std::move(v);
+<span class="k">if</span> (tctx().curRoutineFrame != <span class="mi">0</span> &amp;&amp; tctx().frameTop == tctx().curRoutineFrame) {
+    tctx().returning = <span class="kc">true</span>; tctx().returnV = std::move(v);
     <span class="k">return</span> Value::any();                       <span class="c1">// set a flag, do not throw</span>
 }
 <span class="k">throw</span> ReturnEx{v};                             <span class="c1">// a boundary was crossed</span></code></pre>
 <p>The statement loops check the flag after each statement and bail out, and <code>callCallableRaw</code> consumes it at the routine boundary:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — after each statement in the activation loop</span>
-<span class="k">if</span> (tctx_.returning) {
-    <span class="k">if</span> (isRoutine) { tctx_.returning = <span class="kc">false</span>; last = std::move(tctx_.returnV); }
+<span class="k">if</span> (tctx().returning) {
+    <span class="k">if</span> (isRoutine) { tctx().returning = <span class="kc">false</span>; last = std::move(tctx().returnV); }
     <span class="k">break</span>;               <span class="c1">// a bare block just propagates it to its routine</span>
 }</code></pre>
 <p>A bare block does <em>not</em> consume the flag — it breaks out and lets it propagate — because a <code>return</code> inside <code>if { … }</code> returns from the enclosing routine, not from the block.</p>
@@ -53,8 +53,8 @@
 <span class="kt">int</span> loopCtl = <span class="mi">0</span>;                     <span class="c1">// 0 none, 1 next, 2 last, 3 redo</span>
 <span class="kt">uint64_t</span> curLoopFrame = kNoFrame;    <span class="c1">// frameTop of the innermost native loop</span></code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — LastStmt</span>
-<span class="k">if</span> (t.empty() &amp;&amp; tctx_.frameTop == tctx_.curLoopFrame) {
-    tctx_.loopCtl = <span class="mi">2</span>; <span class="k">return</span> Value::any();
+<span class="k">if</span> (t.empty() &amp;&amp; tctx().frameTop == tctx().curLoopFrame) {
+    tctx().loopCtl = <span class="mi">2</span>; <span class="k">return</span> Value::any();
 }
 <span class="k">throw</span> LastEx{t};              <span class="c1">// labelled, or across a frame: unwind</span></code></pre>
 <p>That sentinel is worth a paragraph, because the obvious spelling was wrong in a way that hid for a long time. <code>curLoopFrame</code> was initialised to <code>0</code> and the guard read <code>curLoopFrame != 0 &amp;&amp; frameTop == curLoopFrame</code> — but <code>0</code> is also the <strong>mainline's own frame number</strong>. So every loop and every <code>given</code> written at the top level of a program failed that guard, fell out of the cooperative path, and threw: about eighty microseconds per iteration on macOS, in exactly the programs a beginner writes. One sentinel that cannot collide with a real frame number fixed it, and the guard collapsed to a single comparison.</p>

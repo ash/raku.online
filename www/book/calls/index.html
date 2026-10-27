@@ -65,7 +65,7 @@ Value callCallableRaw(<span class="k">const</span> Value&amp; codeVal, ValueList
 <span class="k">auto</span>&amp; env = frame.env;
 c.state.env-&gt;parent = c.closure ? c.closure : global_; <span class="c1">// once</span>
 env-&gt;parent = c.state.env;        <span class="c1">// frame → state env → closure → … → global</span>
-tctx_.dynStack.push_back(caller_scope);                <span class="c1">// the OTHER chain</span></code></pre>
+tctx().dynStack.push_back(caller_scope);                <span class="c1">// the OTHER chain</span></code></pre>
 <p>The frame is <em>pooled</em>, not freshly allocated, and the reason is one of the sharper measurements in this book. A call frame is a <code>shared_ptr&lt;Env&gt;</code>: a control block, an <code>Env</code>, and the hash buckets inside it, allocated and destroyed per call. A thread-local pool of up to thirty-two hands one back instead, clearing the map but keeping its bucket array — the same trick the pad vector plays with its capacity. A frame that anything captured (a closure, an <code>rwLink</code>, a state chain) fails a <code>use_count</code> test on release and is simply dropped rather than reused, which is what makes the reuse safe.</p>
 <p>For a while only <code>callCallableRaw</code> had it, and <code>invokeMethod</code> did not. That asymmetry alone was the difference between a sub call at about twice Rakudo's cost and a method call at 5.8 times it.</p>
 <p>Two facts are established here and everything else depends on them.</p>

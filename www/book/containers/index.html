@@ -45,11 +45,11 @@
 <p>The <strong>full sigilled name is the key</strong>. Subs live in the same map under a <code>&amp;</code>-prefixed key, so <code>&amp;foo</code> and <code>$foo</code> occupy different namespaces without a second table. Lexical scoping <em>is</em> the parent walk in <code>find</code>; there is no separate symbol table anywhere in the interpreter.</p>
 <p>Reading a variable returns a <strong>copy</strong> of the slot. Writing goes through <code>lvalue(Expr*)</code>, which hands back a <code>Value*</code> pointing straight into the owning <code>Env</code>'s map:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// read  $x</span>
-<span class="k">if</span> (Value* p = tctx_.cur-&gt;find(ve-&gt;name)) <span class="k">return</span> *p;      <span class="c1">// a COPY</span>
+<span class="k">if</span> (Value* p = tctx().cur-&gt;find(ve-&gt;name)) <span class="k">return</span> *p;      <span class="c1">// a COPY</span>
 
 <span class="c1">// my $x — make the slot here, hand back its address</span>
-tctx_.cur-&gt;define(ve-&gt;name, std::move(init));
-<span class="k">return</span> &amp;tctx_.cur-&gt;vars[ve-&gt;name];
+tctx().cur-&gt;define(ve-&gt;name, std::move(init));
+<span class="k">return</span> &amp;tctx().cur-&gt;vars[ve-&gt;name];
 
 <span class="c1">// $x = 5</span>
 *lv = rhs;</code></pre>
@@ -96,7 +96,7 @@ Value proxy = Value::makeHash(); proxy.hashKind = <span class="s2">"Proxy"</span
 *lvalue(target) = proxy;</code></pre>
 <p><code>$y</code>'s slot holds a <code>Hash</code> tagged <code>Proxy</code> whose two closures read and write <code>$x</code>'s slot in the environment that owns it. Reading a variable notices the tag and calls <code>FETCH</code> instead of returning the hash:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — reading a variable</span>
-Value* p = tctx_.cur-&gt;find(ve-&gt;name);
+Value* p = tctx().cur-&gt;find(ve-&gt;name);
 <span class="k">if</span> (p) {
     <span class="k">if</span> (p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span> &amp;&amp; p-&gt;hash) {
         <span class="k">auto</span> it = p-&gt;hash-&gt;find(<span class="s2">"FETCH"</span>);
@@ -120,7 +120,7 @@ Value* p = tctx_.cur-&gt;find(ve-&gt;name);
 <p><strong><code>.VAR</code></strong> builds a <code>Hash</code> tagged <code>"Scalar"</code> reporting the variable's name, value and default.</p>
 <p><strong><code>is default(v)</code> and typed defaults</strong> live in <code>EnvExtras::varDefault</code>, a per-scope map. <code>my Int $x</code> stores <code>(Int)</code> as both the initial value and the reset default. Assigning <code>Nil</code> walks the chain to find it:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — $x = Nil restores the container's default</span>
-<span class="k">for</span> (Env* en = tctx_.cur.get(); en; en = en-&gt;parent.get()) {
+<span class="k">for</span> (Env* en = tctx().cur.get(); en; en = en-&gt;parent.get()) {
     <span class="k">auto</span> di = en-&gt;varDefault.find(nm);
     <span class="k">if</span> (di != en-&gt;varDefault.end()) { dv = di-&gt;second; <span class="k">break</span>; }
     <span class="k">if</span> (en-&gt;vars.count(nm)) <span class="k">break</span>;   <span class="c1">// owner scope, no declared default</span>
