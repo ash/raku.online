@@ -164,7 +164,8 @@ history is intact.
 ```
 
 It needs `rakupp` on `PATH` (override with `RAKUPP=/path/to/rakupp`) because
-the generators are written in Raku. It copies `theme/` into
+the generators are written in Raku, and `python3` (override with `PYTHON=`)
+for the checks that every page is valid UTF-8. It copies `theme/` into
 `www/theme/`, runs each generator into its path, stamps the `?v=` cache tag,
 and then runs six checks — any of which fails the build:
 

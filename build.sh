@@ -22,6 +22,7 @@ LEARN="$ROOT/learn"
 LEARN_URL="https://learn.raku.online"
 MOVED="tour drills cookbook deep examples"
 RAKUPP="${RAKUPP:-rakupp}"
+PYTHON="${PYTHON:-python3}"   # the UTF-8 checks only (not_utf8)
 
 # The three files the outside world depends on. Checked after every build so a
 # refactor cannot quietly break every embed in the wild.
@@ -449,6 +450,24 @@ check_frozen
 check_shell
 check_theme_refs
 check_no_stray_absolutes
+# The files named on stdin (NUL-separated) that are not valid UTF-8, one per
+# line. Python rather than iconv: macOS's iconv fails on some valid pages with
+# "Inappropriate ioctl for device", file argument or stdin alike, which failed
+# every build on a clean tree. No `|| true` after it: a validator that cannot
+# run must stop the build, not pass every page.
+not_utf8() {
+    "$PYTHON" -I -c '
+import sys
+for path in sys.stdin.buffer.read().split(b"\0"):
+    if not path:
+        continue
+    try:
+        open(path, "rb").read().decode("utf-8")
+    except UnicodeDecodeError:
+        print(path.decode("utf-8", "replace"))
+'
+}
+
 # JSON the client fetches carries URLs baked in at generation time, so a
 # missing base here shows up only as a 404 when someone clicks a search hit.
 check_json_urls() {
@@ -460,8 +479,7 @@ check_json_urls() {
     # A page that is not valid UTF-8 is what made the sed above abort in the
     # first place, and it also reaches readers as a replacement character. Fail
     # the build rather than ship it.
-    bad=$(find "$WWW" -name '*.html' -print0 | xargs -0 -I{} sh -c \
-          'iconv -f UTF-8 -t UTF-8 "$1" >/dev/null 2>&1 || echo "$1"' _ {} || true)
+    bad=$(find "$WWW" -name '*.html' -print0 | not_utf8)
     [ -z "$bad" ] || { echo "pages that are not valid UTF-8: $bad" >&2; exit 1; }
     echo "check: every page is valid UTF-8"
 }
@@ -472,8 +490,7 @@ check_json_urls
 # this catches a regression in that folding before it ships.
 check_grid_data() {
     [ -d "$WWW/grid/data" ] || return 0
-    bad=$(find "$WWW/grid/data" -name '*.json' -print0 | xargs -0 -I{} sh -c \
-          'iconv -f UTF-8 -t UTF-8 "$1" >/dev/null 2>&1 || echo "$1"' _ {} || true)
+    bad=$(find "$WWW/grid/data" -name '*.json' -print0 | not_utf8)
     [ -z "$bad" ] || { echo "grid data that is not valid UTF-8: $bad" >&2; exit 1; }
     ctrl=$(printf '[\001-\010\013\014\016-\037]')
     bad=$(LC_ALL=C grep -rlE "$ctrl" "$WWW/grid/data" 2>/dev/null || true)
