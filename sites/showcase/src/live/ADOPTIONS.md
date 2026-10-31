@@ -33,7 +33,7 @@ raku.online — those are ours and belong in
 
 [**RakuppLink**](https://resources.wolframcloud.com/PacletRepository/resources/AntonAntonov/RakuppLink/)
 is in Wolfram's Paclet Repository, packaged by Anton Antonov
-([source](https://github.com/antononcube/WL-RakuppLink-paclet)) — v1.0.2, MIT,
+([source](https://github.com/antononcube/WL-RakuppLink-paclet)) — v1.0.3, MIT,
 Wolfram Language 13.3+, context ``AntonAntonov`RakuppLink` ``. So a Wolfram
 user reaches Raku with `PacletInstall["AntonAntonov/RakuppLink"]` and never
 sees this repository.
@@ -52,7 +52,10 @@ The same author filed [#38](https://github.com/ash/rakupp/issues/38) — the
 `Math::NumberTheory` install that cost twelve engine fixes — so the packaging
 and the bug reports arrived in the same week. That is the pattern `live/`
 predicts: somebody using the thing for their own purposes finds what we would
-not have thought to test.
+not have thought to test. [#56](https://github.com/ash/rakupp/issues/56) went
+round the whole loop: in a RakuMode notebook, `say` under the binding printed
+nothing and returned `True`; the fix landed here on 2026-10-27 (fb9009bc), and
+v1.0.3, published 2026-10-31, took the fixed RakuLang.wl into the paclet.
 
 ## Raku Playground — one dropdown, four runtimes
 
@@ -121,10 +124,11 @@ checksum — v4.0.1 when this entry was written — and moves to a newer release
 only after re-running every koan on it. Every Raku++ release candidate runs
 that same check first: gate 6b in [RELEASING.md](../docs/dev/RELEASING.md).
 
-**Where it meets our plans.** Three koans teach code this engine accepts and
-Rakudo refuses: two calls Rakudo rejects at compile time as ones that "will
-never work", and a `next OUTER` that Rakudo resolves differently. They are in
-the v5 error work ([V5-PLAN.md](../docs/dev/plans/V5-PLAN.md), B3). What the
+**Where it meets our plans.** Three koans teach code Rakudo refuses: two calls
+it rejects at compile time as ones that "will never work", and a `next OUTER`
+that it resolves differently. Builds after v5.2.1 refuse all three the same way
+([V5-PLAN.md](../docs/dev/plans/V5-PLAN.md), B3), so those koans fail on them
+until the course changes them. What the
 course had to build around — a Raku.js that runs only in a browser, no way to
 stop a running program, shallow recursion in a Web Worker — is under "A fresh
 WebAssembly build" in [V5-IDEAS.md](../docs/dev/plans/V5-IDEAS.md).
@@ -254,7 +258,8 @@ item belongs to.
 Nearly every one of these pins a snapshot. The playground vendors a July
 build, the Guix channel a v1.2.0 tag, the koans, `321` and `iz4` a v4.0.1
 release by checksum, `xc` a v5.2.1 release by checksum, and the
-paclet is written against the C ABI in
+paclet carries its own copy of RakuLang.wl (v1.0.3's code is the file as
+fb9009bc left it), written against the C ABI in
 [include/rakupp/rakupp.h](../include/rakupp/rakupp.h), linking whatever
 `librakupp` its user happened to build. A fix landing here reaches none of
 them until their author re-vendors or re-pins — worth remembering before
@@ -266,5 +271,5 @@ are the exception: they pin nothing, and tell the agent to check whatever
 
 None of this is under our control. Rows can move or disappear without notice;
 the links are what they were on the date each was last checked —
-**2026-10-04** for xc and the agent skills, **2026-10-03** for 321 and iz4, **2026-09-28** for Raku Koans, **2026-08-28** for
+**2026-10-31** for RakuppLink, **2026-10-04** for xc and the agent skills, **2026-10-03** for 321 and iz4, **2026-09-28** for Raku Koans, **2026-08-28** for
 the rest.
