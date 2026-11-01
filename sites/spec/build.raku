@@ -674,6 +674,15 @@ sub render-dashboard(%site, %by-cat --> Str) {
     <a href="https://raku.online/modules/ecosystem/">Every distribution and its
     result, listed →</a></p>
     <div class="dash-chart" id="dash-modules"></div>
+    <h2 class="conf-areas-title" id="rakugrid">Rakugrid <span>— the share of the behavioural grid Raku++ passes</span> <a class="anchor" href="#rakugrid" aria-label="link">#</a></h2>
+    <p class="dash-note"><a href="https://raku.online/grid/">Rakugrid</a> asks
+    what Roast does not: whether an engine survives contact with real programs.
+    Each of its tests records the bug, program, module or documented rule it
+    came from, with Rakudo's answer beside the expected one. Each point is one
+    run of the whole grid against a Raku++ binary, recorded by hand at release
+    time. The grid grows in steps, and a point from before a step is not
+    comparable with one after it, so the line breaks where the grid grew.</p>
+    <div class="dash-chart" id="dash-grid"></div>
     <h2 class="conf-areas-title" id="benchmarks">Benchmarks <span>— kernel wall time in ms, lower is better</span> <a class="anchor" href="#benchmarks" aria-label="link">#</a></h2>
     <p class="dash-note">Three ways to run the same program: the Raku++
     interpreter, the same source compiled to a native binary with

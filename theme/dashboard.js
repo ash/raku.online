@@ -196,6 +196,47 @@
         });
       }
 
+      // ---- Rakugrid -----------------------------------------------------
+      // The share of the grid's tests that pass, one point per run of the grid
+      // against a Raku++ binary. `ran` moves only when the grid itself grows,
+      // and points either side of a step are not comparable, so every stretch
+      // of one `ran` is a line of its own and a mark shows each step. One
+      // colour: the stretches are one measure taken on grids of different
+      // sizes, not different measures.
+      var grid = data.grid || [];
+      var gridEl = document.getElementById('dash-grid');
+      if (gridEl && grid.length) {
+        var stretches = [];
+        grid.forEach(function (p, i) {
+          var last = stretches[stretches.length - 1];
+          if (last && last.ran === p.ran) { last.to = i; return; }
+          stretches.push({ ran: p.ran, from: i, to: i });
+        });
+        var gridPct = function (p) { return (p.ran - p.failed) / p.ran * 100; };
+        lineChart(gridEl, {
+          label: 'Rakugrid: the share of the grid’s tests passing under Raku++, per run',
+          labels: grid.map(function (p) { return p.tag + (p.commit ? ' · ' + p.commit : ''); }),
+          tickLabels: grid.map(function (p) { return p.tag; }),
+          series: stretches.map(function (s) {
+            return { name: fmt(s.ran) + ' tests', cls: 's1', legend: false,
+                     values: grid.map(function (p, i) {
+                       return i >= s.from && i <= s.to ? gridPct(p) : null;
+                     }) };
+          }),
+          marks: stretches.slice(1).map(function (s) {
+            return { at: s.from, label: 'grid grew to ' + fmt(s.ran) };
+          }),
+          yMax: 100,
+          yFmt: function (v) { return Math.round(v) + '%'; },
+          height: 220, maxXLabels: 6,
+          tipRow: function (si, i) {
+            var p = grid[i];
+            return fmt(p.ran) + ' tests: ' + gridPct(p).toFixed(1) + '% pass (' +
+                   fmt(p.failed) + ' fail, ' + fmt(p.parked) + ' parked)';
+          }
+        });
+      }
+
       // ---- benchmark small multiples -----------------------------------
       var bench = document.getElementById('dash-bench');
 

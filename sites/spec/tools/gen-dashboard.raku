@@ -14,6 +14,8 @@
 #             bar, through Aug 2026) then "battery: N/59 …" (each dist's own
 #             test suite vs a Rakudo reference run). The denominator is the
 #             battery's size at that sitting, so it may grow between points.
+#   grid      one point per Rakugrid run against a Raku++ binary, from the
+#             rakupp repo's docs/dev/rakugrid-history.tsv — see grid-series().
 #
 # The output is a committed snapshot (like roast-map.json): the site build
 # never needs the other repos present. Re-run at each release (runbook step).
@@ -426,6 +428,36 @@ sub battery-series(Str $repo --> Array) {
 }
 
 # ---------------------------------------------------------------------------
+# Rakugrid points out of the rakupp repo's docs/dev/rakugrid-history.tsv
+# ---------------------------------------------------------------------------
+
+#| One point per row, in the file's order: date, commit, ran, failed, parked,
+#| roast_pass, roast_files, note, one tab between each, `-` for not measured.
+#| A row is appended each time the grid is fired against a release binary
+#| (rakupp's docs/status/ECOSYSTEM.md, step E). `ran` moves only when the grid
+#| itself grows, and two rows with a different `ran` are not comparable, so
+#| each point carries its `ran` and the chart draws every stretch of one `ran`
+#| as a line of its own. Working tree wins at HEAD, the same rule as
+#| status-doc().
+sub grid-series(Str $repo --> Array) {
+    my $path = 'docs/dev/rakugrid-history.tsv';
+    my $text = "$repo/$path".IO.e ?? "$repo/$path".IO.slurp !! show-file($repo, 'HEAD', $path);
+    my @points;
+    for $text.lines -> $line {
+        my @c = $line.split("\t");
+        next unless @c.elems >= 5 && @c[0] ~~ / ^ \d**4 '-' \d\d '-' \d\d $ /;
+        my ($date, $commit, $ran, $failed, $parked) = @c[^5];
+        my @f;
+        @f.push('"tag":'    ~ json-esc(short-date($date)));
+        @f.push('"date":'   ~ json-esc($date));
+        @f.push('"commit":' ~ json-esc($commit.substr(0, 7))) unless $commit eq '-';
+        @f.push('"ran":' ~ $ran.Int, '"failed":' ~ $failed.Int, '"parked":' ~ $parked.Int);
+        @points.push('{' ~ @f.join(',') ~ '}');
+    }
+    @points
+}
+
+# ---------------------------------------------------------------------------
 # JSON writing (same minimal escaping as build.raku)
 # ---------------------------------------------------------------------------
 
@@ -824,6 +856,9 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
     my @sweepj = @sweep.map({ '{"date":' ~ json-esc(.<date>) ~ ',"n":' ~ .<n> ~ ',"total":' ~ .<total> ~ '}' });
     say "  sweep: {@sweepj.elems} whole-ecosystem points";
 
+    my @grid = grid-series($rakupp-repo);
+    say "  rakugrid: {@grid.elems} fired runs";
+
     # Documentation conformance over time, straight off the snapshots
     # tools/snapshot.raku appends — one record per run of the three-way
     # comparison. This series is only as dense as snapshot.raku has been run,
@@ -874,7 +909,8 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
                ',"roast_readings":[' ~ @readings.join(',') ~ ']' ~
                ',"conformance":[' ~ @conf.join(',') ~ ']' ~
                ',"modules":['  ~ @mods.join(',')    ~ ']' ~
-               ',"sweep":['    ~ @sweepj.join(',')  ~ ']}';
+               ',"sweep":['    ~ @sweepj.join(',')  ~ ']' ~
+               ',"grid":['     ~ @grid.join(',')    ~ ']}';
     mkdir('src/data');
     spurt('src/data/dashboard.json', $json);
     say "wrote src/data/dashboard.json ({@entries.elems} releases)";
