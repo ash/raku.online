@@ -27,7 +27,7 @@
 <p>Yes. Install one of the <code>L10N::*</code> distributions, <code>use</code> it, and the rest of the file is German, Japanese or Afrikaans:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">L10N::DE</span>;
 <span class="n">mein</span> <span class="nv">@zahlen</span> = <span class="mi">1</span>, <span class="mi">2</span>, <span class="mi">3</span>;
-<span class="n">f</span>ü<span class="n">ralle</span> <span class="nv">@zahlen</span> -&gt; <span class="nv">$z</span> {
+<span class="n">füralle</span> <span class="nv">@zahlen</span> -&gt; <span class="nv">$z</span> {
     <span class="n">wenn</span> <span class="nv">$z</span> %% <span class="mi">2</span> { <span class="n">sag</span> <span class="s">&quot;$z ist gerade&quot;</span> }
     <span class="n">sonst</span>        { <span class="n">sag</span> <span class="s">&quot;$z ist ungerade&quot;</span> }
 }</code></pre>
@@ -39,8 +39,9 @@
 <pre class="native-code"><code class="lang-bash">rakupp install L10N::DE</code></pre>
 <p><code>zef install L10N::DE</code> works too, and installs into the same store both engines read.</p>
 <h2 id="which-languages">Which languages <a class="anchor" href="#which-languages" aria-label="link">#</a></h2>
-<p>Sixteen are published, plus an <code>L10N::Complete</code> bundle. These fourteen are verified here, with the spelling each uses for <code>my</code> and for <code>say</code>:</p>
+<p>Seventeen are published, plus an <code>L10N::Complete</code> bundle. These fifteen are verified here, with the spelling each uses for <code>my</code> and for <code>say</code>:</p>
 <div class="tablewrap"><table><tr><th></th><th></th><th><code>my</code></th><th><code>say</code></th></tr><tr><td><code>L10N::AF</code></td><td>Afrikaans</td><td>my</td><td>sê</td></tr>
+<tr><td><code>L10N::BG</code></td><td>Bulgarian</td><td>моя</td><td>кажи</td></tr>
 <tr><td><code>L10N::CY</code></td><td>Welsh</td><td>fy</td><td>dywedyd</td></tr>
 <tr><td><code>L10N::DE</code></td><td>German</td><td>mein</td><td>sag</td></tr>
 <tr><td><code>L10N::EO</code></td><td>Esperanto</td><td>mia</td><td>diru</td></tr>
@@ -116,6 +117,13 @@ DE</span></code></pre>
 say $summe</code></pre>
 <p>Both engines print that. This is also the form the <code>L10N</code> distributions' own test suites use, so it is the best-covered part of the feature. A language you do not have says so rather than quietly doing nothing:</p>
 <pre class="native-code"><code>`.AST("XX")`: L10N::XX is not installed</code></pre>
+<p>The other direction is the language as an argument to <code>.DEPARSE</code>, which renders an English program in it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">print</span> <span class="s">Q[my $summe = 1 + 2; say $summe]</span>.<span class="n">AST</span>.<span class="n">DEPARSE</span>(<span class="s">&quot;DE&quot;</span>);</code></pre>
+<pre class="native-code"><code>mein $summe = 1 + 2;
+sag $summe</code></pre>
+<p>Both engines print that too. The spellings come from the distribution's second module, <code>RakuAST::Deparse::L10N::DE</code>, which Raku++ asks for each keyword exactly as Rakudo's deparser does — so <code>.DEPARSE</code> also takes a role of your own with an <code>xsyn($category, $word)</code> method in place of a language name. Here too a language you do not have is an error, not English:</p>
+<pre class="native-code"><code>Could not find RakuAST::Deparse::L10N::XX in the module search path (the L10N::XX distribution ships it)</code></pre>
+<p>A role that highlights (one with an <code>hsyn</code> method) is refused rather than ignored: Rakudo colours its output with one, and Raku++ does not yet.</p>
 <p>Deparsing is not byte-for-byte identical between the engines in every case — Raku++ writes <code>"Hallo, {$name}!"</code> where Rakudo writes <code>"Hallo, $name!"</code>, and Rakudo marks a required parameter <code>-&gt; $n!</code> where Raku++ writes <code>-&gt; $n</code>. Same program either way; different rendering of it.</p>
 <h2 id="does-the-rest-of-the-toolchain-understand-it">Does the rest of the toolchain understand it? <a class="anchor" href="#does-the-rest-of-the-toolchain-understand-it" aria-label="link">#</a></h2>
 <p>Yes. <code>-c</code>, <code>--lint</code>, <code>--ast</code>, <code>--fmt</code> and the compile modes all read a localized file as the program it is. For <code>use L10N::DE; mein $x = 1; sag $x;</code>:</p>

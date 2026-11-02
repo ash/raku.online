@@ -56,6 +56,7 @@ rakupp install my-dist          # a checkout: the directory with META6.json
 rakupp install ~/src/my-dist    # ./x, /x, ~/x, dists/x, C:\x all work too
 rakupp install -r lib           # module files without a META6.json
 rakupp install app.raku         # the modules a program uses
+rakupp install https://github.com/OWNER/REPO/blob/main/app.raku   # …a program's, by URL
 rakupp install https://github.com/ash/raku-modules/tree/main/Prompt-Hidden
 rakupp install https://host/Foo-1.0.tar.gz
 ```
@@ -70,7 +71,8 @@ reaches into its subdirectories). Inside a checkout's `lib/` that means the
 checkout's distribution, plus any module its `META6.json` does not list — the
 usual reason a module installs and then `use` cannot find part of it. A
 program installs nothing of itself: its `use` lines are read, and what is not
-installed yet is.
+installed yet is. A program's URL works the same way — the program is fetched,
+read and not kept; see the next question.
 
 The github form takes the URL from your address bar, including the
 `/tree/BRANCH/SUBDIR` shape a monorepo of modules produces; without a `/tree/`
@@ -94,6 +96,34 @@ want zef itself on such a machine, zef runs under Raku++ too — `rakupp
 /path/to/zef install Foo` — with the caveats in
 [MODULES.md](../MODULES.md#current-status-and-limits).
 
+## Can I run a program straight from a link, modules and all?
+
+Yes. Give the link where the file name would go — the one in your address bar
+works, GitHub's `…/blob/…` page included:
+
+```sh
+rakupp https://github.com/antononcube/Raku-Mathematica-Serializer/blob/main/examples/Serializer-profiling.raku
+```
+
+That program uses two modules. If they are not installed, the run stops with
+the usual "Could not find", and the error offers the two commands that fix it,
+each spelled with the link:
+
+```sh
+# install what it uses
+rakupp install https://github.com/antononcube/Raku-Mathematica-Serializer/blob/main/examples/Serializer-profiling.raku
+# install it all, then run
+rakupp --auto https://github.com/antononcube/Raku-Mathematica-Serializer/blob/main/examples/Serializer-profiling.raku
+```
+
+The program itself is fetched with curl, as the installer fetches, and run as
+a file would be: the arguments after the link reach `@*ARGS`, and errors name
+the link. Only `https://` is accepted — a program fetched over plain `http://`
+could have been changed on its way; `curl -sSL URL | rakupp -` runs one if you
+mean it — and a link to a web page rather than to the file is refused, not
+parsed. As with a local program, nothing beyond the program is fetched without
+`--auto`. [CLI.md](../CLI.md#a-program-at-a-url) has the rest.
+
 ## `rakupp install` says it cannot find install.raku
 
 That message comes from v3.26.0 or earlier. The installer used to be a Raku program
@@ -108,19 +138,14 @@ Since then the installer is carried inside the binary and the message cannot
 appear: `rakupp install` works from a lone executable, wherever it sits. So
 does `rakupp doc`, which carries its two guides the same way.
 
-## A module's test suite fails with "Unknown VM; don't know how to build"
+## The installer says a module stops on `$*VM.name` and tests it again as `moar`
 
 That is LibraryMake, the helper many native modules build with. Its test
-checks that `$*VM.name` is `moar`, and on Raku++ it is `cpp`. Install it once
-with the name it expects:
-
-```sh
-RAKUPP_VM_NAME=moar rakupp install LibraryMake
-```
-
-The modules that build with it then install with a plain `rakupp install`.
-[unknown-vm.md](unknown-vm.md) explains why, what the variable changes, and
-which other modules need it.
+checks that `$*VM.name` is `moar`, and on Raku++ it is `cpp`, so the
+installer runs that suite once more with the name it expects and installs it
+if it passes. The modules that build with it then install as usual.
+[unknown-vm.md](unknown-vm.md) explains why, what `RAKUPP_VM_NAME` changes,
+and which modules need it set by hand.
 
 ## Where does it look?
 

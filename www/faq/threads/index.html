@@ -91,6 +91,37 @@ Rakudo   248537, 260403, 263266</code></pre>
 <p><strong>To tell whether a wrong answer is a race.</strong> The unguarded counter above printed 400000 in five runs of five under <code>RAKUPP_GIL=1</code>. A result that is wrong by default and right under the lock means two threads are writing the same thing.</p>
 <p>It is a diagnosis, not a fix. <code>Lock</code> and <code>Semaphore</code> do nothing under it, and a thread that waits — <code>sleep</code>, <code>await</code>, I/O — hands the lock to the next one, so a protected section that waits stops being exclusive: two workers that log, sleep and log again inside one <code>$lock.protect</code> print <code>in 0, out 0, in 1, out 1</code> by default and on Rakudo, and <code>in 0, in 1, out 0, out 1</code> under <code>RAKUPP_GIL=1</code>.</p>
 <p><strong>Not for speed.</strong> A CPU-bound fan-out gains nothing under it, and work that mostly waits — on <code>sleep</code>, a child process, a socket — overlaps in both modes, because a thread that waits lets the others run.</p>
+<h2 id="how-do-i-find-a-data-race">How do I find a data race? <a class="anchor" href="#how-do-i-find-a-data-race" aria-label="link">#</a></h2>
+<p><strong>Run the program with <code>--detect-races</code>.</strong> The race detector tracks which thread touched each shared variable, and which synchronization ordered those accesses: an <code>await</code>, a <code>Lock</code>, a <code>Channel</code>, a <code>Supply</code>, a <code>⚛</code> operation. Two accesses from different threads, at least one a write, with nothing ordering them, are a data race. Each pair of sites is reported once, on stderr when the program ends, and a run that raced exits 66. The unguarded counter from above:</p>
+<pre class="native-code"><code>$ rakupp --detect-races counter.raku
+123240
+rakupp: data race on $n
+  write at line 2 (thread T2, a start from line 2)
+  previous write at line 2 (thread T3, a start from line 2)
+  nothing orders them: no Lock, await, Channel, Supply or ⚛ between the two threads
+rakupp: 1 data race (251,063 occurrences)</code></pre>
+<p>The <code>Lock</code> and <code>atomicint</code> versions run silent. stdout is not touched, so a program's own output still compares. <code>RAKUPP_RACE=1</code> in the environment does the same, and the program's child processes inherit it; the flag checks only the program it is given. A race in a module names the file, and the report lists the routines the later access was in (<a href="https://github.com/ash/rakupp/blob/main/docs/guide/CLI.md#finding-data-races---detect-races">CLI.md</a>).</p>
+<p><strong>It reports races that gave the right answer.</strong> It asks whether anything ordered the accesses, not whether they collided, so it reports a race in a run that happened to come out right, which comparing with <code>RAKUPP_GIL=1</code> cannot see. A program that waits on a worker with <code>sleep</code> instead of <code>await</code> prints the expected <code>True</code> on every run, and has a race:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$ready</span> = <span class="n">False</span>;
+<span class="k">start</span> { <span class="nb">sleep</span> <span class="mf">0.1</span>; <span class="nv">$ready</span> = <span class="n">True</span> };
+<span class="nb">sleep</span> <span class="mf">0.5</span>;
+<span class="nb">say</span> <span class="nv">$ready</span>;</code></pre>
+<pre class="native-code"><code>rakupp: data race on $ready
+  read at line 4 (thread T0, the main thread)
+  previous write at line 2 (thread T1, a start from line 2)
+  nothing orders them: no Lock, await, Channel, Supply or ⚛ between the two threads</code></pre>
+<p><strong>Arrays, hashes and objects.</strong> Each array element, hash entry and attribute is a location of its own. Workers that write different elements of a pre-sized array, or different attributes of one object, do not race. Changing an array's length (a <code>push</code>, a <code>splice</code>, a store past the end, a list assignment) or a hash's keys (a new key, a <code>:delete</code>, a list assignment) writes the whole container, and every element access or lookup reads it. So four workers inserting keys no other worker uses still race, on the keys:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%seen</span>;
+<span class="nb">await</span> (^<span class="mi">4</span>).<span class="nb">map</span>: -&gt; <span class="nv">$w</span> { <span class="k">start</span> { <span class="nv">%seen</span>{<span class="s">&quot;$w-$_&quot;</span>} = <span class="n">True</span> <span class="k">for</span> ^<span class="mi">2_500</span> } };
+<span class="nb">say</span> <span class="nv">%seen</span>.<span class="nb">elems</span>;</code></pre>
+<pre class="native-code"><code>rakupp: data race on the keys of %seen
+  write at line 2 (thread T1, a start from line 2)
+  previous write at line 2 (thread T3, a start from line 2)
+  nothing orders them: no Lock, await, Channel, Supply or ⚛ between the two threads
+  (inserting a key, deleting one or assigning the whole hash changes its keys,
+  and every lookup reads them)</code></pre>
+<p>The same program with <code>my %seen = (^4 X~ "-" X~ ^2_500).map(* =&gt; False)</code> before the workers start only writes entries that exist, and runs silent.</p>
+<p><strong>What it does not see yet.</strong> The detector is still being built (<a href="https://github.com/ash/rakupp/blob/main/docs/dev/plans/RACE-DETECTOR-PLAN.md">RACE-DETECTOR-PLAN.md</a>). Some access paths carry no hook yet. Slices (<code>@a[1, 2]</code>, <code>%h&lt;a b&gt;</code>), a <code>for %h</code> loop, native arrays (<code>my int @a</code>) and a class's own <code>AT-POS</code> are among them, and a race through one of them goes unreported. It reports only what the run did: a <code>hyper for</code> the engine runs on one thread has no race to report. Code that runs as a loop kernel has no hooks, so the detector switches the kernels off, and a program that relied on them runs slower than the detector alone accounts for. For the same reason it is refused with <code>--jit</code>, <code>--cnp</code> and the compilers.</p>
 <footer>
 <span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
 <span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
