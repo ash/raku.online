@@ -33,11 +33,16 @@
     { href: '/install/', label: 'Install', hue: 'install' },
     // The rooms that show the language in use. The hub is the first entry, and
     // the group stays lit in all of them, so it reads as one place with shelves.
+    // Last, what has been written and said about it — rakupp's BLOG.md,
+    // MENTIONS.md and TALKS.md, which live under the hub.
     { label: 'In use', items: [
-      { href: '/in-use/',   label: 'Overview', hue: 'inuse', note: 'Adoptions, and everything below' },
-      { href: '/showcase/', label: 'Showcase', hue: 'inuse', note: 'Projects built on Raku++' },
-      { href: '/live/',     label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' },
-      { href: '/webraku/',  label: 'Webraku',  hue: 'inuse', note: 'Web apps in one Raku program, live' }
+      { href: '/in-use/',          label: 'Overview', hue: 'inuse', note: 'Adoptions, and everything below' },
+      { href: '/showcase/',        label: 'Showcase', hue: 'inuse', note: 'Projects built on Raku++' },
+      { href: '/live/',            label: 'Live',     hue: 'inuse', note: 'Existing tools, run unmodified' },
+      { href: '/webraku/',         label: 'Webraku',  hue: 'inuse', note: 'Web apps in one Raku program, live' },
+      { href: '/in-use/blog/',     label: 'Blog',     hue: 'inuse', note: 'Posts on andrewshitov.com and dev.to' },
+      { href: '/in-use/mentions/', label: 'Mentions', hue: 'inuse', note: 'What other people wrote about it' },
+      { href: '/in-use/talks/',    label: 'Talks',    hue: 'inuse', note: 'Conference talks, and the deck' }
     ] },
     // Raku inside something else: your editor, software you use rather than
     // write (a web page, a WordPress blog, a spreadsheet), and finally another
@@ -92,14 +97,14 @@
 
   // One entry in a group's panel: a dot in the section's colour, its name, and
   // a line on what is behind it.
-  function item(s, path) {
+  function item(s, current) {
     var a = el('a', { class: 'shell-item', href: s.href });
     hue(a, s.hue);
     a.appendChild(el('span', { class: 'dot', 'aria-hidden': 'true' }, s.out ? '↗' : null));
     a.appendChild(el('span', { class: 't' }, s.label));
     if (s.note) a.appendChild(el('span', { class: 'd' }, s.note));
     if (s.out) a.classList.add('out');
-    else if (here(path, s.href)) a.setAttribute('aria-current', 'page');
+    else if (current) a.setAttribute('aria-current', 'page');
     return a;
   }
 
@@ -146,9 +151,15 @@
       btn.appendChild(el('span', { class: 'caret', 'aria-hidden': 'true' }));
       var panel = el('div', { class: 'shell-menu', id: id });
       panel.hidden = true;
+      // Within a group the longest match wins: /in-use/blog/ is Blog's, not
+      // the Overview's, though both hrefs are a prefix of it.
+      var best = null;
       s.items.forEach(function (it) {
-        var a = item(it, path);
-        if (a.getAttribute('aria-current')) {
+        if (!it.out && here(path, it.href) && (!best || it.href.length > best.href.length)) best = it;
+      });
+      s.items.forEach(function (it) {
+        var a = item(it, it === best);
+        if (it === best) {
           btn.setAttribute('aria-current', 'page');
           hue(btn, it.hue);
         }
