@@ -422,7 +422,7 @@ sub adoptions-page(--> Str) {
 # there: @CTX is empty.
 sub writing-page(Str $slug --> Str) {
     my $file = WRITING.first(*.key eq $slug).value ~ '.md';
-    my $md = slurp("src/$file");
+    my $md = newest-first(slurp("src/$file"));
     @CTX = ();
     my $title = title-of($md) || $slug.tc;
     my $body = '<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>'
@@ -433,9 +433,35 @@ sub writing-page(Str $slug --> Str) {
     page($title.contains('Raku++') ?? $title !! "$title — Raku++", $body, FOOT-WRITING)
 }
 
-# The body rows of the first table in a file, as lists of cells: the posts on
-# andrewshitov.com in BLOG.md, the mentions in MENTIONS.md. Both files keep
-# their tables in date order, so the last row is the latest.
+# A table row's date — "13 July 2026", or "August 2026" for a mention with no
+# day — as a number that sorts; 0 when the first cell is not a date.
+my constant MONTHS = <January February March April May June July August
+                      September October November December>;
+sub when-of(Str $row --> Int) {
+    return 0 unless cells($row)[0] ~~ / ^ [ (\d+) \s+ ]? (<alpha>+) \s+ (\d ** 4) $ /;
+    my $m = MONTHS.first(~$1, :k) // return 0;
+    $2 * 10000 + ($m + 1) * 100 + ($0 // 0)
+}
+
+# The first table in a file, newest row on top: the posts on andrewshitov.com
+# in BLOG.md, the mentions in MENTIONS.md. rakupp keeps both oldest first (a
+# new row goes at the bottom), so they are turned over here — only when they
+# are, so a file that one day keeps them newest first stays as it is. Only the
+# first table: BLOG.md's second is the dev.to series, which reads in order.
+sub newest-first(Str $md --> Str) {
+    my @lines = $md.lines;
+    my $from = @lines.first(*.starts-with('|'), :k) // return $md;
+    $from += 2;    # past the header and the |---| row
+    my $to = $from;
+    $to++ while $to < @lines.elems && @lines[$to].starts-with('|');
+    my @rows = @lines[$from ..^ $to];
+    my ($first, $last) = when-of(@rows[0] // ''), when-of(@rows[*-1] // '');
+    return $md unless $first && $last && $first < $last;
+    (|@lines[^$from], |@rows.reverse, |@lines[$to .. *]).join("\n") ~ "\n"
+}
+
+# The body rows of the first table in a file, as lists of cells. Run on what
+# newest-first returns, the first row is the latest.
 sub first-table(Str $md) {
     my @lines = $md.lines;
     my $i = @lines.first(*.starts-with('|'), :k) // return ();
@@ -655,8 +681,8 @@ sub inuse-page(@adoptions, Int $showcases, :@posts, :@mentions, :@talks --> Str)
     # the arrow, so "[on X](…) by somebody" stays one link.
     sub out(Str $cell --> Str) { inline($cell).subst('</a>', ' ↗</a>') }
 
-    my $post = @posts[*-1];
-    my $mention = @mentions[*-1];
+    my $post = @posts[0];
+    my $mention = @mentions[0];
     my $weekly = @mentions.grep({ .[1].starts-with('[Raku Weekly') }).elems;
     my $next = @talks
         ?? "\n        Next: <b>{inline(@talks[0]<name>)}</b>"
@@ -780,8 +806,8 @@ sub MAIN(Bool :$clean = False) {
     my @adoptions = parse-adoptions(slurp('src/live/ADOPTIONS.md'));
     die 'no rows parsed out of live/ADOPTIONS.md — has its table changed shape?'
         unless @adoptions;
-    my @posts    = first-table(slurp('src/BLOG.md'));
-    my @mentions = first-table(slurp('src/MENTIONS.md'));
+    my @posts    = first-table(newest-first(slurp('src/BLOG.md')));
+    my @mentions = first-table(newest-first(slurp('src/MENTIONS.md')));
     my @talks    = upcoming-talks(slurp('src/TALKS.md'));
     die 'no posts parsed out of BLOG.md — has its table changed shape?' unless @posts;
     die 'no mentions parsed out of MENTIONS.md — has its table changed shape?' unless @mentions;
