@@ -135,7 +135,9 @@ build_examples() {
 # worth a generator of its own), and the /in-use/ hub they both hang off. The
 # hub was hand-written HTML until its adoptions list arrived: that list is
 # rakupp's live/ADOPTIONS.md, synced in like every other README here, so it has
-# to be generated to stay in step. Run sites/showcase/sync.sh first.
+# to be generated to stay in step. So are /in-use/blog/, /in-use/mentions/ and
+# /in-use/talks/, from rakupp's BLOG.md, MENTIONS.md and TALKS.md. Run
+# sites/showcase/sync.sh first.
 build_showcase() {
     echo "showcase -> www/showcase + www/live + www/in-use"
     ( cd "$ROOT/sites/showcase" && "$RAKUPP" build.raku --clean )
@@ -254,7 +256,7 @@ check_excel_engine() {
 check_no_stray_absolutes() {
     stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$LEARN/tour" "$WWW/spec" "$WWW/faq" "$LEARN/cookbook" "$WWW/book" "$LEARN/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/film" "$WWW/map" "$LEARN/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku)$' || true)
+            | grep -vE '^/(tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku|slides)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Pull the showcase and live READMEs — and live/ADOPTIONS.md — in from the
-# rakupp repo.
+# Pull the showcase and live READMEs — and live/ADOPTIONS.md, BLOG.md,
+# MENTIONS.md and TALKS.md — in from the rakupp repo.
 #
 #   ./sync.sh [path-to-rakupp-checkout]
 #
@@ -39,4 +39,12 @@ done
 # so a row added in rakupp reaches the site through this same sync.
 cp "$ROOT/live/ADOPTIONS.md" "$DEST/live/ADOPTIONS.md"
 
-echo "synced $(ls "$DEST/showcase"/*.md | wc -l | tr -d ' ') showcase + $(ls "$DEST/live"/*.md | wc -l | tr -d ' ') live file(s) from $ROOT"
+# What has been written and said about it: our own posts, other people's
+# mentions, and the talks. They sit at the top of the rakupp repo, so they sit
+# at the top of src/ here, and become /in-use/blog/, /in-use/mentions/ and
+# /in-use/talks/ — with their latest rows on the /in-use/ hub.
+for f in BLOG MENTIONS TALKS; do
+    cp "$ROOT/$f.md" "$DEST/$f.md"
+done
+
+echo "synced $(ls "$DEST/showcase"/*.md | wc -l | tr -d ' ') showcase + $(ls "$DEST/live"/*.md | wc -l | tr -d ' ') live + 3 writing file(s) from $ROOT"

@@ -30,8 +30,11 @@ program still runs in a fraction of a second:
 | `/install.sh` | The Unix engine installer the front page and `/install/` tell people to pipe into `sh`. A **byte copy** of `rakupp/tools/install.sh` — never edit it here; copy it over and push, and the rakupp repo's `installer-copy` CI job compares the two | `www/install.sh` |
 | `/install-windows.ps1` | The Windows engine installer, the same way: the front page and `/install/` tell people to pipe it into `iex`. A **byte copy** of `rakupp/tools/install-windows.ps1` — never edit it here; copy it over and push, and the same `installer-copy` job compares the two | `www/install-windows.ps1` |
 | `/play/` | The full playground | `www/play/` |
-| `/in-use/` | The Raku language, in use — adoptions (software other people built on Raku++) above the three sections below; the "In use" tab's home | generated from `sites/showcase/` |
+| `/in-use/` | The Raku language, in use — adoptions (software other people built on Raku++) above the three sections below, and a card each for the blog, mentions and talks; the "In use" tab's home | generated from `sites/showcase/` |
 | `/in-use/adoptions/` | The adoptions list in full — rendered from `rakupp/live/ADOPTIONS.md`, synced in like every other README here | generated from `sites/showcase/` |
+| `/in-use/blog/` | Our own posts, on andrewshitov.com and dev.to — rendered from `rakupp/BLOG.md`, synced the same way | generated from `sites/showcase/` |
+| `/in-use/mentions/` | What other people wrote about Raku++ — rendered from `rakupp/MENTIONS.md`, synced the same way | generated from `sites/showcase/` |
+| `/in-use/talks/` | Conference talks, upcoming and past — rendered from `rakupp/TALKS.md`, synced the same way | generated from `sites/showcase/` |
 | `/examples/` | Moved to learn.raku.online/examples/ — redirect pages here; built into `learn/examples` from `sites/examples/` | `learn/` |
 | `/showcase/` | The showcase — one page per `rakupp/showcase` project, from its README | generated from `sites/showcase/` |
 | `/live/` | Software that already existed — ecosystem tools run unmodified under Raku++ | generated from `sites/showcase/` |

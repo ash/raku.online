@@ -1,0 +1,230 @@
+# Mentions — Raku++ written about by other people
+
+Where somebody outside this project wrote about Raku++: newsletters, posts,
+threads, remarks in passing. Each entry is a link, a date, a name, and a plain
+account of what was actually said.
+
+Three neighbouring files hold the things this one is not:
+
+- **[BLOG.md](BLOG.md)** — our own posts, on andrewshitov.com and dev.to.
+- **[TALKS.md](TALKS.md)** — our own talks.
+- **[live/ADOPTIONS.md](live/ADOPTIONS.md)** — other people's *software* that
+  reached for the engine, which is adoption rather than a mention.
+
+The bar: **somebody else wrote it, published where a third party can read it
+without going through us, and it can be linked and dated.** A mention that is
+lukewarm or critical belongs here on the same terms as a warm one — the point
+of the file is the record, not the applause. Our own announcement is the thing
+being reacted to, not a mention of it.
+
+A link post is not writing. Our own posts get submitted to /r/rakulang and
+relayed by the newsletter as a matter of course, and neither the submission
+nor the relay is somebody choosing to write about Raku++ — so a thread only
+earns a row here when a third party started it, or when the comments under it
+say something worth quoting.
+
+| Date | Where | Who | What |
+|---|---|---|---|
+| 27 July 2026 | [Raku Weekly 2026.28/29/30](https://rakuweekly.blog/2026/07/27/2026-28-29-30-thank-you/) | Elizabeth Mattijsen | a section of its own, introducing Raku++ to the Raku community |
+| 10 August 2026 | [Raku Weekly 2026.32](https://rakuweekly.blog/2026/08/10/2026-32-dan-floating-hex/) | Elizabeth Mattijsen | the live editor-and-playground on raku.online |
+| 18 August 2026 | [Raku Weekly 2026.33](https://rakuweekly.blog/2026/08/18/2026-33-all-the-way-to-infinity/) | Elizabeth Mattijsen | the v3.14 release post |
+| August 2026 | [on X](https://x.com/perlancar/status/2090616597169967282) | perlancar | start-up time, and native-compiled Raku++ against Perl 5 |
+| 25 August 2026 | [Raku Weekly 2026.34](https://rakuweekly.blog/2026/08/25/2026-34-yar-by-coke/) | Elizabeth Mattijsen | the [live/](live/) registry, and JSON::Native |
+| 31 August 2026 | [Raku Weekly 2026.35](https://rakuweekly.blog/2026/08/31/2026-35-infinity-revisited/) | Elizabeth Mattijsen | the early-adopters post, the benchmark board, perlancar's remark |
+| 14 September 2026 | [Raku Weekly 2026.36/7](https://rakuweekly.blog/2026/09/14/2026-36-7-multiplicity/) | Elizabeth Mattijsen | CSV::Native |
+| 21 September 2026 | [Raku Weekly 2026.38](https://rakuweekly.blog/2026/09/21/2026-38-italiano-per-favore/) | Elizabeth Mattijsen | the module-manager post, and the three new L10N localizations |
+| 29 September 2026 | [Raku Weekly 2026.39](https://rakuweekly.blog/2026/09/29/2026-39-mainstreamed/) | Elizabeth Mattijsen | the v5.0.0 post: 100.00% of Roast |
+| 5 October 2026 | [Raku Weekly 2026.40](https://rakuweekly.blog/2026/10/05/2026-40-pythonesque/) | Elizabeth Mattijsen | Raku++ as a Python module, the Junctions post; the rename credits three viable implementations |
+| 5 October 2026 | [Is generative AI killing or saving Raku?](https://dev.to/2colours/is-generative-ai-killing-or-saving-raku-37ai) on dev.to | 2colours | Raku++ and Mutsu as the end of Rakudo's monopoly; Junctions as a language problem; questions to the implementors |
+| 10 October 2026 | [compiler-explorer#9257](https://github.com/compiler-explorer/compiler-explorer/issues/9257) on GitHub | Ang3lERR404 | a request to add Raku++ v5.3.0 to Compiler Explorer as an alternate Raku compiler |
+| 12 October 2026 | [Raku Weekly 2026.41](https://rakuweekly.blog/2026/10/12/2026-41-riscy-business/) | Elizabeth Mattijsen | the RISC-V and module-install posts, Webraku; a corner on the 2colours article |
+| 14 October 2026 | [on Hacker News](https://news.ycombinator.com/item?id=50091511) | F3nd0, Elizabeth Mattijsen | Raku++ named in passing as a vibe-coded project; the reply that it is not, and the definitions of the term |
+| 26 October 2026 | [Raku Weekly 2026.42/43](https://rakuweekly.blog/2026/10/26/2026-42-43-appropriate-raku/) | Elizabeth Mattijsen | the Learn Raku app for iOS and Android, and the two posts that came with it |
+
+## Raku Weekly News
+
+[Raku Weekly News](https://rakuweekly.blog/), written by Elizabeth
+Mattijsen, is the Raku community's weekly newsletter, and it has carried
+Raku++ from the week of the announcement on.
+
+Until 30 September 2026 it was called *Rakudo Weekly News* and lived at
+rakudoweekly.blog, so every issue listed here went out under that name. The
+old addresses redirect; the links here point at the new domain.
+
+The first one is the one that matters:
+[**2026.28/29/30 Thank you!**](https://rakuweekly.blog/2026/07/27/2026-28-29-30-thank-you/)
+gave the project a section headed *Andrew's Playground* — the compiler,
+[raku.online](https://raku.online), [the Long Read](LONGREAD.md), the finished
+[Complete Raku Course](https://course.raku.org) and the books, in one place.
+It described Raku++ as a Raku compiler written in C++, linked the announcement
+and the Long Read, and pointed at the /r/rakulang comments. That is the
+introduction to the community, written by somebody else.
+
+After that it has been steady, roughly a mention per release or per post:
+
+- [**2026.32 Dan Floating Hex**](https://rakuweekly.blog/2026/08/10/2026-32-dan-floating-hex/)
+  (10 August 2026) — an *Andrew's Corner* on joining an editor to a playground
+  in a live manner, linking the [live-coding post](https://andrewshitov.com/2026/08/05/live-coding-in-raku/)
+  and the /r/rakulang thread.
+- [**2026.33 All The Way To Infinity**](https://rakuweekly.blog/2026/08/18/2026-33-all-the-way-to-infinity/)
+  (18 August 2026) — the v3.14 post, as an overview of the most interesting
+  parts.
+- [**2026.34 YAR by Coke**](https://rakuweekly.blog/2026/08/25/2026-34-yar-by-coke/)
+  (25 August 2026) — the [live/](live/) registry of other people's programs
+  running unaltered, and the start of modules that use what Raku++ can do,
+  [JSON::Native](https://raku.land/zef:ash/JSON::Native) among them, with a
+  note on its performance.
+- [**2026.35 Infinity Revisited**](https://rakuweekly.blog/2026/08/31/2026-35-infinity-revisited/)
+  (31 August 2026) — the [early adopters](https://andrewshitov.com/2026/08/29/early-raku-adopters/)
+  post, the [benchmark board](docs/status/BENCHMARKS.md), and perlancar's
+  remark, linked under the heading *First time in ~18 years*. App::Rakus in
+  the module list.
+- [**2026.36/7 Multiplicity**](https://rakuweekly.blog/2026/09/14/2026-36-7-multiplicity/)
+  (14 September 2026) — [CSV::Native](https://raku.land/zef:ash/CSV::Native)
+  in the module list.
+- [**2026.38 Italiano, per favore**](https://rakuweekly.blog/2026/09/21/2026-38-italiano-per-favore/)
+  (21 September 2026) — the issue opens on the week's two posts, the
+  [Italian one](https://andrewshitov.com/2026/09/15/raku-la-lingua-dove-posso-parlare-italiano/),
+  which gave the issue its title, and the
+  [module manager post](https://andrewshitov.com/2026/09/17/raku-module-manager/)
+  covering v4.0.0. The three new localizations — `L10N::UK`, `L10N::LV` and
+  `L10N::RU` — are in the new-module list, and got a sentence of their own in
+  the opening about Raku programs written in those natural languages.
+- [**2026.39 Mainstreamed**](https://rakuweekly.blog/2026/09/29/2026-39-mainstreamed/)
+  (29 September 2026) — an *Andrew's Corner* on the
+  [v5.0.0 post](https://andrewshitov.com/2026/09/29/raku-v5-0-0-reaches-100-00-of-roast/):
+  Raku++ at 100.00% of Roast, and so able to call itself an implementation
+  of the Raku Programming Language. The issue's closing words put it next to
+  RakuAST becoming Rakudo's default as one of the week's two headlines —
+  Raku++ reaching parity with Rakudo spectest-wise.
+- [**2026.40 Pythonesque**](https://rakuweekly.blog/2026/10/05/2026-40-pythonesque/)
+  (5 October 2026) — the issue opens on Raku++
+  [as a Python module](https://pypi.org/project/rakulang/), with Raku
+  grammars named as the reason a Python program would want it, and links the
+  [Using Raku in Python](https://andrewshitov.com/2026/10/03/using-raku-in-python/)
+  post and the second
+  [Junctions post](https://andrewshitov.com/2026/10/03/raku-a-language-where-a-value-can-have-several-values-at-once-part-2/).
+  The next section explains the rename: there are now three viable
+  implementations of the language, Rakudo only one of them, and the
+  developers of Raku++ and Mutsu have promised to send their news in.
+  L10N::RU, L10N::LV and L10N::UK are in the module list again.
+- [**2026.41 Riscy Business**](https://rakuweekly.blog/2026/10/12/2026-41-riscy-business/)
+  (12 October 2026) — the issue opens on the week's two posts,
+  [Raku++ on RISC-V](https://andrewshitov.com/2026/10/09/raku-on-risc-v/),
+  which the title plays on, and
+  [the module-install one](https://andrewshitov.com/2026/10/10/better-ways-to-install-modules-in-raku/),
+  and on [Webraku](https://raku.land/zef:ash/Webraku), a full-stack web
+  framework for Raku. A *Marton's Corner* follows on the 2colours article —
+  the issue names its author as Marton Polgar — and links
+  [Andrew's comment](https://dev.to/andrewshitov/comment/3gij4) under it and
+  the discussion on r/rakulang and Mastodon. Math::Wavelet and Webraku are in
+  the new-module list, JSON::Native among the updated ones.
+- [**2026.42/43 APPropriate Raku**](https://rakuweekly.blog/2026/10/26/2026-42-43-appropriate-raku/)
+  (26 October 2026) — the issue opens on the Raku Course as a *Learn Raku*
+  app for [iOS](https://apps.apple.com/app/id6788222934) and
+  [Android](https://play.google.com/store/apps/details?id=online.deepsoft.learnraku),
+  which the title plays on: the course on a phone, a pad or a notebook,
+  entirely offline, with every example still runnable and editable. It links
+  the [/r/rakulang comments](https://www.reddit.com/r/rakulang/comments/1xcn12d/comment/19rngjbx3w7gg/)
+  and the two posts that came with it,
+  [learn.raku.online](https://andrewshitov.com/2026/10/23/raku-as-a-foreign-language/)
+  and [the course update](https://andrewshitov.com/2026/10/24/raku-course-update/).
+  The issue does not name the engine; the app's playground is Raku++. Its
+  closing words call it a fully functional Raku on mobile devices. F3nd0's
+  Hacker News comment is in the comments-about-Raku list, and JSON::Native
+  among the updated modules.
+
+## perlancar, August 2026
+
+perlancar — a prolific CPAN author, and the author of Bencher — starred the
+repository and wrote [on X](https://x.com/perlancar/status/2090616597169967282)
+that he was "genuinely excited to use Perl 6 (Raku) again" for the first time
+in something like eighteen years, naming the millisecond start-up and calling
+native-compiled Raku++ only twice slower than Perl 5. Raku Weekly 2026.35
+linked it as *First time in ~18 years*.
+
+It is the most useful thing anyone has written about the project so far,
+because the second half of it is a bug report with the location field left
+blank. No program was named, so one was built to carry the claim:
+[`tools/bench/hashfill.raku`](tools/bench/hashfill.raku) and
+[`hashfill.pl`](tools/bench/hashfill.pl), the same work line for line in both
+languages under a byte-identical-output gate. perl won it in every mode we
+had — the native binary at 113 ms of wall clock against perl's 82. The factor
+of two turned out to be three removable constants and none of them the
+hashing; after they were removed the compiled mode measured 82.1 ms against
+perl's 81.8 in the same sitting. `perl` is now a column in
+`run-bench.raku`, and the whole account is in
+[docs/dev/findings/HASHFILL-AND-BIGINT.md](docs/dev/findings/HASHFILL-AND-BIGINT.md).
+
+An outside remark became a kernel, and the kernel reached perl. That is what
+this file is for.
+
+## 2colours, October 2026
+
+[Is generative AI killing or saving Raku?](https://dev.to/2colours/is-generative-ai-killing-or-saving-raku-37ai)
+(dev.to, 5 October 2026) is by 2colours, a Raku contributor since 2021 who
+writes from outside the official Raku venues after a ban. It is the first
+longer piece by somebody else that takes Raku++ as one of its subjects, and
+it is mixed in the useful way.
+
+The article opens on Raku++ and [Mutsu](https://github.com/tokuhirom/mutsu)
+as two "vibe-coded but ambitious" runtimes, and puts them next to the
+AI-written patches arriving in Rakudo and MoarVM. Its argument about Raku++
+runs in three steps:
+
+- **The end of Rakudo's monopoly.** For as long as Rakudo was the only usable
+  runtime, Rakudo's behaviour was the language and Rakudo's developers were
+  its stakeholders. Competing runtimes can break that loop. It notes that
+  Raku++ treats Rakudo as a reference (quoting [the Long Read](LONGREAD.md)),
+  and that passing a module's own tests is a weaker claim than actually using
+  the module.
+- **A plan bigger than a runtime.** A section of its own about Andrew and
+  [raku.online](https://raku.online): the guides, the training tasks, the
+  showcases, and the [Rakudo bugs page](https://raku.online/deep/rakudo-bugs/)
+  in particular, which surprised the author with how much context it carries.
+  It reads the whole as a project with commercial intent, and says that if
+  anyone in the community can sell Raku once the technical side holds up, it
+  is him.
+- **Junctions.** The reservation: some of Raku's problems are in the language
+  design, not in any runtime, so a new runtime cannot fix them. The example
+  is a `first` over a list holding a junction, which returns a junction;
+  Raku++ and Mutsu both return `any(1, 222)`, as Rakudo does, because that
+  is how Junctions are designed to work — which is the author's point.
+
+It ends on questions, three of them to the implementors of Raku++ and Mutsu:
+how authoritative Rakudo's behaviour is to them, short and long term, and
+what they do where Raku leaves behaviour unspecified; what the primary
+motive was; and how string and regex performance look. It also asks whether
+the use of the raku.online domain was discussed in the community.
+
+## Hacker News, October 2026
+
+A mention in passing, in the comments under a
+[story about the Iosevka font](https://news.ycombinator.com/item?id=50084240)
+(14 October 2026). Under a comment arguing that LLMs will not take off in
+coding, F3nd0 [wrote](https://news.ycombinator.com/item?id=50091511) of being
+unsure what to think of their capabilities, and curious where ambitious
+vibe-coded projects like Raku++ will go, with a link to the repository.
+
+Elizabeth Mattijsen [replied](https://news.ycombinator.com/item?id=50096580)
+that Raku++ is not vibe coding, linking
+[Andrew's comment](https://dev.to/andrewshitov/comment/3gij4) under the
+2colours article. F3nd0 [answered](https://news.ycombinator.com/item?id=50099390)
+the next day with dictionary definitions: where the term means instructing an
+AI to write code, as Merriam-Webster, Cambridge and Collins have it, Raku++
+is vibe-coded; where it also means not understanding the generated code well,
+as Wiktionary adds, it is not. The comment ends by asking which definition is
+the more correct one.
+
+Raku Weekly 2026.42/43 listed the first comment among its comments about
+Raku, as *An ambitious vibe-coded project*.
+
+## Adding an entry
+
+Keep it dated, linked and attributed, keep the note to what the source
+actually says, and put it in the table in date order with a section below if
+it deserves more than a line. If a mention sends us somewhere — a bug, a
+benchmark, a feature — say where it went, the way the perlancar entry does.
+A thread we started ourselves, or a relay of our own writing, is not an entry.
+Mentions of somebody's *software* using Raku++ go to
+[live/ADOPTIONS.md](live/ADOPTIONS.md) instead.

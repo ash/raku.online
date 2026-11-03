@@ -13,6 +13,9 @@
 # adoptions list behind it. The hub used to be hand-written HTML in www/, which
 # meant a row added to rakupp's live/ADOPTIONS.md had to be re-typed here; now
 # both the cards and the page behind them come from that one synced file.
+# The same goes for what has been written and said about Raku++: rakupp's
+# BLOG.md, MENTIONS.md and TALKS.md become /in-use/blog/, /in-use/mentions/ and
+# /in-use/talks/, and the hub's cards for them are read out of the same files.
 #
 # The sources are synced in by ./sync.sh; the Markdown handled here is what
 # those READMEs actually use — headings, fenced code, lists, tables, quotes,
@@ -24,6 +27,9 @@ my $LIVE = '';
 my @CTX;         # repo directory the page being rendered sits in, e.g. <showcase chat>
 my @PROJECTS;    # showcase slugs, from the README table (+ extras)
 my @ENTRIES;     # live slugs
+
+# rakupp's top-level lists of writing, and where each one is mounted.
+my constant WRITING = (blog => 'BLOG', mentions => 'MENTIONS', talks => 'TALKS');
 
 # ---- inline formatting ----------------------------------------------------
 
@@ -88,6 +94,13 @@ sub link-target(Str $t --> Str) {
     return $BASE ~ '/' if $path eq 'showcase';
     return $LIVE ~ '/' if $path eq 'live';
     return '/in-use/adoptions/' if $path eq 'live/ADOPTIONS.md';
+    for WRITING -> $w {
+        return '/in-use/' ~ $w.key ~ '/' if $path eq $w.value ~ '.md';
+    }
+    # The deck is copied to /slides/ whole: index.html and its PDF export.
+    return '/slides/' if $path eq 'presentation' | 'presentation/index.html';
+    return '/slides/rakupp-presentation.pdf' if $path eq 'presentation/rakupp-presentation.pdf';
+    return %SITE<repo> if $path eq '';    # the top README, from TALKS.md
     if @path.elems == 2 && @path[0] eq 'showcase' && @path[1] eq any(@PROJECTS) {
         return $BASE ~ '/' ~ @path[1] ~ '/';
     }
@@ -298,6 +311,8 @@ my constant FOOT-INUSE =
     'Everything here runs under the same interpreter — in your browser, from the command line, or compiled to a standalone native binary.';
 my constant FOOT-LIVE =
     'The tools here are other people\'s work — installed from the ecosystem, run unmodified, credited, and checked against Rakudo.';
+my constant FOOT-WRITING =
+    'The posts and talks are the project\'s own; the mentions are other people\'s, dated and linked, warm or not.';
 
 # ---- parsing the index table ----------------------------------------------
 
@@ -401,6 +416,54 @@ sub adoptions-page(--> Str) {
     page('Adoptions — software that adopted Raku++', $body, FOOT-INUSE)
 }
 
+# ---- /in-use/blog/, /in-use/mentions/, /in-use/talks/ ----------------------
+
+# These three sit at the top of the rakupp repo, so their links resolve from
+# there: @CTX is empty.
+sub writing-page(Str $slug --> Str) {
+    my $file = WRITING.first(*.key eq $slug).value ~ '.md';
+    my $md = slurp("src/$file");
+    @CTX = ();
+    my $title = title-of($md) || $slug.tc;
+    my $body = '<p class="crumb"><a href="/in-use/">← Raku++ in use</a></p>'
+        ~ "\n<h1>" ~ inline($title) ~ '</h1>'
+        ~ "\n<p class=\"sc-actions\"><a class=\"sc-btn ghost\" href=\"" ~ %SITE<gh-base>
+        ~ $file ~ "\">$file on GitHub ↗</a></p>"
+        ~ "\n" ~ render($md);
+    page($title.contains('Raku++') ?? $title !! "$title — Raku++", $body, FOOT-WRITING)
+}
+
+# The body rows of the first table in a file, as lists of cells: the posts on
+# andrewshitov.com in BLOG.md, the mentions in MENTIONS.md. Both files keep
+# their tables in date order, so the last row is the latest.
+sub first-table(Str $md) {
+    my @lines = $md.lines;
+    my $i = @lines.first(*.starts-with('|'), :k) // return ();
+    $i += 2;    # past the header and the |---| row
+    my @rows;
+    while $i < @lines.elems && @lines[$i].starts-with('|') {
+        @rows.push([cells(@lines[$i])]);
+        $i++;
+    }
+    @rows
+}
+
+# The talks under "## Upcoming" in TALKS.md: each one's ### heading, and its
+# date — the **When:** line up to the first dash.
+sub upcoming-talks(Str $md) {
+    my @talks;
+    my $in = False;
+    for $md.lines -> $l {
+        if $l.starts-with('## ') { $in = $l.substr(3).trim eq 'Upcoming'; next }
+        next unless $in;
+        if $l.starts-with('### ') { @talks.push({ name => $l.substr(4).trim, when => '' }); next }
+        if @talks && !@talks[*-1]<when> && $l ~~ / ^ '- **When:**' \s* (.+) / {
+            @talks[*-1]<when> = (~$0).split(' — ')[0].subst(/ '.' $ /, '');
+        }
+    }
+    @talks
+}
+
 # Counts on the hub are written out, and they change: the showcase card said
 # "Fifteen" for a sixteenth project's first day on the site. Spell what was
 # actually built rather than what someone last typed.
@@ -414,8 +477,9 @@ sub spell(Int $n --> Str) {
 
 # The hub, in the order a stranger needs it: what other people did with the
 # engine on their own, then what is here to try. Both halves are generated —
-# the cards below come from the same file as the page behind them.
-sub inuse-page(@adoptions, Int $showcases --> Str) {
+# the cards below come from the same file as the page behind them. Last, what
+# has been written and said about it, each card naming its list's latest row.
+sub inuse-page(@adoptions, Int $showcases, :@posts, :@mentions, :@talks --> Str) {
     @CTX = 'live',;
     my @body;
     # The shelves first — what a visitor can open right now — then what other
@@ -587,6 +651,68 @@ sub inuse-page(@adoptions, Int $showcases --> Str) {
         </section>
         TAIL
 
+    # A row's link cell, marked as leaving the site: only the first link gets
+    # the arrow, so "[on X](…) by somebody" stays one link.
+    sub out(Str $cell --> Str) { inline($cell).subst('</a>', ' ↗</a>') }
+
+    my $post = @posts[*-1];
+    my $mention = @mentions[*-1];
+    my $weekly = @mentions.grep({ .[1].starts-with('[Raku Weekly') }).elems;
+    my $next = @talks
+        ?? "\n        Next: <b>{inline(@talks[0]<name>)}</b>"
+           ~ (@talks[0]<when> ?? ', ' ~ inline(@talks[0]<when>) !! '') ~ '.'
+        !! '';
+    @body.push(qq:to/WRITING/);
+
+        <section class="sr-sec" id="writing">
+          <p class="sr-kicker">In writing</p>
+          <h2>Posts, mentions and talks <a class="anchor" href="#writing" aria-label="link">#</a></h2>
+          <p class="sr-intro">
+            What has been written and said about Raku++, by the project and
+            about it: a post as each release or feature landed, what other
+            people made of it, and the conference talks. All three lists are
+            kept in the rakupp repository, beside the code, and these pages
+            are rendered from them.
+          </p>
+
+          <div class="sr-grid three">
+            <div class="sr-card link">
+              <h3><a href="/in-use/blog/">Blog posts</a></h3>
+              <p>
+                {spell(@posts.elems).tc} posts on andrewshitov.com since the
+                announcement — a release, a feature, or a corner of the language
+                at a time — and the language ones again on dev.to, as a series.
+              </p>
+              <p class="sr-more">Latest: {out($post[1])}, {inline($post[0])}</p>
+            </div>
+
+            <div class="sr-card link">
+              <h3><a href="/in-use/mentions/">Mentions</a></h3>
+              <p>
+                What other people wrote, kept on the same terms whether it was
+                warm or critical: {spell($weekly)} issues of Raku Weekly News
+                so far, and {spell(@mentions.elems - $weekly)} pieces elsewhere.
+                Every entry is dated, linked and attributed.
+              </p>
+              <p class="sr-more">Latest: {out($mention[1])}, {inline($mention[0])}</p>
+            </div>
+
+            <div class="sr-card link">
+              <h3><a href="/in-use/talks/">Talks</a></h3>
+              <p>
+                Conference talks on what Raku++ is, why it exists and how it is
+                built, and the one deck they share.$next
+              </p>
+              <p class="sr-more">
+                <a href="/slides/">The slides</a>
+                <span class="sep">·</span>
+                <a href="/slides/rakupp-presentation.pdf">as a PDF</a>
+              </p>
+            </div>
+          </div>
+        </section>
+        WRITING
+
     page('The Raku language, in use', @body.join("\n"), FOOT-INUSE,
          css => 'showroom', body-class => 'showroom',
          desc => 'Two halves: software other people built on Raku++ — a Wolfram '
@@ -654,6 +780,11 @@ sub MAIN(Bool :$clean = False) {
     my @adoptions = parse-adoptions(slurp('src/live/ADOPTIONS.md'));
     die 'no rows parsed out of live/ADOPTIONS.md — has its table changed shape?'
         unless @adoptions;
+    my @posts    = first-table(slurp('src/BLOG.md'));
+    my @mentions = first-table(slurp('src/MENTIONS.md'));
+    my @talks    = upcoming-talks(slurp('src/TALKS.md'));
+    die 'no posts parsed out of BLOG.md — has its table changed shape?' unless @posts;
+    die 'no mentions parsed out of MENTIONS.md — has its table changed shape?' unless @mentions;
 
     # The synced pages and the index table must agree, loudly: a project the
     # table does not know stays off the site (that is the raytracer rule), and
@@ -690,9 +821,15 @@ sub MAIN(Bool :$clean = False) {
     }
     spurt('out/live/index.html', live-index());
 
-    spurt('out/in-use/index.html', inuse-page(@adoptions, @PROJECTS.elems));
+    spurt('out/in-use/index.html', inuse-page(@adoptions, @PROJECTS.elems,
+          :@posts, :@mentions, :@talks));
     spurt('out/in-use/adoptions/index.html', adoptions-page());
+    for WRITING -> $w {
+        mkdir("out/in-use/{$w.key}");
+        spurt("out/in-use/{$w.key}/index.html", writing-page($w.key));
+    }
 
     say "built {@PROJECTS.elems} showcase page(s) + {@ENTRIES.elems} live page(s)"
-        ~ " + 2 indexes + the /in-use/ hub ({@adoptions.elems} adoptions) -> out/";
+        ~ " + 2 indexes + the /in-use/ hub ({@adoptions.elems} adoptions,"
+        ~ " {@posts.elems} posts, {@mentions.elems} mentions, {@talks.elems} upcoming talks) -> out/";
 }
