@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The month after 100% — Pace</title>
+<meta name="description" content="Kernels that took fib from 392 ms to 14, a Roast grown for Unicode 18, objects in cycles freed at last, and the benchmarks moved to a second machine.">
+<script>window.__SITE_BASE='/pace';</script>
+<script src="/theme/boot.js?v=61c78e3f"></script>
+<link rel="stylesheet" href="/theme/base.css?v=61c78e3f">
+<link rel="stylesheet" href="/theme/shell.css?v=61c78e3f">
+<link rel="stylesheet" href="/theme/pace.css?v=61c78e3f">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content pace">
+<nav class="pc-strip" aria-label="Chapters"><a href="/pace/">Pace</a><a href="/pace/day-one/" title="An engine on day one">1</a><a href="/pace/regexes/" title="A regex engine of its own">2</a><a href="/pace/numbers/" title="Exact numbers, whole graphemes">3</a><a href="/pace/compiler/" title="Four ways to run a program">4</a><a href="/pace/browser/" title="Raku in a browser tab">5</a><a href="/pace/other-code/" title="Other people's code">6</a><a href="/pace/first-speed/" title="Slow programs, and what they pointed at">7</a><a href="/pace/parallel/" title="Parallel by default">8</a><a href="/pace/instruments/" title="Honest instruments">9</a><a href="/pace/values/" title="Smaller values, real frames">10</a><a href="/pace/travel/" title="Raku that travels">11</a><a href="/pace/rakuast/" title="RakuAST and slangs">12</a><a href="/pace/roast/" title="Roast, from 185 files to 1,424">13</a><a href="/pace/versus/" title="Against the reference compiler">14</a><a href="/pace/tree-walker/" title="The tree-walker, 20% faster in a day">15</a><a href="/pace/after-roast/" aria-current="page" title="The month after 100%">16</a></nav>
+<p class="pc-eyebrow">Chapter 16 · 1–22 October</p><h1>The month after 100%</h1>
+<p class="lede">v5.1.0 passed every file of Roast on 30 September. Six releases followed in October, and every one of them kept every file passing, through a Roast that grew a file along the way. With the count at its ceiling, the work turned to three things: what 100% had cost, the wrong answers a passing suite had not caught, and the places a program can run.</p>
+
+<div class="pc-stats">
+  <div><b>392 → 14 ms</b><span><code>fib</code> interpreted, v5.1.0 to v5.2.0: subs compiled to integer kernels on their first call</span></div>
+  <div><b>1,425 / 1,425</b><span>Roast files from v5.3.0 on, after Unicode 18 added one</span></div>
+  <div><b>0 → 319,078</b><span>of 320,000 objects in reference cycles freed by one loop, in v5.5.0</span></div>
+  <div><b>18 of 18</b><span>kernels where v5.5.0 takes less time than Rakudo 2026.09, interpreted and compiled</span></div>
+</div>
+
+<div class="pc-turn"><b>The turn</b>The tree-walker had been made faster by shortening its path (<a href="../tree-walker/">chapter 15</a>). v5.2.0 took the hottest code off that path altogether. A sub whose body is closed integer arithmetic is compiled on its first call into int64 nodes and runs there. When the kernel cannot answer exactly (an argument that is not a plain Int, an overflow, a zero divisor), the call re-runs the ordinary way from the start, so results and errors do not change. Loops over plain Int and Str variables got the same treatment.</div>
+
+<div class="pc-grid2">
+  <figure class="pc-fig" data-chart="bench" data-kernel="fib" data-lanes="interp,native,rakudo"><figcaption><b>fib</b>: integer kernels, from v5.2.0.</figcaption></figure>
+  <figure class="pc-fig" data-chart="bench" data-kernel="rats" data-lanes="interp,native,rakudo"><figcaption><b>rats</b>: kernels that take Rats, from v5.3.0.</figcaption></figure>
+</div>
+<p>Both charts come from the one Apple M3 of <a href="../versus/">chapter 14</a>, so they end at v5.3.0, the last release it timed.</p>
+
+<h2>Kernels</h2>
+<p>Against the v5.1.0 release binary in the same sitting, v5.2.0's interpreter was faster on every kernel: <code>fib</code> −97%, <code>loopsum</code> and <code>streq</code> −93%, <code>mainwhen</code> −92%. It now took less time than Rakudo 2026.09 on fifteen of seventeen. <code>--exe</code> gives each kernel sub an int64 twin in the C++ it emits, and <code>RAKUPP_NO_KERNELS=1</code> turns both off.</p>
+<p>v5.3.0 let kernels take Nums, Rats, <code>**</code> and pure methods. A double travels in the integer frame as its bits, and a Rat is a numerator slot and a denominator slot with 128-bit arithmetic. <code>rats</code> went from 176 ms to 25. Loop kernels began to use arrays and hashes in place, with an undo log that takes the writes back if the loop bails. On <code>arraypush</code>, <code>rats</code> and <code>intcat</code> the interpreter became faster than the compiled binary.</p>
+<p>v5.5.0 found that ordinary code had been missing all of it. A decimal literal is a Rat, and a Rat beside a Num kept a loop off the kernels, so code written the way most people write it ran about 60 times slower than the same line with <code>e0</code> literals. <code>$x = $x * 1.0000001 + 0.000000001</code> went from 3,418 instructions an iteration to 57.</p>
+
+<h2>What it cost, and how that was shipped</h2>
+<p>v5.3.0 made method calls slower, by 4.5 to 9.5% on the call kernels. Retired instructions grew 6 to 7% on the worst three, so it was work added, not code layout. A bisect found no single commit: the cost had built up over about 120 commits, a percent or two at a time. The release shipped it measured rather than fixed, with the three per-call costs the profile named, and v5.4.0 removed one of them. v5.5.0 put the call path another 4 to 9% behind v5.4.0. Its notes say this was accepted for the release, not fixed, and that the costs the commits admitted when they landed do not add up to it.</p>
+<p>The release gate, perf-guard, compares every kernel with a recorded baseline. At v5.2.0 it could not record one, for a new reason: <code>fib</code>, <code>loopsum</code> and three other kernels now ran in 5 to 13 ms, about 4 of which was process startup, so their runs spread wider than the 5% the gate enforces. v5.2.1 sized its six fastest kernels past startup and made v5.2.0's the baseline. That is still the baseline. v5.3.0's attempt to record a new one refused three times on noise and was not forced, and the M4 refused one at v5.5.0.</p>
+
+<h2>A Roast that grew, and the answers it does not check</h2>
+<p>On 9 October Roast carried Unicode 18.0's generated tests and one new file, <code>S15-nfg/GraphemeBreakTest-4.t</code>, for 1,425 files in all. The v5.2.1 binary passes 1,405 of them; the 20 it fails are the new Unicode tables. v5.3.0 regenerated every UCD and UCA table, added UAX #29's new GB9c rule, and passed all 1,425 files and all 219,207 tests with skip and todo left out. Every release since has done the same.</p>
+<p>A suite at 100% can still miss a wrong answer. v5.5.0 added oracle gates, which check Raku++ against something other than Roast: its DEFLATE against libz, Int and Rat arithmetic against Python in about 580,000 cases, and every line of Unicode's own NormalizationTest, GraphemeBreakTest and CollationTest. The release's notes give a whole section to silent wrong answers, most of them found by those gates' first runs. Among them:</p>
+<ul>
+  <li><b><code>×</code> was <code>*</code>.</b> The lexer turned <code>×</code>, <code>÷</code>, <code>−</code>, <code>≤</code>, <code>≥</code> and <code>≠</code> into their ASCII spellings, so a user's <code>multi infix:&lt;×&gt;</code> was never consulted.</li>
+  <li><b><code>/hello/i</code> matched case-sensitively.</b> It parsed as a regex followed by a postfix <code>i</code>. Rakudo makes it a compile error, and now so does Raku++.</li>
+  <li><b><code>&lt;:sc&lt;Latn&gt;&gt;</code> matched every character</b>, and so did <code>&lt;:Block&lt;Arrows&gt;&gt;</code>. A property's value was not looked up by its aliases.</li>
+  <li><b>Text read from a file was not NFC.</b> A decomposed <code>é</code> read from a file was not <code>eq</code> to the same letter typed in the program, and missed as a hash key.</li>
+</ul>
+
+<h2>Linear again</h2>
+<p>v5.3.0 made building a string linear. <code>~=</code> appends in place for every value type, and a long string may be a view of a shared buffer, so prepending and <code>.substr</code> loops no longer copy the whole string. <code>intcat</code>, two million Int appends into one string, took 50 ms. v5.2.1 had not finished it in a minute.</p>
+<p>The same release made loading quadratic. It asked the whole file a question for every word after a term, so 3,000 one-line subs loaded in 176 ms against v5.2.1's 22, and 30,000 took 16 seconds. v5.4.0 brought that back to 22 ms and added a gate so it could not happen quietly again: <code>t/scaling</code> times 171 shapes of program at n and at 8n, and fails any that grows more than 24 times for 8 times the size. It found most of the run-time quadratics that v5.4.0 then fixed. Twenty thousand appends of non-ASCII text had taken 5.25 s; eighty thousand now take 2 ms. A 2,705-line grammar over accented text went from 50.66 s to 0.06.</p>
+
+<h2>Memory, and objects in cycles</h2>
+<p>A value went from 128 bytes to 80 in v5.2.0 (<a href="../values/">chapter 10</a> tells how it got from 344 to 128). With the rest of that release's memory work, a million-element array of Ints went from 258 MB to 85, and 200k objects with two attributes from 946 MB to 133. In v5.5.0 a closure went from 704 bytes to 88, because everything about its code moved into a block that every closure of it shares.</p>
+<p>Reference counting cannot free objects that refer to each other, and until v5.5.0 nothing else did. The loop in issue #151 freed none of its 320,000 objects and grew from 238 MB to 1,882. v5.5.0 keeps reference counting and adds a backup cycle collector, which finds groups whose counts only explain each other and breaks them, at scope exits and compiled loop iterations. The same loop now frees 319,078 objects and grows from 10 MB to 11; Rakudo 2026.09 frees 319,252. It also ended a leak in every call of a routine that declares a <code>my sub</code> or keeps a block in a variable.</p>
+
+<h2>Where it runs</h2>
+<ul class="pc-dates">
+  <li><time>2 Oct · v5.2.0</time><b>A Docker image, and riscv64.</b> <code>ghcr.io/ash/rakupp</code> is published for amd64 and arm64, and riscv64 builds and is tested on RISE runners. <code>cro run</code> works.</li>
+  <li><time>3 Oct · v5.2.1</time><b><code>pip install rakulang</code>.</b> Wheels for macOS, Linux on x86_64 and aarch64, and Windows, each carrying the engine. Four Cro programs that check themselves (a REST API, forms and an upload, server-sent events, a WebSocket chat) found seven more bugs, and all four pass.</li>
+  <li><time>9 Oct · v5.3.0</time><b><code>--sandbox</code>, and spreadsheets.</b> A sandboxed program may compute, print and read its input, and nothing else. The kernel confines the process as well, and where it cannot, <code>--sandbox</code> refuses to run. <code>=RAKU(…)</code> in Google Sheets and <code>=RAKU.EVAL(…)</code> in Excel run on Raku.js. zef works after <code>rakupp install zef</code>, and the VS Code extension is on the Marketplace.</li>
+  <li><time>13 Oct · v5.4.0</time><b><code>.hyper</code> on every core.</b> The methods had been serial stand-ins; only the <code>hyper for</code> statement had fanned out (<a href="../parallel/">chapter 8</a>). Over a million Nums, <code>.hyper.map</code> went from 0.32 s to 0.16. <code>rakupp install cro</code> installs all 38 distributions with their suites green. v5.4.1 followed the same day, because the tag's WebAssembly job found that <code>use Data::Native</code> inside a routine died, and the spreadsheet formulas run one.</li>
+  <li><time>22 Oct · v5.5.0</time><b><code>rakupp --auto</code>, Alpine and i386.</b> With <code>--auto</code>, the modules a program is missing are fetched from the zef index and the program carries on; a name one typo away from a far more depended-on one is refused. Release archives for musl Linuxes, NativeCall on 32-bit x86, and a Linux build that runs on glibc 2.18. raku.org's own site, built on Air, Cro and Cromponent, loads and serves its front page.</li>
+</ul>
+
+<h2>A second machine</h2>
+<p>Every benchmark on these pages until 13 October ran on one Apple M3. For v5.5.0 it was out of reach, and an Apple M4 stood in. The M4 is not a uniformly faster M3. On builds both machines timed, it takes 0.75 to 1.03 times the M3's time depending on the kernel, about 0.9 at the median, so no single factor turns one machine's milliseconds into the other's. Ratios carry across. The sitting re-timed two builds the M3 had timed, to tie the two machines together, and <a href="/spec/dashboard/">the dashboard</a> draws the M4's readings as lines of their own.</p>
+<p>On the M4, v5.5.0 takes less time than Rakudo 2026.09 on all eighteen kernels, interpreted and compiled. The closest are <code>multiwhere</code> (1.09× interpreted, 1.08× compiled) and <code>objects</code> (1.2× and 1.18×). On <code>multiwhere</code> that lead is the machine's, not the release's: on the M3, v5.4.0 had trailed Rakudo there by 7%.</p>
+
+<h2>Left open</h2>
+<p>v5.5.0's notes end with what is still behind. Text against Perl is the widest gap: 94× on <code>.trans</code>, 19× on output, 14× on regex captures. Rakudo is still 5 to 10 times faster at binding an array element. <code>map</code> and <code>grep</code> are still eager outside <code>.first</code> and <code>.head</code>. The rest of the call-path cost has not been found, and <code>regex</code> lost 6 to 7% over the cycle in steps of about 1%.</p>
+
+<nav class="pc-pn" aria-label="Previous and next chapter"><a class="prev" href="/pace/tree-walker/"><span>← Chapter 15</span>The tree-walker, 20% faster in a day</a></nav>
+<footer>
+<span>Every figure on these pages comes from the release notes, the plans and the measurements committed in the <a href="https://github.com/ash/rakupp">rakupp</a> repository.</span>
+<span><a href="/rakupp/">About Raku++</a>. <a href="/spec/dashboard/">The live dashboard</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/pace.js?v=61c78e3f" defer></script>
+<script src="/theme/shell.js?v=61c78e3f" defer></script>
+</body>
+</html>

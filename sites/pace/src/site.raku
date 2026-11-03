@@ -3,7 +3,7 @@
     base      => '/pace',
     title     => 'Pace',
     tagline   => 'How Raku++ got here: the turns in its architecture, its speed and its coverage, ' ~
-                 'from the first commit on 2 July 2026 to every file of Roast, in fifteen chapters.',
+                 'from the first commit on 2 July 2026 to every file of Roast and the month after it, in sixteen chapters.',
     repo      => 'https://github.com/ash/rakupp',
 
     # The spec dashboard's history; the charts plot the same numbers it does.
@@ -51,12 +51,15 @@
         { slug => 'roast',       when => '2 July – 30 September',
           title => 'Roast, from 185 files to 1,424',
           blurb => 'The climb, the times it went down for the right reason, and the nine days from 803 files to every one of them.' },
-        { slug => 'versus',      when => '13 July – 30 September',
+        { slug => 'versus',      when => '13 July – 9 October',
           title => 'Against the reference compiler',
-          blurb => 'Every release re-run on one machine, kernel by kernel, beside the Rakudo of its day.' },
+          blurb => 'Every release to v5.3.0 re-run on one machine, kernel by kernel, beside the Rakudo of its day.' },
         { slug => 'tree-walker', when => '30 September',
           title => 'The tree-walker, 20% faster in a day',
           blurb => 'Thirteen commits after v5.1.0: the gap to compiled code cut by a third to a half, and 100% of Roast kept after every one.' },
+        { slug => 'after-roast', when => '1–22 October',
+          title => 'The month after 100%',
+          blurb => 'Kernels that took fib from 392 ms to 14, a Roast grown for Unicode 18, objects in cycles freed at last, and the benchmarks moved to a second machine.' },
     ),
 
     # `say "Hello"` compiled, in bytes, from each release's notes. Releases

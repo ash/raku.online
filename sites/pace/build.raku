@@ -101,7 +101,9 @@ sub prev-next(@chapters, Int $i --> Str) {
 sub chart-data(Str $dash --> Str) {
     my %d = from-json(slurp($dash));
     my @releases = @(%d<releases>).grep({ .<tag>.starts-with(q<v>) || .<tag> eq q<main> }).map(-> %r {
-        %( tag => (%r<tag> eq q<main> ?? q<v5.1.0> !! %r<tag>), date => %r<date>,
+        # main is labelled by the revision it was measured at, which the
+        # dashboard records; a fixed label goes stale at the next release.
+        %( tag => (%r<tag> eq q<main> ?? (%r<rev> // q<main>) !! %r<tag>), date => %r<date>,
            files => %r<files_pass>, filesTotal => %r<files_total>,
            tests => %r<tests_pass>, testsTotal => %r<tests_total>,
            bench => %r<bench> // {} )
