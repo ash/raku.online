@@ -765,9 +765,13 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         my $main-rev   = sitting-rev($main-log);
         my $is-main = -> $line {
             my $rev = sitting-rev($line);
-            # A rev on both sides is decisive either way: same rev is the same
-            # sitting, a different rev is a different one even on the same date.
-            $rev && $main-rev ?? $rev eq $main-rev
+            # A rev on both sides decides it: a different rev is a different
+            # sitting even on the same date, and the same rev is the same one
+            # only with the same numbers. The rev is BENCHMARKS.md's, which
+            # names the M3's sitting: the M4's `main` rows in bench-backfill.tsv
+            # move without it, and on the rev alone v5.6.0's main (a 5.6.0
+            # build) hid the Oct 22 one (the v5.5.0 candidate), both "v5.5.0".
+            $rev && $main-rev ?? $rev eq $main-rev && sitting-bench($line) eq $main-bench
                               !! sitting-bench($line) eq $main-bench
                                  || (!$rev && !$main-rev && sitting-date($line) eq $main-date)
         };

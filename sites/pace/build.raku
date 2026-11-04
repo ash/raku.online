@@ -103,7 +103,10 @@ sub chart-data(Str $dash --> Str) {
     my @releases = @(%d<releases>).grep({ .<tag>.starts-with(q<v>) || .<tag> eq q<main> }).map(-> %r {
         # main is labelled by the revision it was measured at, which the
         # dashboard records; a fixed label goes stale at the next release.
-        %( tag => (%r<tag> eq q<main> ?? (%r<rev> // q<main>) !! %r<tag>), date => %r<date>,
+        # That rev is BENCHMARKS.md's, the M3's sitting, so it labels main only
+        # while main carries the M3's numbers: at v5.6.0 it still said v5.5.0
+        # beside a v5.6.0 point, and main's only figures were Roast's.
+        %( tag => (%r<tag> eq q<main> ?? ((%r<bench> && %r<rev>) || q<main>) !! %r<tag>), date => %r<date>,
            files => %r<files_pass>, filesTotal => %r<files_total>,
            tests => %r<tests_pass>, testsTotal => %r<tests_total>,
            bench => %r<bench> // {} )

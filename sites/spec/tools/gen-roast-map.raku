@@ -61,7 +61,7 @@ sub MAIN(Str $results, Str $date = 'unknown', Str $roast = '/Users/ash/roast') {
     });
 
     my @syn-json = %by-syn.keys.sort.map({
-        my @v = %by-syn{$_};
+        my @v = %by-syn{$_}.list;   # an itemized Array: plain assignment makes it ONE element (as Rakudo does)
         '{"s":' ~ json-str($_) ~ ',"pass":' ~ @v[0] ~ ',"part":' ~ @v[1]
         ~ ',"files":' ~ @v[2] ~ ',"ap":' ~ @v[3] ~ ',"at":' ~ @v[4] ~ '}'
     });
