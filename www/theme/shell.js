@@ -45,13 +45,14 @@
       { href: '/in-use/talks/',    label: 'Talks',    hue: 'inuse', note: 'Conference talks, and the deck' }
     ] },
     // Raku inside something else: your editor, software you use rather than
-    // write (a web page, a WordPress blog, a spreadsheet), and finally another
-    // language's program through librakupp. /embed/ is a prefix match, so it
-    // stays lit on /embed/js/ and /embed/wordpress/ as well.
+    // write (a web page, a WordPress blog, a spreadsheet), another language's
+    // program through librakupp, and finally a board's firmware. /embed/ is a
+    // prefix match, so it stays lit on /embed/js/ and /embed/wordpress/ as well.
     { label: 'Integrate', items: [
       { href: '/editors/',  label: 'Editors', hue: 'editors',  note: 'VS Code, Emacs, Neovim, Jupyter, agents' },
       { href: '/embed/',    label: 'Embed',   hue: 'embed',    note: 'Web pages, WordPress, spreadsheets' },
-      { href: '/bindings/', label: 'SDK',     hue: 'bindings', note: 'Python, JS, Go, Rust, C++, Wolfram' }
+      { href: '/bindings/', label: 'SDK',     hue: 'bindings', note: 'Python, JS, Go, Rust, C++, Wolfram' },
+      { href: '/arduino/',  label: 'Arduino', hue: 'arduino',  note: 'Raku programs as firmware' }
     ] },
     // The FAQ stayed when the learning sections moved: half of it is about
     // Raku++ itself, and the rest is looked up rather than learned in order.

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arduino — Raku programs as firmware, with Raku++</title>
+<meta name="description" content="Write an Arduino program in Raku, watch it run on a simulated board, and get a sketch the Arduino IDE builds and uploads: blink, inputs, tables computed while building, and the Uno R4 WiFi's LED matrix.">
+<script src="/theme/boot.js?v=b237f4f8"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b237f4f8">
+<link rel="stylesheet" href="/theme/shell.css?v=b237f4f8">
+<style>
+  /* The LED matrix: a picture of the board, the same in both themes. */
+  .matrix-figure { margin: 1.2rem 0 1.4rem; text-align: center; }
+  .matrix-figure svg { width: 100%; max-width: 330px; height: auto; }
+  .matrix-figure figcaption { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
+  .boards td:first-child { white-space: nowrap; }
+</style>
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<h1>Arduino</h1>
+<p class="tagline">
+  Write the program in Raku. Watch it run on a simulated board, then get a
+  sketch that the Arduino IDE builds and uploads like any other. You need no
+  board to start.
+</p>
+
+<table class="opts">
+  <tr><td><a href="#without-a-board">Without a board</a></td><td>Blink, and what the simulated board shows: the serial port, and every pin as it changes.</td></tr>
+  <tr><td><a href="#onto-a-board">Onto a board</a></td><td>The sketch, the Arduino IDE or arduino-cli, and the boards it builds for.</td></tr>
+  <tr><td><a href="#raku-while-building">Raku while building</a></td><td>Tables computed in full Raku on your computer; the board gets only the numbers.</td></tr>
+  <tr><td><a href="#led-matrix">The LED matrix</a></td><td>Pictures on the Uno R4 WiFi's 12×8 matrix.</td></tr>
+  <tr><td><a href="#what-it-can-use">What a board program can use</a></td><td>Native types, Raku's arithmetic, the Arduino core's functions.</td></tr>
+  <tr><td><a href="#under-rakudo">Under Rakudo</a></td><td>What other Raku implementations say about <code>use Arduino</code>.</td></tr>
+</table>
+
+<h2 id="without-a-board">Without a board <a class="anchor" href="#without-a-board" aria-label="link">#</a></h2>
+<pre class="native-code"><code>use Arduino;
+
+pinMode(LED_BUILTIN, OUTPUT);
+say "blink";
+
+loop {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+}</code></pre>
+<p>
+  An Arduino sketch is two functions, and the program maps onto them by its
+  shape: the code before the top-level <code>loop { }</code> is
+  <code>setup()</code>, and one pass of the loop is one call of
+  <code>loop()</code>. <code>use Arduino</code> gives you the core's own
+  names, so the program reads like Arduino code.
+</p>
+<p>
+  <code>rakupp blink.raku</code> runs it on the simulated board in real time,
+  until you press Ctrl-C. With <code>RAKUPP_ARDUINO_STOP</code> the clock is
+  virtual, and that many milliseconds of board time pass at once:
+</p>
+<pre class="output"><code>$ RAKUPP_ARDUINO_STOP=2200 rakupp blink.raku
+blink
+[0 ms] pin 13 mode OUTPUT
+[0 ms] pin 13 HIGH
+[500 ms] pin 13 LOW
+[1000 ms] pin 13 HIGH
+[1500 ms] pin 13 LOW
+[2000 ms] pin 13 HIGH
+[2200 ms] stop</code></pre>
+<p>
+  stdout is the serial port, and stderr is the board: one line for each pin
+  change. Inputs read what <code>RAKUPP_ARDUINO_PINS</code> says, as in
+  <code>RAKUPP_ARDUINO_PINS="2=0,A0=512"</code>, so a run with a button held
+  down gives the same transcript every time.
+</p>
+<p class="hero-links">
+  <a class="btn-start" href="/install/">Install rakupp</a>
+  &nbsp; <a href="https://github.com/ash/rakupp/tree/main/examples/arduino">The walkthrough, with every program →</a>
+</p>
+
+<h2 id="onto-a-board">Onto a board <a class="anchor" href="#onto-a-board" aria-label="link">#</a></h2>
+<p>The Arduino IDE wants each sketch in a folder of its own name:</p>
+<pre class="native-code"><code>mkdir blink
+rakupp --target=arduino blink.raku -o blink/blink.ino</code></pre>
+<p>
+  Open <code>blink/blink.ino</code> in the
+  <a href="https://www.arduino.cc/en/software">Arduino IDE</a>, choose your
+  board and port, and press Upload. With
+  <a href="https://arduino.github.io/arduino-cli/">arduino-cli</a>:
+</p>
+<pre class="native-code"><code>arduino-cli compile --fqbn arduino:avr:uno blink
+arduino-cli upload  --fqbn arduino:avr:uno -p /dev/cu.usbmodem1101 blink</code></pre>
+<div class="table-wrap">
+<table class="boards">
+  <tr><th>Board</th><th>Core, from the Boards Manager</th><th>FQBN</th></tr>
+  <tr><td>Arduino Uno</td><td>Arduino AVR Boards</td><td><code>arduino:avr:uno</code></td></tr>
+  <tr><td>Arduino Uno R4 WiFi</td><td>Arduino UNO R4 Boards</td><td><code>arduino:renesas_uno:unor4wifi</code></td></tr>
+  <tr><td>Arduino Due</td><td>Arduino SAM Boards</td><td><code>arduino:sam:arduino_due_x</code></td></tr>
+</table>
+</div>
+<p>
+  The sketch is plain C++11 with the core's own headers, so it builds for
+  each of these with its own compiler. It carries only the helpers the
+  program calls; blink's sketch is the includes, <code>setup()</code> and
+  <code>loop()</code>.
+</p>
+<blockquote class="note">
+  <strong>With rakupp 5.6.2,</strong> the IDE stops with <code>'T' does not
+  name a type</code>: it adds a declaration for each function of a
+  <code>.ino</code> file, and gets the helper templates of that version's
+  sketches wrong. The next release writes sketches it accepts. Until then,
+  put the sketch in a <code>.cpp</code> file beside an empty
+  <code>.ino</code>, which the IDE compiles as it is:
+  <code>rakupp --target=arduino blink.raku -o blink/raku.cpp</code>, then
+  <code>touch blink/blink.ino</code>.
+</blockquote>
+
+<h2 id="raku-while-building">Raku while building <a class="anchor" href="#raku-while-building" aria-label="link">#</a></h2>
+<pre class="native-code"><code>constant LED   = 9;   # a PWM pin
+constant @wave = (^32).map: { (127.5 + 127.5 * sin(2 * pi * $_ / 32)).Int };</code></pre>
+<p>
+  Every <code>constant</code> is computed while the program is built, in full
+  Raku, on your computer: <code>sin</code>, <code>pi</code>, <code>.map</code>,
+  a file read, a grammar, a module. The board gets only the result, here 32
+  bytes of sine wave in flash:
+</p>
+<pre class="output"><code>static const uint8_t t_wave[32] RK_FLASH = {
+    127, 152, 176, 198, 217, 233, 245, 252, 255, 252, 245, 233,
+    217, 198, 176, 152, 127, 102, 78, 56, 37, 21, 9, 2,
+    0, 2, 9, 21, 37, 56, 78, 102
+};</code></pre>
+
+<h2 id="led-matrix">The LED matrix <a class="anchor" href="#led-matrix" aria-label="link">#</a></h2>
+<p>
+  On the Uno R4 WiFi, <code>use Arduino::LEDMatrix</code> draws on its 12×8
+  matrix. <code>frame</code> packs a picture into the three 32-bit words the
+  matrix library takes, while building, so the board gets twelve bytes:
+</p>
+<pre class="native-code"><code>use Arduino;
+use Arduino::LEDMatrix;
+
+constant @RAKU = frame q:to/END/;
+    ####....###.
+    #...#..#...#
+    ####...#####
+    #...#..#...#
+    ............
+    #..#...#...#
+    ###....#...#
+    #..#....###.
+    END
+
+LEDMatrix.begin;
+LEDMatrix.show(@RAKU);</code></pre>
+<figure class="matrix-figure">
+<!-- the frame above, LED for LED -->
+<svg viewBox="0 0 264 184" role="img" aria-label="The Uno R4 WiFi's LED matrix showing RA over KU">
+  <defs><pattern id="led-off" x="12" y="12" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="6.5" fill="#2b4f49"/></pattern></defs>
+  <rect width="264" height="184" rx="10" fill="#1d6b5f"/>
+  <rect x="12" y="12" width="240" height="160" fill="url(#led-off)"/>
+  <g fill="#ff3b30">
+    <circle cx="22" cy="22" r="6.5"/><circle cx="42" cy="22" r="6.5"/><circle cx="62" cy="22" r="6.5"/><circle cx="82" cy="22" r="6.5"/><circle cx="182" cy="22" r="6.5"/><circle cx="202" cy="22" r="6.5"/><circle cx="222" cy="22" r="6.5"/>
+    <circle cx="22" cy="42" r="6.5"/><circle cx="102" cy="42" r="6.5"/><circle cx="162" cy="42" r="6.5"/><circle cx="242" cy="42" r="6.5"/>
+    <circle cx="22" cy="62" r="6.5"/><circle cx="42" cy="62" r="6.5"/><circle cx="62" cy="62" r="6.5"/><circle cx="82" cy="62" r="6.5"/><circle cx="162" cy="62" r="6.5"/><circle cx="182" cy="62" r="6.5"/><circle cx="202" cy="62" r="6.5"/><circle cx="222" cy="62" r="6.5"/><circle cx="242" cy="62" r="6.5"/>
+    <circle cx="22" cy="82" r="6.5"/><circle cx="102" cy="82" r="6.5"/><circle cx="162" cy="82" r="6.5"/><circle cx="242" cy="82" r="6.5"/>
+    <circle cx="22" cy="122" r="6.5"/><circle cx="82" cy="122" r="6.5"/><circle cx="162" cy="122" r="6.5"/><circle cx="242" cy="122" r="6.5"/>
+    <circle cx="22" cy="142" r="6.5"/><circle cx="42" cy="142" r="6.5"/><circle cx="62" cy="142" r="6.5"/><circle cx="162" cy="142" r="6.5"/><circle cx="242" cy="142" r="6.5"/>
+    <circle cx="22" cy="162" r="6.5"/><circle cx="82" cy="162" r="6.5"/><circle cx="182" cy="162" r="6.5"/><circle cx="202" cy="162" r="6.5"/><circle cx="222" cy="162" r="6.5"/>
+  </g>
+</svg>
+<figcaption>RA over KU, as on the Learn Raku app's icon.</figcaption>
+</figure>
+<p>
+  The simulated board draws each new picture on stderr with <code>#</code>
+  and <code>.</code>. <code>LEDMatrix.show</code> also takes a picture the
+  board computes as it runs, and <code>LEDMatrix.clear</code> darkens the
+  matrix.
+</p>
+
+<h2 id="what-it-can-use">What a board program can use <a class="anchor" href="#what-it-can-use" aria-label="link">#</a></h2>
+<ul>
+  <li><strong>Native types:</strong> <code>int8</code> … <code>int64</code>, <code>uint8</code> … <code>uint64</code>, <code>num</code>, <code>num32</code>, <code>Bool</code>, and shaped arrays of them, such as <code>my uint8 @buf[16]</code>, with every subscript checked.</li>
+  <li><strong>Raku's arithmetic:</strong> integers computed in 64 bits, <code>div</code> and <code>%</code> rounding down, and a value cut to its type's width when it is stored.</li>
+  <li><strong>Control flow:</strong> <code>if</code>, <code>unless</code>, <code>while</code>, <code>until</code>, <code>repeat</code>, <code>loop</code>, <code>for ^N</code>, <code>for @table</code>, <code>next</code>, <code>last</code>.</li>
+  <li><strong>Subs with native signatures:</strong> <code>sub f(int16 $x --&gt; int16) { … }</code>.</li>
+  <li><strong>The core's functions:</strong> <code>pinMode</code>, <code>digitalWrite</code>, <code>digitalRead</code>, <code>analogRead</code>, <code>analogWrite</code>, <code>delay</code>, <code>millis</code>, <code>micros</code>, <code>Serial</code>, and <code>say</code>, <code>print</code> and <code>note</code> of literals, integers and Bools.</li>
+</ul>
+<p>
+  Anything else stops the build, with the line it is on:
+</p>
+<pre class="output"><code>$ rakupp --target=arduino -e 'my $x = 5; say $x'
+rakupp --target=arduino: -e, line 1: the untyped variable $x — give it a native type, as in `my int16 $x`</code></pre>
+<p>
+  Hashes, strings built at run time, classes and regexes are among them, and
+  most are planned. A plain <code>int</code> is 64 bits, as in Raku;
+  <code>int16</code> or <code>uint8</code> is what a small board wants. Choose
+  a type the value fits: <code>my int8 $d = 700</code> stores −68.
+</p>
+
+<h2 id="under-rakudo">Under Rakudo <a class="anchor" href="#under-rakudo" aria-label="link">#</a></h2>
+<p>
+  <code>use Arduino</code> and <code>use Arduino::LEDMatrix</code> are built
+  into rakupp; <code>rakupp install</code> skips both names and says so. Other
+  Raku implementations can install stub modules of the same names, which stop
+  the program at the <code>use</code> line and name the command to run it
+  with:
+</p>
+<pre class="native-code"><code>zef install Arduino Arduino::LEDMatrix</code></pre>
+<pre class="output"><code>$ rakudo blink.raku
+===SORRY!=== Error while compiling blink.raku
+This program needs Raku++: `use Arduino` is built into rakupp
+(https://github.com/ash/rakupp), which runs it against a simulated board
+and compiles it for a real one:
+    rakupp blink.raku
+    rakupp --target=arduino blink.raku</code></pre>
+
+<footer>
+  <span>The walkthrough and its programs are in <a href="https://github.com/ash/rakupp/tree/main/examples/arduino">examples/arduino</a>; the full reference is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ARDUINO.md">the Arduino guide</a>. The stub modules: <a href="https://raku.land/zef:ash/Arduino">Arduino</a> and <a href="https://raku.land/zef:ash/Arduino::LEDMatrix">Arduino::LEDMatrix</a>.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=b237f4f8" defer></script>
+</body>
+</html>

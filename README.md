@@ -53,6 +53,7 @@ program still runs in a fraction of a second:
 | `/rakupp/` | What Raku++ is | `www/rakupp/` |
 | `/bindings/` | The Bindings tab: Raku inside Python (`pip install rakulang`, ready), the Wolfram Language (the RakuppLink paclet), and previews for JavaScript, Go, Rust and C++, each linking its guide in `rakupp/bindings` | `www/bindings/` |
 | `/editors/` | The Editors tab: Raku++ in VS Code (the DeepSoft.rakupp extension on the Marketplace), Emacs, Neovim, WordPress, Jupyter, the Wolfram Language (the RakuppLink paclet) and AI agents, each linking its guide in rakupp | `www/editors/` |
+| `/arduino/` | The Arduino tab: a Raku program on a simulated board, then as a sketch for the Arduino IDE — blink, tables computed while building, the Uno R4 WiFi's LED matrix, and what Rakudo says with the stub modules. The long form is `rakupp/examples/arduino/README.md`, with every program | `www/arduino/` |
 | `/embed/` | How to embed `raku.js` | `www/embed/` |
 | `/embed/wordpress/` | Raku Snippets, the WordPress plugin, and its `raku-snippets.zip`. The zip is built by `sites/wordpress/zip.sh` from `rakupp/editors/wordpress` — never edit it here; change the plugin there and re-run the script | `www/embed/wordpress/` |
 | `/builder/` | Paste code → copy an embed snippet | `www/builder/` |
