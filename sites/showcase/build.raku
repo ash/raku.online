@@ -652,9 +652,9 @@ sub inuse-page(@adoptions, Int $showcases, :@posts, :@mentions, :@talks --> Str)
           <p class="sr-intro">
             Nobody here wrote these, and nobody here was asked: a paclet in
             Wolfram's own repository, a browser playground that offers Raku++ as
-            one runtime among four, a course of Raku koans that Raku.js grades in
-            the browser, a Guix channel, a port of the release matrix to somebody
-            else's CI. Each link goes to whoever built it.
+            one runtime among four, a koans site in fourteen languages whose Raku
+            koans Raku.js grades in the browser, a Guix channel, a port of the
+            release matrix to somebody else's CI. Each link goes to whoever built it.
           </p>
         SHELVES
 
