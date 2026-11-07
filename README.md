@@ -112,10 +112,10 @@ Nothing runs and nothing is fetched: the playground's worker answers from
 engine. The links follow edits a quarter-second after typing stops; a request
 made while a program runs waits for it.
 
-The checkbox shows only when the engine has `rakupp_doc_links` — Raku++ after
-5.6.2, so until the engine in `www/` is updated it stays hidden and the page is
-unchanged. `&docs=1` in a link turns it on for that visit; the setting is
-remembered in `localStorage` (`raku-play-docs`).
+The checkbox shows only when the engine has `rakupp_doc_links`: one built from
+rakupp after the v5.6.3 tag, as `www/rakujs.*` is now. With an older engine it
+stays hidden and the page is as it was. `&docs=1` in a link turns it on for
+that visit; the setting is remembered in `localStorage` (`raku-play-docs`).
 
 ## Layout
 

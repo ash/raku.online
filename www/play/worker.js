@@ -32,7 +32,7 @@ function makeModule() {
   }).then(m => { Module = m; return m; });
 }
 
-// `docLinks` says whether this engine has rakupp_doc_links (Raku++ after 5.6.2):
+// `docLinks` says whether this engine has rakupp_doc_links (an engine built from rakupp after v5.6.3):
 // the page shows its Docs checkbox only when it does.
 let ready = makeModule()
   .then(m => post('ready', { version: m.ccall('rakupp_version', 'string', [], []),
