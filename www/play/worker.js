@@ -32,11 +32,15 @@ function makeModule() {
   }).then(m => { Module = m; return m; });
 }
 
+// `docLinks` says whether this engine has rakupp_doc_links (Raku++ after 5.6.2):
+// the page shows its Docs checkbox only when it does.
 let ready = makeModule()
-  .then(m => post('ready', { version: m.ccall('rakupp_version', 'string', [], []) }))
+  .then(m => post('ready', { version: m.ccall('rakupp_version', 'string', [], []),
+                             docLinks: typeof m._rakupp_doc_links === 'function' }))
   .catch(err => post('loaderror', { message: String(err) }));
 
 self.onmessage = async (e) => {
+  if (e.data.type === 'docs') return docLinks(e.data.src);
   if (e.data.type !== 'run') return;
   try { await ready; } catch (_) { /* loaderror already posted */ }
   if (!Module) { post('loaderror', { message: 'module not loaded' }); return; }
@@ -66,3 +70,17 @@ self.onmessage = async (e) => {
   }
   post('done', { rc, ms: Math.round(performance.now() - t0) });
 };
+
+// The Docs checkbox: every construct of `src` linked to its docs.raku.org page,
+// as the JSON `rakupp --doc-links --json` prints. It parses and never runs, so
+// it is quick — but it is a call into the same instance, so one sent during a
+// run waits for the run to finish. The source goes back with the answer: the
+// page drops an answer for text that has been edited since.
+async function docLinks(src) {
+  try { await ready; } catch (_) { return; }
+  if (!Module || typeof Module._rakupp_doc_links !== 'function') return;
+  let json;
+  try { json = Module.ccall('rakupp_doc_links', 'string', ['string'], [src]); }
+  catch (err) { post('docs', { src, error: String(err) }); return; }
+  post('docs', { src, json });
+}

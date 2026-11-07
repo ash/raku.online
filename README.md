@@ -87,6 +87,36 @@ What makes it usable to type into:
 
 The setting is remembered in `localStorage` (`rakujs-live`).
 
+### Docs
+
+The **Docs** checkbox links everything in the program to its page on
+[docs.raku.org](https://docs.raku.org): keywords, routines and methods,
+operators, types, special variables, quoting forms and regex constructs. It is
+`rakupp --doc-links` (rakupp's
+[CLI.md](https://github.com/ash/rakupp/blob/main/docs/guide/CLI.md#linking-a-program-to-its-documentation---doc-links)),
+the same C++ in the same engine:
+
+- the editor underlines each construct that has a page — dashed where the type
+  of a method's invocant is not known without running the program, so the link
+  is to the page listing every type's version; grey for the program's own subs,
+  methods, classes and constants;
+- a **Docs** panel under the output names the construct under the cursor and
+  links its page, then lists every page, grouped (syntax, types, routines,
+  operators, variables, the program's own declarations), with the lines that
+  use each — a line number selects that use in the editor;
+- **⌘-click** (Ctrl-click) a construct opens its page. With Check on, ⌘-click
+  on one of the program's own names is still go to definition.
+
+Nothing runs and nothing is fetched: the playground's worker answers from
+`rakupp_doc_links()`, with a copy of the docs site's index compiled into the
+engine. The links follow edits a quarter-second after typing stops; a request
+made while a program runs waits for it.
+
+The checkbox shows only when the engine has `rakupp_doc_links` — Raku++ after
+5.6.2, so until the engine in `www/` is updated it stays hidden and the page is
+unchanged. `&docs=1` in a link turns it on for that visit; the setting is
+remembered in `localStorage` (`raku-play-docs`).
+
 ## Layout
 
 ```
@@ -304,7 +334,8 @@ server-side:
 | `?gh=<owner>/<repo>/<branch>/<path>` | a file in a GitHub repo (raw) |
 | `?url=<encoded-url>` | any https URL whose host allows CORS fetches |
 
-Append `&run=1` to run the code on load. The **🔗 Share** button builds the
+Append `&run=1` to run the code on load, `&live=1` to switch Live mode on, and
+`&docs=1` the [Docs](#docs) links. The **🔗 Share** button builds the
 `#code=` form and copies it; the **📂 Open…** button accepts a pasted GitHub /
 gist / raw URL and rewrites the address bar to the matching persistent link.
 

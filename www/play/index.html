@@ -125,6 +125,35 @@
   /* Check: the language server's underlines, hover and completion. Its count
      sits in the source pane's label bar; a click there selects the first one. */
   .probs { margin-left: 10px; letter-spacing: normal; text-transform: none; cursor: pointer; }
+  /* Docs: every construct that has a page on docs.raku.org. A layer of its own
+     in the editor underlines them (transparent text, visible underlines, the
+     editor's metrics); a panel under the output lists the pages. */
+  #dl { color: transparent; pointer-events: none; overflow: hidden; }
+  #dl u { text-decoration: underline dotted; text-decoration-color: var(--accent2);
+          text-underline-offset: 4px; text-decoration-thickness: 1px; }
+  #dl u.inexact { text-decoration-style: dashed; }
+  #dl u.local { text-decoration-color: var(--muted); }
+  #dl u.at { background: rgba(120,140,170,.22); border-radius: 2px; }
+  .docs-bar { border-top: 1px solid var(--border); }
+  .docs-bar .docs-sum { margin-left: 8px; text-transform: none; letter-spacing: normal; opacity: .85; }
+  #docs { flex: 0 0 auto; height: 42%; min-height: 90px; overflow: auto; padding: 8px 14px 14px; font-size: 13px; }
+  @media (max-width: 800px) { #docs { height: 34%; min-height: 64px; } }
+  #docs .docs-at { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+                   margin: 0 0 4px; background: var(--panel); min-height: 2.4em; }
+  #docs .hint, #docs .note, #docs .where, #docs .unknown { color: var(--muted); }
+  #docs .docs-warn { color: var(--accent); margin: 6px 0 0; }
+  #docs h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+             font-weight: 600; margin: 12px 0 3px; }
+  #docs ul { list-style: none; margin: 0; padding: 0; }
+  #docs li { padding: 2px 0; }
+  #docs a, #docs .jump { color: var(--accent2); text-decoration: none; font-family: var(--font-mono); }
+  #docs a:hover, #docs .jump:hover { text-decoration: underline; }
+  #docs .jump { background: none; border: 0; padding: 0; font-size: inherit; cursor: pointer; }
+  #docs .where { margin-left: 6px; font-size: 12px; }
+  #docs .where button { background: none; border: 0; padding: 0 1px; font: inherit; color: inherit;
+                        text-decoration: underline; cursor: pointer; }
+  #docs .note { display: block; font-size: 12px; }
+  #docs .unknown { margin-top: 12px; }
   .probs .e { color: #e5484d; }
   .probs .w { color: #b88a00; }
   html[data-theme-active="dark"] .probs .w { color: #e0b030; }
@@ -173,7 +202,7 @@
   /* Editor: a transparent textarea sits exactly over a highlighted <pre>. Both
      must share identical metrics or the caret drifts from the coloured text. */
   .editor { position: relative; flex: 1; min-height: 0; }
-  #hl, textarea#code {
+  #hl, #dl, textarea#code {
     position: absolute; inset: 0; margin: 0; padding: 14px; border: 0;
     font-family: var(--font-mono); font-size: 13.5px; line-height: 1.55;
     letter-spacing: normal; tab-size: 4; white-space: pre; overflow: auto; }
@@ -267,6 +296,10 @@
         <a href="/demo/" target="_blank" rel="noopener">Guide</a></div>
     </div>
   </span>
+  <label class="live" id="docsLbl" hidden
+         title="Link everything in the program to its page on docs.raku.org: underlined in the editor, listed under the output">
+    <input type="checkbox" id="docsChk">Docs
+  </label>
   <label class="live" id="checkLbl"
          title="Underline mistakes and offer help on hover and completions as you type: the Raku++ language server, running in your browser">
     <input type="checkbox" id="checkChk">Check
@@ -282,6 +315,7 @@
     <div class="label">Raku source <span class="probs" id="probs"></span><button class="copy-btn" id="copyCodeBtn" title="Copy the source code">Copy</button></div>
     <div class="editor">
       <pre id="hl" aria-hidden="true"></pre>
+      <pre id="dl" aria-hidden="true"></pre>
       <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
     </div>
     <div class="label stdin-bar" id="stdinBar" role="button" aria-expanded="false"
@@ -297,6 +331,11 @@
   <section class="pane">
     <div class="label">Output <button class="copy-btn" id="copyOutBtn" title="Copy the program output">Copy</button></div>
     <pre id="out"><span class="meta">Press ▶ Run (or ⌘/Ctrl-Enter).</span></pre>
+    <div class="label docs-bar" id="docsBar" hidden>Docs<span class="docs-sum" id="docsSum"></span></div>
+    <div id="docs" hidden>
+      <div class="docs-at" id="docsAt"></div>
+      <div id="docsList"></div>
+    </div>
     <div class="status" id="status"></div>
   </section>
 </main>
@@ -316,7 +355,7 @@
 
 <!-- The ?v= tag busts caches on new releases: build.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
-<script src="examples.js?v=8510d52c"></script>
+<script src="examples.js?v=3565a6e8"></script>
 <script src="/editors/lsp/client.js?l=3b93c728"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
@@ -353,7 +392,7 @@ let lsp = null;
 if (window.RakuLsp) {
   lsp = RakuLsp.attach({
     textarea: codeEl,
-    workerUrl: '/editors/lsp/worker.js?v=8510d52c&l=3b93c728',   // both tags stamped by build.sh
+    workerUrl: '/editors/lsp/worker.js?v=3565a6e8&l=3b93c728',   // both tags stamped by build.sh
     uri: 'file:///playground.raku',
     lazy: true,
     onDiagnostics(list) {
@@ -404,6 +443,21 @@ let curLive = false;         // is the run in flight a live one?
 let liveTimer = null, liveWatch = null, liveStalls = 0;
 let lastSrc = null, lastStdin = null;   // what the last run actually ran
 let buf = null, bufChars = 0;           // the double buffer, null while streaming
+
+// Docs: every construct linked to its page on docs.raku.org — underlined in the
+// editor, the one under the cursor named with its link, every page listed under
+// the output. The worker answers from rakupp_doc_links(), the JSON `rakupp
+// --doc-links --json` prints: nothing runs and nothing is fetched. The checkbox
+// shows only when the engine has that export (Raku++ after 5.6.2). Declared
+// this early because paintHL() reaches for it; the machinery is near the end.
+const DOCS_KEY = 'raku-play-docs';
+const dlEl = document.getElementById('dl');
+let docsWanted = false;            // the checkbox (or a link) asked for it
+let docsAvail = false;             // …and the engine can answer
+let docs = null, docsFor = null;   // the last answer, and the source it is for
+let docsAsked = null;              // the source of the request in flight
+let docsTimer = null;
+const docsShown = () => docsWanted && docsAvail;
 
 // Stdin strip: collapsed by default, toggled by its bar; anything typed here is
 // what the program reads from standard input on the next Run.
@@ -524,11 +578,17 @@ function rakuHighlight(code) {
   }
   return out + esc(code.slice(last));
 }
-function syncScroll() { hlEl.scrollTop = codeEl.scrollTop; hlEl.scrollLeft = codeEl.scrollLeft; }
+function syncScroll() {
+  hlEl.scrollTop = dlEl.scrollTop = codeEl.scrollTop;
+  hlEl.scrollLeft = dlEl.scrollLeft = codeEl.scrollLeft;
+}
 // Every path that changes the editor ends here — typing, Tab/Enter handling,
 // loading an example or a shared link — so this is also where live mode arms its
 // debounce (a no-op when the mode is off).
-function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value); syncScroll(); scheduleLive(); if (lsp) lsp.changed(); }
+// The trailing newline gives the layer the textarea's last, empty line: without
+// it the layer cannot scroll as far, and at the bottom of a long program the
+// colours sat a line above the caret.
+function paintHL() { hlEl.innerHTML = rakuHighlight(codeEl.value) + '\n'; syncScroll(); scheduleLive(); docsEdited(); if (lsp) lsp.changed(); }
 codeEl.addEventListener('scroll', syncScroll);
 
 // Build the dropdown as <optgroup>s in first-seen category order. Each <option>
@@ -950,7 +1010,7 @@ let worker = null, ready = false, running = false, pendingRun = false, spinTimer
 let loadTimer = null, loadTries = 0;
 const LOAD_TIMEOUT = 12000, MAX_LOAD_TRIES = 2;
 // The main-thread fallback ("the deeper stack", below the run/stop functions):
-const ENGINE_TAG = '?v=8510d52c';      // the worker's tag: build.sh stamps both
+const ENGINE_TAG = '?v=3565a6e8';      // the worker's tag: build.sh stamps both
 const needsMain = new Set();           // src + stdin of programs that overflowed the worker
 let mainEngine = null;                 // Promise of the main-thread module
 let mainSink = null;                   // where its output goes during a run
@@ -1011,7 +1071,7 @@ function onLoadStuck() {
 }
 
 function createWorker() {
-  worker = new Worker('worker.js?v=8510d52c');   // tag kept in sync by build.sh
+  worker = new Worker('worker.js?v=3565a6e8');   // tag kept in sync by build.sh
   clearTimeout(loadTimer);
   loadTimer = setTimeout(onLoadStuck, LOAD_TIMEOUT);
   worker.onmessage = ({ data: m }) => {
@@ -1024,6 +1084,13 @@ function createWorker() {
         else if (autoRun) { autoRun = false; startRun(); }    // a shared link asked to run
         else if (live) scheduleLive();                        // live mode: run what's in the editor
         else if (!running) statusEl.textContent = "ready";
+        docsAvail = !!m.docLinks;                             // the Docs checkbox, if this engine can
+        docsLbl.hidden = !docsAvail;
+        docsAsked = null;
+        showDocs();
+        break;
+      case 'docs':
+        onDocs(m);
         break;
       case 'out':
         if (buf) bufPush(m.text, m.cls); else feed(m.text, m.cls);
@@ -1069,6 +1136,7 @@ createWorker();
 // 'ready', re-enabling Run — and running any queued restart).
 function killAndRecreate() {
   worker.terminate();
+  docsAsked = null;              // a docs request dies with the worker; 'ready' asks again
   ready = false;
   runBtn.disabled = true;
   createWorker();
@@ -1261,6 +1329,184 @@ stdinEl.addEventListener('input', scheduleLive);   // the program's input is par
   const q = new URLSearchParams(location.search);
   if (q.get('live') === '1' || q.has('live')) setLive(true, false);
   else { try { if (localStorage.getItem(LIVE_KEY) === '1') setLive(true); } catch (e) {} }
+}
+
+// ---- docs ---- (state is declared up with the other page state)
+const docsChk = document.getElementById('docsChk');
+const docsLbl = document.getElementById('docsLbl');
+const docsBar = document.getElementById('docsBar');
+const docsSum = document.getElementById('docsSum');
+const docsEl = document.getElementById('docs');
+const docsAtEl = document.getElementById('docsAt');
+const docsListEl = document.getElementById('docsList');
+const GROUP_TITLES = { syntax: 'Syntax', type: 'Types', routine: 'Routines', operator: 'Operators',
+                       variable: 'Variables', local: 'Declared in this program' };
+const attr = s => esc(String(s)).replace(/"/g, '&quot;');
+function setDocs(on, persist = true) {
+  docsWanted = on;
+  docsChk.checked = on;
+  docsLbl.classList.toggle('on', on);
+  // as with Live: a LINK that turns Docs on does not choose it for next time
+  if (persist) { try { localStorage.setItem(DOCS_KEY, on ? '1' : '0'); } catch (e) {} }
+  showDocs();
+}
+function showDocs() {
+  const on = docsShown();
+  docsBar.hidden = docsEl.hidden = !on;
+  if (on) requestDocs(); else dlEl.innerHTML = '';
+}
+function requestDocs() {
+  if (!docsShown()) return;
+  const src = codeEl.value;
+  if (docs && docsFor === src) { paintDocs(); return; }
+  if (!ready || docsAsked === src) return;   // 'ready' asks again
+  docsAsked = src;
+  worker.postMessage({ type: 'docs', src });
+  if (running) docsMessage('Waiting for the running program to finish…');
+}
+function onDocs(m) {
+  docsAsked = null;
+  if (m.src !== codeEl.value) { requestDocs(); return; }   // edited meanwhile: ask again
+  if (m.error) { docsMessage('Could not link this program: ' + m.error); return; }
+  docs = JSON.parse(m.json);
+  docsFor = m.src;
+  if (docsShown()) paintDocs();
+}
+function docsMessage(text) {
+  if (docs && docsFor === codeEl.value) return;   // a current answer stays up
+  docsAtEl.innerHTML = '<span class="hint">' + esc(text) + '</span>';
+}
+// Edits make the underlines wrong at once: drop them, and ask again shortly.
+function docsEdited() {
+  if (!docsShown()) return;
+  dlEl.innerHTML = '';
+  clearTimeout(docsTimer);
+  docsTimer = setTimeout(requestDocs, 250);
+}
+function refAt(pos) {
+  if (pos < 0 || !docs || docsFor !== codeEl.value) return -1;
+  const refs = docs.refs;
+  for (let i = 0; i < refs.length; i++) {
+    if (refs[i].from > pos) break;
+    if (pos < refs[i].to || (pos === refs[i].to && !(refs[i + 1] && refs[i + 1].from === pos))) return i;
+  }
+  return -1;
+}
+function paintDocs() {
+  const src = codeEl.value, refs = docs.refs;
+  let html = '', last = 0;
+  refs.forEach((r, i) => {
+    const cls = r.group === 'local' ? 'local' : r.exact ? '' : 'inexact';
+    html += esc(src.slice(last, r.from)) + `<u data-i="${i}" class="${cls}">${esc(src.slice(r.from, r.to))}</u>`;
+    last = r.to;
+  });
+  dlEl.innerHTML = html + esc(src.slice(last)) + '\n';
+  syncScroll();
+  const pages = docs.pages.filter(p => p.url).length;
+  docsSum.textContent = `— ${pages} page${pages === 1 ? '' : 's'} on docs.raku.org for `
+                      + `${refs.length} construct${refs.length === 1 ? '' : 's'}`;
+  let list = docs.parsed ? '' : `<p class="docs-warn">The program does not parse`
+    + (docs.error && docs.error.line ? ` (line ${docs.error.line})` : '') + ', so these links come from the words alone.</p>';
+  let group = null;
+  docs.pages.forEach((p, k) => {
+    if (p.group !== group) {
+      if (group) list += '</ul>';
+      group = p.group;
+      list += `<h3>${GROUP_TITLES[group] || esc(group)}</h3><ul>`;
+    }
+    const name = p.url
+      ? `<a href="${attr(p.url)}" target="_blank" rel="noopener">${esc(p.label)}</a>`
+      : `<button class="jump" data-page="-1" data-line="${p.declLine}">${esc(p.label)}</button>`;
+    const lines = p.lines.slice(0, 12).map(l => `<button data-page="${k}" data-line="${l}">${l}</button>`).join(', ')
+                + (p.lines.length > 12 ? ' +' + (p.lines.length - 12) : '');
+    list += `<li>${name}<span class="where">${p.lines.length === 1 ? 'line' : 'lines'} ${lines}</span>`
+          + (p.note ? `<span class="note">${esc(p.note)}</span>` : '') + '</li>';
+  });
+  if (group) list += '</ul>';
+  if (docs.unknown.length)
+    list += '<p class="unknown">No page on docs.raku.org: ' + docs.unknown.map(u => '<code>' + esc(u) + '</code>').join(', ') + '</p>';
+  docsListEl.innerHTML = list;
+  paintAt();
+}
+// The box at the top of the panel: the construct under the cursor.
+function paintAt() {
+  if (!docsShown() || !docs || docsFor !== codeEl.value) return;
+  dlEl.querySelectorAll('u.at').forEach(u => u.classList.remove('at'));
+  const i = refAt(codeEl.selectionStart);
+  if (i < 0) {
+    docsAtEl.innerHTML = '<span class="hint">Put the cursor on a word or an operator to see its page; '
+                       + '⌘/Ctrl-click one to open it.</span>';
+    return;
+  }
+  const r = docs.refs[i];
+  const u = dlEl.querySelector(`u[data-i="${i}"]`);
+  if (u) u.classList.add('at');
+  docsAtEl.innerHTML = '<code>' + esc(r.text) + '</code> → '
+    + (r.url ? `<a href="${attr(r.url)}" target="_blank" rel="noopener">${esc(r.label)}</a>`
+             : `<button class="jump" data-page="-1" data-line="${r.declLine}">${esc(r.label)}</button>`)
+    + (r.note ? `<span class="note">${esc(r.note)}</span>` : '');
+}
+// Select one use of a page (or a declaration's line) in the editor.
+function jumpTo(page, line) {
+  const r = docs && docs.refs.find(r => r.page === page && r.line === line);
+  const lineStart = codeEl.value.split('\n').slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0);
+  codeEl.focus();
+  if (r) codeEl.setSelectionRange(r.from, r.to); else codeEl.setSelectionRange(lineStart, lineStart);
+  const lh = parseFloat(getComputedStyle(codeEl).lineHeight) || 20;
+  codeEl.scrollTop = Math.max(0, (line - 3) * lh);
+  syncScroll();
+  paintAt();
+}
+docsEl.addEventListener('click', e => {
+  const b = e.target.closest('button[data-line]');
+  if (b) jumpTo(+b.dataset.page, +b.dataset.line);
+});
+['keyup', 'click', 'select'].forEach(ev => codeEl.addEventListener(ev, paintAt));
+// ⌘/Ctrl-click a construct to open its page. Check's language server takes the
+// same click for go to definition, and moves no caret doing it, so the place
+// comes from the pointer; this listener captures first and takes only the
+// clicks that land on a docs.raku.org link, leaving the program's own names
+// to the server (or, with Check off, selecting their declaration here).
+function indexAtPoint(x, y) {
+  const cs = getComputedStyle(codeEl), box = codeEl.getBoundingClientRect();
+  const probe = document.createElement('span');
+  probe.textContent = 'M'.repeat(100);
+  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre';
+  dlEl.appendChild(probe);
+  const cw = probe.getBoundingClientRect().width / 100;
+  probe.remove();
+  const lh = parseFloat(cs.lineHeight);
+  const line = Math.floor((y - box.top - parseFloat(cs.paddingTop) + codeEl.scrollTop) / lh);
+  const col = Math.floor((x - box.left - parseFloat(cs.paddingLeft) + codeEl.scrollLeft) / cw);
+  const lines = codeEl.value.split('\n');
+  if (!cw || line < 0 || line >= lines.length || col < 0) return -1;
+  const chars = [...lines[line]];
+  if (col >= chars.length) return -1;
+  let at = 0;
+  for (let i = 0; i < line; i++) at += lines[i].length + 1;
+  return at + chars.slice(0, col).join('').length;
+}
+codeEl.parentElement.addEventListener('mousedown', e => {
+  if (e.target !== codeEl || !(e.metaKey || e.ctrlKey) || !docsShown()) return;
+  const i = refAt(indexAtPoint(e.clientX, e.clientY));
+  if (i < 0) return;
+  const r = docs.refs[i];
+  if (r.url) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(r.url, '_blank', 'noopener');
+  } else if (!(lsp && lsp.ready)) {
+    e.preventDefault();
+    jumpTo(-1, r.declLine);
+  }
+}, true);
+docsChk.addEventListener('change', () => setDocs(docsChk.checked));
+// `?docs` (or `#…&docs`) turns it on for a visitor arriving from a link about
+// it, without changing what they chose for themselves, as `?live=1` does.
+{
+  const q = new URLSearchParams(location.search), h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (q.has('docs') || h.has('docs')) setDocs(true, false);
+  else { try { if (localStorage.getItem(DOCS_KEY) === '1') setDocs(true, false); } catch (e) {} }
 }
 
 // Click the button to run; while running it shows Stop and clicking halts.
