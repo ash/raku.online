@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — writing Raku for an Arduino</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=b237f4f8"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b237f4f8">
+<link rel="stylesheet" href="/theme/shell.css?v=b237f4f8">
+<link rel="stylesheet" href="/theme/faq.css?v=b237f4f8">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Writing Raku for an Arduino</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#the-short-answer">The short answer</a></li><li><a href="#why-does-my-x-stop-the-build">Why does <code>my $x</code> stop the build?</a></li><li><a href="#what-happens-when-a-value-does-not-fit">What happens when a value does not fit?</a></li><li><a href="#how-do-i-make-an-array">How do I make an array?</a></li><li><a href="#does-string-interpolation-work">Does string interpolation work?</a></li><li><a href="#can-i-print-a-decimal-number">Can I print a decimal number?</a></li><li><a href="#how-do-i-make-a-lookup-table-or-a-hash">How do I make a lookup table, or a hash?</a></li><li><a href="#how-do-i-wait-without-blocking">How do I wait without blocking?</a></li><li><a href="#what-else-is-refused-and-what-do-i-write-instead">What else is refused, and what do I write instead?</a></li><li><a href="#how-do-i-check-a-program-without-a-board">How do I check a program without a board?</a></li><li><a href="#does-it-run-under-rakudo">Does it run under Rakudo?</a></li></ul></nav>
+<p><code>rakupp --target=arduino</code> compiles a Raku program into an Arduino sketch. The board has no interpreter, so it takes a subset of Raku: the parts that become plain C++ with no runtime behind them. This page is about writing inside that subset: what to reach for, what the build refuses and what to write instead, and where the board behaves differently from the Raku you know. The full reference is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/ARDUINO.md">ARDUINO.md</a>; a walk from a blinking LED to the Uno R4 WiFi's network is in <a href="https://github.com/ash/rakupp/tree/main/examples/arduino">examples/arduino</a>.</p>
+<h2 id="the-short-answer">The short answer <a class="anchor" href="#the-short-answer" aria-label="link">#</a></h2>
+<ul><li>Give every variable, parameter and result a native type: <code>my int16 $x</code>, not <code>my $x</code>.</li><li>Give every array a fixed size: <code>my uint8 @buf[16]</code>.</li><li>Strings are for printing. Interpolate into <code>say</code>; do not keep, join or compare one.</li><li>Do the heavy work while building. A <code>constant</code> or a <code>BEGIN</code> block runs on your computer, in full Raku, and the board gets the result.</li><li>There are no hashes, classes, closures or regexes on the board. Use constant tables, top-level variables, plain subs and <code>if</code>/<code>elsif</code> instead.</li><li>Everything the board cannot do is refused when you build, with the line, and never fails later on the board.</li></ul>
+<h2 id="why-does-my-x-stop-the-build">Why does <code>my $x</code> stop the build? <a class="anchor" href="#why-does-my-x-stop-the-build" aria-label="link">#</a></h2>
+<pre class="native-code"><code>$ rakupp --target=arduino -e 'use Arduino; my $x = 5; say $x'
+rakupp --target=arduino: -e, line 1: the untyped variable $x — give it a native type, as in `my int16 $x`</code></pre>
+<p>An untyped <code>$x</code> holds an <code>Int</code> object, which can grow without limit. A board has no room for objects, so every variable becomes a C variable of a fixed size, and you choose the size. What usually fits:</p>
+<div class="tablewrap"><table><tr><th>what it holds</th><th>type</th></tr><tr><td>a pin number, a byte, a PWM level (0–255)</td><td><code>uint8</code></td></tr>
+<tr><td>an <code>analogRead</code> (0–1023), a temperature</td><td><code>int16</code></td></tr>
+<tr><td>a <code>millis()</code> timestamp</td><td><code>uint32</code></td></tr>
+<tr><td>a fraction</td><td><code>num32</code> (<code>float</code>) or <code>num</code> (<code>double</code>)</td></tr>
+<tr><td>true or false</td><td><code>Bool</code></td></tr></table></div>
+<p>A plain <code>int</code> works, but it is 64 bits, as it is in Raku. On an Uno, with 2 KB of RAM, that is 8 bytes for every <code>int</code> variable.</p>
+<p>The same goes for subs: <code>sub scale(int16 $x --&gt; int16) { $x * 4 }</code>. A sub with no <code>--&gt;</code> returns nothing, and one whose result is used must declare it.</p>
+<h2 id="what-happens-when-a-value-does-not-fit">What happens when a value does not fit? <a class="anchor" href="#what-happens-when-a-value-does-not-fit" aria-label="link">#</a></h2>
+<p>It wraps, as a Raku native does. Arithmetic is done in 64 bits and cut down to the variable's size when it is stored, so a result overflows where you store it and never in the middle of the expression:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nb">int8</span>  <span class="nv">$d</span> = <span class="mi">700</span>;          <span class="c1"># -68</span>
+<span class="k">my</span> <span class="nb">uint8</span> <span class="nv">$c</span> = <span class="mi">255</span>; <span class="nv">$c</span>++;    <span class="c1"># 0</span>
+<span class="k">my</span> <span class="nb">int16</span> <span class="nv">$a</span> = <span class="mi">300</span>;
+<span class="k">my</span> <span class="nb">int16</span> <span class="nv">$p</span> = <span class="nv">$a</span> * <span class="nv">$a</span>;      <span class="c1"># 24464: 90000 does not fit in 16 bits</span>
+<span class="k">my</span> <span class="nb">int32</span> <span class="nv">$q</span> = <span class="nv">$a</span> * <span class="nv">$a</span>;      <span class="c1"># 90000</span></code></pre>
+<p>The interpreter, a sketch and Rakudo all give these numbers. <code>div</code> and <code>%</code> floor, as Raku's do and C's do not: <code>-7 div 2</code> is −4 and <code>-7 % 2</code> is 1.</p>
+<h2 id="how-do-i-make-an-array">How do I make an array? <a class="anchor" href="#how-do-i-make-an-array" aria-label="link">#</a></h2>
+<p>Give it a type and a size:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nb">uint8</span> <span class="nv">@buf</span>[<span class="mi">16</span>];             <span class="c1"># sixteen zeros</span>
+<span class="k">my</span> <span class="nb">uint8</span> <span class="nv">@pins</span>[<span class="mi">4</span>] = <span class="mi">2</span>, <span class="mi">3</span>, <span class="mi">4</span>;   <span class="c1"># the last one is 0</span></code></pre>
+<p>The size must be one positive integer known while building: a literal or a <code>constant</code>. <code>my uint8 @a[W * H]</code> is refused, but <code>constant CELLS = W * H; my uint8 @a[CELLS]</code> is accepted. There is no <code>push</code>, no array without a shape, no 2-D shape and no array of <code>Bool</code>. For a grid, use one dimension and compute the index. For flags, use <code>uint8</code>.</p>
+<p>You cannot pass an array to a sub, because a sub's parameters are native scalars. A top-level <code>my</code> is a global in the sketch, so a sub can use the array directly:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">Arduino</span>;
+
+<span class="k">constant</span> <span class="n">W</span> = <span class="mi">4</span>;
+<span class="k">constant</span> <span class="n">H</span> = <span class="mi">3</span>;
+<span class="k">constant</span> <span class="n">CELLS</span> = <span class="n">W</span> * <span class="n">H</span>;
+<span class="k">my</span> <span class="nb">uint8</span> <span class="nv">@grid</span>[<span class="n">CELLS</span>];
+<span class="k">my</span> <span class="nb">uint16</span> <span class="nv">$lit</span> = <span class="mi">0</span>;
+
+<span class="k">sub</span> <span class="n">light</span>(<span class="nb">uint8</span> <span class="nv">$row</span>, <span class="nb">uint8</span> <span class="nv">$col</span>) {
+    <span class="nv">@grid</span>[<span class="nv">$row</span> * <span class="n">W</span> + <span class="nv">$col</span>] = <span class="mi">1</span>;
+    <span class="nv">$lit</span>++;
+}
+
+<span class="n">light</span>(<span class="mi">1</span>, <span class="mi">2</span>);
+<span class="nb">say</span> <span class="s">&quot;cell 6: &quot;</span>, <span class="nv">@grid</span>[<span class="mi">6</span>], <span class="s">&quot;, lit: $lit&quot;</span>;    <span class="c1"># cell 6: 1, lit: 1</span></code></pre>
+<p><code>.elems</code> and <code>for @buf -&gt; $x { … }</code> work. Every subscript is checked. An index past the end prints a message and the line on the serial port, and the board stops. That is better than writing over whatever comes after the array in RAM:</p>
+<pre class="native-code"><code>Index out of range. Is: 4, should be in 0..3
+  at line 5</code></pre>
+<h2 id="does-string-interpolation-work">Does string interpolation work? <a class="anchor" href="#does-string-interpolation-work" aria-label="link">#</a></h2>
+<p>Yes, in what you print. This:</p>
+<pre class="native-code"><code class="lang-raku"><span class="nb">say</span> <span class="s">&quot;temp: $t C, twice {$t * 2}&quot;</span>;</code></pre>
+<p>becomes one <code>Serial.print</code> for each piece, and the literal parts stay in flash memory:</p>
+<pre class="native-code"><code class="lang-cpp">Serial.print(F("temp: "));
+rk_print_int(Serial, ((int64_t)v_t));
+Serial.print(F(" C, twice "));
+rk_print_int(Serial, rk_mul(((int64_t)v_t), ((int64_t)2LL)));
+Serial.print(F("\n"));</code></pre>
+<p><code>say "t=", $t, " ok"</code> and <code>print</code> work the same way, and so does an element of a constant table, as in <code>"@NOTE[$i] Hz"</code>.</p>
+<p>What the board cannot do is <strong>keep</strong> a string at run time, because it has no string type. Each of these is refused:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">$s</span> = <span class="s">&quot;t=$t&quot;</span>;                <span class="c1"># an interpolated string used as a value</span>
+<span class="nb">say</span> <span class="s">&quot;t=&quot;</span> ~ <span class="nv">$t</span>;                 <span class="c1"># `~` makes a string</span>
+<span class="nb">say</span> <span class="nb">sprintf</span>(<span class="s">&quot;%03d&quot;</span>, <span class="nv">$t</span>);       <span class="c1"># and so does .fmt</span>
+<span class="k">if</span> <span class="nv">$name</span> <span class="n">eq</span> <span class="s">&quot;on&quot;</span> { … }         <span class="c1"># a string comparison</span>
+<span class="nb">say</span> <span class="nv">$on</span> ?? <span class="s">&quot;on&quot;</span> !! <span class="s">&quot;off&quot;</span>;      <span class="c1"># a string chosen at run time</span></code></pre>
+<p>To choose a string, choose the statement that prints it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">if</span> <span class="nv">$on</span> { <span class="nb">say</span> <span class="s">&quot;LED is on&quot;</span> } <span class="k">else</span> { <span class="nb">say</span> <span class="s">&quot;LED is off&quot;</span> }</code></pre>
+<p><strong>Strings known while building are fine anywhere.</strong> A <code>constant</code> runs on your computer, so <code>~</code>, <code>sprintf</code> and modules all work there, and the board gets a literal:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">constant</span> <span class="n">VERSION</span> = <span class="s">&quot;1.2&quot;</span>;
+<span class="k">constant</span> <span class="n">BUILT</span>   = <span class="nb">DateTime</span>.<span class="nb">now</span>.<span class="n">yyyy-mm-dd</span>;
+<span class="nb">say</span> <span class="s">&quot;v{VERSION} built {BUILT}&quot;</span>;        <span class="c1"># v1.2 built 2026-11-07</span></code></pre>
+<p><code>say</code> ends a line with LF, as it does in Raku. <code>Serial.println</code> ends it with CR LF, as a board does. If a program prints but never calls <code>Serial.begin</code>, the sketch starts with <code>Serial.begin(9600)</code>.</p>
+<h2 id="can-i-print-a-decimal-number">Can I print a decimal number? <a class="anchor" href="#can-i-print-a-decimal-number" aria-label="link">#</a></h2>
+<p>Not yet. Printing a <code>num</code> is refused, because the board cannot yet write one the way Raku does. Scale it to an integer and print the two halves:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">Arduino</span>;
+
+<span class="k">sub</span> <span class="n">print-hundredths</span>(<span class="nb">int32</span> <span class="nv">$c</span> <span class="k">is</span> <span class="n">copy</span>) {
+    <span class="k">if</span> <span class="nv">$c</span> &lt; <span class="mi">0</span> { <span class="nb">print</span> <span class="s">&quot;-&quot;</span>; <span class="nv">$c</span> = -<span class="nv">$c</span> }
+    <span class="nb">print</span> <span class="nv">$c</span> <span class="n">div</span> <span class="mi">100</span>, <span class="s">&quot;.&quot;</span>;
+    <span class="nb">print</span> <span class="s">&quot;0&quot;</span> <span class="k">if</span> <span class="nv">$c</span> % <span class="mi">100</span> &lt; <span class="mi">10</span>;
+    <span class="nb">say</span> <span class="nv">$c</span> % <span class="mi">100</span>;
+}
+
+<span class="k">my</span> <span class="nb">num</span> <span class="nv">$v</span> = <span class="mf">3.05e0</span>;
+<span class="n">print-hundredths</span>((<span class="nv">$v</span> * <span class="mi">100</span>).<span class="nb">round</span>);         <span class="c1"># 3.05</span>
+<span class="n">print-hundredths</span>((-<span class="mf">2.5e0</span> * <span class="mi">100</span>).<span class="nb">round</span>);     <span class="c1"># -2.50</span></code></pre>
+<p>The sign is handled first because <code>div</code> and <code>%</code> floor: <code>-305 div 100</code> is −4 and <code>-305 % 100</code> is 95.</p>
+<p>Two other things about fractions. <code>/</code> of two integers is a <code>Rat</code> in Raku, which the board does not have, so it is refused. Use <code>div</code>, or make one side a num: <code>$raw * 5e0 / 1023</code>. Also, <code>my num $v = 3.3</code> is refused by both Raku++ and Rakudo, because <code>3.3</code> is a <code>Rat</code> literal. Write <code>3.3e0</code>.</p>
+<h2 id="how-do-i-make-a-lookup-table-or-a-hash">How do I make a lookup table, or a hash? <a class="anchor" href="#how-do-i-make-a-lookup-table-or-a-hash" aria-label="link">#</a></h2>
+<p>There are no hashes on the board. Use a constant list indexed by a number, and compute it in Raku while building:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">constant</span> <span class="nv">@NOTE</span> = <span class="mi">262</span>, <span class="mi">294</span>, <span class="mi">330</span>, <span class="mi">349</span>, <span class="mi">392</span>, <span class="mi">440</span>, <span class="mi">494</span>;    <span class="c1"># C4 to B4, in Hz</span>
+<span class="k">constant</span> <span class="nv">@wave</span> = (^<span class="mi">16</span>).<span class="nb">map</span>: { (<span class="mf">127.5</span> + <span class="mf">127.5</span> * <span class="nb">sin</span>(<span class="mi">2</span> * <span class="n">pi</span> * <span class="nv">$_</span> / <span class="mi">16</span>)).<span class="nb">Int</span> };</code></pre>
+<p>Each list becomes a table in flash (<code>PROGMEM</code> on AVR), in the narrowest C type that holds every element:</p>
+<pre class="native-code"><code class="lang-cpp">static const uint16_t t_NOTE[7] RK_FLASH = { … };
+static const uint8_t t_wave[16] RK_FLASH = { … };</code></pre>
+<p><code>sin</code>, <code>pi</code> and the <code>.map</code> never reach the board, and neither does a file you read or a module you <code>use</code> in a constant. A table must hold numbers, so a list of names is refused. Use <code>if</code>/<code>elsif</code> to print a name. For the same reason, write an <code>enum</code> as constants and <code>given</code>/<code>when</code> as <code>if</code>/<code>elsif</code>.</p>
+<h2 id="how-do-i-wait-without-blocking">How do I wait without blocking? <a class="anchor" href="#how-do-i-wait-without-blocking" aria-label="link">#</a></h2>
+<p><code>delay</code> stops everything. To do two things at once, check the clock:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">Arduino</span>;
+
+<span class="k">my</span> <span class="nb">uint32</span> <span class="nv">$last</span> = <span class="mi">0</span>;
+<span class="k">loop</span> {
+    <span class="k">if</span> (<span class="n">millis</span>() - <span class="nv">$last</span>) +&amp; <span class="mh">0xFFFF_FFFF</span> &gt;= <span class="mi">500</span> {
+        <span class="nv">$last</span> = <span class="n">millis</span>();
+        <span class="c1"># every half second</span>
+    }
+    <span class="c1"># the rest of the loop keeps running</span>
+}</code></pre>
+<p>The <code>+&amp; 0xFFFF_FFFF</code> matters, and it is where Raku differs from C. On a board, <code>millis()</code> wraps to 0 after 2³² ms, about 49.7 days. C subtracts two <code>unsigned long</code>s and the wrap cancels out. Here the subtraction is done in 64 bits, so just after the wrap the difference is negative and the check never passes again:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nb">uint32</span> <span class="nv">$last</span> = <span class="mi">4_294_967_000</span>;     <span class="c1"># just before the wrap</span>
+<span class="k">my</span> <span class="nb">uint32</span> <span class="nv">$now</span>  = <span class="mi">200</span>;               <span class="c1"># just after it</span>
+<span class="nb">say</span> <span class="nv">$now</span> - <span class="nv">$last</span>;                    <span class="c1"># -4294966800</span>
+<span class="nb">say</span> (<span class="nv">$now</span> - <span class="nv">$last</span>) +&amp; <span class="mh">0xFFFF_FFFF</span>;   <span class="c1"># 496</span></code></pre>
+<p>Storing the difference in a <code>uint32</code> also wraps it, on Raku++ and on the board. Rakudo refuses that store ("Cannot unbox negative bigint into native unsigned integer"), so the mask is the form that means the same everywhere. Neither simulator wraps <code>millis()</code> at 2³², so test the arithmetic as shown here; waiting for the wrap will not show it.</p>
+<p>A <code>my</code> inside the top-level <code>loop</code> starts again on every pass, as it does in Raku. Use a top-level <code>my</code>, or a <code>state</code> inside a sub, for anything that must last between passes.</p>
+<h2 id="what-else-is-refused-and-what-do-i-write-instead">What else is refused, and what do I write instead? <a class="anchor" href="#what-else-is-refused-and-what-do-i-write-instead" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th>refused on the board</th><th>write instead</th></tr><tr><td>a class</td><td>top-level variables and plain subs</td></tr>
+<tr><td>a hash</td><td>a constant list, indexed by a number</td></tr>
+<tr><td><code>multi</code>, <code>proto</code>, a method</td><td>subs with different names</td></tr>
+<tr><td>a closure, a block as a value</td><td>a named sub</td></tr>
+<tr><td>a regex, a grammar, a module's routine</td><td>run it in a <code>constant</code> or <code>BEGIN</code></td></tr>
+<tr><td><code>given</code>/<code>when</code></td><td><code>if</code>/<code>elsif</code></td></tr>
+<tr><td>a phaser, <code>CATCH</code>, a labelled loop</td><td>plain control flow</td></tr></table></div>
+<p>Each refusal stops the build with exit 5 and the line, so nothing on this list gets as far as the board.</p>
+<h2 id="how-do-i-check-a-program-without-a-board">How do I check a program without a board? <a class="anchor" href="#how-do-i-check-a-program-without-a-board" aria-label="link">#</a></h2>
+<p>Run it. Under the interpreter, <code>use Arduino</code> is a simulated board: the serial port is stdout, and every pin change is a line on stderr.</p>
+<pre class="native-code"><code class="lang-bash">RAKUPP_ARDUINO_STOP=2000 rakupp blink.raku                   # 2 s of board time, at once
+RAKUPP_ARDUINO_STOP=1000 RAKUPP_ARDUINO_PINS="2=0,A0=512" \
+    rakupp button.raku                                       # fix what the inputs read
+rakupp --target=arduino blink.raku -o blink.ino              # does the board take it?
+rakupp --target=arduino --sim blink.raku -o blink-sim        # the sketch itself, run here</code></pre>
+<p>The interpreter and a <code>--sim</code> build print the same output. They differ when something goes wrong. A runtime error on the board is a short message and the line, with no backtrace. A subscript past the end of a constant list gives <code>(Any)</code> in the interpreter and stops the board.</p>
+<h2 id="does-it-run-under-rakudo">Does it run under Rakudo? <a class="anchor" href="#does-it-run-under-rakudo" aria-label="link">#</a></h2>
+<p>Rakudo has no Arduino target. With the stub modules installed (<code>zef install Arduino</code>), it stops at <code>use Arduino</code> and names the <code>rakupp</code> command to use instead. Everything on this page that does not need the board works the same in Rakudo, with one exception noted above: Rakudo refuses to store a negative value into an unsigned native. That covers native wrap-around, floored <code>div</code> and <code>%</code>, shaped arrays and their range check, and the refused <code>Rat</code> literal.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b237f4f8" defer></script>
+</body>
+</html>

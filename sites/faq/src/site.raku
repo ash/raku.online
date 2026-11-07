@@ -18,7 +18,7 @@
     groups => (
         'Writing Raku'                  => <containers parametric-roles modules l10n 6e>,
         'Talking to the outside world'  => <shell background-processes http native-libraries mobile buffering>,
-        'Compiling, and making it fast' => <compiling optimizer performance threads hyper>,
+        'Compiling, and making it fast' => <compiling arduino optimizer performance threads hyper>,
         'When something goes wrong'     => <debugging unknown-vm garbage-collection>,
         'How Raku++ works'              => <what-kind-of-compiler refcounting hand-written implementations dependencies differences>,
     ),
@@ -38,6 +38,7 @@
         'parametric-roles' => 'What role Foo[::T] means: type captures, punning, defaults, value parameters, and overloading a role on its arguments.',
         modules     => 'Getting a module and being able to use it: rakupp install, zef, and where both engines look.',
         compiling   => 'Turning a program into a binary: --exe vs --aot vs --bundle, and what -O buys.',
+        arduino     => 'Writing Raku for a board: native types, fixed-size arrays, printing a string without keeping one, tables instead of hashes, and the millis() wrap.',
         performance => 'My program is slow: what compiling does and does not speed up, with measured numbers.',
         threads     => 'Is there a GIL? Not by default: how to tell that threads ran at once, why start can make a program slower, and what is yours to guard.',
         hyper       => 'The hyper operators, hyper for and .hyper: which way the arrows point, which forms use more than one core, and which to reach for, with measured numbers.',
