@@ -33,6 +33,26 @@ my $N = 0;
 
 my constant FIELDS = <who where when says quote rest note>;
 
+# "What the sources say" is folded, so a numbered marker would land inside a
+# closed list: open the list before the browser scrolls to the entry. A page
+# reached by #ev-N opens it at once and scrolls there again once loaded, since
+# the site bar and fonts move the layout after the browser's own scroll.
+my constant EV-JS = q:to/JS/;
+    function lgOpen(id, scroll) {
+      var t = id && document.getElementById(id), d = t && t.closest('details.lg-ev');
+      if (!d) return;
+      d.open = true;
+      if (scroll) t.scrollIntoView();
+    }
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('.lg-ref a');
+      if (a) lgOpen(a.hash.slice(1), false);
+    });
+    addEventListener('hashchange', function () { lgOpen(location.hash.slice(1), true); });
+    lgOpen(location.hash.slice(1), false);
+    addEventListener('load', function () { lgOpen(location.hash.slice(1), true); });
+    JS
+
 # ---- inline formatting ----------------------------------------------------
 
 sub esc(Str $s --> Str) {
@@ -131,8 +151,8 @@ sub load-evidence(@slugs) {
 }
 
 # "What the sources say" under a block: the sources it introduced, numbered as
-# they were cited. Open by default, since that is the point; a long one can be
-# folded away.
+# they were cited. Folded by default, so the text reads straight through; the
+# reader opens it from its summary, or by following a marker (EV-JS).
 sub aside(--> Str) {
     return '' unless @BLOCK;
     my $items = @BLOCK.map(-> $url {
@@ -148,7 +168,7 @@ sub aside(--> Str) {
     }).join("\n");
     my $count = @BLOCK.elems;
     @BLOCK = ();
-    "\n" ~ '<details class="lg-ev" open><summary>What the sources say <span class="c">' ~ $count ~ '</span></summary>'
+    "\n" ~ '<details class="lg-ev"><summary>What the sources say <span class="c">' ~ $count ~ '</span></summary>'
          ~ '<ol>' ~ $items ~ '</ol></details>'
 }
 
@@ -254,6 +274,7 @@ sub page(Str $title, Str $desc, Str $body --> Str) {
     </footer>
     </div>
     </main>
+    <script>{EV-JS}</script>
     <script src="/theme/shell.js" defer></script>
     </body>
     </html>
@@ -345,7 +366,7 @@ sub MAIN(Bool :$clean = False) {
           ~ '<span class="t">' ~ inline(%c<heading>, :!refs) ~ '</span>'
           ~ '<span class="b">' ~ esc(%c<blurb>) ~ '</span></a></li>'
     }).join("\n");
-    my $how = '<p class="lg-how">Every claim links its primary source. A numbered marker after a link means the page says what that source says: look under the paragraph or table, in “What the sources say”. There each source is given in our words, or as a quotation where its exact wording has been added.</p>';
+    my $how = '<p class="lg-how">Every claim links its primary source. A numbered marker after a link means the page says what that source says, in “What the sources say” under the paragraph or table. Those lists are folded: click one, or a marker, to open it. There each source is given in our words, or as a quotation where its exact wording has been added.</p>';
     spurt('out/index.html',
           page(%SITE<title> ~ ' — ' ~ $title, %SITE<tagline>,
                strip(@chapters, -1) ~ "\n"
