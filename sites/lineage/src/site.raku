@@ -8,12 +8,12 @@
     tagline => 'What other languages took from the Perl 6 design after 2000, which of its ideas they reached on their own, and what came to both from an older source. Each verdict comes from the adopting language’s own records.',
     # Shown under the title of every page.
     nb      => 'This material was collected and structured automatically, and may contain unintentional mistakes. Every claim links its source: please check it before relying on a detail.',
-    repo    => 'https://github.com/ash/rakupp',
-    # The report's relative links are written from rakupp/docs/dev/.
-    gh-base => 'https://github.com/ash/rakupp/blob/main/docs/dev/',
-    gh-tree => 'https://github.com/ash/rakupp/tree/main/docs/dev/',
-    report  => 'https://github.com/ash/rakupp/blob/main/docs/dev/PERL6-FEATURES-IN-OTHER-LANGUAGES.md',
-    notes   => 'https://github.com/ash/rakupp/tree/main/docs/dev/perl6-influence-notes',
+    repo    => 'https://github.com/ash/raku.online',
+    # The report's relative links are written from src/, where it lives.
+    gh-base => 'https://github.com/ash/raku.online/blob/main/sites/lineage/src/',
+    gh-tree => 'https://github.com/ash/raku.online/tree/main/sites/lineage/src/',
+    report  => 'https://github.com/ash/raku.online/blob/main/sites/lineage/src/report.md',
+    notes   => 'https://github.com/ash/raku.online/tree/main/sites/lineage/src/notes',
     evidence => 'https://github.com/ash/raku.online/tree/main/sites/lineage/src/evidence',
     chapters => (
         %( slug => 'timeline', short => 'The timeline', starts => 'Perl 6 was years ahead in design',

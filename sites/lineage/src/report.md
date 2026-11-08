@@ -835,7 +835,7 @@ These repositories, with their GitHub issue and pull-request threads, were searc
 
 ### The research notes
 
-The notes behind every table and verdict are in [perl6-influence-notes/](perl6-influence-notes/README.md), with each hit's URL, date, author and classification, and the gaps each search left:
+The notes behind every table and verdict are in [notes/](notes/README.md), with each hit's URL, date, author and classification, and the gaps each search left:
 
-- [feature-timelines/](perl6-influence-notes/feature-timelines/) holds the first pass: the Perl 6 chronology, the Perl 5 backports, the per-feature timelines, the influence audit and the proposal-archive search.
-- [beyond-proposals/](perl6-influence-notes/beyond-proposals/) holds the second: forums, mailing lists, other languages' repositories, Raku-side dates and claims, and the look-alikes' origins.
+- [feature-timelines/](notes/feature-timelines/) holds the first pass: the Perl 6 chronology, the Perl 5 backports, the per-feature timelines, the influence audit and the proposal-archive search.
+- [beyond-proposals/](notes/beyond-proposals/) holds the second: forums, mailing lists, other languages' repositories, Raku-side dates and claims, and the look-alikes' origins.

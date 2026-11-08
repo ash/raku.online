@@ -3,8 +3,8 @@
 #
 #   rakupp build.raku [--clean]
 #
-# src/report.md is rakupp's docs/dev/PERL6-FEATURES-IN-OTHER-LANGUAGES.md,
-# copied in by sync.sh. Its `## ` sections become the chapters listed in
+# src/report.md is the report, written here; src/notes/ holds the research
+# behind it. Its `## ` sections become the chapters listed in
 # src/site.raku; the title and the opening paragraph become the index.
 #
 # The report cites a primary source for every claim. src/evidence/*.json says,
@@ -65,7 +65,7 @@ sub emph(Str $s --> Str) {
              { $0 ~ '<em>' ~ $1 ~ '</em>' }, :g)
 }
 
-# The report's relative links are written from rakupp/docs/dev/.
+# The report's relative links are written from src/, where it lives.
 sub link-target(Str $t --> Str) {
     return $t if $t.starts-with('http') || $t.starts-with('#');
     my $path = $t.subst(/ '/README.md' $ /, '/');
@@ -269,7 +269,7 @@ sub page(Str $title, Str $desc, Str $body --> Str) {
     <div class="content lineage">
     $body
     <footer>
-    <span>These pages render <a href="{%SITE<report>}">PERL6-FEATURES-IN-OTHER-LANGUAGES.md</a> from the <a href="{%SITE<repo>}">rakupp</a> repository; the research notes behind it are in <a href="{%SITE<notes>}">perl6-influence-notes</a>.</span>
+    <span>These pages render <a href="{%SITE<report>}">report.md</a> from the <a href="{%SITE<repo>}">raku.online</a> repository; the research notes behind it are in <a href="{%SITE<notes>}">notes/</a>.</span>
     <span>Under each claim, “What the sources say” gives every cited source in our words, or in its own where the exact wording has been added (<a href="{%SITE<evidence>}">evidence files</a>).</span>
     </footer>
     </div>

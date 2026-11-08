@@ -62,8 +62,8 @@ build_pace() {
 }
 
 # Lineage: what other languages took from the Perl 6 design, one page per
-# section of rakupp's docs/dev/PERL6-FEATURES-IN-OTHER-LANGUAGES.md (copied in
-# by sites/lineage/sync.sh), with src/evidence saying what each source says.
+# section of sites/lineage/src/report.md, with src/evidence saying what each
+# source says.
 build_lineage() {
     echo "lineage -> www/lineage"
     ( cd "$ROOT/sites/lineage" && "$RAKUPP" build.raku --clean )

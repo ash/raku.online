@@ -1,7 +1,7 @@
 # quotes.raku — which evidence entries still wait for the source's own words,
 # and where in the research notes those words are recorded.
 #
-#   rakupp quotes.raku [--rakupp=PATH] [--page=SLUG] [--all]
+#   rakupp quotes.raku [--page=SLUG] [--all]
 #
 # Every entry in src/evidence/*.json without a `quote` is listed, page by page
 # in the order the page cites it, with the lines of the research notes that
@@ -10,8 +10,7 @@
 # claim needs, quote the main part and summarise the rest in `rest` — and run
 # ./build.sh lineage. --all lists the quoted entries too.
 #
-# The notes are rakupp's docs/dev/perl6-influence-notes/; the checkout is found
-# the way sync.sh finds it (--rakupp, else $RAKUPP_SRC, else ~/raku++).
+# The notes are src/notes/, beside the report they back.
 
 use JSON::Fast;
 
@@ -46,9 +45,9 @@ sub locate(Str $url, @files, IO::Path $root) {
     Nil
 }
 
-sub MAIN(Str :$rakupp = %*ENV<RAKUPP_SRC> // "$*HOME/raku++", Str :$page, Bool :$all = False) {
-    my $root = "$rakupp/docs/dev/perl6-influence-notes".IO;
-    die "no research notes at $root (pass --rakupp=PATH, the rakupp checkout)" unless $root.d;
+sub MAIN(Str :$page, Bool :$all = False) {
+    my $root = 'src/notes'.IO;
+    die "no research notes at $root (run this from sites/lineage)" unless $root.d;
     my @notes = md-files($root);
     say "notes: $root\n";
 

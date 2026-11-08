@@ -47,7 +47,7 @@ program still runs in a fraction of a second:
 | `/faq/` | Task-shaped answers to common questions, including what 6.e adds to 6.d | generated from `sites/faq/` |
 | `/cookbook/` | Moved to learn.raku.online/cookbook/ — redirect pages here; built into `learn/cookbook` from `sites/cookbook/` | `learn/` |
 | `/book/` | *Raku++ Internals* — the compiler book, plus its PDF | generated from `sites/book/` |
-| `/lineage/` | Lineage — what other languages took from the Perl 6 design after 2000, one page per section of rakupp's `docs/dev/PERL6-FEATURES-IN-OTHER-LANGUAGES.md`. Under each claim, "What the sources say" gives every cited source in our words, or as a quotation where its exact wording has been added to `sites/lineage/src/evidence/` | generated from `sites/lineage/` |
+| `/lineage/` | Lineage — what other languages took from the Perl 6 design after 2000, one page per section of the report in `sites/lineage/src/report.md`, written here with its research notes in `sites/lineage/src/notes/`. Under each claim, "What the sources say" gives every cited source in our words, or as a quotation where its exact wording has been added to `sites/lineage/src/evidence/` | generated from `sites/lineage/` |
 | `/film/` | **Not published yet** (`www/film/` is in `.gitignore` and the tab is out of the site bar while the narration is reworked). Short narrated films, one per mechanism of the interpreter (the pad, errors without C++ throws, big integers, gather as a coroutine). Scenes, scripts and subtitles come from `rakupp/docs/film`; the narration audio lives here, in `sites/film/audio/` | generated from `sites/film/` |
 | `/modules/` | The module handbook — one page per raku.land distribution Raku++ installs, tests and runs | generated from `sites/modules/` |
 | `/modules/ecosystem/` | Every distribution in the REA index and how each one ran under Raku++ | generated from `sites/modules/` |
@@ -153,9 +153,9 @@ sites/            sources for the generated sub-sites
                     from rakupp/docs/guide/faq, which is where they are written
   book/             build.raku + src/, emits out/ — chapters and the PDF synced
                     by sync.sh from rakupp/docs/book
-  lineage/          build.raku + src/, emits out/ — the report synced by sync.sh
-                    from rakupp/docs/dev; src/evidence/ (what each cited
-                    source says) is written here
+  lineage/          build.raku + src/, emits out/ — the report (src/report.md),
+                    its research notes (src/notes/) and src/evidence/ (what
+                    each cited source says) are all written here
   modules/          build.raku + src/, emits out/ — one Markdown file per module
                     under src/modules/, written here rather than synced.
                     Also writes examples/<module>/*.raku at the repo root
