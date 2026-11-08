@@ -66,9 +66,12 @@
     // Pace is the project's history, chapter by chapter, so it opens the reading
     // shelf: the story first, then the book. (Deep, Raku Behind the Docs, is a
     // book about the language rather than the engine, so it moved to Learn.)
+    // Lineage closes it: the language's own history, read through the records
+    // of the languages that took from it.
     { label: 'Read', items: [
-      { href: '/pace/', label: 'Pace', hue: 'pace', note: 'The project, chapter by chapter' },
-      { href: '/book/', label: 'Book', hue: 'book', note: 'Raku++ Internals, the compiler book' }
+      { href: '/pace/',    label: 'Pace',    hue: 'pace',    note: 'The project, chapter by chapter' },
+      { href: '/book/',    label: 'Book',    hue: 'book',    note: 'Raku++ Internals, the compiler book' },
+      { href: '/lineage/', label: 'Lineage', hue: 'lineage', note: 'What other languages took from Perl 6' }
     ] },
     // Last, as the way out of the reading rooms: where to ask when something
     // breaks — GitHub issues, or DeepSoft's commercial support.

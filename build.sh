@@ -61,6 +61,16 @@ build_pace() {
     cp -R "$ROOT/sites/pace/out" "$WWW/pace"
 }
 
+# Lineage: what other languages took from the Perl 6 design, one page per
+# section of rakupp's docs/dev/PERL6-FEATURES-IN-OTHER-LANGUAGES.md (copied in
+# by sites/lineage/sync.sh), with src/evidence saying what each source says.
+build_lineage() {
+    echo "lineage -> www/lineage"
+    ( cd "$ROOT/sites/lineage" && "$RAKUPP" build.raku --clean )
+    rm -rf "$WWW/lineage"
+    cp -R "$ROOT/sites/lineage/out" "$WWW/lineage"
+}
+
 build_faq() {
     echo "faq -> www/faq"
     ( cd "$ROOT/sites/faq" && "$RAKUPP" build.raku --clean )
@@ -198,7 +208,7 @@ check_shell() {
                 "$WWW/embed/spreadsheets/index.html" \
                 "$WWW/install/index.html" \
                 "$WWW/spec/index.html" "$WWW/spec/rules/index.html" \
-                "$WWW/faq/index.html" "$WWW/book/index.html" \
+                "$WWW/faq/index.html" "$WWW/book/index.html" "$WWW/lineage/index.html" \
                 "$WWW/modules/index.html" "$WWW/grid/index.html" "$WWW/map/index.html" \
                 "$WWW/in-use/index.html" \
                 "$WWW/showcase/index.html" "$WWW/live/index.html" \
@@ -254,9 +264,9 @@ check_excel_engine() {
 # No page may link to a sub-site's old root-absolute paths. Both generators take
 # a base from their site.raku; this catches a regression in that plumbing.
 check_no_stray_absolutes() {
-    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$LEARN/tour" "$WWW/spec" "$WWW/faq" "$LEARN/cookbook" "$WWW/book" "$LEARN/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/film" "$WWW/map" "$LEARN/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
+    stray=$(grep -rhoE '(href|src)="/[a-z0-9-]+' "$LEARN/tour" "$WWW/spec" "$WWW/faq" "$LEARN/cookbook" "$WWW/book" "$LEARN/deep" "$WWW/modules" "$WWW/grid" "$WWW/pace" "$WWW/lineage" "$WWW/film" "$WWW/map" "$LEARN/examples" "$WWW/showcase" "$WWW/live" "$WWW/in-use" --include='*.html' 2>/dev/null \
             | sed 's/.*="//' | sort -u \
-            | grep -vE '^/(tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku|slides)$' || true)
+            | grep -vE '^/(tour|spec|grid|pace|lineage|film|map|faq|cookbook|book|deep|modules|ecosystem|theme|play|rakupp|embed|builder|demo|examples|showcase|live|in-use|install|raku|slides)$' || true)
     [ -z "$stray" ] || { echo "links escaping their base: $stray" >&2; exit 1; }
     echo "check: no sub-site link escapes its base"
     check_no_unexpanded_base
@@ -280,6 +290,7 @@ case "${1:-all}" in
     map)       build_theme; build_map ;;
     faq)       build_faq ;;
     pace)      build_pace ;;
+    lineage)   build_lineage ;;
     film)      build_film ;;
     cookbook)  build_cookbook ;;
     book)      build_book ;;
@@ -287,8 +298,8 @@ case "${1:-all}" in
     modules)   build_modules ;;
     examples)  build_examples ;;
     showcase)  build_showcase ;;
-    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_pace; build_film; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
-    *)     echo "usage: $0 [all|theme|tour|spec|grid|pace|film|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
+    all)   build_theme; build_tour; build_spec; build_grid; build_map; build_faq; build_pace; build_lineage; build_film; build_cookbook; build_book; build_deep; build_modules; build_examples; build_showcase ;;
+    *)     echo "usage: $0 [all|theme|tour|spec|grid|pace|lineage|film|map|faq|cookbook|book|deep|modules|examples|showcase]" >&2; exit 2 ;;
 esac
 
 # The ?v= cache tag, hashed over every versioned engine asset, so browsers
