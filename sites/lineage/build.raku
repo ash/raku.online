@@ -141,7 +141,7 @@ sub aside(--> Str) {
         my $src = '<p class="lg-ev-src"><b>' ~ esc(%e<who>) ~ '</b> <span>' ~ esc(%e<where>) ~ '</span> '
                 ~ '<time>' ~ esc(%e<when>) ~ '</time> <a href="' ~ esc($url) ~ '">source ↗</a></p>';
         my $body = %e<quote> && %e<quote>.trim
-            ?? '<blockquote class="lg-ev-q"><p>' ~ esc(%e<quote>.trim) ~ '</p></blockquote>'
+            ?? '<blockquote class="lg-ev-q"><p>' ~ prose(%e<quote>.trim) ~ '</p></blockquote>'
                ~ (%e<rest> && %e<rest>.trim ?? '<p class="lg-ev-rest">' ~ prose(%e<rest>.trim) ~ '</p>' !! '')
             !! '<p class="lg-ev-says">' ~ prose(%e<says>) ~ '</p>';
         '<li id="ev-' ~ $n ~ '" value="' ~ $n ~ '">' ~ $src ~ $body ~ '</li>'

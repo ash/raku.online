@@ -22,7 +22,7 @@ One JSON file per page, named by the page's slug: `timeline.json`, `borrowed.jso
 | `where` | yes | The venue or document: a list and message number, an issue number, a proposal, a commit. |
 | `when` | yes | The date as the source gives it (`25 Apr 2016`, `Jul 2005`). |
 | `says` | yes | What the source says or does that bears on the report's claim, **in our own words**: one sentence, at most about 35 words. Paraphrase; never copy the source's wording. |
-| `quote` | no | The source's exact words, added by hand. When set, the page shows it as a quotation instead of `says`, on every page that cites the source (fill it in one file; the others pick it up). When the passage is long, quote the main part and put the rest in `rest`. |
+| `quote` | no | The source's exact words, added by hand. When set, the page shows it as a quotation instead of `says`, on every page that cites the source (fill it in one file; the others pick it up). When the passage is long, quote the main part and put the rest in `rest`. Code is written in backticks, as in `says`; the source's own markup (reStructuredText's double backticks, emphasis, footnote markers) is left out, words left out of the middle are marked `…`, and a footnote taken into the quote is introduced by `[Footnote:]`. |
 | `rest` | no | A short summary, in our words, of what the quoted passage leaves out. It is shown under the quotation, and only when there is one. |
 | `note` | no | Which research note holds the original wording, relative to `rakupp/docs/dev/perl6-influence-notes/`. Use it to find a quote to paste into `quote`. |
 
