@@ -10,6 +10,7 @@ One JSON file per page, named by the page's slug: `timeline.json`, `borrowed.jso
     "when":  "25 Apr 2016",
     "says":  "Proposes taking a heredoc's base indentation from its closing delimiter, the rule Perl 6 settled on.",
     "quote": "",
+    "rest":  "",
     "note":  "beyond-proposals/design_forums.md"
   }
 }
@@ -21,7 +22,21 @@ One JSON file per page, named by the page's slug: `timeline.json`, `borrowed.jso
 | `where` | yes | The venue or document: a list and message number, an issue number, a proposal, a commit. |
 | `when` | yes | The date as the source gives it (`25 Apr 2016`, `Jul 2005`). |
 | `says` | yes | What the source says or does that bears on the report's claim, **in our own words**: one sentence, at most about 35 words. Paraphrase; never copy the source's wording. |
-| `quote` | no | The source's exact words, added by hand. Keep it short and include only what the claim needs. When set, the page shows it as a quotation instead of `says`. |
+| `quote` | no | The source's exact words, added by hand. When set, the page shows it as a quotation instead of `says`, on every page that cites the source (fill it in one file; the others pick it up). When the passage is long, quote the main part and put the rest in `rest`. |
+| `rest` | no | A short summary, in our words, of what the quoted passage leaves out. It is shown under the quotation, and only when there is one. |
 | `note` | no | Which research note holds the original wording, relative to `rakupp/docs/dev/perl6-influence-notes/`. Use it to find a quote to paste into `quote`. |
+
+## Filling in quotes
+
+```
+cd sites/lineage
+rakupp quotes.raku                 # every entry still without a quote
+rakupp quotes.raku --page=borrowed # one page
+rakupp quotes.raku --all           # quoted ones too, marked ✓
+```
+
+Each entry is listed with the lines of the research notes that mention its source, as `file:line` relative to `rakupp/docs/dev/perl6-influence-notes/`. Most notes record the source's wording there. An entry the notes do not mention says so, and its words have to come from the source itself. After editing, `./build.sh lineage` from the repository root shows the quotes.
+
+## What gets an entry
 
 Only links that carry a claim get an entry: a statement, a credit, a citation, a proposal, a rejection, a decision. A link that only supports a date or names a release can go without one. An entry whose URL no longer appears in the report is reported by the build as stale.

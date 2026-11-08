@@ -11,8 +11,9 @@
 # per link, who said what, where and when, so a page can show it under the
 # paragraph or table that cites it: each such link gets a numbered marker, and
 # the block is followed by "What the sources say". An entry's `says` is our
-# paraphrase; its `quote`, when someone has filled it in, is shown instead.
-# See src/evidence/README.md.
+# paraphrase; its `quote`, when someone has filled it in, is shown instead,
+# followed by `rest`, a summary of whatever the quote leaves out. quotes.raku
+# lists the entries still waiting for one. See src/evidence/README.md.
 
 use JSON::Fast;
 
@@ -20,7 +21,7 @@ my %SITE;
 my $BASE = '';
 my %EV;           # page slug → link target → that page's evidence entry
 my %ANY;          # link target → the first entry any page has for it
-my %QUOTE;        # link target → the exact wording, from whichever file has it
+my %QUOTE;        # link target → [quote, rest], from whichever file has a quote
 my %SEEN;         # page slug → link target → True once that page has cited it
 my $PAGE = '';    # the slug of the page being rendered
 
@@ -30,7 +31,7 @@ my %NUM;
 my @BLOCK;
 my $N = 0;
 
-my constant FIELDS = <who where when says quote note>;
+my constant FIELDS = <who where when says quote rest note>;
 
 # ---- inline formatting ----------------------------------------------------
 
@@ -55,10 +56,10 @@ sub link-target(Str $t --> Str) {
 
 # A page's own evidence file wins; a source cited on a page whose file has no
 # entry for it borrows another page's. A quote, added once in any file, is
-# shown wherever the source is cited.
+# shown wherever the source is cited, and its `rest` travels with it.
 sub ev(Str $url) {
     my %e = %EV{$PAGE}{$url} // %ANY{$url} // return Nil;
-    %e<quote> = %QUOTE{$url} if %QUOTE{$url}:exists;
+    (%e<quote>, %e<rest>) = |%QUOTE{$url} if %QUOTE{$url}:exists;
     %e
 }
 
@@ -119,8 +120,11 @@ sub load-evidence(@slugs) {
             %ANY{$url} //= %e;
             if %e<quote> && %e<quote>.trim {
                 note "$f: $url has a different quote in another file; the first is used"
-                    if (%QUOTE{$url}:exists) && %QUOTE{$url} ne %e<quote>.trim;
-                %QUOTE{$url} //= %e<quote>.trim;
+                    if (%QUOTE{$url}:exists) && %QUOTE{$url}[0] ne %e<quote>.trim;
+                %QUOTE{$url} //= [%e<quote>.trim, (%e<rest> // '').trim];
+            }
+            elsif %e<rest> && %e<rest>.trim {
+                note "$f: $url has a `rest` but no `quote`; `rest` only shows after a quote";
             }
         }
     }
@@ -138,6 +142,7 @@ sub aside(--> Str) {
                 ~ '<time>' ~ esc(%e<when>) ~ '</time> <a href="' ~ esc($url) ~ '">source ↗</a></p>';
         my $body = %e<quote> && %e<quote>.trim
             ?? '<blockquote class="lg-ev-q"><p>' ~ esc(%e<quote>.trim) ~ '</p></blockquote>'
+               ~ (%e<rest> && %e<rest>.trim ?? '<p class="lg-ev-rest">' ~ prose(%e<rest>.trim) ~ '</p>' !! '')
             !! '<p class="lg-ev-says">' ~ prose(%e<says>) ~ '</p>';
         '<li id="ev-' ~ $n ~ '" value="' ~ $n ~ '">' ~ $src ~ $body ~ '</li>'
     }).join("\n");
