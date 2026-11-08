@@ -356,7 +356,7 @@
 <!-- The ?v= tag busts caches on new releases: build.sh stamps it with the
      current rakujs.wasm hash, and worker.js passes it on to rakujs.{js,wasm}. -->
 <script src="examples.js?v=1f7f1a4c"></script>
-<script src="/editors/lsp/client.js?l=3b93c728"></script>
+<script src="/editors/lsp/client.js?l=6e344e24"></script>
 <script>
 // The WebAssembly module runs in a Web Worker (worker.js) so the main thread
 // stays free to animate the spinner and stream output live. See worker.js.
@@ -383,7 +383,8 @@ const liveLbl = document.getElementById('liveLbl');
 // mistakes, answers hover and offers completions. It runs in a worker of its
 // own, so a running program never blocks it, and it starts only when the
 // editor first gets focus, so a visitor who only presses Run never loads it.
-// On by default; the choice is remembered.
+// Switching it on with the checkbox starts it at once. On by default; the
+// choice is remembered.
 const CHECK_KEY = 'raku-play-check';
 const checkChk = document.getElementById('checkChk');
 const checkLbl = document.getElementById('checkLbl');
@@ -392,7 +393,7 @@ let lsp = null;
 if (window.RakuLsp) {
   lsp = RakuLsp.attach({
     textarea: codeEl,
-    workerUrl: '/editors/lsp/worker.js?v=1f7f1a4c&l=3b93c728',   // both tags stamped by build.sh
+    workerUrl: '/editors/lsp/worker.js?v=1f7f1a4c&l=6e344e24',   // both tags stamped by build.sh
     uri: 'file:///playground.raku',
     lazy: true,
     onDiagnostics(list) {
@@ -405,11 +406,11 @@ if (window.RakuLsp) {
     const first = lsp.diagnostics[0];
     if (first) lsp.selectRange(first.range);
   });
-  const setCheck = (on, persist) => {
+  const setCheck = (on, clicked) => {
     checkChk.checked = on;
     checkLbl.classList.toggle('on', on);
-    lsp.setEnabled(on);
-    if (persist) { try { localStorage.setItem(CHECK_KEY, on ? '1' : '0'); } catch (e) {} }
+    lsp.setEnabled(on, clicked);
+    if (clicked) { try { localStorage.setItem(CHECK_KEY, on ? '1' : '0'); } catch (e) {} }
   };
   let stored = null;
   try { stored = localStorage.getItem(CHECK_KEY); } catch (e) {}

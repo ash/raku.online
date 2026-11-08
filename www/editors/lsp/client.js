@@ -584,10 +584,12 @@ function attach(opts) {
 
   return {
     changed,
-    setEnabled(on) {
+    // `now` starts a lazy client at once: a person switching it on is the
+    // sign it waits for, and their click has just taken focus off the editor.
+    setEnabled(on, now) {
       enabled = on;
       if (!on) { stop(); onStatus('off', 'off'); }
-      else if (!opts.lazy || document.activeElement === src) start();
+      else if (now || !opts.lazy || document.activeElement === src) start();
     },
     async restart() {
       if (ready) {
