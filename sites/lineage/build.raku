@@ -160,13 +160,15 @@ sub cells(Str $row) {
         .split('|').map({ .trim.subst("\x[2]", '\\|', :g) })
 }
 
+# A table of four or more columns is one of the report's wide prose tables and
+# keeps its minimum width; a narrower one fits the page.
 sub table-html(@rows --> Str) {
     my @head = cells(@rows[0]);
     my $h = '<tr>' ~ @head.map({ '<th>' ~ inline($_, :!refs) ~ '</th>' }).join ~ '</tr>';
     my $b = @rows[2 .. *].map(-> $r {
         '<tr>' ~ cells($r).map({ '<td>' ~ inline($_) ~ '</td>' }).join ~ '</tr>'
     }).join("\n");
-    '<div class="tablewrap lg-t"><table><thead>' ~ $h ~ '</thead><tbody>' ~ $b ~ '</tbody></table></div>'
+    '<div class="tablewrap lg-t' ~ (@head >= 4 ?? ' wide' !! '') ~ '"><table><thead>' ~ $h ~ '</thead><tbody>' ~ $b ~ '</tbody></table></div>'
 }
 
 sub anchor(Str $text --> Str) {
@@ -187,8 +189,9 @@ sub render(Str $md --> Str) {
             @out.push(table-html(@rows) ~ aside());
             next;
         }
+        # The page's h1 is the section's `## ` heading, so `###` is an h2.
         if $line ~~ / ^ ('###' '#'?) ' ' (.+) / {
-            my $level = (~$0).chars;
+            my $level = (~$0).chars - 1;
             my $text = (~$1).trim;
             @out.push("<h$level id=\"{ anchor($text) }\">" ~ inline($text, :!refs) ~ "</h$level>");
             $i++;
@@ -257,6 +260,11 @@ sub page(Str $title, Str $desc, Str $body --> Str) {
     HTML
 }
 
+# The caveat every page opens with, right under its title.
+sub nb(--> Str) {
+    '<p class="lg-nb"><b>N.B.</b> ' ~ esc(%SITE<nb>) ~ '</p>'
+}
+
 sub strip(@chapters, Int $here --> Str) {
     '<nav class="lg-strip" aria-label="Chapters"><a href="' ~ $BASE ~ '/"'
       ~ ($here < 0 ?? ' aria-current="page"' !! '') ~ '>Lineage</a>'
@@ -318,7 +326,7 @@ sub MAIN(Bool :$clean = False) {
         $N = 0;
         $PAGE = %c<slug>;
         my $head = '<p class="lg-eyebrow">Chapter ' ~ ($i + 1) ~ ' of ' ~ @chapters.elems ~ '</p>'
-                 ~ '<h1>' ~ inline(%c<heading>, :!refs) ~ '</h1>';
+                 ~ '<h1>' ~ inline(%c<heading>, :!refs) ~ '</h1>' ~ nb();
         my $body = render(@sections[$i][1]);
         mkdir('out/' ~ %c<slug>);
         spurt('out/' ~ %c<slug> ~ '/index.html',
@@ -342,7 +350,7 @@ sub MAIN(Bool :$clean = False) {
           page(%SITE<title> ~ ' — ' ~ $title, %SITE<tagline>,
                strip(@chapters, -1) ~ "\n"
                ~ '<p class="lg-eyebrow">Read · Lineage</p>'
-               ~ '<h1>' ~ inline($title, :!refs) ~ '</h1>'
+               ~ '<h1>' ~ inline($title, :!refs) ~ '</h1>' ~ nb()
                ~ '<p class="tagline">' ~ esc(%SITE<tagline>) ~ '</p>'
                ~ render($intro) ~ "\n" ~ $how
                ~ '<h2 id="chapters">The chapters</h2><ol class="lg-list">' ~ $list ~ '</ol>'));
