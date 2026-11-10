@@ -32,13 +32,15 @@
     std::string nativeParent;                             <span class="c1">// `is Str`, `is Cool`</span>
     std::vector&lt;std::shared_ptr&lt;ClassInfo&gt;&gt; extraParents;
     std::vector&lt;ClassAttr&gt; attrs;
-    std::map&lt;std::string, Value&gt; methods;                 <span class="c1">// Code values</span>
+    std::shared_ptr&lt;<span class="k">const</span> AttrLayout&gt; attrLayout;
+    ValueMap methods;                                     <span class="c1">// Code values</span>
     std::map&lt;std::string, std::string&gt; rules;             <span class="c1">// grammar rules</span>
     std::vector&lt;std::string&gt; ruleOrder;
     <span class="kt">bool</span> isGrammar = <span class="kc">false</span>, isRole = <span class="kc">false</span>;
     std::string repr;                                     <span class="c1">// is repr('CStruct')</span>
     std::string ver, auth, api;
-    std::set&lt;std::string&gt; requiredMethods, doneRoles;
+    std::vector&lt;std::string&gt; requiredMethods;
+    std::set&lt;std::string&gt; doneRoles;
     Value howObj;                                         <span class="c1">// persistent .HOW</span>
     std::shared_ptr&lt;Env&gt; declEnv;                         <span class="c1">// for attr defaults</span>
     ClassDecl* decl = <span class="kc">nullptr</span>;                            <span class="c1">// for role parameters</span>
@@ -47,59 +49,62 @@
 
 <span class="k">struct</span> ObjectData {
     std::shared_ptr&lt;ClassInfo&gt; cls;
-    std::map&lt;std::string, Value&gt; attrs;
-    Value boxed; <span class="kt">bool</span> hasBoxed = <span class="kc">false</span>;                   <span class="c1">// for `5 but Role`</span>
+    AttrTable attrs;
+    ColdSlot cold;                <span class="c1">// boxed (for `5 but Role`), a monitor's lock</span>
+    <span class="kt">bool</span> hasBoxed = <span class="kc">false</span>;
 };</code></pre>
 <p>Everything a class <em>is</em> lives in that first struct, including the grammar rules if it happens to be a grammar — which is how a grammar is just a class whose methods can be regexes (<a href="/book/grammars/">Chapter 22</a>).</p>
+<p>An object's attributes are an <code>AttrTable</code> (<code>src/AttrTable.h</code>). Today that is the interface of a <code>ValueHash</code> over a <code>ValueHash</code>: every attribute is an entry keyed by its name, and an object made by <code>makePayload</code> carries the hash in its own block, right behind the body, so an object is one allocation. The type exists for what comes next. A class already builds an <code>AttrLayout</code>, the keys an instance stores its declared attributes under, in the order construction stores them, and a check run across Roast and the test suite found no object that stored its declared keys in another order. The step that puts the values in an array the layout indexes, with the names and hashes gone from every object, has not landed (<code>docs/dev/plans/OBJECT-SLOTS-PLAN.md</code>, batches 1 and 2 done 2026-11-06). The rare parts of an object — the boxed value of a mixin over a non-object, a <code>monitor</code>'s lock — sit behind one pointer, allocated on first use.</p>
 <h2 id="registration-and-lookup">Registration and lookup</h2>
 <p><code>ClassInfo</code>s are registered in one flat map at declaration:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-std::unordered_map&lt;std::string, std::shared_ptr&lt;ClassInfo&gt;&gt; classes_;
-std::unordered_map&lt;std::string, std::string&gt; classAliases_;</code></pre>
+StrMap&lt;std::shared_ptr&lt;ClassInfo&gt;&gt; classes_;
+StrMap&lt;std::string&gt; classAliases_;</code></pre>
 <p>Flat, not per-compilation-unit. Two modules declaring the same unqualified class name collide — a real divergence from Rakudo, listed in <a href="/book/modules/">Chapter 33</a>.</p>
 <p>The alias map softens the consequences of flatness. Registering <code>URI::Path</code> also aliases its tail, <code>Path</code>, unless a real class already claims that name. And a qualified name that is a <em>partial</em> path resolves by unique suffix match:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — resolveClassAlias</span>
-<span class="k">if</span> (n.find(<span class="s2">"::"</span>) != std::string::npos) {
-    <span class="k">const</span> std::string suffix = <span class="s2">"::"</span> + n;
-    <span class="k">const</span> std::string* hit = <span class="kc">nullptr</span>;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — classAliasOf, behind resolveClassAlias</span>
+<span class="k">if</span> (n.find(<span class="s2">"::"</span>) != std::string::npos &amp;&amp; !isSettingMetamodelName(n)) {
+    <span class="k">const</span> std::string suffix = strCat(<span class="s2">"::"</span>, n);
+    <span class="k">const</span> std::string_view* hit = <span class="kc">nullptr</span>;
     <span class="k">for</span> (<span class="k">auto</span>&amp; kv : classes_) {
         <span class="k">if</span> (…kv.first does not end with suffix…) <span class="k">continue</span>;
-        <span class="k">if</span> (hit) <span class="k">return</span> n;          <span class="c1">// ambiguous — leave it alone</span>
+        <span class="k">if</span> (hit) <span class="k">return</span> <span class="kc">nullptr</span>;   <span class="c1">// ambiguous — leave it alone</span>
         hit = &amp;kv.first;
     }
-    <span class="k">if</span> (hit) <span class="k">return</span> classAliases_.emplace(n, *hit).first-&gt;second;
+    <span class="k">if</span> (hit) <span class="k">return</span> &amp;classAliases_.emplace(n, *hit).first-&gt;second;
 }</code></pre>
 <p>so <code>Globber::Match</code> inside <code>unit class IO::Glob</code> finds <code>IO::Glob::Globber::Match</code>. Only qualified names take that road — a bare <code>Match</code> must not silently find a nested one — and an ambiguous suffix is left alone rather than guessed at. The successful answer is memoised into the alias map.</p>
 <h2 id="construction">Construction</h2>
-<p>The default <code>new</code> and <code>bless</code> share one path. It walks the class chain <strong>parent-first</strong>, gives each attribute its default, folds named arguments into the attribute map, and then runs <code>BUILD</code> and <code>TWEAK</code>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodCallPart2.cpp — default construction, abridged</span>
-<span class="k">for</span> (<span class="k">auto</span> it = chain.rbegin(); it != chain.rend(); ++it)      <span class="c1">// parent-first</span>
-    <span class="k">for</span> (<span class="k">auto</span>&amp; at : (*it)-&gt;attrs) {
+<p>The default <code>new</code> and <code>bless</code> share one path, <code>constructDefault</code>, and its core is <code>runAttrDefaults</code>. It walks the class chain <strong>least derived first</strong>, and for each attribute stores either the caller's named argument or the attribute's default, and then the <code>BUILD</code> and <code>TWEAK</code> submethods run:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/MethodCallPart2.cpp — runAttrDefaults, abridged</span>
+<span class="k">for</span> (<span class="kt">size_t</span> lvlIx = nChain; lvlIx-- &gt; <span class="mi">0</span>;) {          <span class="c1">// least derived first</span>
+    ClassInfo* lvl = chainAt(lvlIx);
+    …
+        <span class="k">const</span> std::string&amp; slot = attrStoreKey(chain, lvlIx, at, slotBuf);
+        …
         Value dv = at.hasDefVal ? at.defVal
-                 : at.def       ? eval(at.def)
-                 : at.sigil == <span class="s1">'@'</span> ? Value::array()
-                 : at.sigil == <span class="s1">'%'</span> ? Value::makeHash() : Value::any();
-        od-&gt;attrs[at.name] = dv;
-    }
-<span class="k">for</span> (<span class="k">auto</span>&amp; arg : args)
-    <span class="k">if</span> (arg.t == VT::Pair) od-&gt;attrs[arg.s] = *arg.pairVal;
-<span class="k">if</span> (Value* build = ci-&gt;findMethod(<span class="s2">"BUILD"</span>)) invokeMethod(*build, self, args);
-<span class="k">if</span> (Value* tweak = ci-&gt;findMethod(<span class="s2">"TWEAK"</span>)) invokeMethod(*tweak, self, args);</code></pre>
-<p>Parent-first matters: a subclass's default for an inherited attribute must win, and it does because it is written last.</p>
+        …
+        od-&gt;attrs[slot] = dv;
+}</code></pre>
+<p>Named arguments bind <em>during</em> the walk, not after it. Rakudo's <code>BUILDALL</code> takes the caller's value for an attribute when one was passed and only otherwise runs the default, so a later default that reads an earlier attribute sees the constructed value. A class that declares its own <code>submethod BUILD</code> initialises its attributes itself, and the arguments are not bound for that level.</p>
+<p><code>attrStoreKey</code> is the one rule for the key an attribute is stored under: the bare name; a sigil-prefixed <code>@name</code> where one class declares <code>$.name</code> and <code>@.name</code> both; and a class-qualified key for an ancestor's attribute that a more derived class declares again. A subclass that redeclares a name therefore shadows the ancestor's attribute, it does not overwrite it, and the subclass keeps the bare name, which is where its accessor reads.</p>
 <p>Attribute defaults are <em>expressions</em>, evaluated at construction in the scope the class was declared in — which is what <code>ClassInfo::declEnv</code> is for. The compiled backend precomputes them where it can, into <code>ClassAttr::defVal</code>, and falls back to the expression otherwise.</p>
 <p><code>is required</code> throws when construction supplies no value, carrying the reason string from <code>is required("it is a good idea")</code> into the message. <code>is built</code> makes a <em>private</em> attribute settable by name at construction anyway.</p>
 <h2 id="attributes-and-accessors">Attributes and accessors</h2>
-<p><code>$!x</code> is a direct read or write of the attribute map. <code>$.x</code> is a public accessor: method lookup runs first, and on a miss <code>findAttr</code> supplies the attribute. The compiled backend uses the same map through two helpers:</p>
+<p><code>$!x</code> is a direct read or write of the attribute table. <code>$.x</code> is a public accessor: method lookup runs first, and on a miss <code>findAttr</code> supplies the attribute. The compiled backend uses the same table through two helpers:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterBinding.cpp</span>
 Value rtAttrGet(<span class="k">const</span> Value&amp; self, <span class="k">const</span> std::string&amp; name) {
-    <span class="k">if</span> (self.t == VT::Object &amp;&amp; self.obj) {
-        <span class="k">auto</span> it = self.obj-&gt;attrs.find(name);
-        <span class="k">if</span> (it != self.obj-&gt;attrs.end()) <span class="k">return</span> it-&gt;second;
+    <span class="k">if</span> (self.t == VT::Object &amp;&amp; self.obj()) {
+        <span class="k">auto</span> it = self.obj()-&gt;attrs.find(name);
+        <span class="k">if</span> (it != self.obj()-&gt;attrs.end()) <span class="k">return</span> it-&gt;second;
     }
     <span class="k">return</span> Value::any();                     <span class="c1">// absent attribute → (Any)</span>
 }
 Value&amp; rtAttrRef(Value&amp; self, <span class="k">const</span> std::string&amp; name) {
-    <span class="k">return</span> self.obj-&gt;attrs[name];            <span class="c1">// autovivifies</span>
+    …
+    Value&amp; slot = self.obj()-&gt;attrs[name];   <span class="c1">// autovivifies</span>
+    …
+    <span class="k">return</span> slot;
 }</code></pre>
 <p><code>ClassAttr</code> carries more than storage: the declared type and its <code>:D</code>/<code>:U</code> smiley, <code>is rw</code>, <code>is required</code>, <code>is built</code>, a container trait (<code>has %.a is Set</code>), a <code>handles</code> list for delegation, an object-keyed flag, and <strong>user traits</strong>.</p>
 <p>That last one is how third-party traits reach their own code. <code>has $.id is json-name('licenseId')</code> records <code>{"json-name", Str}</code> on the attribute, surfaced on the <code>Attribute</code> meta-object, which is exactly what <code>JSON::Unmarshal</code>'s role checks and accessors look for. The parser does not know what <code>json-name</code> means and does not need to.</p>
@@ -111,15 +116,18 @@ std::string lastLvalueAttrType;</code></pre>
 <p>A role is a <code>ClassInfo</code> with <code>isRole</code> set, a set of <code>requiredMethods</code>, and a set of <code>doneRoles</code>. Composition copies the role's methods and attributes into the class and records membership.</p>
 <p>Required methods are checked <strong>at class declaration</strong>, and the check is more generous than a lookup, because there are four honest ways to satisfy a requirement:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterModules.cpp — for each name a role requires</span>
-ok = hasImpl(ci, rq, <span class="kc">nullptr</span>)      <span class="c1">// a non-stub implementation anywhere in the type</span>
-  || classOwn.count(rq);           <span class="c1">// …or the class's own stub: a deliberate promise</span>
-<span class="k">if</span> (!ok &amp;&amp; attrCovers(ci, rq)) ok = <span class="kc">true</span>;   <span class="c1">// …or a public attribute's accessor,</span>
-                                            <span class="c1">//    or an attribute `handles` delegation</span>
-<span class="k">if</span> (!ok)
+ok = hasImpl(ci.get(), rq, <span class="kc">nullptr</span>)   <span class="c1">// a non-stub implementation anywhere</span>
+  || classOwn.count(rq);              <span class="c1">// …or an own stub: a deliberate promise</span>
+<span class="k">if</span> (!ok &amp;&amp; attrCovers(ci.get(), rq)) ok = <span class="kc">true</span>;  <span class="c1">// …or a public attribute's</span>
+                                                 <span class="c1">// accessor, or a `handles`</span>
+…
+<span class="k">if</span> (!ok) {
+    …
     <span class="k">throw</span> RakuError{Value::typeObj(<span class="s2">"X::Comp::AdHoc"</span>),
         <span class="s2">"Method '"</span> + rq + <span class="s2">"' must be implemented by "</span> + clsName +
-        <span class="s2">" because it is required by roles: "</span> + rl + <span class="s2">"."</span>};</code></pre>
-<p>A <em>stubbed multi</em> is checked per candidate signature rather than by name, so a class that implements one of two required signatures is still incomplete.</p>
+        <span class="s2">" because it is required by roles: "</span> + (rl.empty() ? <span class="s2">"?"</span> : rl) + <span class="s2">"."</span>};
+}</code></pre>
+<p>A <em>stubbed multi</em> is checked per candidate signature rather than by name, so a class that implements one of two required signatures is still incomplete, and that failure has its own type, <code>X::Role::Unimplemented::Multi</code>.</p>
 <p><code>.does</code> and <code>~~</code> consult <code>doesRole</code>, which is true for the role itself, for directly or transitively composed roles, and for roles done by parents:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
 <span class="kt">bool</span> doesRole(<span class="k">const</span> std::string&amp; rn) <span class="k">const</span> {
@@ -134,23 +142,28 @@ ok = hasImpl(ci, rq, <span class="kc">nullptr</span>)      <span class="c1">// a
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ClassInfo</span>
 std::vector&lt;std::pair&lt;std::string, Value&gt;&gt; roleParamBindings;</code></pre>
 <p>The bindings are injected into the scope of the composing class's methods, so the role's body sees <code>%phase-defaults</code> in <code>does Cro::Policy::Timeout[%h]</code>. <code>makeRolePun</code> handles the anonymous case, <code>R[Int].new</code>, by building a punned class on the spot.</p>
-<p>Two roles defining the same method is a <strong>conflict</strong>, not a race: composition raises <code>X::Role::Unresolved::Method</code> — "Method 'r' must be resolved by class E because it exists in multiple roles (R1, R2)" — unless the class declares the name itself. Rakudo says the same sentence with the roles in the other order.</p>
+<p>Two roles defining the same method is a <strong>conflict</strong>, not a race: composition raises <code>X::Role::Unresolved::Method</code> — "Method 'r' must be resolved by class E because it exists in multiple roles (R2, R1)" — unless the class declares the name itself. That is Rakudo's sentence, roles in Rakudo's order (checked against Rakudo 2026.09).</p>
 <h2 id="mixins-but-and-does">Mixins: <code>but</code> and <code>does</code></h2>
 <p><code>5 but Role</code> and <code>%h does R</code> add a role to a value at run time.</p>
 <p>For a value that is already an object, the role is composed into a fresh anonymous subclass. For a <strong>non-object base</strong> there is no <code>ObjectData</code> to extend, so the value is <em>boxed</em>:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterOperators.cpp — mixinValue</span>
-obj = std::make_shared&lt;ObjectData&gt;();
-obj-&gt;boxed = base;          <span class="c1">// the original 5 is kept here</span>
+obj = makePayload&lt;ObjectData&gt;();
+obj-&gt;boxed() = base;        <span class="c1">// the original 5 is kept here</span>
 obj-&gt;hasBoxed = <span class="kc">true</span>;
 <span class="c1">// … build an anonymous subclass composing the role, wrap in a VT::Object …</span></code></pre>
 <p>Dispatch on the result checks the role's methods first; anything not found — and not an identity method — is delegated back to the box:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — methodCall</span>
-<span class="k">if</span> (inv.t == VT::Object &amp;&amp; inv.obj &amp;&amp; inv.obj-&gt;hasBoxed &amp;&amp; inv.obj-&gt;cls &amp;&amp;
-    !inv.obj-&gt;cls-&gt;findMethod(m) &amp;&amp; !inv.obj-&gt;cls-&gt;findAttr(m)) {
-    <span class="k">static</span> <span class="k">const</span> std::set&lt;std::string&gt; keepOnObj =
-        {<span class="s2">"does"</span>,<span class="s2">"HOW"</span>,<span class="s2">"WHAT"</span>,<span class="s2">"WHICH"</span>,<span class="s2">"defined"</span>,<span class="s2">"DEFINITE"</span>};
-    <span class="k">if</span> (!keepOnObj.count(m))
-        <span class="k">return</span> methodCall(inv.obj-&gt;boxed, m, args, rwArgs);
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — the method chain, abridged</span>
+<span class="k">if</span> (inv.t == VT::Object &amp;&amp; inv.obj() &amp;&amp; inv.obj()-&gt;hasBoxed &amp;&amp;
+    inv.obj()-&gt;cls &amp;&amp;
+    (m.skipOwn || (!inv.obj()-&gt;cls-&gt;findMethod(m) &amp;&amp;
+                   !inv.obj()-&gt;cls-&gt;findAttr(m.s)))) {
+    <span class="k">static</span> <span class="k">const</span> std::set&lt;std::string&gt; keepOnObj = {
+        <span class="s2">"does"</span>, <span class="s2">"HOW"</span>, <span class="s2">"WHAT"</span>, <span class="s2">"WHICH"</span>, <span class="s2">"defined"</span>, <span class="s2">"DEFINITE"</span>, <span class="s2">"isa"</span>,
+        <span class="s2">"WHERE"</span>, <span class="s2">"can"</span>, <span class="s2">"VAR"</span>};
+    <span class="k">if</span> (!keepOnObj.count(m)) {
+        Value r = methodCall(inv.obj()-&gt;boxed(), m, args, rwArgs);
+        …
+    }
 }</code></pre>
 <p>So <code>(5 but Role).succ</code> runs <code>Int.succ</code> on the <code>5</code>, while the role's methods and <code>.does</code>/<code>.WHAT</code> see the mixed object. The <code>keepOnObj</code> set is the list of questions that must be answered <em>about the mixin</em> rather than about the box.</p>
 <p><code>$x but Pair</code> mixes an attribute rather than a role, using the same machinery with a synthesised anonymous role — which is what <code>anonMixinSeq_</code> names.</p>
@@ -165,12 +178,11 @@ std::unordered_map&lt;std::string,
 <p><code>.^add_method($name, $code)</code> writes into <code>ClassInfo::methods</code> directly, which is the whole of runtime method injection.</p>
 <h2 id="package-stashes-and-who">Package stashes and <code>.WHO</code></h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-std::map&lt;std::string,
-         std::shared_ptr&lt;std::map&lt;std::string, Value&gt;&gt;&gt; pkgStashes_;</code></pre>
+std::map&lt;std::string, PRef&lt;ValueMap&gt;&gt; pkgStashes_;</code></pre>
 <p>One shared map per package <strong>name</strong>, and the sharing is the point. <code>.WHO</code> used to build a fresh empty <code>Hash</code> on each call, so <code>EXPORTHOW.WHO.&lt;grammar&gt; = SomeHOW</code> wrote into a temporary and died with "Target is not assignable". Reading a stash also re-syncs the package's qualified globals into it, so <code>our</code>-scoped symbols appear.</p>
 <p>A <code>module</code> or <code>package</code> has no <code>ClassInfo</code> at all, so its <code>:ver</code>/<code>:auth</code>/<code>:api</code> adverbs live in a separate small map, <code>pkgMeta_</code>, which is what <code>.^ver</code> answers for a package.</p>
 <h2 id="honest-limitations">Honest limitations</h2>
-<ul><li><strong>Depth-first method resolution</strong>, as in <a href="/book/dispatch/">Chapter 16</a>.</li><li><strong>Role conflicts are silent</strong>, last writer wins.</li><li><strong>The class registry is flat</strong>, so unqualified class names from different modules collide. The alias machinery reduces the pain but does not remove the cause.</li><li><strong><code>ClassInfo::decl</code> is a raw <code>ClassDecl*</code></strong> into the AST, kept alive by the same "the tree is immortal" rule as <code>Callable::body</code> (<a href="/book/ast/">Chapter 7</a>).</li></ul><nav class="ch-nav"><a class="prev" href="/book/dispatch/"><span>Previous</span>Dispatch</a><a class="next" href="/book/lazy/"><span>Next</span>Laziness, Junctions, and the Wilder Values</a></nav>
+<ul><li><strong>Depth-first method resolution</strong>, as in <a href="/book/dispatch/">Chapter 16</a>.</li><li><strong>The class registry is flat</strong>, so unqualified class names from different modules collide. The alias machinery reduces the pain but does not remove the cause.</li><li><strong><code>ClassInfo::decl</code> is a raw <code>ClassDecl*</code></strong> into the AST, kept alive by the same "the tree is immortal" rule as <code>Callable::body</code> (<a href="/book/ast/">Chapter 7</a>).</li></ul><nav class="ch-nav"><a class="prev" href="/book/dispatch/"><span>Previous</span>Dispatch</a><a class="next" href="/book/lazy/"><span>Next</span>Laziness, Junctions, and the Wilder Values</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

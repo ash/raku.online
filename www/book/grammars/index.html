@@ -27,26 +27,37 @@
 <p>A Raku grammar is a class whose methods can be regexes. That is not a simplification for the book — it is how it is implemented. <code>grammar G { … }</code> produces a <code>ClassInfo</code> with <code>isGrammar</code> set, its rules in a string map beside its methods:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ClassInfo, the grammar fields</span>
 std::map&lt;std::string, std::string&gt; rules;      <span class="c1">// name → pattern text</span>
+std::map&lt;std::string, std::shared_ptr&lt;Env&gt;&gt; ruleHome;  <span class="c1">// a role's rule: its</span>
+                                               <span class="c1">// own scope</span>
 std::vector&lt;std::string&gt; ruleOrder;            <span class="c1">// DECLARATION order</span>
 std::map&lt;std::string, std::string&gt; ruleKind;   <span class="c1">// token / rule / regex</span>
 std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; ruleParams;
 <span class="kt">bool</span> isGrammar = <span class="kc">false</span>;</code></pre>
-<p>Inheritance works because <code>findRule</code> walks the parent chain exactly as <code>findMethod</code> does, so <code>grammar Mine is Base</code> overrides individual rules.</p>
+<p>Inheritance works because <code>findRule</code> walks the parent chain exactly as <code>findMethod</code> does, so <code>grammar Mine is Base</code> overrides individual rules. A rule composed in from a role keeps the scope it was written in, in <code>ruleHome</code>, so a <code>&lt;?{ f() }&gt;</code> in it sees the subs the role's file imported and not only the grammar's.</p>
 <p>The pattern text is stored <strong>unparsed</strong>, as the lexer captured it (<a href="/book/lexer/">Chapter 4</a>). Compilation happens lazily, per rule, on first use.</p>
 <h2 id="the-grammar-matcher">The grammar matcher</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="k">class</span> GrammarMatcher {
 <span class="k">public</span>:
-    <span class="k">struct</span> Rule { std::string pattern, kind; std::vector&lt;std::string&gt; params; };
+    <span class="k">struct</span> Rule {
+        std::string pattern, kind; std::vector&lt;std::string&gt; params;
+        <span class="k">struct</span> Lit { std::vector&lt;std::string&gt; args;
+                     std::string pattern, kind; };
+        std::vector&lt;Lit&gt; lits;     <span class="c1">// `multi rule expr(0)` candidates</span>
+        <span class="kt">bool</span> litOnly = <span class="kc">false</span>;      <span class="c1">// …and there is no generic body</span>
+        <span class="kt">int</span> home = <span class="mi">0</span>;              <span class="c1">// the scope it was written in</span>
+    };
     std::map&lt;std::string, Rule&gt; rules;
     std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; protos;
     GrammarHooks hooks;
 
     <span class="kt">bool</span> parse(<span class="k">const</span> std::string&amp; input, <span class="k">const</span> std::string&amp; top, <span class="kt">bool</span> subparse,
-               ParseNode&amp; out, <span class="kt">long</span>&amp; endOut);
+               ParseNode&amp; out, <span class="kt">long</span>&amp; endOut, <span class="kt">long</span> startPos = <span class="mi">0</span>);
     <span class="kt">bool</span> matchSub(<span class="k">const</span> std::string&amp; name, <span class="k">const</span> std::string&amp; args,
                   <span class="k">const</span> std::string&amp; capKey, Regex::MState&amp; st, <span class="kt">long</span> pos,
                   <span class="k">const</span> FnRef&amp; k);
+    <span class="kt">long</span> hwPos = -<span class="mi">1</span>;               <span class="c1">// furthest position a rule failed at</span>
+    std::string hwRule;            <span class="c1">// …and which rule</span>
 <span class="k">private</span>:
     std::unordered_map&lt;<span class="kt">uint64_t</span>, MemoEntry&gt; memo_;
     std::unordered_map&lt;std::string, NameMeta&gt; nameMeta_;
@@ -54,10 +65,13 @@ std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; ruleParams;
     std::vector&lt;std::map&lt;std::string, std::string&gt;&gt; scope_;
 };</code></pre>
 <p>A <code>GrammarMatcher</code> is built <strong>per parse</strong>. That single fact removes a whole category of problems: every cache in it — compiled rules, name metadata, the packrat memo, the longest-token automata — dies with the parse, so none of them needs invalidation logic.</p>
-<p><code>Interpreter::grammarParse</code> builds one, fills <code>rules</code> and <code>protos</code> from the <code>ClassInfo</code>, wires the hooks to the interpreter, and runs it.</p>
+<p><code>Interpreter::grammarParse</code> builds one, fills <code>rules</code> and <code>protos</code> from the <code>ClassInfo</code>, wires the hooks to the interpreter, and runs it. The rules are collected most derived first, through the parent and through every composed role, and a name already taken is skipped, so a derived declaration wins exactly as a method would. A lexical <code>my token</code> in scope is added under its name when the grammar chain declares no rule of that name.</p>
+<p>"Dies with the parse" has one refinement. Destroying the memo walks every frozen subtree in it, which the source records as about 28% of a capturing parse when it was measured. The trees are refcounted and the finished parse holds its own references, so <code>reapMemo</code> hands a memo of 512 entries or more to a detached thread and returns. At most four such threads run at once; past that, and on a build without threads, the memo is destroyed inline as before.</p>
+<p>When a parse fails, the matcher has kept one fact about why. Every named rule that fails calls <code>noteFail</code>, which records the position and the rule's name if the position is further than any before. Recursive descent fails innermost first and the comparison is strict, so at one position the deepest rule wins: <code>&lt;key&gt;</code>, not the <code>&lt;entry&gt;</code> around it. The interpreter converts the byte offset to a character position, and after a failed parse the <code>rakupp-parse-diagnosis</code> built-in answers both. It is a Raku++ extension; Rakudo's grammars have no such call.</p>
 <h2 id="a-subrule-call-in-full">A subrule call, in full</h2>
 <p><code>&lt;name&gt;</code> inside a rule reaches <code>matchSubMeta</code>, which is where most of the engine's cleverness lives. In order:</p>
-<ol><li><strong>Resolve the name</strong> — or rather, read the already-resolved metadata,  which the calling node cached (<a href="/book/matcher/">Chapter 21</a>).</li><li><strong>Check the memo</strong>, if this rule is ratcheting.</li><li><strong>Compile the rule body</strong>, if this is its first use, and cache it.</li><li><strong>Bind parameters</strong>, if the call was <code>&lt;r($x, 'lit')&gt;</code>.</li><li><strong>Match</strong>, threading the caller's continuation through.</li><li><strong>Record a <code>ParseNode</code></strong> in the parent's capture frame.</li><li><strong>Fire the action method</strong>, if the grammar's action object has one.</li></ol>
+<ol><li><strong>Resolve the name</strong> — or rather, read the already-resolved metadata,  which the calling node cached (<a href="/book/matcher/">Chapter 21</a>).</li><li><strong>Check the memo</strong>, if this rule is ratcheting.</li><li><strong>Compile the rule body</strong>, if this is its first use, and cache it.</li><li><strong>Bind parameters</strong>, if the call was <code>&lt;r($x, 'lit')&gt;</code>.</li><li><strong>Match</strong>, threading the caller's continuation through.</li><li><strong>Fire the action method</strong>, if the grammar's action object has one.</li><li><strong>Record a <code>ParseNode</code></strong> in the parent's capture frame, and run the  caller's continuation.</li></ol>
+<p>Four kinds of name leave that sequence at step 1. A proto dispatches to its candidates (below). A name that is an ordinary method of the grammar is called through the <code>callMethod</code> hook. A built-in such as <code>&lt;alpha&gt;</code> or <code>&lt;ws&gt;</code> that the grammar does not redefine goes to <code>builtinRuleMatch</code>, the same function the plain-regex path uses. And a rule whose body is one character is tested in place (<a href="/book/regex-compile/">Chapter 20</a>), with no memo and no frame.</p>
 <h3>The per-name metadata</h3>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="k">struct</span> GrammarRuleMeta {
@@ -67,6 +81,8 @@ std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; ruleParams;
     Regex* noArg = <span class="kc">nullptr</span>;        <span class="c1">// pre-compiled parameterless body</span>
     <span class="k">const</span> std::vector&lt;std::string&gt;* proto = <span class="kc">nullptr</span>;
     <span class="kt">bool</span> isWs = <span class="kc">false</span>;
+    <span class="kt">bool</span> isMethod = <span class="kc">false</span>;         <span class="c1">// an ordinary method of the grammar</span>
+    <span class="kt">bool</span> viaHow = <span class="kc">false</span>;           <span class="c1">// the grammar's HOW overrides find_method</span>
     <span class="kt">bool</span> scoped = <span class="kc">false</span>;           <span class="c1">// body declares `:my`</span>
     <span class="kt">bool</span> dynDep = <span class="kc">false</span>;           <span class="c1">// …or reads a dynamic var: do not memoise</span>
     std::string builtinClass;      <span class="c1">// unknown name → built-in class flags</span>
@@ -86,15 +102,17 @@ std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; ruleParams;
     <span class="kt">long</span> litPrefix = <span class="mi">0</span>;    <span class="c1">// leading literal run, for the LTM tie-break</span>
     <span class="kt">long</span> capFrom = -<span class="mi">1</span>, capTo = -<span class="mi">1</span>;
     std::vector&lt;std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt;&gt; caps;
-    std::map&lt;std::string, std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt;&gt; named;
+    GrammarHooks::NamedMap named;
     std::shared_ptr&lt;<span class="k">const</span> ChildMap&gt; kids;      <span class="c1">// frozen: replays share</span>
     std::shared_ptr&lt;<span class="k">const</span> std::set&lt;std::string&gt;&gt; listNames;
     std::shared_ptr&lt;<span class="k">const</span> std::set&lt;<span class="kt">int</span>&gt;&gt; listCaps;
     std::shared_ptr&lt;<span class="k">const</span> std::map&lt;<span class="kt">int</span>,
         std::vector&lt;std::pair&lt;<span class="kt">long</span>,<span class="kt">long</span>&gt;&gt;&gt;&gt; capReps;
+    <span class="kt">bool</span> fired = <span class="kc">false</span>;    <span class="c1">// its action has run</span>
 };
 std::unordered_map&lt;<span class="kt">uint64_t</span>, MemoEntry&gt; memo_;</code></pre>
-<p>The key is a 64-bit integer built from the rule id, the position and the bound parameters — not a string, because a string key would allocate on every subrule call.</p>
+<p>The key is a 64-bit integer built from the rule id, the position and the values of the call's arguments — not a string, because a string key would allocate on every subrule call.</p>
+<p>Two completions are not stored. A rule with <code>dynDep</code> set is one, as above. The other is a rule whose body, under a ranking probe, stepped over a grammar method: the probe measured a stand-in, and that must not answer for the real match later.</p>
 <p>The child map is stored <strong>frozen behind a <code>shared_ptr</code></strong>, which is the detail that makes the memo pay. Replaying a memoised match is then a refcount bump rather than a subtree copy, and a deeply nested grammar replays large subtrees constantly.</p>
 <h2 id="parsenode-the-tree-the-matcher-records"><code>ParseNode</code>: the tree the matcher records</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
@@ -102,27 +120,32 @@ std::unordered_map&lt;<span class="kt">uint64_t</span>, MemoEntry&gt; memo_;</co
     std::string name;
     std::string actualRule;    <span class="c1">// for a proto: the winning name:sym&lt;…&gt;</span>
     <span class="kt">long</span> from = <span class="mi">0</span>, to = <span class="mi">0</span>;
+    <span class="kt">int</span> capLocal = -<span class="mi">1</span>;         <span class="c1">// which $n of its parent, if positional</span>
+    <span class="kt">uint64_t</span> aliasId = <span class="mi">0</span>;      <span class="c1">// nonzero: one capture filed under two keys</span>
     std::vector&lt;std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt;&gt; caps;
-    std::map&lt;std::string, std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt;&gt; named;
+    GrammarHooks::NamedMap named;
     std::shared_ptr&lt;<span class="k">const</span> ChildMap&gt; kids;     <span class="c1">// null = leaf</span>
     std::shared_ptr&lt;<span class="k">const</span> std::set&lt;std::string&gt;&gt; listNames;
     std::shared_ptr&lt;<span class="k">const</span> std::set&lt;<span class="kt">int</span>&gt;&gt; listCaps;
     std::shared_ptr&lt;<span class="k">const</span> std::map&lt;<span class="kt">int</span>,
         std::vector&lt;std::pair&lt;<span class="kt">long</span>,<span class="kt">long</span>&gt;&gt;&gt;&gt; capReps;
+    std::shared_ptr&lt;<span class="k">const</span> <span class="kt">void</span>&gt; dynScope;     <span class="c1">// the `*` dynamics live then</span>
 };
-<span class="k">using</span> ChildMap = std::map&lt;std::string, std::vector&lt;ParseNode&gt;&gt;;</code></pre>
+<span class="k">using</span> ChildMap = FlatMap&lt;std::vector&lt;ParseNode&gt;&gt;;</code></pre>
 <p>The child map is a map to a <strong>vector</strong>, so repeated captures of the same name collate into a list — which is Raku's rule for <code>&lt;pair&gt;*</code>.</p>
 <p>Except that the rule is stronger than "collate when repeated". A capture under a repetition quantifier is list-valued <strong>even when it matched once or not at all</strong>, so the arity has to come from the <em>pattern</em> rather than from the match. That is what <code>listNames</code>, <code>listCaps</code> and <code>capReps</code> carry, shared from the compiled <code>Regex</code> rather than rebuilt per node.</p>
 <p>The interpreter walks the finished tree and builds <code>Match</code> values from it, with <code>$&lt;name&gt;</code> reading the child map and <code>$0</code> reading the positional spans.</p>
+<p><code>&lt;alias=rule&gt;</code> files one capture under two keys, the alias and the rule name. Both records carry the same <code>aliasId</code>, so the builder makes one <code>Match</code>, publishes it under each key, and fires the rule's action once.</p>
 <h2 id="actions">Actions</h2>
 <p>An action object is an ordinary Raku object whose methods are named after the grammar's rules. When a rule completes, its method runs and can call <code>make</code> to attach a value to the match.</p>
 <p>The engine fires actions <strong>during</strong> the match, through the hooks:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h — GrammarHooks</span>
 std::function&lt;<span class="kt">bool</span>(<span class="k">const</span> std::string&amp;)&gt; hasAction;
-std::function&lt;<span class="kt">void</span>(<span class="k">const</span> ParseNode&amp;)&gt; onRule;</code></pre>
-<p><code>hasAction</code> gates the node assembly, so a rule with no corresponding method costs nothing. <code>onRule</code> fires the method with the completed node.</p>
+std::function&lt;<span class="kt">void</span>(ParseNode)&gt; onRule;</code></pre>
+<p><code>hasAction</code> gates the node assembly, so a rule with no corresponding method costs nothing. <code>onRule</code> fires the method with the completed node: the interpreter builds the node's <code>Match</code> then and there, runs the method, and keeps the result. The parent's build, a code block's <code>$/</code> and the finished tree all take that same <code>Match</code>, so each node is built, and fired, once. That is what lets a <code>&lt;?{ $&lt;tag&gt;.made … }&gt;</code> right after the call read what the action made.</p>
 <p>Three properties of that design, all deliberate:</p>
-<ul><li><strong>A later backtrack does not unfire an action.</strong> This matches Rakudo; the reasoning is in <a href="/book/matcher/">Chapter 21</a>.</li><li><strong>A memo replay reuses the first firing</strong> rather than firing again, so packrat caching does not multiply side effects.</li><li><strong><code>make</code> writes into a target on the execution context</strong> — <code>ExecContext::makeTargets</code> — which is how the value attaches to the right match rather than to a global.</li></ul>
+<ul><li><strong>A later backtrack does not unfire an action.</strong> This matches Rakudo; the reasoning is in <a href="/book/matcher/">Chapter 21</a>.</li><li><strong>A memo replay reuses the first firing</strong> rather than firing again, so packrat caching does not multiply side effects.</li><li><strong><code>make</code> writes into a target on the execution context</strong> — <code>ExecContext::makeTargets</code> — which is how the value attaches to the right match rather than to a global.</li><li><strong>A probe fires nothing.</strong> A completion reached while a <code>|</code> or a proto is only being ranked is stored with <code>fired</code> clear, and its action runs on the first real replay.</li></ul>
+<p>A rule that declares <code>:my $*X</code> has its dynamic scope rolled back when it exits, and a node with no action of its own is built after the parse is over. So the dynamics that were live when the rule completed travel with its node, in <code>dynScope</code>, and the build puts them back around the node's subtree. The pointer is null for a parse that declared none.</p>
 <h2 id="parameterised-rules">Parameterised rules</h2>
 <p><code>&lt;r($x, 'lit')&gt;</code> binds arguments to the rule's declared parameter names:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
@@ -132,7 +155,8 @@ Regex* compiled(<span class="k">const</span> std::string&amp; name, <span class=
                 std::map&lt;std::string, std::string&gt;&amp; boundOut);
 std::string interpParams(<span class="k">const</span> std::string&amp; pat,
                          <span class="k">const</span> std::map&lt;std::string, std::string&gt;&amp; sc) <span class="k">const</span>;</code></pre>
-<p>Bindings are strings, and they are interpolated into the pattern <em>text</em> before compilation. So <code>token line($indent) { $indent \N* }</code> compiles a different <code>Regex</code> for each distinct indent value — and the compiled-rule cache is keyed on name plus argument values for exactly that reason.</p>
+<p>Bindings are strings, and they are interpolated into the pattern <em>text</em> before compilation, quoted as literals. So <code>token line($indent) { $indent \N* }</code> compiles a different <code>Regex</code> for each distinct indent value — and the compiled-rule cache is keyed on name plus argument values for exactly that reason. A value that is not a <code>Str</code> travels with a one-letter type tag in front, so a code block in the callee gets a <code>Bool</code>, an <code>Int</code> or the object itself back, and only the interpolation reads its string form.</p>
+<p>Arguments are sorted as a method call's are: <code>:name(v)</code> and <code>:$name</code> bind a named parameter, a parameter may have a default, and <code>|[…]</code> spreads. A rule may also have candidates constrained to literal values, <code>multi token e(0)</code> beside <code>multi token e($n)</code>. A call evaluates its arguments once and takes the first candidate whose literals all match, and otherwise the generic body. That is the base case of a recursive rule such as <code>&lt;e($n - 1)&gt;</code>.</p>
 <p>That design has a clear cost (a compilation per distinct argument tuple) and a clear benefit: parameterised rules need no support at all in the matcher. It is also what makes an off-side-rule parser — a Python tokenizer written in a Raku grammar — possible, and writing one is how the interpreter's <code>:my</code> dynamic-variable restore bug was found.</p>
 <p><code>currentParams</code> merges outer dynamic-variable parameters into the current frame's, so a nested rule can see an enclosing rule's parameter.</p>
 <h2 id="protoregexes">Protoregexes</h2>
@@ -142,12 +166,12 @@ std::string interpParams(<span class="k">const</span> std::string&amp; pat,
 <p>A <code>proto</code> is a dispatch group. Its candidates are collected by name:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; protos;</code></pre>
-<p>and <code>&lt;sym&gt;</code> inside a candidate matches that candidate's own <code>:sym&lt;…&gt;</code> literal — which is why <code>MState</code> carries a <code>curSym</code> pointer.</p>
+<p>and <code>&lt;sym&gt;</code> inside a candidate matches that candidate's own <code>:sym&lt;…&gt;</code> literal — which is why <code>MState</code> carries a <code>curSym</code> pointer. A candidate may also be spelled <code>:sym«…»</code>, <code>name:&lt;…&gt;</code>, or with a plain adverb as in <code>token match:character-class</code>.</p>
 <p>Candidate selection is <strong>longest-token matching</strong>, not declaration order, and that is the next chapter.</p>
 <p><code>ParseNode::actualRule</code> records which candidate won, so <code>$&lt;statement&gt;.made</code> can tell an <code>if</code> from a <code>while</code>.</p>
 <h2 id="entry-points-and-start-rules">Entry points and start rules</h2>
 <pre class="native-code"><code class="lang-cpp"><span class="kt">bool</span> parse(<span class="k">const</span> std::string&amp; input, <span class="k">const</span> std::string&amp; top, <span class="kt">bool</span> subparse,
-           ParseNode&amp; out, <span class="kt">long</span>&amp; endOut);</code></pre>
+           ParseNode&amp; out, <span class="kt">long</span>&amp; endOut, <span class="kt">long</span> startPos = <span class="mi">0</span>);</code></pre>
 <p><code>.parse</code> requires the whole input to be consumed; <code>.subparse</code> does not. <code>:rule&lt;name&gt;</code> picks a start rule other than <code>TOP</code>. Both go through the same function with a flag, so there is one implementation of the anchoring rules.</p>
 <h2 id="where-grammars-appear-in-this-book-again">Where grammars appear in this book again</h2>
 <p>Grammars were for a long time the one construct the native code generator refused, so a program containing one was compiled by bundling rather than transpiling. That is no longer so: <code>src/Codegen.cpp</code> emits the rule table, and <code>--exe</code> on a grammar reports <code>Compiled (native)</code> (<a href="/book/codegen/">Chapter 26</a>). They are also the heaviest exercise in the test suite: the showcase interpreters for JavaScript, Perl 5, Python 3 and Lisp are grammar-driven, and each of them, when first written, produced a list of genuine bugs in this engine — the <code>:my</code> restore, a subrule-alias mis-parse, <code>|</code> versus <code>||</code> ranking, and an optional-block state corruption among them.</p><nav class="ch-nav"><a class="prev" href="/book/matcher/"><span>Previous</span>The Backtracking Matcher</a><a class="next" href="/book/ltm/"><span>Next</span>Longest-Token Matching</a></nav>

@@ -24,28 +24,35 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 32</p><h1>Raku in the Browser</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-whole-boundary">The whole boundary</a></li><li><a href="#input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</a></li><li><a href="#output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</a></li><li><a href="#the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</a></li><li><a href="#exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></a></li><li><a href="#off-the-main-thread">Off the main thread</a></li><li><a href="#how-a-line-of-output-reaches-the-page">How a line of output reaches the page</a></li><li><a href="#live-mode-running-as-you-type">Live mode: running as you type</a></li><li><a href="#embedded-editors-one-script-tag">Embedded editors: one script tag</a></li><li><a href="#what-the-host-takes-away">What the host takes away</a></li><li><a href="#size-and-memory">Size and memory</a></li><li><a href="#why-this-is-worth-having">Why this is worth having</a></li></ul></nav>
 <p>The four modes in <a href="/book/run-modes/">Chapter 25</a> all target a machine with a filesystem, threads and a dynamic loader. There is a fifth target that has none of those: the same runtime compiled to <strong>WebAssembly</strong>, which is Raku.js — the interpreter running in a browser tab, with no server.</p>
-<p>It is not a fifth back end. It is mode 1, the tree walk, with a different host. What makes it worth a chapter is that the host removes almost everything the interpreter assumes, and the adaptation is <strong>94 lines that live entirely outside <code>src/</code> and change nothing in the interpreter</strong>.</p>
+<p>It is not a fifth back end. It is mode 1, the tree walk, with a different host. What makes it worth a chapter is that the host removes almost everything the interpreter assumes, and the adaptation is <strong>one file of 128 lines that lives outside <code>src/</code> and changes nothing in the interpreter</strong>. It is written against the public embedding API, <code>rakupp.h</code> (<a href="/book/extension-abi/">Chapter 37</a>), and not against the interpreter's classes. The build script links one more file of its own beside it, an empty stencil table: the copy-and-patch back end of <a href="/book/tier-up/">Chapter 44</a> has nothing to patch here, because WebAssembly cannot execute code it writes into its own memory.</p>
 <h2 id="the-whole-boundary">The whole boundary</h2>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp — the three exported functions</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp — the five exported functions</span>
 EMSCRIPTEN_KEEPALIVE <span class="kt">int</span>         rakupp_run(<span class="k">const</span> <span class="kt">char</span>* src,
                                             <span class="k">const</span> <span class="kt">char</span>* stdin_text);
 EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_highlight(<span class="k">const</span> <span class="kt">char</span>* src);
+EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_lsp(<span class="k">const</span> <span class="kt">char</span>* body,
+                                            <span class="k">const</span> <span class="kt">char</span>* reference);
+EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_doc_links(<span class="k">const</span> <span class="kt">char</span>* src);
 EMSCRIPTEN_KEEPALIVE <span class="k">const</span> <span class="kt">char</span>* rakupp_version();</code></pre>
-<p><code>rakupp_run</code> calls <code>rakupp::rakuppRun</code> — the same public entry point the native CLI uses — which lexes, parses, builds an <code>Interpreter</code>, runs it, and catches <code>ParseError</code>, <code>RakuError</code> and <code>std::exception</code>, reporting them to stderr exactly as the CLI does. The exit code that comes back is the process exit code the CLI would have produced.</p>
-<p>The other two exports matter more than they look: <code>rakupp_highlight</code> is the tokenizer behind <code>rakupp --highlight</code> (<a href="/book/tooling/">Chapter 39</a>), and it is what lets a browser editor paint Raku with the compiler's own knowledge rather than a JavaScript approximation. That thread is picked up at the end of this chapter.</p>
+<p><code>rakupp_run</code> builds an interpreter with <code>rk_new</code>, runs the program with <code>rk_run</code> and frees the interpreter with <code>rk_free</code>, so no <code>my $x</code> leaks from one run into the next. <code>rk_run</code> is the embedding API's whole-program entry point: it lexes, parses and runs in that interpreter, honours <code>MAIN</code> and <code>exit</code>, and reports a parse or run-time error to stderr exactly as the CLI does. The exit code that comes back is the process exit code the CLI would have produced.</p>
+<p>The other exports matter more than they look. <code>rakupp_highlight</code> is the tokenizer behind <code>rakupp --highlight</code> (<a href="/book/tooling/">Chapter 39</a>), and it is what lets a browser editor paint Raku with the compiler's own knowledge rather than a JavaScript approximation. That thread is picked up at the end of this chapter. <code>rakupp_lsp</code> is the language server taking one JSON-RPC message at a time, and <code>rakupp_doc_links</code> returns the JSON of <code>rakupp --doc-links --json</code>, which the playground's Docs pane shows; it parses and never runs the program. None of the three is part of <code>rakupp.h</code>: they are tools built on the lexer and the parser, not part of embedding a language.</p>
 <h2 id="input-is-one-rdbuf-swap">Input is one <code>rdbuf</code> swap</h2>
 <p>The interpreter reads standard input exclusively through <code>std::cin</code>. A browser has no standard input, and Emscripten's TTY device brings its own buffering and EOF state. So feeding a program is a stream-buffer swap and nothing else:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp</span>
-<span class="k">static</span> std::istringstream web_stdin;
-web_stdin.clear();
-web_stdin.str(stdin_text ? stdin_text : <span class="s2">""</span>);
-std::streambuf* old_in = std::cin.rdbuf(web_stdin.rdbuf());
+RkInterp rk = rk_new(<span class="mi">0</span>);            <span class="c1">// 0 = default config</span>
+<span class="k">if</span> (stdin_text) rk_set_input(rk, stdin_text, std::strlen(stdin_text));
+<span class="kt">int</span> rc = <span class="mi">3</span>;
+rk_run(rk, src ? src : <span class="s2">""</span>, <span class="s2">"web"</span>, &amp;rc);
+rk_free(rk);                        <span class="c1">// also restores stdin</span>
 
-<span class="kt">int</span> rc = rakupp::rakuppRun(src ? src : <span class="s2">""</span>, {}, <span class="s2">"web"</span>, <span class="s2">"rakupp.wasm"</span>, {});
-
-std::cin.rdbuf(old_in);</code></pre>
+<span class="c1">// src/EmbedApi.cpp — rk_set_input</span>
+p-&gt;inBuf.clear();
+p-&gt;inBuf.str(std::string(text, len));
+std::streambuf* prev = std::cin.rdbuf(p-&gt;inBuf.rdbuf());
+<span class="k">if</span> (!p-&gt;oldIn) p-&gt;oldIn = prev;</code></pre>
+<p>The swap used to be written out in the web entry point. It moved into the embedding API as <code>rk_set_input</code> when the entry point was rewritten on <code>rakupp.h</code>, and the Jupyter kernel now uses the same call.</p>
 <p><code>get</code>, <code>lines</code>, <code>prompt</code> and <code>$*IN.slurp</code> read that text and then see end-of-file, so <strong>nothing ever blocks</strong> — which matters, because a blocking read in a WebAssembly module with no thread to park is a hung tab.</p>
-<p>Two details make it reliable across repeated runs. <code>rdbuf()</code> clears <code>cin</code>'s eof and fail bits as a side effect, so a program that read to EOF does not poison the next run. And a caller built against the older one-argument signature passes no second argument, which arrives as null and means an empty stdin rather than undefined behaviour.</p>
+<p>Two details make it reliable across repeated runs. <code>rdbuf()</code> clears <code>cin</code>'s eof and fail bits as a side effect, so a program that read to EOF does not poison the next run. And a caller built against the older one-argument signature passes no second argument, which arrives as null: the swap is then skipped, and nothing dereferences the pointer.</p>
 <h2 id="output-and-the-flush-that-is-not-optional">Output, and the flush that is not optional</h2>
 <p>Output needs no interpreter change at all: <code>std::cout</code> and <code>std::cerr</code> are routed by Emscripten to the <code>print</code> and <code>printErr</code> callbacks the host page installs. What needed care is the <em>end</em> of a run.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// rakujs/rakupp_web.cpp — after the program returns</span>
@@ -57,8 +64,8 @@ fsync(STDERR_FILENO);</code></pre>
 <p><code>fflush</code> does not clear it. <code>fsync</code> does, because that is what triggers the TTY's flush operation. Those two lines are load-bearing, and the bug they fix is the kind that only shows up when someone runs two programs in a row.</p>
 <h2 id="the-stack-is-chosen-not-inherited">The stack is chosen, not inherited</h2>
 <p>Every native entry point runs the program on a thread with a very large stack (<a href="/book/tree-walk/">Chapter 13</a>), because the tree walker's recursion depth is the Raku recursion budget. A single-threaded WebAssembly build cannot spawn that thread.</p>
-<p>So the web entry point deliberately calls <code>rakuppRun</code> rather than <code>rakuppRunBigStack</code>, and reserves a large <em>WebAssembly</em> stack at link time instead. The interpreter's own recursion guard measures the real stack and throws <code>X::Recursion</code> before it overflows, so this is safe rather than merely lucky.</p>
-<p>The honest consequence is a much lower ceiling, and the browser sets it rather than the build. A plain recursive sub reaches <strong>58 levels in a Chrome Web Worker and 115 on Chrome's main thread; in Safari, 32 and 419</strong>. The next section is most of the reason in Chrome; the worker section below is the reason in Safari.</p>
+<p>So the web entry point passes <code>rk_new</code> the default configuration, which leaves <code>own_stack</code> off, and reserves a <em>WebAssembly</em> stack at link time instead. The interpreter's own recursion guard measures the real stack and throws <code>X::Recursion</code> before it overflows, so this is safe rather than merely lucky.</p>
+<p>The honest consequence is a much lower ceiling, and the browser sets it rather than the build. On v4.0.1 a plain recursive sub reached <strong>59 levels in a Chrome Web Worker and 115 on Chrome's main thread; in Safari, 32 and 419</strong>. The next section is most of the reason in Chrome; the worker section below is the reason in Safari. By v5.6.3, with the same build flags, Chrome reaches about 1,350 in a worker and 2,700 on the main thread; Safari has not been measured again.</p>
 <h2 id="exceptions-fexceptions-not-fwasm-exceptions">Exceptions: <code>-fexceptions</code>, not <code>-fwasm-exceptions</code></h2>
 <p>This is the most interesting engineering decision in the WebAssembly build, and it connects directly to <a href="/book/control-flow/">Chapter 15</a>.</p>
 <p>The interpreter leans on C++ exceptions for both errors <strong>and control flow</strong>: <code>last</code>, <code>next</code>, <code>redo</code>, <code>when</code>, <code>succeed</code>, <code>return</code> across a boundary. Native WebAssembly exception handling would be faster and would give deeper recursion — but with the toolchain in use its personality routine fails to match the interpreter's by-value control-exception catches. A <code>catch (LastEx&amp;)</code> does not catch, so <code>last</code>, <code>next</code>, <code>given</code> and <code>when</code> escape to <code>std::terminate</code> and the module traps with <code>RuntimeError: unreachable</code>. That was verified, not assumed.</p>
@@ -86,8 +93,10 @@ importScripts(<span class="s1">'rakujs.js'</span> + V);          <span class="c1
 <span class="k">catch</span> (err) {
   Module = <span class="kc">null</span>;
   ready = makeModule();
-  post(<span class="s1">'runerror'</span>, { message: String(err),
-                     deep: /call stack|too much recursion/i.test(String(err)) });
+  post(<span class="s1">'runerror'</span>, {
+    message: String(err),
+    deep: /call stack|too much recursion/i.test(String(err)),
+  });
 }</code></pre>
 <p><strong>A stack overflow gets a second try, on the main thread.</strong> A worker's stack is a fraction of the page's, and in Safari the fraction decides whether a program runs at all. WebKit gives a worker thread a sixteenth of its main thread's stack, and JavaScriptCore's baseline WebAssembly tier spends about a kilobyte on every frame, whatever the function: it reserves a 16-byte spill slot for every register it may allocate. A grammar parse descends a handful of frames for every rule, so the language showcases, which parse their program with a Raku grammar, overflow a Safari worker before they print a line. The page therefore runs an overflowed program again, from the start, on its own main thread, on an engine instance of its own. It is frozen for that run — no spinner, no streaming, no Stop — which is why only an explicit run that has already overflowed the worker takes that path. Only when the main thread overflows too does the page say the recursion is too deep.</p>
 <p>The <code>inRun</code> flag is a small thing worth noticing: outside a run, <code>print</code> is Emscripten's own load-time diagnostics, which belong in the devtools console rather than in the user's output pane.</p>
@@ -103,8 +112,9 @@ worker.onmessage = <span class="k">function</span> (e) {
     <span class="k">case</span> <span class="s1">'out'</span>:       <span class="k">if</span> (b) b.feed(m.text, m.cls);             <span class="k">break</span>;
     <span class="k">case</span> <span class="s1">'done'</span>:      <span class="k">if</span> (b) b.finish(m.rc, m.ms);
                       current = <span class="kc">null</span>; next();                   <span class="k">break</span>;
-    <span class="k">case</span> <span class="s1">'runerror'</span>:  <span class="k">if</span> (b) { b.error(…); b.finish(<span class="mi">1</span>, <span class="mi">0</span>); }
-                      current = <span class="kc">null</span>;                           <span class="k">break</span>;
+    <span class="k">case</span> <span class="s1">'runerror'</span>:  <span class="k">if</span> (b &amp;&amp; m.deep) { runOnMain(b); <span class="k">break</span>; }
+                      <span class="k">if</span> (b) { b.error(…); b.finish(<span class="mi">1</span>, <span class="mi">0</span>); }
+                      current = <span class="kc">null</span>; next();                   <span class="k">break</span>;
     <span class="k">case</span> <span class="s1">'loaderror'</span>: …                                         <span class="k">break</span>;
   }
 };</code></pre>
@@ -165,10 +175,10 @@ worker.onmessage = <span class="k">function</span> (e) {
   <span class="k">if</span> (self._clearNext) { self._screen = []; chars = <span class="mi">0</span>;
                          self._clearNext = <span class="kc">false</span>; }
   <span class="k">if</span> (!self._screen.length) push(<span class="s1">'(no output)'</span>, <span class="s1">'meta'</span>);
-  push(<span class="s1">'\n— exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms —'</span>, <span class="s1">'meta'</span>);
-  stEl.textContent = <span class="s1">'exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms'</span>;
+  <span class="k">if</span> (!hide.exit) push(<span class="s1">'\n— exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms —'</span>, <span class="s1">'meta'</span>);
+  status(hide.exit ? <span class="s1">''</span> : <span class="s1">'exit '</span> + rc + <span class="s1">' · '</span> + ms + <span class="s1">' ms'</span>);
 };</code></pre>
-<p>The exit code and elapsed time are pushed as an ordinary screen entry with a <code>meta</code> class, so they are styled apart from the program's own output — and the Copy button filters <code>meta</code> entries out, so copying an example gives you what the program printed and not the footer the page added.</p>
+<p>The exit code and elapsed time are pushed as an ordinary screen entry with a <code>meta</code> class, so they are styled apart from the program's own output — and the Copy button filters <code>meta</code> entries out, so copying an example gives you what the program printed and not the footer the page added. A block whose <code>data-hide</code> attribute names <code>exit</code> gets neither the footer nor the status text.</p>
 <p>A run that produced nothing says so, because an empty pane is indistinguishable from a pane that never updated.</p>
 <h2 id="live-mode-running-as-you-type">Live mode: running as you type</h2>
 <p>The playground's toolbar carries a <strong>Live</strong> checkbox. With it on, nothing is pressed: the program runs itself a beat after typing stops, so the output pane always shows what the source in front of you does.</p>
@@ -248,9 +258,10 @@ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft;</code></pre>
 <p>And the highlighting is the payoff for exporting <code>rakupp_highlight</code>. Until the engine has loaded, editors paint with a fast JavaScript approximation; once it is there, <strong>every editor repaints through rakupp itself</strong> — the same tokenizer as <code>rakupp --highlight</code>, so an embedded editor colours Raku exactly as the compiler understands it, and keeps doing so as the reader types.</p>
 <p>Nothing is sent anywhere. The program runs in the visitor's browser.</p>
 <h2 id="what-the-host-takes-away">What the host takes away</h2>
-<div class="tablewrap"><table><tr><th></th><th></th></tr><tr><td><strong>deep recursion</strong></td><td>58 Raku levels in a Chrome worker, 32 in a Safari one; an overflowed run goes again on the page's main thread (115 in Chrome, 419 in Safari), and past that the page reports a recursion-limit message and recovers</td></tr>
+<div class="tablewrap"><table><tr><th></th><th></th></tr><tr><td><strong>deep recursion</strong></td><td>about 1,350 Raku levels in a Chrome worker on v5.6.3 (59 on v4.0.1), 32 in a Safari one on v4.0.1; an overflowed run goes again on the page's main thread (about 2,700 in Chrome, 419 in Safari), and past that the page reports a recursion-limit message and recovers</td></tr>
 <tr><td><strong><code>start</code> / <code>Promise</code></strong></td><td>needs real threads; a threaded build needs cross-origin isolation headers, awkward for static hosting (<a href="/book/concurrency/">Chapter 38</a>)</td></tr>
 <tr><td><strong>sockets</strong></td><td>not available in the browser sandbox</td></tr>
+<tr><td><strong>files on disk</strong></td><td>file IO works, against Emscripten's in-memory filesystem: the tree starts empty and is discarded with the module instance</td></tr>
 <tr><td><strong>NativeCall</strong></td><td>takes its no-libffi fallback path by construction — there is no shared library to open (<a href="/book/nativecall/">Chapter 36</a>)</td></tr>
 <tr><td><strong><code>--exe</code> and the code generator</strong></td><td>irrelevant: this ships the interpreter, not the transpiler</td></tr>
 <tr><td><strong><code>exit</code></strong></td><td>aborts the module instance; the worker rebuilds a fresh one</td></tr></table></div>

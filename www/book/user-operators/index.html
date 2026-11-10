@@ -39,47 +39,59 @@ std::map&lt;std::string, <span class="kt">int</span>&gt; userInfix_;    <span cl
 std::set&lt;std::string&gt; userInfixRight_;    <span class="c1">// declared `is assoc&lt;right&gt;`</span>
 std::set&lt;std::string&gt; userPrefix_, userPostfix_;
 std::map&lt;std::string, std::string&gt; userCircumfix_, userPostcircumfix_;</code></pre>
-<p>Five containers, all keyed by the operator's spelling. <code>userInfix_</code> maps to a binding power so a user infix can sit at any level; the bracket maps go from opening delimiter to closing delimiter.</p>
+<p>Six containers, all keyed by the operator's spelling. <code>userInfix_</code> maps to a binding power so a user infix can sit at any level; the bracket maps go from opening delimiter to closing delimiter. They are the core. Around them the parser now keeps a few smaller sets of the same kind — the infixes declared <code>is assoc&lt;non&gt;</code>, <code>&lt;list&gt;</code> and <code>&lt;chain&gt;</code>, a binding power for a prefix declared <code>is looser</code>, and the names a file declares through <code>sub term:&lt;…&gt;</code>.</p>
 <h2 id="registration-happens-mid-parse">Registration happens mid-parse</h2>
 <p>When <code>parseSub</code> reads a sub whose name is one of the operator categories followed by a colon, it pulls the operator's spelling out of the <code>&lt;…&gt;</code> and writes it into the tables <strong>on the spot</strong>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — parseSub, operator declaration</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — parseSub, operator declaration, abridged</span>
 <span class="k">if</span> ((s-&gt;name == <span class="s2">"infix"</span> || s-&gt;name == <span class="s2">"prefix"</span> || s-&gt;name == <span class="s2">"postfix"</span> ||
      s-&gt;name == <span class="s2">"circumfix"</span> || s-&gt;name == <span class="s2">"postcircumfix"</span>) &amp;&amp; isOp(<span class="s2">":"</span>)) {
-    std::string cat = s-&gt;name; advance();               <span class="c1">// ':'</span>
+    std::string cat = s-&gt;name;
+    advance(); <span class="c1">// :</span>
     std::vector&lt;std::string&gt; w;
     <span class="k">if</span> (isOp(<span class="s2">"&lt;"</span>)) { advance(); w = readAngleWords(<span class="s2">"&gt;"</span>); }
+    <span class="c1">// … the other spellings of a name: &lt;&lt;…&gt;&gt;, «…», ["…"], [$constant] …</span>
     std::string opname = w.empty() ? <span class="s2">""</span> : w[<span class="mi">0</span>];
+    <span class="c1">// … a circumfix or postcircumfix takes two words and goes to a map …</span>
     s-&gt;name = cat + <span class="s2">":&lt;"</span> + opname + <span class="s2">"&gt;"</span>;
-    <span class="k">if</span> (cat == <span class="s2">"infix"</span>) { userInfix_[opname] = BP_ADD; declInfix = opname; }
-    <span class="k">else</span> <span class="k">if</span> (cat == <span class="s2">"prefix"</span>)  userPrefix_.insert(opname);
-    <span class="k">else</span> <span class="k">if</span> (cat == <span class="s2">"postfix"</span>) userPostfix_.insert(opname);
+    <span class="k">if</span> (cat == <span class="s2">"infix"</span>) { regInfix(opname, BP_ADD); declInfix = opname; }
+    <span class="k">else</span> <span class="k">if</span> (cat == <span class="s2">"prefix"</span>) { regSet(<span class="s1">'p'</span>, userPrefix_, opname); <span class="cm">/* … */</span> }
+    <span class="k">else</span> <span class="k">if</span> (cat == <span class="s2">"postfix"</span>) { regSet(<span class="s1">'P'</span>, userPostfix_, opname); <span class="cm">/* … */</span> }
 }</code></pre>
+<p><code>regInfix</code>, <code>regSet</code> and <code>regMap</code> write the table and log the write; the log is what a later section rolls back.</p>
 <p>From that token onward, the operator is live. Everything <em>later</em> in the file sees it; everything earlier does not. That asymmetry is not a limitation invented here — it is Raku's own rule, and it falls out of the single pass for free.</p>
+<p>A routine keyword is not the only way in. <code>my &amp;infix:&lt;plus&gt; = sub ($a, $b) {…}</code> declares the same operator by assignment to a code variable, and <code>registerOperatorVarName</code> registers it through the same three functions. A module that builds its operators inside <code>sub EXPORT</code> can spell them no other way.</p>
 <p>The declaration is otherwise an ordinary sub. Its name becomes the string <code>"postfix:&lt;!&gt;"</code>, and subs live in the environment under a <code>&amp;</code>-prefixed key, so at run time it is found exactly like any other routine.</p>
 <h2 id="how-5-parses">How <code>5!</code> parses</h2>
 <p>Take <code>sub postfix:&lt;!&gt;($n) { [*] 1..$n }; say 5!;</code>.</p>
 <p>The declaration runs the branch above and does <code>userPostfix_.insert("!")</code>. Later, parsing <code>5!</code>: <code>parseExpr</code> calls <code>parsePrefix</code>, which calls <code>parsePostfix(parsePrimary())</code>. <code>parsePrimary</code> returns the <code>5</code>. <code>parsePostfix</code> loops and reaches the user-postfix arm:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — parsePostfix</span>
-} <span class="k">else</span> <span class="k">if</span> ((cur().kind == Tok::Op ||
-            (cur().kind == Tok::Ident &amp;&amp; !cur().spaceBefore)) &amp;&amp;
-           userPostfix_.count(cur().text)) {
+} <span class="k">else</span> <span class="k">if</span> ((cur().kind == Tok::Op || cur().kind == Tok::Ident) &amp;&amp;
+           !cur().spaceBefore &amp;&amp;
+           userPostfix_.count(cur().text) &amp;&amp;
+           !stopPostfix_.count(cur().text)) {
     std::string opname = advance().text;
     <span class="k">auto</span> call = std::make_unique&lt;Call&gt;();
     call-&gt;name = <span class="s2">"postfix:&lt;"</span> + opname + <span class="s2">"&gt;"</span>;
     call-&gt;args.push_back(std::move(base));
     base = std::move(call);
 }</code></pre>
-<p><code>5!</code> becomes a <code>Call</code> node named <code>postfix:&lt;!&gt;</code> with one argument. The runtime never learns that an operator was involved; it dispatches a named call. Infixes work the same way through a branch at the top of the <code>parseExpr</code> loop, building a two-argument <code>Call</code> named <code>infix:&lt;op&gt;</code> and honouring the recorded binding power and associativity.</p>
+<p><code>5!</code> becomes a <code>Call</code> node named <code>postfix:&lt;!&gt;</code> with one argument. The runtime never learns that an operator was involved; it dispatches a named call. Infixes work the same way through a branch at the top of the <code>parseExpr</code> loop, building a two-argument <code>Call</code> named <code>infix:&lt;op&gt;</code> and honouring the recorded binding power and associativity. That branch takes a symbolic operator as readily as a word; it once keyed on an identifier alone, and <code>3 ± 1</code> then died at the use site with the declaration registered and in scope.</p>
 <p>That is the whole trick, and it is worth stating plainly: <strong>a user-defined operator is a parse-time spelling for an ordinary sub call.</strong> Every mechanism that works on subs — closures, multi dispatch, <code>&amp;infix:&lt;avg&gt;</code> as a value, passing one to <code>.reduce</code> — works on operators without further effort.</p>
 <h2 id="precedence-traits-and-the-gaps-of-ten">Precedence traits and the gaps of ten</h2>
 <p>A user infix registers at <code>BP_ADD</code> by default. A precedence trait resolves the referenced operator's level and slots the new one five away:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — parseSub, `is tighter/looser/equiv(&amp;infix:&lt;+&gt;)`</span>
-<span class="kt">int</span> refBp = infixBpOf(refOp);
-userInfix_[declInfix] = trait == <span class="s2">"equiv"</span>   ? refBp
-                      : trait == <span class="s2">"tighter"</span> ? refBp + <span class="mi">5</span>
-                      :                      refBp - <span class="mi">5</span>;
-<span class="k">if</span> (kind == <span class="s2">"right"</span>) userInfixRight_.insert(declInfix);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.cpp — applyInfixTrait, abridged</span>
+<span class="k">if</span> (trait == <span class="s2">"assoc"</span>) {
+    <span class="k">if</span> (arg == <span class="s2">"right"</span>) regSet(<span class="s1">'r'</span>, userInfixRight_, op);
+    <span class="c1">// … "non", "chain" and "list" go to sets of their own …</span>
+} <span class="k">else</span> {
+    <span class="c1">// … `ref` is the operator the trait names, in any spelling …</span>
+    <span class="k">const</span> <span class="kt">int</span> refBp = infixBpOf(ref);
+    regInfix(op, trait == <span class="s2">"equiv"</span>   ? refBp
+               : trait == <span class="s2">"tighter"</span> ? refBp + <span class="mi">5</span> : refBp - <span class="mi">5</span>);
+}</code></pre>
+<p><code>parseSub</code> calls it for the file's own declaration and the module scan of a later section calls it for an imported one, so the two cannot drift.</p>
 <p>This is what the by-ten spacing in the binding-power enum was reserved for. <code>is tighter(&amp;infix:&lt;+&gt;)</code> yields 125: tighter than <code>+</code> at 120, looser than <code>*</code> at 130. <code>infixBpOf</code> resolves the referenced operator whether it is built in or itself user-declared, so traits chain.</p>
+<p>Associativity has five values in Raku and all five parse. <code>right</code> flips the recursive bound. <code>chain</code> builds a <code>ChainExpr</code>, the node a built-in comparison chain uses, so <code>5 eog 4 eog 3</code> evaluates each operand once. <code>list</code> gathers every operand of a run into one call. <code>non</code> makes the same operator twice in a row an error that asks for parentheses.</p>
 <p>The obvious question is what happens when someone declares eight operators each tighter than the last. The answer is that they collide at the same level after the gap is exhausted — the levels are integers with a fixed spacing, not a rational ordering. It has not come up in practice, and the alternative (a real partial order rebuilt on each declaration) has not been worth building.</p>
 <h2 id="custom-brackets">Custom brackets</h2>
 <p>A <code>circumfix:&lt;「 」&gt;</code> or <code>postcircumfix</code> declaration registers an open-to-close mapping. <code>parsePrimary</code> consults <code>userCircumfix_</code> when it meets an unrecognised opening token, and <code>parsePostfix</code> consults <code>userPostcircumfix_</code> after a term. The token classifiers that decide "does this start a term?" and "does this start a list-operator argument?" consult the tables too:</p>
@@ -113,25 +125,29 @@ std::vector&lt;OpUndo&gt; opUndo_;
 <h2 id="two-escape-hatches">Two escape hatches</h2>
 <p>The single-pass rule has exactly two ways out <em>for operators</em>, and both are about another parse seeing the current one's tables. (<code>use</code> has an escape of its own — it can rebuild the token stream from the cursor onward — but that is the lexer's business rather than the operator table's, and <a href="/book/classification/">Chapter 3</a> has it.)</p>
 <p><strong><code>EVAL</code>.</strong> A snippet is parsed by a fresh <code>Parser</code>, which would know nothing about the enclosing program's operators. So the evaluator pre-seeds them:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h — abridged</span>
 <span class="kt">void</span> declareUserOp(<span class="k">const</span> std::string&amp; kind, <span class="k">const</span> std::string&amp; name) {
-    <span class="k">if</span> (kind == <span class="s2">"infix"</span>) userInfix_[name] = <span class="mi">120</span>;
-    <span class="k">else</span> <span class="k">if</span> (kind == <span class="s2">"prefix"</span>)  userPrefix_.insert(name);
+    <span class="k">if</span> (kind == <span class="s2">"infix"</span>) userInfix_[name] = <span class="mi">120</span> <span class="cm">/*BP_ADD default*/</span>;
+    <span class="k">else</span> <span class="k">if</span> (kind == <span class="s2">"infix-non"</span>) userInfixNon_.insert(name);
+    <span class="k">else</span> <span class="k">if</span> (kind == <span class="s2">"prefix"</span>) userPrefix_.insert(name);
     <span class="k">else</span> <span class="k">if</span> (kind == <span class="s2">"postfix"</span>) userPostfix_.insert(name);
+    <span class="c1">// … a bracketing pair is spelled "OPEN CLOSE" and goes to its map …</span>
 }</code></pre>
+<p>An operator seeded this way arrives at the default level: the evaluator hands over names, not the binding powers the enclosing parse had worked out.</p>
 <p>which is why this works:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> MONKEY-SEE-NO-EVAL;
 <span class="k">sub</span> infix:&lt;z&gt;(<span class="nv">$a</span>, <span class="nv">$b</span>) { <span class="nv">$a</span> * <span class="mi">10</span> + <span class="nv">$b</span> }
 say EVAL(<span class="s2">"40 z 2"</span>);                    <span class="c1"># 402</span></code></pre>
-<p><strong>String interpolation</strong>, shown at the end of the previous chapter, copies the live tables wholesale into the sub-parser.</p>
+<p><strong>String interpolation</strong>, shown at the end of the previous chapter, copies the live tables into the sub-parser.</p>
 <h2 id="use-foo-and-imported-operators"><code>use Foo</code> and imported operators</h2>
 <p>A module that declares an operator changes how the <em>importing file</em> parses. Nothing else about a module does. So <code>use Foo</code> triggers exactly one compile-time action, and it is not a parse:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h</span>
-<span class="kt">void</span> scanModuleOps(<span class="k">const</span> std::string&amp; module);
-<span class="kt">void</span> scanOpsIn(<span class="k">const</span> std::string&amp; src, <span class="k">const</span> std::string&amp; srcPath);</code></pre>
-<p><code>scanModuleOps</code> resolves the module's <em>source file</em> through the same search path the loader uses and <strong>text-scans</strong> it — a substring search over raw bytes, no lexing, no parsing — for <code>sub</code>, <code>multi</code>, <code>proto</code> and <code>only</code> declarations of the five operator categories, registering what it finds.</p>
-<p>Two consequences worth knowing:</p>
-<ul><li>An operator spelled only in ASCII operator characters is <strong>skipped</strong>. A <code>multi infix:&lt;*&gt;(Color, Real)</code> is almost always extending a built-in, and registering it as a user operator would give it the default precedence and silently reshape every expression in the importing file.</li><li>The scan can in principle be fooled by an operator declaration inside a string or a comment. Nothing has tripped on it yet.</li></ul>
+<span class="kt">bool</span> scanModuleOps(<span class="k">const</span> std::string&amp; module);
+<span class="kt">bool</span> scanOpsIn(<span class="k">const</span> std::string&amp; src, <span class="k">const</span> std::string&amp; srcPath);</code></pre>
+<p><code>scanModuleOps</code> resolves the module's <em>source file</em> through the same search path the loader uses — the lib directories, then the installed repositories — and <strong>text-scans</strong> it: a substring search over raw bytes, no lexing, no parsing, for <code>sub</code>, <code>multi</code>, <code>proto</code> and <code>only</code> declarations of the five operator categories, and for the <code>my &amp;infix:&lt;…&gt;</code> spelling. It registers what it finds, with the precedence and associativity traits the declaration carries. Both functions answer <code>true</code> when something they registered would be cut differently by the lexer, and the <code>use</code> then re-lexes the rest of the file (<a href="/book/lexer/">Chapter 4</a>).</p>
+<p>Four consequences worth knowing:</p>
+<ul><li>A <code>sub</code> operator is registered only if it is <strong>exported</strong>. One with no <code>is export</code> stays the module's own.</li><li>A prefix or postfix spelled only in ASCII operator characters is <strong>skipped</strong>, and so is an infix that redeclares a symbolic built-in. A <code>multi infix:&lt;*&gt;(Color, Real)</code> is almost always extending a built-in, and registering it as a user operator would give it the default precedence and silently reshape every expression in the importing file. An ASCII infix that is <em>not</em> a built-in, such as <code>%%%</code>, is a new operator and is registered. A redeclared <em>word</em> operator, such as <code>gcd</code>, is registered at the built-in's own precedence, so that the module's candidates are reached and no expression changes shape.</li><li>The scan follows the module's own <code>use</code> lines, because a module that re-exports another one's names passes on its operators too.</li><li>The scan can in principle be fooled by an operator declaration inside a string or a comment. Nothing has tripped on it yet.</li></ul>
+<p>Operators are no longer all the scan collects. Each of the following is a name the importing file would otherwise parse wrongly, and each is read off the source the same way: a <code>sub</code> named like a word operator (<code>div</code>, <code>min</code>) or like a quote form (<code>tr</code>, <code>q</code>), which is then a call and not the operator; a <code>sub term:&lt;…&gt;</code>; a capitalised sub, so that <code>Foo { … }</code> passes the block; the types the module declares; a sigilless <code>constant</code>, which is a term and not a listop; and a package declarator a module supplies through <code>EXPORTHOW::DECLARE</code>, so that Red's <code>model Foo { … }</code> declares a class.</p>
 <p>Every source the scan read is recorded in <code>opScanned_</code> as a (path, content) pair. That is not for the parse; it is for the cache. A file's parse is only valid while the modules it scanned still declare what they declared — an imported module that gains or loses an operator changes how <em>this</em> file parses, without this file changing at all. <a href="/book/astserial/">Chapter 30</a> uses that list as a cache key.</p>
 <h2 id="the-line-this-draws">The line this draws</h2>
 <p>Everything above is table manipulation: cheap, local, and reversible. That is why all six operator categories work, with precedence and associativity, without the parser running a line of the user's code to make them.</p>

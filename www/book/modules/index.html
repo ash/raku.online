@@ -24,39 +24,51 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 33</p><h1>Modules</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#parse-time-only-operators-are-looked-at">Parse time: only operators are looked at</a></li><li><a href="#run-time-loadmodule">Run time: <code>loadModule</code></a></li><li><a href="#where-the-source-is-found">Where the source is found</a></li><li><a href="#failure-is-fatal-deliberately">Failure is fatal, deliberately</a></li><li><a href="#questions-people-actually-ask">Questions people actually ask</a></li><li><a href="#divergences-from-rakudo">Divergences from Rakudo</a></li><li><a href="#debugging-a-module-problem">Debugging a module problem</a></li></ul></nav>
 <p>A module is <strong>source text that gets lexed, parsed into its own <code>Program</code>, and executed exactly once</strong> — at the point its <code>use</code> statement runs, inside the same interpreter, on the same object graph as the importing program.</p>
-<p>It gets a fresh <code>Env</code> chained to the global one for the duration of the load; when the load finishes, that environment's contents are <strong>copied into the global <code>Env</code></strong>. After that the module has no ongoing identity: its subs are ordinary <code>VT::Code</code> values in the global scope, its classes ordinary entries in the one flat class registry. Calling into a module is not a different operation from calling a sub in the same file.</p>
-<p>That paragraph is also the source of nearly every divergence at the end of this chapter.</p>
+<p>It gets a fresh <code>Env</code> chained to the global one for the duration of the load; when the load finishes, <strong>what the module exports is copied out of that environment</strong> into the scope that said <code>use</code> — the global <code>Env</code> for a <code>use</code> in the mainline, the block's own for a <code>use</code> inside a block or a routine. After that an imported sub is an ordinary <code>VT::Code</code> value in the importer's scope, and the module's classes are ordinary entries in the one class registry. Calling into a module is not a different operation from calling a sub in the same file.</p>
+<p>The copy used to be the module's <em>whole</em> environment, into global, and the first drafts of this chapter said so. The divergences at the end are what is left of that design.</p>
 <h2 id="parse-time-only-operators-are-looked-at">Parse time: only operators are looked at</h2>
 <p><code>use Foo</code> triggers exactly one compile-time action:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Parser.h</span>
-<span class="kt">void</span> scanModuleOps(<span class="k">const</span> std::string&amp; module);</code></pre>
-<p>which finds the module's <em>source file</em> and <strong>text-scans</strong> it — no lexing, no parsing — for declarations of the five operator categories, registering those names in the parser's tables so the rest of the importing file parses (<a href="/book/user-operators/">Chapter 6</a>).</p>
-<p>That is the whole compile-time effect, because operators are the only thing about a module that changes how the importing file <strong>parses</strong>:</p>
+<span class="kt">bool</span> scanModuleOps(<span class="k">const</span> std::string&amp; module);</code></pre>
+<p>which finds the module's <em>source file</em> and <strong>text-scans</strong> it — no lexing, no parsing — for declarations of the five operator categories, registering those names in the parser's tables so the rest of the importing file parses (<a href="/book/user-operators/">Chapter 6</a>). It finds the file the way the loader will: the search path first, then the installed stores, so a zef-installed module is scanned as a checkout is.</p>
+<p>Operators are the first thing about a module that changes how the importing file <strong>parses</strong>:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> Vector;          <span class="c1"># declares `sub infix:&lt;⋅&gt;`</span>
 say <span class="nv">$a</span> ⋅ <span class="nv">$b</span>;         <span class="c1"># a parse error without the scan</span></code></pre>
+<p>They are not the only thing, and the same scan now collects the rest of what the parser has to know before it reads on. Each of these arrived with a module that would not parse without it:</p>
+<ul><li><code>sub term:&lt;…&gt;</code> names, and sigilless constants;</li><li>a <code>sub</code> named like a word operator or a quote form (<code>sub div</code>, <code>sub tr</code>), which would otherwise be read as that operator or that quote;</li><li>the type names the module declares;</li><li>an <code>EXPORTHOW</code> package declarator, so that <code>model Foo { … }</code> is a declaration;</li><li>whether the module registers a slang, which is then run and applied to the rest of the importing unit.</li></ul>
+<p>The scan also follows the module's own <code>use</code> lines, because a module that re-exports another one's names passes its operators on too. It returns <code>true</code> when the lexer has to read the rest of the file again — an imported operator or quote-word sub can change how the text splits into tokens.</p>
 <p>Two consequences. An operator spelled only in ASCII operator characters is skipped, because <code>multi infix:&lt;*&gt;(Color, Real)</code> is almost always extending a built-in and registering it would silently reshape every expression in the importing file. And the scan reads the file a second time — cheap, being a substring search, but it <em>can</em> be fooled by an operator name inside a string or a comment.</p>
 <h2 id="run-time-loadmodule">Run time: <code>loadModule</code></h2>
 <pre class="native-code grid"><code>loadModule(name)
- ├─ already loaded?                     → return immediately
+ ├─ the engine answers this name itself? → no load at all
+ ├─ being loaded right now?             → refuse: a cycle
+ ├─ already loaded?                     → import again, return
  ├─ find the source (see below)
  ├─ Lexer → Parser → Program            (its OWN AST)
  ├─ keptPrograms_.push_back(prog)       (the AST must outlive the load)
- ├─ moduleEnv = new Env, parent = global_
+ ├─ moduleEnv = new Env, parent = moduleRoot_ → global_
  ├─ bind %?RESOURCES / $?DISTRIBUTION into moduleEnv
- ├─ scan the AST for `is export` names
+ ├─ scan the AST for `is export` names and their tags
  ├─ cur = moduleEnv;  curPkgEnv_ = moduleEnv
  ├─ hoistSubs(prog-&gt;stmts)
  ├─ exec() every top-level statement
- ├─ publish(): copy moduleEnv-&gt;vars into global_
- └─ restore cur / curPkgEnv_ / pkgPrefix / finishData_</code></pre>
+ ├─ publish(): import what was exported, by tag
+ ├─ restore cur / curPkgEnv_ / pkgPrefix / finishData_
+ └─ call `sub EXPORT`, if the module has one</code></pre>
 <p>The module's top-level statements run like any other code, once. <code>BEGIN</code> blocks in the module run as part of this — there is no separate compile phase for them to run in.</p>
-<p><code>loadedModules_</code> is checked on entry and the name inserted immediately, so recursive and repeated <code>use</code>s are no-ops. A cyclic <code>use</code> therefore will not hang, but the second module sees a <em>partially loaded</em> first one.</p>
+<p>The body runs once, but a repeated <code>use</code> is not a no-op: an import is lexical, so the second <code>use</code> of a loaded module imports again into the scope it stands in. The module's exports were recorded with their tags at the first load, and its <code>sub EXPORT</code> is called again with the new arguments.</p>
+<p><code>loadedModules_</code> is checked on entry and the name inserted before the search. A second set, <code>modulesLoading_</code>, holds the names whose bodies are still running, and a <code>use</code> of one of those is refused in Rakudo's words:</p>
+<pre class="native-code grid"><code>Circular module loading detected trying to precompile A</code></pre>
+<p>It used to be allowed, and the second module saw a partially loaded first one. A load that throws takes its name out of <code>loadedModules_</code> again, so the next <code>use</code> of it fails as the first did instead of answering "already loaded".</p>
+<p>The first line of the diagram is <code>Data::Native</code> and its four siblings (<code>JSON::Native</code>, <code>CSV::Native</code>, <code>Digest::Native</code>, <code>Compress::Zlib::Native</code>): their functions are inside the binary, so the <code>use</code> defines them and nothing is read from disk. An explicit <code>-I</code> copy still wins.</p>
 <h2 id="where-the-source-is-found">Where the source is found</h2>
-<p><code>libPaths_</code> starts as <code>{"lib", ".", "rakulib"}</code> and is extended:</p>
+<p><code>libPaths_</code> starts as <code>{"lib", "rakulib"}</code>, both relative to the current directory, and is extended:</p>
 <div class="tablewrap"><table><tr><th>Source</th><th>Position</th></tr><tr><td><code>RAKULIB</code></td><td>appended</td></tr>
 <tr><td><code>ROAST</code></td><td>appended (adds the test-helper library)</td></tr>
+<tr><td>the <code>rakulib/</code> beside the binary, if there is one</td><td>appended</td></tr>
 <tr><td><code>-I dir</code></td><td>prepended</td></tr>
 <tr><td><code>use lib '…'</code> at run time</td><td>prepended</td></tr></table></div>
+<p><code>RAKUPP_NO_CWD_LIB=1</code> removes the two defaults, and <code>--sandbox</code> does the same: a sandboxed program loads modules only from where its host said they live.</p>
 <p><code>RAKULIB</code> accepts <strong>both</strong> <code>,</code> and <code>:</code> as separators, with one carve-out: a <code>:</code> directly after a lone leading letter is a Windows drive letter, not a separator.</p>
 <p>That splitting logic is shared rather than duplicated, and the comment in the header says why:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
@@ -66,57 +78,75 @@ say <span class="nv">$a</span> ⋅ <span class="nv">$b</span>;         <span cla
 <span class="c1">// interpreter learned ',' and the parser did not, so `RAKULIB=a,b`</span>
 <span class="c1">// silently stopped importing operators.</span>
 std::vector&lt;std::string&gt; splitSearchPath(<span class="k">const</span> std::string&amp; spec);</code></pre>
-<p>For each base, both <code>&lt;base&gt;/</code> and <code>&lt;base&gt;/lib/</code> are tried, with the extensions <code>.rakumod</code>, <code>.pm6</code>, <code>.raku</code> and <code>.pm</code>.</p>
-<p>If nothing matches, the <strong>installed</strong> repositories are searched. Resolution mirrors a real installation repository: SHA-1 the module name, read the short-name index entry, take its content id, and read the source by that id. So Raku++ loads zef-installed modules directly out of Rakudo's own install tree. That store — its layout, the installer that writes it, and how the engines share it — is <a href="/book/installer/">Chapter 34</a>.</p>
-<pre class="native-code"><code class="lang-sh">RAKUPP_TRACE=1 rakupp myprogram.raku</code></pre>
-<pre class="native-code grid"><code>[LibPaths] [lib] [.] [rakulib]
-[Load] JSON::Fast &lt;- source lib/JSON/Fast.rakumod
-[Load] Test::Util &lt;- installed /Users/you/.raku dist=E3A0…</code></pre>
+<p>For each base, both <code>&lt;base&gt;/</code> and <code>&lt;base&gt;/lib/</code> are tried. A <code>META6.json</code> there whose <code>provides</code> maps the name is followed first; otherwise the path is derived from the name, with the extensions <code>.rakumod</code>, <code>.pm6</code> and <code>.pm</code> (under 6.e, the first two). <code>.raku</code> is deliberately not among them: it is the extension a program wears, and while it was accepted a scratch file named <code>paths.raku</code> shadowed the installed <code>paths</code> distribution.</p>
+<p>If nothing matches, the <strong>installed</strong> repositories are searched. Resolution mirrors a real installation repository: SHA-1 the module name, read the short-name index entries, take the newest version that satisfies the <code>use</code>, and read the source by its content id. So Raku++ loads zef-installed modules directly out of Rakudo's own install tree. That store — its layout, the installer that writes it, and how the engines share it — is <a href="/book/installer/">Chapter 34</a>.</p>
+<p>The binary carries a few modules itself, and they sit at the two ends of that order. A <strong>shadow</strong> answers before the search path is consulted: <code>NativeHelpers::Blob</code>, <code>::CStruct</code> and <code>::Pointer</code>, whose ecosystem versions read MoarVM's memory layout and cannot run here, and <code>Arduino</code> with its two submodules. A <strong>bundled</strong> module answers only after the stores have failed: <code>JSON::Native::Raku</code>, the fallback behind the engine's own <code>JSON::Native</code>. Their sources are in <code>rakulib/</code> and are compiled into the binary as bytes, so an installed rakupp needs no <code>rakulib/</code> beside it. A binary built with <code>--exe</code> goes before all of this: a module embedded in it is taken without looking at the disk.</p>
+<pre class="native-code"><code class="lang-sh">RAKUPP_TRACE=1 rakupp -e 'use JSON::Fast; use NativeHelpers::Blob'</code></pre>
+<pre class="native-code grid"><code>[LibPaths] [lib] [rakulib] [/Users/you/rakupp/build/../rakulib]
+[Load] JSON::Fast &lt;- installed /Users/you/.raku dist=CA11E82B…
+[Load] JSON::Fast parse 4.0 ms, run 0.6 ms
+[Load] NativeHelpers::Blob &lt;- the shadow compiled into this binary
+[Load] NativeHelpers::Blob parse 0.3 ms, run 0.1 ms</code></pre>
+<p>(Abridged: the <code>[LibPaths]</code> line is printed again before every search.) The second <code>[Load]</code> line of each pair says where the load's time went: getting the tree (<code>parse</code>, or <code>precomp</code> when it came from the cache, or <code>embedded</code>) and running its top level.</p>
 <h2 id="failure-is-fatal-deliberately">Failure is fatal, deliberately</h2>
 <p>A module that is missing, fails to parse, or throws while loading <strong>aborts the program</strong>.</p>
 <p>It did not always. It used to warn and carry on, and that was a divergence with real consequences: a <code>use</code> that silently vanished left the program running against a state nobody designed — the module's <code>BEGIN</code> blocks never ran, its exports never materialised. It also flattered every measurement. In the module compatibility battery, twenty probes "produced output" purely because the load had been skipped, so the comparison against Rakudo was meaningless for them.</p>
-<p>The one exemption is <code>Slang::*</code>, which are compile-time grammar mutators Raku++ cannot apply at all; failing on them would reject programs it otherwise runs perfectly.</p>
+<p><code>Slang::*</code> modules used to be exempt, as compile-time grammar mutators Raku++ could not apply. Slangs are applied now, and a slang module that is missing or will not parse fails like any other.</p>
 <p>Pragmas with no file behind them — <code>strict</code>, <code>fatal</code>, <code>experimental</code>, <code>newline</code>, <code>precompilation</code> — are listed <strong>explicitly</strong> rather than being allowed to fall out of a failed lookup. Ignoring an unimplemented pragma must be a deliberate entry, not an accident.</p>
+<p>The error for a missing module lists every place that was searched, and then says what to do about it:</p>
+<pre class="native-code grid"><code>$ rakupp app.raku
+Could not find No::Such in:
+    lib
+    rakulib
+    /Users/you/rakupp/build/../rakulib
+    /Users/you/.raku
+    /opt/homebrew/Cellar/rakudo/2026.09/share/perl6/site
+    /opt/homebrew/Cellar/rakudo/2026.09/share/perl6/vendor
+app.raku uses a module that is not installed: No::Such
+  to install it:          rakupp install app.raku
+  to install it and run:  rakupp --auto app.raku
+  (X::CompUnit::UnsatisfiedDependency)</code></pre>
+<p>Under <code>--auto</code> the loader asks the installer for the name before it gives up, and searches the stores once more. That is the one place a <code>use</code> can reach the network, and it is opt-in (<a href="/book/installer/">Chapter 34</a>). A <code>require</code> never does: it is how code asks whether an optional module is there.</p>
 <h2 id="questions-people-actually-ask">Questions people actually ask</h2>
 <h3>Is there an <code>Env</code> that holds the module?</h3>
 <p><strong>During the load, yes; afterwards, no.</strong> <code>moduleEnv</code> exists only for the duration of <code>loadModule</code>. Its real job is scoping the module's <em>own</em> code: the module's subs are defined there so they see one another, and each <code>Callable</code> captures it as its closure. That closure is what keeps the module's lexical world alive after publication — a module sub calling another module sub still resolves it through <code>moduleEnv</code>.</p>
-<p>What the importer sees is the <em>copy</em> in the global environment. There is no stash object, no per-module symbol table to enumerate, no <code>Foo::EXPORT::DEFAULT</code>.</p>
+<p>What the importer sees is the <em>copy</em> of each export in its own scope. The module's export table is kept as well, under Rakudo's names, so <code>Foo::EXPORT::DEFAULT::.keys</code> lists what a plain <code>use Foo</code> brings in, and a program that loads a module with <code>require</code> can reach its exports through <code>::("Foo::EXPORT::DEFAULT::&amp;name")</code>.</p>
 <h3>Is there a separate AST?</h3>
 <p><strong>Yes, and it is never walked as a unit again.</strong> Each module gets its own lexer, parser and <code>Program</code>. That <code>Program</code> is executed once, top to bottom, and then survives only as <em>storage</em>: <code>Callable::params</code> and <code>Callable::body</code> are borrowed raw pointers into it (<a href="/book/ast/">Chapter 7</a>), which is why it is pushed onto <code>keptPrograms_</code> and never released.</p>
-<p>Parsing is isolated in <strong>one direction only</strong>. The module is parsed with a fresh <code>Parser</code>, so the importing file's operators, lexical regexes and sigilless names do not leak into it. In the other direction the module's operators <em>do</em> reach the importer — through the text scan, not the parse.</p>
+<p>Parsing is isolated in <strong>one direction only</strong>. The module is parsed with a fresh <code>Parser</code>, so the importing file's operators, lexical regexes and sigilless names do not leak into it. Nor do they at run time: module scopes hang off <code>moduleRoot_</code>, an <code>Env</code> between them and the global one whose job is to keep the program's own operator definitions out of every module. In the other direction the module's operators <em>do</em> reach the importer — through the text scan, not the parse.</p>
 <h3>Is calling a module routine different?</h3>
-<p><strong>No.</strong> <code>evalCall</code> resolves every named call the same way (<a href="/book/dispatch/">Chapter 16</a>), and <code>Env::find</code> walks the parent chain. A local <code>my sub</code> is found nearby; a module sub is found in the global environment at the end of the chain. The only difference is a slightly longer walk to <em>find</em> it; the call itself is byte-for-byte identical.</p>
-<p>The same holds for methods: the class registry is one flat map, so a class from a module and a class from the current file are indistinguishable at dispatch time.</p>
+<p><strong>No.</strong> <code>evalCall</code> resolves every named call the same way (<a href="/book/dispatch/">Chapter 16</a>), and <code>Env::find</code> walks the parent chain. A local <code>my sub</code> is found nearby; a module sub imported in the mainline is found in the global environment at the end of the chain. The only difference is a slightly longer walk to <em>find</em> it; the call itself is byte-for-byte identical.</p>
+<p>The same holds for methods: the class registry is one map, so a class from a module and a class from the current file are indistinguishable at dispatch time.</p>
 <h3>How does <code>is export</code> work?</h3>
-<p><code>is export</code> is scanned for, but it is <strong>not</strong> what makes a symbol visible. Its one real effect today is the built-in collision carve-out in <code>publish()</code>:</p>
-<blockquote class="note"><p>A sub that is <strong>not</strong> <code>is export</code> and whose name collides with a built-in stays module-private.</p></blockquote>
-<p>That is what lets a module's <code>our sub run</code> coexist with the built-in <code>run</code>: inside the module, <code>run</code> resolves through <code>moduleEnv</code> to the module's own; an importer's bare <code>run(...)</code> reaches the built-in.</p>
-<p>The <code>sub EXPORT(*@_)</code> protocol <em>is</em> implemented: if the module defines it, it is called with the <code>use</code> statement's arguments and the map it returns is defined in the <strong>using</strong> scope. <code>use Mod &lt;name:alias&gt;</code> imports a routine under a second name.</p>
+<p><code>is export</code> <strong>is</strong> what makes a symbol visible, as in Rakudo. <code>publish()</code> walks the module's environment and copies out only what was exported:</p>
+<ul><li>A routine that is not <code>is export</code> stays in <code>moduleEnv</code>. The module's exported subs still reach it through their closure, and an <code>our sub</code> is reachable by its package name. That is what lets a module's <code>our sub run</code> coexist with the built-in <code>run</code>.</li><li>A plain <code>is export</code> is the tag <code>DEFAULT</code>. <code>use Mod :tag</code> asks for that tag and <em>replaces</em> the default set; <code>:ALL</code> takes everything; <code>MANDATORY</code> always comes in. A tag the module exports nothing under is <code>X::Import::NoSuchTag</code>.</li><li>Variables, constants, enums and types are exported the same way, by their tags. A module's <code>my</code> variables and unexported <code>our</code> variables are never the importer's.</li><li><code>need Mod</code> and <code>use Mod ()</code> load the module and import nothing.</li><li>The import is lexical: <code>{ use Mod; … }</code> leaves nothing behind after the block. An exported multi joins the importing scope's own multi of the same name, and an import that lands on a routine the importing scope declares itself is <code>X::Redeclaration</code>.</li></ul>
+<p>The <code>sub EXPORT(*@_)</code> protocol is implemented too: if the module defines it, it is called with the <code>use</code> statement's arguments and the map it returns is defined in the <strong>using</strong> scope. <code>use Mod &lt;name:alias&gt;</code> imports a routine under a second name.</p>
 <h3><code>our</code> and <code>unit module</code>?</h3>
 <p><code>tctx().pkgPrefix</code> is the mechanism. <code>unit module Foo;</code> sets the prefix for the rest of the compilation unit; a braced <code>module Foo { … }</code> sets it for the body and restores it after. Then an <code>our sub bar</code> is also published as <code>&amp;Foo::bar</code>, an <code>our</code> variable as <code>$Foo::x</code>, a <code>my</code> one not at all, and a class or grammar registers under its qualified name.</p>
 <p>That last one was a bug until it was not: compound names skipped the prefix, so <code>grammar Schema::Core</code> inside <code>unit module YAMLish</code> registered unqualified and was unreachable from any importer.</p>
 <h3>When do a module's <code>END</code> blocks run?</h3>
-<p>At <strong>process</strong> end, not at load, and <em>before</em> the mainline's own <code>END</code> blocks, last-in-first-out, so a module loaded later cleans up earlier. They capture the module scope, so they still see its lexicals.</p>
+<p>At <strong>process</strong> end, not at load. They are sorted into one last-in-first-out order with the mainline's own, at the position of the <code>use</code> that loaded them: an <code>END</code> the program wrote after the <code>use</code> runs before the module's, one written before it runs after, and a module loaded later cleans up earlier. They capture the module scope, so they still see its lexicals.</p>
 <h3>What about <code>--exe</code>?</h3>
-<p>Modules are <strong>not</strong> compiled into the binary. The generator emits a call to <code>Interpreter::rtUse</code>, a thin mirror of the interpreter's <code>use</code> handling, calling the same <code>loadModule</code>. A compiled binary still interprets its modules — though it can carry their serialised ASTs inside itself (<a href="/book/run-modes/">Chapter 25</a>), so it needs neither their sources nor a warm cache to start.</p>
+<p>The generator emits a call to <code>Interpreter::rtUse</code>, a thin mirror of the interpreter's <code>use</code> handling, calling the same <code>loadModule</code>. The binary carries its modules' serialised ASTs inside itself (<a href="/book/run-modes/">Chapter 25</a>), so it needs neither their sources nor a warm cache to start, and the interpreter still runs them: every declaration, export, role and signature binding keeps the one implementation it has.</p>
+<p>What <code>--exe</code> adds is a native <strong>body</strong> for each module routine the C++ back end can compile (<code>src/AotModules.h</code>). The interpreter still makes the call — it dispatches, binds the signature into a fresh frame and runs the phasers — and where it would walk the body's statements it enters the native function instead. The two sides agree on which routine a body belongs to by walking the same deserialized AST in the same order. A body that cannot bind a name it needs answers false before running anything, and the interpreter walks that routine itself.</p>
 <h2 id="divergences-from-rakudo">Divergences from Rakudo</h2>
 <p>These are known and mostly deliberate. They are the reason a module can behave differently under Raku++ than under Rakudo even when nothing is broken.</p>
-<div class="tablewrap"><table><tr><th>#</th><th>Raku++</th><th>Rakudo</th></tr><tr><td>1</td><td><code>publish()</code> copies the module's <strong>whole</strong> environment to global. A <code>my sub</code>, a non-exported <code>our sub</code>, and its classes are all visible bare to the importer.</td><td>Only <code>is export</code> symbols are imported.</td></tr>
-<tr><td>2</td><td><code>need Foo</code> still makes Foo's symbols visible.</td><td><code>need</code> loads without importing.</td></tr>
-<tr><td>3</td><td>Types resolve <strong>at run time</strong>. <code>NoSuchType.new</code> is a run-time "no such method", after output has appeared.</td><td><code>Undeclared name</code> at compile time.</td></tr>
-<tr><td>4</td><td>The parse is cached; declarations and <code>BEGIN</code> still run every time.</td><td><code>.precomp</code> caches the parse <em>and</em> the objects compile-time code produced.</td></tr>
-<tr><td>5</td><td>A module's operators reach the importer by <strong>text scan</strong>.</td><td>Real lexical export of the operator into the importer's grammar.</td></tr>
-<tr><td>6</td><td>One flat class registry — no per-compunit type isolation.</td><td>Each compunit has its own stash.</td></tr>
-<tr><td>7</td><td><code>use Foo:ver&lt;…&gt;</code> is honoured only against the <strong>installed</strong> index (line 1 of a short entry); on the lib path all adverbs are discarded, and <code>:auth</code>/<code>:api</code> are never consulted.</td><td>Full version, auth and API resolution.</td></tr></table></div>
-<p>Divergence 1 is the big one and it cuts both ways. It is why some modules work under Raku++ that would otherwise need more machinery, and it is why a module's internal helper can silently shadow something in the importing program.</p>
-<p>Demonstrated with a module declaring <code>my sub private-sub</code>, <code>our sub our-sub</code>, <code>sub exported-sub is export</code> and <code>class Widget</code>:</p>
-<div class="tablewrap"><table><tr><th>Called from the importer</th><th>Raku++</th><th>Rakudo</th></tr><tr><td><code>private-sub()</code></td><td><code>"private"</code></td><td>not visible</td></tr>
-<tr><td><code>our-sub()</code></td><td><code>"our"</code></td><td>not visible</td></tr>
+<div class="tablewrap"><table><tr><th>#</th><th>Raku++</th><th>Rakudo</th></tr><tr><td>1</td><td>A class a module declares inside its package is visible to the importer by its <strong>short</strong> name as well.</td><td>Only by its qualified name, unless it is <code>is export</code>.</td></tr>
+<tr><td>2</td><td>Types resolve <strong>at run time</strong>. <code>NoSuchType.new</code> is a run-time "Undeclared name", after output has appeared.</td><td><code>Undeclared name</code> at compile time.</td></tr>
+<tr><td>3</td><td>The parse can be cached (off by default, <a href="/book/astserial/">Chapter 30</a>); declarations and <code>BEGIN</code> still run every time.</td><td><code>.precomp</code> caches the parse <em>and</em> the objects compile-time code produced.</td></tr>
+<tr><td>4</td><td>A module's operators reach the importer by <strong>text scan</strong>.</td><td>Real lexical export of the operator into the importer's grammar.</td></tr>
+<tr><td>5</td><td>One class registry, with the lexical scoping of a block-level <code>use</code> laid over it.</td><td>Each compunit has its own stash.</td></tr>
+<tr><td>6</td><td><code>use Foo:ver&lt;…&gt;</code> is honoured against the <strong>installed</strong> index (line 1 of a short entry) and, on the lib path, against the <code>version</code> in the <code>META6.json</code> beside the module. <code>:auth</code> is passed to the installer under <code>--auto</code> and otherwise not consulted; <code>:api</code> never is.</td><td>Full version, auth and API resolution.</td></tr></table></div>
+<p>This table used to open with two more rows: that the module's whole environment was copied to global, so a <code>my sub</code> and an unexported <code>our sub</code> were callable from the importer, and that <code>need</code> imported as <code>use</code> did. Both are gone. Row 1 is what remains of them.</p>
+<p>Demonstrated with a module <code>unit module Demo;</code> declaring <code>my sub private-sub</code>, <code>our sub our-sub</code>, <code>sub exported-sub is export</code> and <code>class Widget</code>, run under both engines (Rakudo v2026.09):</p>
+<div class="tablewrap"><table><tr><th>Called from the importer</th><th>Raku++</th><th>Rakudo</th></tr><tr><td><code>private-sub()</code></td><td>not visible</td><td>not visible</td></tr>
+<tr><td><code>our-sub()</code></td><td>not visible</td><td>not visible</td></tr>
 <tr><td><code>exported-sub()</code></td><td><code>"exported"</code></td><td><code>"exported"</code></td></tr>
 <tr><td><code>Demo::our-sub()</code></td><td><code>"our"</code></td><td><code>"our"</code></td></tr>
+<tr><td><code>Demo::Widget.greet</code></td><td><code>"widget"</code></td><td><code>"widget"</code></td></tr>
 <tr><td>bare <code>Widget.greet</code></td><td><code>"widget"</code></td><td>not visible</td></tr></table></div>
 <h2 id="debugging-a-module-problem">Debugging a module problem</h2>
-<ol><li><strong><code>RAKUPP_TRACE=1</code></strong> — confirm <em>which</em> file was loaded. Half of all module  bug reports are the wrong copy being picked up, usually because <code>.</code> is on the  search path or an installed copy shadowed a checkout.</li><li><strong><code>RAKULIB</code> takes <code>,</code> or <code>:</code>.</strong> If the same value also has to drive Rakudo,  write <code>,</code>.</li><li><strong>Instrument the real module, not a reduction.</strong> Copy its <code>lib/</code> to a scratch  directory, add <code>note</code> calls, run it under both engines. Reductions of  grammar and module behaviour have repeatedly <em>passed</em> while the real module  failed — the reduction drops the one piece of context that mattered.</li><li><strong>Load failures are loud now</strong>, so a module that appears to do nothing is  loading fine and behaving differently, not being silently skipped.</li></ol><nav class="ch-nav"><a class="prev" href="/book/wasm/"><span>Previous</span>Raku in the Browser</a><a class="next" href="/book/installer/"><span>Next</span>The Installer and the Store</a></nav>
+<ol><li><strong><code>RAKUPP_TRACE=1</code></strong> — confirm <em>which</em> file was loaded. Half of all module  bug reports are the wrong copy being picked up, usually because the current  directory's <code>lib/</code> is on the search path or an installed copy shadowed a  checkout.</li><li><strong><code>RAKULIB</code> takes <code>,</code> or <code>:</code>.</strong> If the same value also has to drive Rakudo,  write <code>,</code>.</li><li><strong>Instrument the real module, not a reduction.</strong> Copy its <code>lib/</code> to a scratch  directory, add <code>note</code> calls, run it under both engines. Reductions of  grammar and module behaviour have repeatedly <em>passed</em> while the real module  failed — the reduction drops the one piece of context that mattered.</li><li><strong>Load failures are loud now</strong>, so a module that appears to do nothing is  loading fine and behaving differently, not being silently skipped.</li></ol><nav class="ch-nav"><a class="prev" href="/book/wasm/"><span>Previous</span>Raku in the Browser</a><a class="next" href="/book/installer/"><span>Next</span>The Installer and the Store</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

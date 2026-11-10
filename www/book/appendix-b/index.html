@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Appendix B</p><h1>Flags and Environment Variables</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#command-line-flags-that-select-a-mode">Command-line flags that select a mode</a></li><li><a href="#inspection-and-tooling-flags">Inspection and tooling flags</a></li><li><a href="#flags-that-shape-a-build">Flags that shape a build</a></li><li><a href="#flags-that-change-how-a-run-behaves">Flags that change how a run behaves</a></li><li><a href="#environment-variables">Environment variables</a></li><li><a href="#build-time-switches">Build-time switches</a></li><li><a href="#a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</a></li></ul></nav>
+<p class="ch-label">Appendix B</p><h1>Flags and Environment Variables</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#command-line-flags-that-select-a-mode">Command-line flags that select a mode</a></li><li><a href="#inspection-and-tooling-flags">Inspection and tooling flags</a></li><li><a href="#flags-that-shape-a-build">Flags that shape a build</a></li><li><a href="#flags-that-change-how-a-run-behaves">Flags that change how a run behaves</a></li><li><a href="#subcommands">Subcommands</a></li><li><a href="#environment-variables">Environment variables</a></li><li><a href="#build-time-switches">Build-time switches</a></li><li><a href="#a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</a></li></ul></nav>
 <p>Everything that changes what the compiler does from the outside. This is a reference for the internals; the user-facing command line is documented in <code>docs/guide/CLI.md</code>.</p>
 <h2 id="command-line-flags-that-select-a-mode">Command-line flags that select a mode</h2>
 <div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><em>(none)</em></td><td>lex, parse, interpret</td></tr>
@@ -37,6 +37,7 @@
 <tr><td><code>--ast-roundtrip</code></td><td>serialise and deserialise the tree, then run it — the cache format's own test</td></tr>
 <tr><td><code>-c</code>, <code>--target=parse</code></td><td>compile-check only: parse and check every variable is declared</td></tr>
 <tr><td><code>--lint</code></td><td>static analysis; does not run the program</td></tr>
+<tr><td><code>--doc-links</code></td><td>link every construct of a program to its page on docs.raku.org; a list, or the program annotated with <code>--html</code> or <code>--ansi</code>, or <code>--json</code></td></tr>
 <tr><td><code>--highlight</code></td><td>syntax-highlight the source</td></tr>
 <tr><td><code>--html</code>, <code>--ansi</code>, <code>--terminal</code></td><td>pick the highlighter's renderer</td></tr>
 <tr><td><code>--doc</code></td><td>run <code>DOC</code> phasers and print rendered Pod</td></tr>
@@ -63,9 +64,11 @@
 <tr><td><code>--exe-info FILE</code></td><td>the build manifest embedded in a compiled binary</td></tr>
 <tr><td><code>--stagestats</code></td><td>phase timings and module loads on stderr</td></tr>
 <tr><td><code>--trace</code></td><td>print each statement as it runs</td></tr>
+<tr><td><code>--hints</code></td><td>performance advice on stderr, each hint once per source line; the same as <code>RAKUPP_HINTS=1</code></td></tr>
+<tr><td><code>--detect-races</code></td><td>watch the threads' reads and writes and report data races when the program ends; a run that raced exits 66</td></tr>
 <tr><td><code>--repl-after</code></td><td>run the program, then open a session on its state</td></tr>
 <tr><td><code>--completions=bash|zsh|fish</code></td><td>print a shell completion script</td></tr>
-<tr><td><code>--lsp</code></td><td>run the Language Server</td></tr></table></div>
+<tr><td><code>--lsp</code></td><td>run the Language Server: diagnostics, hover, completion and go-to-definition (<a href="/book/tooling/">Chapter 39</a>)</td></tr></table></div>
 <h2 id="flags-that-shape-a-build">Flags that shape a build</h2>
 <div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>-o FILE</code></td><td>output file (compile modes, <code>--target=js</code>)</td></tr>
 <tr><td><code>-I DIR</code></td><td>add a module search directory</td></tr>
@@ -73,6 +76,8 @@
 <tr><td><code>--standalone</code></td><td>a module that cannot be embedded is a build error</td></tr>
 <tr><td><code>--static</code></td><td>link the C++ runtime into the compiled binary (Linux, MinGW)</td></tr>
 <tr><td><code>--target=js</code></td><td>transpile to JavaScript (<a href="/book/codegen-js/">Chapter 31</a>)</td></tr>
+<tr><td><code>--target=arduino</code></td><td>transpile to an Arduino sketch</td></tr>
+<tr><td><code>--sim</code></td><td><code>--target=arduino</code> only: build the sketch for this computer, on a simulated board</td></tr>
 <tr><td><code>--verify</code></td><td>emit JavaScript only if it agrees with the interpreter</td></tr>
 <tr><td><code>--module</code></td><td>JavaScript: export the subs, classes and <code>MAIN</code> instead of running</td></tr>
 <tr><td><code>--runtime</code></td><td>write just the JavaScript runtime</td></tr>
@@ -81,6 +86,8 @@
 <div class="tablewrap"><table><tr><th>Flag</th><th>Effect</th></tr><tr><td><code>--jit[=SPEC]</code></td><td><strong>work in progress</strong>: compile hot loops with the machine's C++ compiler while the program runs, off by default. SPEC words: <code>off</code>, <code>on</code>, <code>sync</code>, <code>verbose</code>, <code>stats</code>, <code>nocache</code>, <code>pch</code>, <code>threshold=N</code> (<a href="/book/tier-up/">Chapter 44</a>)</td></tr>
 <tr><td><code>--cnp[=SPEC]</code></td><td><strong>work in progress</strong>: the same by copy-and-patch — no compiler and no cache. SPEC words: <code>off</code>, <code>on</code>, <code>verbose</code>, <code>stats</code>, <code>threshold=N</code> (<a href="/book/tier-up/">Chapter 44</a>)</td></tr>
 <tr><td><code>--seed</code></td><td>pin the random generator</td></tr>
+<tr><td><code>--auto</code></td><td>install the modules the program uses that are missing, then run it; with a compile mode, install and then embed them</td></tr>
+<tr><td><code>--sandbox[=language]</code></td><td>the program may compute, print and read standard input, and nothing else: no files, processes, sockets, native code or environment. Enforced by the interpreter and by the operating system under it; <code>=language</code> is the interpreter's checks alone</td></tr>
 <tr><td><code>--stack-size</code></td><td>the stack of the program thread, and so the recursion ceiling</td></tr>
 <tr><td><code>--env-file FILE</code></td><td>load <code>KEY=VALUE</code> lines into the environment</td></tr>
 <tr><td><code>--color=auto|always|never</code></td><td>ANSI colour on stderr and in the REPL</td></tr>
@@ -89,7 +96,15 @@
 <tr><td><code>-0</code></td><td>NUL-separated records</td></tr>
 <tr><td><code>--name</code>, <code>--prefix DIR</code></td><td>kernel name and location for <code>--jupyter-install</code></td></tr></table></div>
 <p>Flags are position-independent, and the perl-compatible one-liner family (<code>-n</code>, <code>-p</code>, <code>-a</code>, <code>-F</code>, <code>-i</code>, <code>-0777</code>, <code>-M</code>) is documented in the CLI guide.</p>
-<p>This list is checked against the binary rather than maintained by hand: <code>tools/check-book-appendix.raku</code> reads <code>kFlagDocs</code> out of <code>src/main.cpp</code> — the same table <code>--help</code> prints from — and fails if a flag is in one and not the other. It was written because this appendix was missing twenty-seven of the sixty-six flags the binary accepts, including a whole run mode.</p>
+<p>This list is checked against the binary rather than maintained by hand: <code>tools/check-book-appendix.raku</code> reads <code>kFlagDocs</code> out of <code>src/main.cpp</code> — the same table <code>--help</code> prints from — and fails if a flag is in one and not the other. It was written because this appendix was missing twenty-seven of the sixty-six flags the binary accepts, including a whole run mode. The table has 81 flags now.</p>
+<h2 id="subcommands">Subcommands</h2>
+<p>A first argument that is one of these words is a command, not a program file.</p>
+<div class="tablewrap"><table><tr><th>Command</th><th>Effect</th></tr><tr><td><code>install</code></td><td>fetch, test and install modules into the store (<a href="/book/installer/">Chapter 34</a>)</td></tr>
+<tr><td><code>uninstall</code></td><td>remove distributions this installer put there</td></tr>
+<tr><td><code>reinstall</code></td><td>uninstall and install fresh</td></tr>
+<tr><td><code>test</code></td><td>run a module's test suite against the store, installing nothing but its dependencies</td></tr>
+<tr><td><code>doc</code></td><td>look a builtin, method or operator up in the language reference, offline</td></tr>
+<tr><td><code>upgrade</code></td><td>replace this binary with a newer release</td></tr></table></div>
 <h2 id="environment-variables">Environment variables</h2>
 <h3>Search and loading</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKULIB</code></td><td>extra module search paths; <strong>both</strong> <code>,</code> and <code>:</code> separate</td></tr>
@@ -97,6 +112,9 @@
 <tr><td><code>RAKUPP_HOME</code></td><td>where the binary considers itself installed</td></tr>
 <tr><td><code>RAKUPP_CONFIG</code></td><td>override the settings file location</td></tr>
 <tr><td><code>RAKUPP_VM_NAME</code></td><td>what <code>$*VM.name</code> answers instead of <code>cpp</code>, for modules that branch on it</td></tr>
+<tr><td><code>RAKUPP_NO_CWD_LIB=1</code></td><td>do not search <code>lib</code> and <code>rakulib</code> under the current directory</td></tr>
+<tr><td><code>RAKUPP_OPT</code></td><td>options prepended to every command line; options only, never a program</td></tr>
+<tr><td><code>RAKUPP_DEPS=0</code></td><td>make <code>--auto</code> do nothing, for a harness whose children inherit it through <code>RAKUPP_OPT</code></td></tr>
 <tr><td><code>XDG_CONFIG_HOME</code>, <code>XDG_CACHE_HOME</code></td><td>the settings and cache directories</td></tr></table></div>
 <h3>The parse cache</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_PRECOMP_MODULES</code></td><td>override the module-cache switch for one run</td></tr>
@@ -109,6 +127,15 @@
 <tr><td><code>RAKUPP_JIT_DIR</code></td><td>where <code>--jit</code> keeps compiled kernels</td></tr>
 <tr><td><code>RAKUPP_CNP</code></td><td>a bundled binary only, which has no option surface of its own: <code>0</code> or <code>off</code> turns the baked-in back end off for one run, <code>1</code> on, anything else is read as a <code>--cnp</code> spec</td></tr>
 <tr><td><code>RAKUPP_CNP_X86=1</code></td><td>run the x86-64 patcher on Linux, where it is refused at startup until it has been verified on ELF (it runs on macOS x86-64 without this)</td></tr></table></div>
+<h3>Kernels and native bodies</h3>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_NO_KERNELS=1</code></td><td>run subs and loops over plain Ints, Nums and Strs the ordinary way, not as kernels on machine values; under <code>--exe</code>, no integer sub twins either. The kernels' oracle is the same build with this set</td></tr>
+<tr><td><code>RAKUPP_KERNEL_TRACE=1</code></td><td>name each sub and loop as its kernel is decided</td></tr>
+<tr><td><code>RAKUPP_HYPER_THREADS=N</code></td><td>cap the threads the hyper-operator kernels split a long operand over; <code>1</code> is serial</td></tr>
+<tr><td><code>RAKUPP_NO_SELFPACK=1</code></td><td>do not pack a fresh untyped Array of plain Nums into machine words; <code>RAKUPP_SELFPACK_MIN=n</code> is the fewest elements packed</td></tr>
+<tr><td><code>RAKUPP_NO_AOT=1</code></td><td><code>--exe</code>: keep the embedded modules' routines interpreted (<code>RAKUPP_AOT_VERBOSE=1</code> says why one stays interpreted)</td></tr>
+<tr><td><code>RAKUPP_AOT_REPORT=FILE</code></td><td><code>--exe</code>: write which module routines got native bodies and why the others did not</td></tr>
+<tr><td><code>RAKUPP_AOT_RUNLOG=FILE</code></td><td>in a compiled binary: at exit, write how often each native module body was entered or declined</td></tr>
+<tr><td><code>RAKUPP_NO_PCH=1</code>, <code>RAKUPP_PCH_DIR</code></td><td><code>--exe</code>: compile without the cached precompiled header; where that cache is kept</td></tr></table></div>
 <h3>The foreign-function interface</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_FFI=0</code></td><td>force the no-libffi fallback path</td></tr>
 <tr><td><code>RAKUPP_FFI=/path</code></td><td>use <em>only</em> that library; if it fails to load, report and fall back rather than silently substituting the system copy</td></tr>
@@ -120,22 +147,31 @@
 <tr><td><code>RAKUPP_CYCLE_POISON=1</code></td><td>give a collected object a class whose every method dies, instead of clearing it</td></tr>
 <tr><td><code>RAKUPP_CYCLE_TRIGGER=N</code></td><td>collect whenever N candidates wait; <code>1</code> collects at nearly every scope exit</td></tr></table></div>
 <h3>Concurrency</h3>
-<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_PARALLEL=1</code></td><td>true parallelism: workers run interpreter compute concurrently instead of serialising on the GIL</td></tr>
-<tr><td><code>RAKUPP_GIL</code></td><td>control the lock explicitly</td></tr>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_GIL=1</code></td><td>coordinate threads under one global lock. Since v3 the default is the other way: <code>start</code> blocks and workers run on all cores</td></tr>
+<tr><td><code>RAKUPP_PARALLEL=0</code></td><td>a synonym for <code>RAKUPP_GIL=1</code>, kept from when parallel was the opt-in</td></tr>
+<tr><td><code>RAKUPP_PRIVATE_SLOTS=0</code></td><td>take the stripe lock for every variable slot, including the ones proved private to one thread; an A/B instrument</td></tr>
+<tr><td><code>RAKUPP_STRIPE_STATS=1</code></td><td>at exit, how often each stripe was found already held</td></tr>
+<tr><td><code>RAKUPP_RACE=1</code></td><td>what <code>--detect-races</code> sets; <code>RAKUPP_RACE_TRACE=edges</code> or <code>=accesses</code> narrates what the detector sees</td></tr>
+<tr><td><code>RAKUPP_MAIN_THREAD=1</code></td><td>run the program on the process's main thread, not the spawned 1 GiB one — for Cocoa, which refuses to create windows anywhere else</td></tr>
 <tr><td><code>RAKUPP_FREEZE_TRACE=1</code></td><td>report any symbol-table mutation after concurrency engaged, and which thread did it</td></tr></table></div>
 <h3>The regex engine</h3>
-<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_LTM=1</code></td><td>use the NFA ranker for longest-token matching where it is gap-free</td></tr>
+<div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_LTM=0</code></td><td>rank longest-token alternatives with the legacy greedy probe. The NFA ranker is the default, where it is gap-free</td></tr>
 <tr><td><code>RAKUPP_LTM_DEBUG=1</code></td><td>rank both ways and print every disagreement — works without <code>RAKUPP_LTM</code></td></tr>
 <tr><td><code>RAKUPP_LTM_RANKDUMP=1</code></td><td>print each decided alternation's ranking</td></tr></table></div>
 <h3>Diagnostics</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_TRACE=1</code></td><td>the module search path and every resolution</td></tr>
 <tr><td><code>RAKUPP_DUMPTOKENS=1</code></td><td>the token stream</td></tr>
 <tr><td><code>RAKUPP_NO_DECLCHECK=1</code></td><td>skip the undeclared-variable gate (<a href="/book/tooling/">Chapter 39</a>)</td></tr>
+<tr><td><code>RAKUPP_NO_CALLCHECK=1</code></td><td>skip the will-never-work call gate (<a href="/book/tooling/">Chapter 39</a>)</td></tr>
+<tr><td><code>RAKUPP_BACKTRACE=0|short|full</code></td><td>how much of an uncaught error's backtrace prints</td></tr>
+<tr><td><code>RAKUPP_HINTS=1</code></td><td>performance advice on stderr, as <code>--hints</code></td></tr>
+<tr><td><code>NO_COLOR</code>, <code>RAKUPP_COLOR=0|1</code></td><td>colour off by convention; forced off or on</td></tr>
+<tr><td><code>RAKUPP_UNICODE=0|1</code></td><td>force the non-ASCII glyphs in rakupp's own output off or on</td></tr>
 <tr><td><code>RAKUPP_ACTTRACE=1</code></td><td>grammar action firing</td></tr>
 <tr><td><code>RAKUPP_TAP_TRACE=1</code></td><td>the test harness's own emission</td></tr>
 <tr><td><code>RAKUPP_KEEPGEN=1</code></td><td>keep the generated C++ from a compiling mode</td></tr>
-<tr><td><code>RAKUPP_NO_AOT=1</code></td><td><code>--exe</code>: keep the embedded modules' routines interpreted (<code>RAKUPP_AOT_VERBOSE=1</code> says why one stays interpreted)</td></tr>
-<tr><td><code>RAKUPP_DEBUG_MAKE</code>, <code>RAKUPP_DEBUG_REPLAY</code></td><td>grammar <code>make</code> and replay diagnostics</td></tr></table></div>
+<tr><td><code>RAKUPP_DEBUG_MAKE</code></td><td>grammar <code>make</code> diagnostics</td></tr>
+<tr><td><code>RAKUPP_NFC_CHECK=1</code>, <code>RAKUPP_DYNCACHE_CHECK=1</code>, <code>RAKUPP_ATTR_LAYOUT_CHECK</code></td><td>each checks one cache against the slow path it replaces — the NFC flag on a string body, the dynamic-variable memo, the attribute layout — and reports a mismatch</td></tr></table></div>
 <h3>The interactive session</h3>
 <div class="tablewrap"><table><tr><th>Variable</th><th>Effect</th></tr><tr><td><code>RAKUPP_REPL=1</code></td><td>force a session even when standard input is not a terminal</td></tr>
 <tr><td><code>RAKUPP_HISTORY</code></td><td>the history file</td></tr></table></div>
@@ -147,7 +183,7 @@
 <tr><td><code>_GLIBCXX_USE_CXX11_ABI</code></td><td>relevant only because it is the ABI break copy-on-write strings caused (<a href="/book/strings/">Chapter 9</a>)</td></tr></table></div>
 <p>The pointer census is a good example of the project's habit: before collapsing <code>Value</code>'s pointers into tag-dispatched slots, a special build <strong>counts</strong> which sets are live simultaneously, rather than reasoning about what the type tags suggest.</p>
 <h2 id="a-note-on-flags-that-change-behaviour">A note on flags that change behaviour</h2>
-<p>Two of the variables above change <em>results</em> rather than speed: <code>RAKUPP_LTM</code> and <code>RAKUPP_PARALLEL</code>. Both are off by default, and the policy for both is the same: the old path stays available for at least one release after the default changes, so a regression can be bisected to the switch rather than to the release.</p>
+<p>Two of the variables above change <em>results</em> rather than speed: <code>RAKUPP_LTM</code> and <code>RAKUPP_GIL</code>. The policy for both is the same: the old path stays available for at least one release after the default changes, so a regression can be bisected to the switch rather than to the release. Both defaults have changed. The NFA ranker and parallel workers are what runs, and the two variables are now the way back.</p>
 <p><code>RAKUPP_VM_NAME</code> is a third, and a different kind. It changes one answer — <code>$*VM.name</code>, and the <code>$*RAKU.VMnames</code> list it has to stay a member of — so that a module which branches on the name and dies on the <code>else</code> takes its <code>moar</code> branch instead. Nothing sets it on your behalf, and no measurement this project publishes runs with it set: the default is what this engine is, and asserting a dialect is the caller's statement, not the engine's. <code>$*VM.config</code> is untouched either way, because the toolchain values in it were already real.</p>
 <p>Everything else here either reports something or selects a code path that is required to produce identical output.</p><nav class="ch-nav"><a class="prev" href="/book/appendix-a/"><span>Previous</span>The Tag Sets</a><a class="next" href="/book/appendix-c/"><span>Next</span>Source Map</a></nav>
 <footer>

@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 20</p><h1>Compiling a Regex</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-pattern-text-arrives-unparsed">The pattern text arrives unparsed</a></li><li><a href="#the-node-tree">The node tree</a></li><li><a href="#the-byteset-a-per-node-character-class-cache">The byteset: a per-node character-class cache</a></li><li><a href="#the-parser">The parser</a></li><li><a href="#sigspace">Sigspace</a></li><li><a href="#ratchet">Ratchet</a></li><li><a href="#two-whole-pattern-optimisations">Two whole-pattern optimisations</a></li><li><a href="#retired-perl-5-metacharacters">Retired Perl 5 metacharacters</a></li><li><a href="#interpolation-happens-before-compilation">Interpolation happens before compilation</a></li><li><a href="#what-the-compiler-produces">What the compiler produces</a></li><li><a href="#p5-the-same-engine-wearing-perl-5-syntax"><code>:P5</code> — the same engine wearing Perl 5 syntax</a></li></ul></nav>
+<p class="ch-label">Chapter 20</p><h1>Compiling a Regex</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-pattern-text-arrives-unparsed">The pattern text arrives unparsed</a></li><li><a href="#the-node-tree">The node tree</a></li><li><a href="#the-byteset-a-per-node-character-class-cache">The byteset: a per-node character-class cache</a></li><li><a href="#the-parser">The parser</a></li><li><a href="#sigspace">Sigspace</a></li><li><a href="#ratchet">Ratchet</a></li><li><a href="#three-whole-pattern-optimisations">Three whole-pattern optimisations</a></li><li><a href="#retired-perl-5-metacharacters">Retired Perl 5 metacharacters</a></li><li><a href="#interpolation-happens-before-compilation">Interpolation happens before compilation</a></li><li><a href="#what-the-compiler-produces">What the compiler produces</a></li><li><a href="#p5-the-same-engine-wearing-perl-5-syntax"><code>:P5</code> — the same engine wearing Perl 5 syntax</a></li></ul></nav>
 <p>Raku's regex sub-language is not a bolt-on. It has its own quoting rules, its own whitespace conventions, named rules, code assertions, and grammars built out of it. Raku++ implements it as a <strong>second, small recursive-descent compiler</strong> inside the runtime, producing a node tree that a backtracking matcher walks.</p>
 <p>The whole thing is one class in one file:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
@@ -33,8 +33,10 @@
     <span class="kt">bool</span> search(<span class="k">const</span> std::string&amp; subject, <span class="kt">long</span> startPos, RxMatch&amp; out) <span class="k">const</span>;
     <span class="kt">bool</span> matchAt(<span class="k">const</span> std::string&amp; subject, <span class="kt">long</span> pos, RxMatch&amp; out,
                  <span class="k">const</span> SubResolver&amp; r,
-                 <span class="k">const</span> std::set&lt;std::string&gt;* lexNames = <span class="kc">nullptr</span>) <span class="k">const</span>;
+                 <span class="k">const</span> std::set&lt;std::string&gt;* lexNames = <span class="kc">nullptr</span>,
+                 <span class="k">const</span> GrammarHooks* hooks = <span class="kc">nullptr</span>) <span class="k">const</span>;
 };</code></pre>
+<p>The interpreter does not construct one per match. <code>compileRegexCached</code> keeps compiled objects in a per-thread map keyed on the pattern text after interpolation plus the flags, holds up to 512 of them, and skips patterns over 4,096 bytes. A regex literal in a loop is compiled once per thread. That is why the hook set is a per-call parameter of <code>search</code> and <code>matchAt</code>: a shared object cannot carry one caller's hooks.</p>
 <h2 id="the-pattern-text-arrives-unparsed">The pattern text arrives unparsed</h2>
 <p>The Raku lexer does not tokenize regex syntax (<a href="/book/lexer/">Chapter 4</a>). A <code>/…/</code> literal, an <code>rx//</code>, an <code>s///</code> and a <code>token NAME { … }</code> body all travel through the token stream as raw text. The regex compiler re-lexes that text with its own scanner.</p>
 <p>That separation is the reason two grammars can coexist without either contaminating the other, and it is why the constructor takes a <code>std::string</code> rather than a token range.</p>
@@ -57,21 +59,29 @@
     std::vector&lt;std::string&gt; clusterMembers;        <span class="c1">// multi-codepoint graphemes</span>
     std::string classFlags, negClassFlags, uprop;
     <span class="kt">bool</span> negate = <span class="kc">false</span>, icase = <span class="kc">false</span>, imark = <span class="kc">false</span>, multiline = <span class="kc">false</span>;
+    <span class="k">const</span> Node* recTarget = <span class="kc">nullptr</span>;                <span class="c1">// &lt;~~&gt;: its own pattern</span>
     <span class="k">mutable</span> <span class="kt">uint32_t</span> byteset[<span class="mi">8</span>];                    <span class="c1">// built on first use</span>
     <span class="k">mutable</span> std::atomic&lt;<span class="kt">bool</span>&gt; bytesetReady{<span class="kc">false</span>};
     <span class="kt">long</span> min = <span class="mi">0</span>, max = -<span class="mi">1</span>; <span class="kt">bool</span> greedy = <span class="kc">true</span>, possessive = <span class="kc">false</span>;  <span class="c1">// Rep</span>
+    <span class="kt">bool</span> forceBack = <span class="kc">false</span>;                         <span class="c1">// a*! backtracks anyway</span>
     std::unique_ptr&lt;Node&gt; sep; <span class="kt">bool</span> sepTrail = <span class="kc">false</span>;    <span class="c1">// X+ % Y</span>
     std::string repCode;                            <span class="c1">// ** { … }</span>
     <span class="kt">bool</span> runOnly = <span class="kc">false</span>, ltmStop = <span class="kc">false</span>;          <span class="c1">// Code</span>
     <span class="kt">bool</span> firstMatch = <span class="kc">false</span>, classCombo = <span class="kc">false</span>;    <span class="c1">// Alt</span>
     <span class="kt">int</span> capIndex = -<span class="mi">1</span>; std::string capName; <span class="kt">bool</span> listCap = <span class="kc">false</span>;   <span class="c1">// Group</span>
+    <span class="kt">int</span> capLocal = -<span class="mi">1</span>;                              <span class="c1">// its $n in its own scope</span>
     std::string ruleName, ruleArgs, ruleAlias;      <span class="c1">// Subrule</span>
     <span class="kt">bool</span> aliasDotted = <span class="kc">false</span>, ruleCapture = <span class="kc">true</span>;
+    <span class="kt">bool</span> noBack = <span class="kc">false</span>;                            <span class="c1">// written under :ratchet</span>
+    <span class="k">const</span> Regex* inlineRx = <span class="kc">nullptr</span>;                <span class="c1">// &lt;$var&gt;: a called pattern</span>
+    std::string dynCode;                            <span class="c1">// &lt;{ code }&gt;</span>
     <span class="k">mutable</span> <span class="k">const</span> GrammarRuleMeta* metaCache = <span class="kc">nullptr</span>;
+    <span class="k">mutable</span> <span class="kt">uint64_t</span> metaOwner = <span class="mi">0</span>;                 <span class="c1">// …and whose cache it is</span>
     <span class="kt">bool</span> behind = <span class="kc">false</span>;                            <span class="c1">// Look</span>
-    <span class="k">mutable</span> <span class="kt">long</span> lookMin = <span class="mi">0</span>, lookMax = -<span class="mi">1</span>;
+    <span class="k">mutable</span> <span class="kt">long</span> lookMin = <span class="mi">0</span>, lookMax = -<span class="mi">1</span>, lookChars = -<span class="mi">1</span>;
     <span class="k">mutable</span> std::unique_ptr&lt;LtmNfa&gt; ltmNfa;         <span class="c1">// Alt</span>
 };</code></pre>
+<p><code>capIndex</code> is the flat slot the matcher writes a capture's span to. <code>capLocal</code> is the number the capture answers to. The two differ because every capture opens a numbering scope of its own: the <code>(b)</code> of <code>( (a) (b) )</code> is the outer capture's <code>$1</code> and has no top-level number.</p>
 <p>Three fields deserve attention now; the rest appear where they are used.</p>
 <h2 id="the-byteset-a-per-node-character-class-cache">The byteset: a per-node character-class cache</h2>
 <p>A character class has to answer "does this byte match?" for every position it is tested at, taking into account ranges, named classes, negation and case-folding. Computing that from the class's own data each time is a loop.</p>
@@ -79,7 +89,7 @@
 <pre class="native-code"><code class="lang-cpp"><span class="k">mutable</span> <span class="kt">uint32_t</span> byteset[<span class="mi">8</span>];                   <span class="c1">// 256 bits</span>
 <span class="k">mutable</span> std::atomic&lt;<span class="kt">bool</span>&gt; bytesetReady{<span class="kc">false</span>};</code></pre>
 <p>The flag is an <em>acquire/release</em> atomic rather than a relaxed one, and the comment says why: it gates a 32-byte array, so a relaxed store would not guarantee that a reader which sees the flag also sees the bytes. This is the one place in the codebase where the weaker ordering used everywhere else would be wrong, and it is worth noticing as a general point — <code>DecidedOnce</code> is safe because it publishes a <em>single word</em>.</p>
-<p>Codepoints above 255 do not fit a byteset, so they live in <code>cpRanges</code> and are tested separately. Multi-codepoint graphemes — a class member written <code>\c[A, COMBINING ACUTE ACCENT]</code> — live in <code>clusterMembers</code> and are compared as whole clusters.</p>
+<p>The table answers for bytes, and a character outside ASCII is more than one byte, so its bits from 0x80 up stay clear. Such a character is decoded and tested whole against <code>cpRanges</code>. Multi-codepoint graphemes — a class member written <code>\c[A, COMBINING ACUTE ACCENT]</code> — live in <code>clusterMembers</code> and are compared as whole clusters.</p>
 <h2 id="the-parser">The parser</h2>
 <p>Five mutually recursive functions, one per precedence level:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
@@ -89,10 +99,11 @@ NodePtr parseSeq();     <span class="c1">// concatenation</span>
 NodePtr parseQuant();   <span class="c1">// * + ? ** N..M, with % separators</span>
 NodePtr parseAtom();    <span class="c1">// everything else</span></code></pre>
 <p><code>parseAtom</code> is the large one. It handles literals and quoted literals, <code>.</code>, the escape classes <code>\d \w \s</code> and their negations, <code>&lt;[…]&gt;</code> and <code>&lt;-[…]&gt;</code> character classes with ranges, named classes and Unicode properties <code>&lt;:Nd&gt;</code>, groups <code>[ ]</code> (non-capturing) and <code>( )</code> (capturing), named captures <code>$&lt;x&gt;=[…]</code>, subrule calls <code>&lt;name&gt;</code> with their aliasing and capture variants, lookarounds, code assertions <code>&lt;?{…}&gt;</code> and <code>&lt;!{…}&gt;</code>, side-effect blocks <code>{…}</code> and <code>:my</code> declarations, <code>$var</code> interpolation, the capture-span markers <code>&lt;(</code> and <code>)&gt;</code>, anchors, and word boundaries.</p>
-<p>Two parse-time pieces of state make the adverbs scoped rather than global:</p>
+<p>Three parse-time pieces of state make the adverbs scoped rather than global:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="kt">bool</span> curIcase_ = <span class="kc">false</span>;   <span class="c1">// :i / :!i, scoped to the enclosing group</span>
 <span class="kt">bool</span> curImark_ = <span class="kc">false</span>;   <span class="c1">// :m / :ignoremark, likewise</span>
+<span class="kt">bool</span> curRatchet_ = <span class="kc">false</span>; <span class="c1">// :r / :ratchet, likewise</span>
 <span class="kt">int</span> assertDepth_ = <span class="mi">0</span>;     <span class="c1">// &gt;0 inside an assertion, so parseSeq stops at `&gt;`</span></code></pre>
 <p>so an inline <code>:i</code> inside a group applies to that group's nodes and no further — which is why <code>icase</code> and <code>imark</code> are per-<em>node</em> flags rather than per-regex ones.</p>
 <h2 id="sigspace">Sigspace</h2>
@@ -104,30 +115,43 @@ NodePtr parseAtom();    <span class="c1">// everything else</span></code></pre>
 <p><code>token</code> and <code>rule</code> are <em>ratcheting</em>: their quantifiers are possessive and their matches commit — no backtracking into a token once it has matched.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="kt">bool</span> ratchet_ = <span class="kc">false</span>;</code></pre>
-<p>The flag makes every <code>Rep</code> node possessive at compile time. It is also what makes the packrat memo in <a href="/book/grammars/">Chapter 22</a> sound: a rule that does not backtrack has exactly one match at a given position, so caching it is safe.</p>
-<h2 id="two-whole-pattern-optimisations">Two whole-pattern optimisations</h2>
+<p>The matcher reads the flag in the <code>Rep</code> case: a greedy quantifier under it takes its run and hands nothing back, as one written <code>a*:</code> does. <code>a*!</code> sets <code>forceBack</code> on its node and backtracks all the same. Two more things commit under <code>:ratchet</code>, both decided by the parser from <code>curRatchet_</code>. A subrule call gets <code>noBack</code> and keeps the callee's first match, so a <code>token</code> does not back into a <code>regex</code> it calls. A group holding an alternation is wrapped in a possessive <code>Rep</code> of exactly one, so <code>:r [ab | a] b</code> does not come back for <code>a</code>.</p>
+<p>The flag is also what makes the packrat memo in <a href="/book/grammars/">Chapter 22</a> sound: a rule that does not backtrack has exactly one match at a given position, so caching it is safe.</p>
+<h2 id="three-whole-pattern-optimisations">Three whole-pattern optimisations</h2>
 <p><strong>A single-character rule is inlined at its call sites.</strong> A grammar full of <code>token space { &lt;[\ \t]&gt; }</code> would otherwise pay a full subrule call per character:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="kt">bool</span> rootIsSingleChar() <span class="k">const</span>;
-<span class="kt">long</span> trySingleChar(<span class="k">const</span> std::string&amp; s, <span class="kt">long</span> pos) <span class="k">const</span>;   <span class="c1">// pos+1, or -1</span></code></pre>
-<p>The call site tests the property once, caches the answer on the rule's metadata, and thereafter tests the character directly.</p>
+<span class="kt">long</span> trySingleChar(<span class="k">const</span> std::string&amp; s, <span class="kt">long</span> pos) <span class="k">const</span>;</code></pre>
+<p>The call site tests the property once, caches the answer on the rule's metadata, and thereafter tests the character directly. <code>trySingleChar</code> answers the position after the character or -1, and -2 when the byte table cannot decide: a multibyte character at <code>pos</code>, or an ASCII one with a non-ASCII byte after it that may be a combining mark. The caller then runs the real matcher.</p>
 <p><strong>Lookbehind width is computed once.</strong> A naive lookbehind scans every earlier start position, which is O(pos) per attempt. Instead the inner pattern's possible width is derived and the scan window bounded:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
-std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt; nodeWidth(<span class="k">const</span> Node* n, MState&amp; st) <span class="k">const</span>;</code></pre>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.cpp — the Look case</span>
+<span class="k">struct</span> RxWidth { <span class="kt">long</span> lo, hi, chars; };   <span class="c1">// bytes, bytes, characters</span>
+RxWidth nodeWidth(<span class="k">const</span> Node* n, MState&amp; st) <span class="k">const</span>;</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.cpp — the Look case, abridged</span>
+<span class="kt">long</span> lookMin = n-&gt;lookMin, lookMax = n-&gt;lookMax, lookChars = n-&gt;lookChars;
 <span class="k">if</span> (!n-&gt;lookWidthReady) {
     <span class="k">auto</span> w = nodeWidth(child, st);
-    n-&gt;lookMin = w.first; n-&gt;lookMax = w.second; n-&gt;lookWidthReady = <span class="kc">true</span>;
+    lookMin = w.lo; lookMax = w.hi; lookChars = w.chars;
+    …   <span class="c1">// cached on the node, unless it read a lexical token's width</span>
 }
-<span class="kt">long</span> hi = pos - n-&gt;lookMin;
-<span class="kt">long</span> lo = n-&gt;lookMax &lt; <span class="mi">0</span> ? <span class="mi">0</span> : pos - n-&gt;lookMax;</code></pre>
-<p>O(width) instead of O(position).</p>
+<span class="kt">long</span> hi = pos - lookMin;
+<span class="kt">long</span> lo = lookMax &gt;= <span class="mi">0</span> ? pos - lookMax
+        : lookChars &gt;= <span class="mi">0</span> ? charsBack(st.s, pos, lookChars) : <span class="mi">0</span>;</code></pre>
+<p>O(width) instead of O(position). The third number is there because a one-character rule such as <code>&lt;.alnum&gt;</code> is one to several bytes wide: its byte bound is open, and the character bound still closes the window.</p>
+<p><strong>An unanchored search skips positions that cannot start a match.</strong> Two facts are computed when the pattern is compiled:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
+<span class="kt">bool</span> pfFirstOn_ = <span class="kc">false</span>;             <span class="c1">// pfFirst_ is a usable start-byte filter</span>
+<span class="kt">uint32_t</span> pfFirst_[<span class="mi">8</span>] = {<span class="mi">0</span>};          <span class="c1">// the bytes a match can start with</span>
+<span class="kt">int</span> pfSingle_ = -<span class="mi">1</span>;                  <span class="c1">// …when that is one ASCII byte</span>
+std::vector&lt;std::string&gt; pfReqLits_; <span class="c1">// one of these is in every match</span></code></pre>
+<p><code>search</code> makes no attempt at a position whose byte is not in <code>pfFirst_</code>, and when the set is a single ASCII byte it finds the next candidate with <code>memchr</code>. If none of the required literals occurs in the subject from the start position on, it returns without an attempt. Both are conservative: anything the analysis does not understand means "any byte" and "no literal". The literal test is used only for a pattern with no code block, subrule or interpolation, because skipping an attempt that would have run code on its way to failing is observable.</p>
 <h2 id="retired-perl-5-metacharacters">Retired Perl 5 metacharacters</h2>
 <p>Raku deliberately reuses some Perl 5 regex syntax for other things, and Roast checks that the old spellings produce a specific error rather than silently meaning something else:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Regex.h</span>
 <span class="k">struct</span> ObsoleteEscape { std::string seq; };
-<span class="k">const</span> std::string&amp; obsolete() <span class="k">const</span>;   <span class="c1">// non-empty: a retired P5 metachar</span></code></pre>
-<p>The constructor records the offending sequence — <code>\A</code>, <code>\z</code>, <code>\G</code>, <code>\p</code>, <code>\Q</code>, <code>\1</code> — so the caller can raise <code>X::Obsolete</code> instead of reporting a failed match. Distinguishing "this pattern is wrong" from "this pattern did not match" is worth the extra field.</p>
+<span class="k">const</span> std::string&amp; obsolete() <span class="k">const</span>;   <span class="c1">// non-empty: a retired P5 metachar</span>
+<span class="k">const</span> std::string&amp; badEscape() <span class="k">const</span>;  <span class="c1">// non-empty: an unknown \x escape</span></code></pre>
+<p>The constructor records the offending sequence — <code>\A</code>, <code>\z</code>, <code>\G</code>, <code>\p</code>, <code>\Q</code>, <code>\1</code> — so the caller can raise <code>X::Obsolete</code> instead of reporting a failed match. Distinguishing "this pattern is wrong" from "this pattern did not match" is worth the extra field. An unknown backslash letter such as <code>\y</code> is recorded the same way, in <code>badEscape</code>, and is a compile error.</p>
 <p>Retired, that is, in <em>Raku</em> syntax. Every one of those spellings is alive and meaningful under the <code>:P5</code> adverb, where the same constructor parses the same text with a different front-end — the last section of this chapter.</p>
 <h2 id="interpolation-happens-before-compilation">Interpolation happens before compilation</h2>
 <p><code>/$var/</code> and <code>/@words/</code> are resolved in the pattern <em>text</em>, before the regex is compiled, by three interpreter functions:</p>
@@ -135,7 +159,10 @@ std::pair&lt;<span class="kt">long</span>, <span class="kt">long</span>&gt; node
 std::string interpRegexPattern(<span class="k">const</span> std::string&amp; in);  <span class="c1">// $var atoms</span>
 std::string spliceRegexVars(<span class="k">const</span> std::string&amp; pat);    <span class="c1">// regex-valued vars</span>
 std::string rxInterpArrays(<span class="k">const</span> std::string&amp; pat);     <span class="c1">// /@arr/ → alternation</span></code></pre>
-<p>An array interpolates as a <strong>longest-first literal alternation</strong>, which is the semantics Raku specifies and which the sorting has to implement explicitly. A regex-valued variable is spliced in as source text at construction, so <code>rx/ $x /</code> where <code>$x</code> is a <code>Regex</code> composes.</p>
+<p>An array interpolates as a <strong>longest-first literal alternation</strong>, which is the semantics Raku specifies and which the sorting has to implement explicitly. A regex-valued variable is spliced in as source text at construction, grouped in <code>[ … ]</code>, so <code>rx/ $x /</code> where <code>$x</code> is a <code>Regex</code> composes.</p>
+<p>Text is not always enough. A <code>:P5</code> regex pasted into a Raku pattern would be read with the wrong syntax, and a pattern that says <code>&lt;~~&gt;</code> would recurse into its host. Those go in as a marked splice, which the parser compiles with the splice's own front-end:</p>
+<pre class="native-code grid"><code>\x01 KIND LENGTH \x01 SOURCE        KIND = 'P' (Perl 5) | 'R' (Raku)</code></pre>
+<p>The length makes the marker opaque to every scanner on the way: the source may hold any character. The assertion form <code>&lt;$var&gt;</code> uses a third kind, <code>S</code>. It is a call: the sub-pattern is compiled whole, owned by the host regex, and matched in its own capture frame, so its groups fill the sub-match's <code>$0</code> and not the host's.</p>
 <p>A <code>$var</code> that must be read <em>at match time</em> — because the variable changes during the match — is a different node, <code>K::VarMatch</code>, evaluated through the hooks in the next chapter.</p>
 <h2 id="what-the-compiler-produces">What the compiler produces</h2>
 <p>The result of construction is a root node plus a little bookkeeping:</p>
@@ -145,6 +172,7 @@ std::set&lt;<span class="kt">int</span>&gt; listCaps_;                          
 std::shared_ptr&lt;std::set&lt;std::string&gt;&gt; listNames_; <span class="c1">// named keys under one</span>
 std::shared_ptr&lt;std::set&lt;std::string&gt;&gt; hashNames_; <span class="c1">// %&lt;name&gt;= keys</span></code></pre>
 <p>The two "list" sets exist because Raku's capture arity is decided by the <em>pattern</em>, not by the match. A capture under a repetition quantifier is an array <strong>even when it matched once or not at all</strong>. That fact is a property of the compiled pattern, so it is computed once by <code>collectListNames</code> walking each quantified atom, and then shared — as a <code>shared_ptr</code> to a frozen set — into every match result the pattern produces. Sharing rather than copying matters because a grammar parse produces one of these per rule invocation.</p>
+<p>The tree has one other consumer. <code>toJsTree</code> writes it out as a JavaScript object literal for the <code>--target=js</code> back end, whose runtime carries a matcher that interprets it.</p>
 <h2 id="p5-the-same-engine-wearing-perl-5-syntax"><code>:P5</code> — the same engine wearing Perl 5 syntax</h2>
 <p>Raku specifies an escape hatch: <code>m:P5/…/</code> (long form <code>:Perl5</code>, also on <code>s///</code> and <code>rx//</code>) promises that the pattern is Perl 5 syntax — <code>( )</code> captures, <code>[ ]</code> character classes, <code>\1</code> backreferences, <code>(?i)</code> inline modifiers, <code>|</code> as leftmost-first alternation. Roast holds it to an 11-file, 918-assertion corpus (<code>S05-modifier/Perl_0.t</code> through <code>Perl_10.t</code>) generated from perl's own <code>re_tests</code> suite.</p>
 <p>The implementation is a <strong>second front-end, not a second engine</strong>. Seven parser functions produce the same <code>Node</code> tree everything else in this chapter produces, and the matcher of <a href="/book/matcher/">Chapter 21</a> runs it unchanged:</p>

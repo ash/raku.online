@@ -30,18 +30,19 @@
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 Value eval(Expr* e);
 Value exec(Stmt* s, <span class="kt">bool</span> sink = <span class="kc">false</span>);
-Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">bool</span> sink = <span class="kc">false</span>);</code></pre>
+Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">bool</span> sink = <span class="kc">false</span>,
+                std::unique_ptr&lt;HandedError&gt;* handOff = <span class="kc">nullptr</span>);</code></pre>
 <p><code>exec</code> takes a <strong>sink</strong> flag. When a statement's value is discarded — a loop body, a statement in the middle of a block — the flag says so, and an assignment can skip materialising its (possibly very large) result. It is a small thing that turns the naive <code>$s ~= …</code> in a loop from quadratic into linear, in combination with the in-place append described in <a href="/book/optimizer/">Chapter 27</a>.</p>
-<p><code>execBlock</code> runs a statement list in a given scope, handling the phaser schedule around it.</p>
+<p><code>execBlock</code> runs a statement list in a given scope, handling the phaser schedule around it. It is two halves: a block with no entry or exit work of its own — no phaser, no <code>CATCH</code>, no named sub, no hoisted <code>my</code>, which is every plain loop body — runs on the lean <code>execPlainBlock</code>, and everything else on <code>execBlockFull</code>. The <code>handOff</code> slot belongs to <a href="/book/control-flow/">Chapter 15</a>.</p>
 <h2 id="execution-registers">Execution registers</h2>
 <p>The state that belongs to one thread of Raku execution is gathered into a struct rather than scattered across interpreter members:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext, abridged</span>
 <span class="k">struct</span> ExecContext {
     std::shared_ptr&lt;Env&gt; cur;            <span class="c1">// current lexical scope</span>
-    std::vector&lt;Env*&gt; dynStack;          <span class="c1">// the dynamic ($*foo) caller chain</span>
+    DynStack dynStack;                   <span class="c1">// the dynamic ($*foo) caller chain</span>
     <span class="kt">int</span> callDepth = <span class="mi">0</span>;
     Env* curStateEnv = <span class="kc">nullptr</span>;
-    std::vector&lt;std::shared_ptr&lt;ValueList&gt;&gt; gatherStack;
+    std::vector&lt;PRef&lt;ValueList&gt;&gt; gatherStack;
     std::vector&lt;ValueList*&gt; supplyStack;
     std::vector&lt;Value*&gt; makeTargets;
     std::string pkgPrefix;
@@ -51,22 +52,36 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
     <span class="kt">int</span> loopCtl = <span class="mi">0</span>;         <span class="kt">uint64_t</span> curLoopFrame = kNoFrame;
     <span class="kt">int</span> givenCtl = <span class="mi">0</span>;        Value givenV;  <span class="kt">uint64_t</span> curGivenFrame = kNoFrame;
 
-    <span class="k">struct</span> CallSite { <span class="kt">int</span> line; <span class="k">const</span> Value* code; };
+    <span class="k">struct</span> CallSite { <span class="kt">int</span> line; <span class="k">const</span> Value* code; <span class="cm">/* … */</span> };
     std::vector&lt;CallSite&gt; callFrames;            <span class="c1">// for callframe(N), backtraces</span>
     <span class="kt">int</span> wantLvalue = <span class="mi">0</span>;  Value* lvalueOut = <span class="kc">nullptr</span>;
 };
 
 <span class="k">static</span> ExecContext&amp; tctx();   <span class="c1">// this thread's context</span></code></pre>
+<p><code>DynStack</code> is a vector of <code>Env*</code> with a small memo beside it, so a <code>$*foo</code> read from deep in a call chain does not walk every caller's scope each time.</p>
 <p>It is per thread — a <code>thread_local</code> context, reached through a constant-initialized <code>thread_local</code> pointer — so each real worker thread owns its own set. That is the foundation of the concurrency model in <a href="/book/concurrency/">Chapter 38</a> — with per-thread registers, running Raku on a second thread does not need a register swap at every handover.</p>
 <p>Two chains, not one. <strong><code>cur</code></strong> is the lexical chain: a callee's parent is the scope it was <em>written</em> in, reached through its <code>Callable::closure</code>. <strong><code>dynStack</code></strong> is the dynamic chain: the caller's scope, pushed on entry, walked only when resolving a <code>$*foo</code>. Keeping them separate is what makes lexical and dynamic scoping both correct and both cheap.</p>
 <h2 id="evaluating-an-expression">Evaluating an expression</h2>
-<p><code>eval</code> is a switch. The interesting arms are the ones that are <em>not</em> a straightforward recursion.</p>
-<p><strong><code>VarExpr</code></strong> is the hottest node in most programs. Its fast path is a <code>find</code> and a copy:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — eval(VarExpr), the plain-lexical fast path</span>
-<span class="k">if</span> (Value* p = tctx().cur-&gt;find(ve-&gt;name))
-    <span class="k">if</span> (!(p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span>))
-        <span class="k">return</span> *p;</code></pre>
-<p>with the <code>Proxy</code> check placed so that the common case is one comparison. Names with a twigil — <code>$*dyn</code>, <code>$?FILE</code>, <code>$^a</code>, <code>$/</code> — never reach this path; each has its own lookup rule, and the fast paths in <a href="/book/node-specialization/">Chapter 19</a> exclude them by testing the second character of the name.</p>
+<p><code>eval</code> is a switch, with one test in front of it:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — eval</span>
+<span class="k">if</span> (Expr::EvalFn h = e-&gt;handler) <span class="k">return</span> h(*<span class="k">this</span>, e);
+<span class="k">switch</span> (e-&gt;kind) {</code></pre>
+<p>A node whose shape has been decided can be given a <strong>handler</strong>, a plain function pointer kept on the node, and <code>eval</code> calls it in place of switching on the kind. Three exist: one for the specialised <code>Binary</code> shapes of <a href="/book/node-specialization/">Chapter 19</a>, one for a numeric subtree, and one for the negation of a plain lexical. Every other node has a null handler and takes the switch.</p>
+<p>The interesting arms of the switch are the ones that are <em>not</em> a straightforward recursion.</p>
+<p><strong><code>VarExpr</code></strong> is the hottest node in most programs. Its fast path is a pad slot and a copy:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — eval(VarExpr), the plain read, abridged</span>
+<span class="k">if</span> (Value* p = padPtrIn(ve, tc.cur.get())) {
+    <span class="k">if</span> (!(p-&gt;t == VT::Hash &amp;&amp; p-&gt;hashKind == <span class="s2">"Proxy"</span>)) {
+        Value out = *p;
+        out.readonly = out.immutableBind = <span class="kc">false</span>;
+        <span class="k">return</span> <span class="cm">/* out */</span>;
+    }
+}
+<span class="k">else</span> <span class="k">if</span> (<span class="cm">/* the name's second character is a letter or `_` */</span>) {
+    <span class="k">if</span> (Value* p = tc.cur-&gt;find(ve-&gt;name)) { <span class="cm">/* the same copy */</span> }
+}
+<span class="k">return</span> evalVarExpr(e);</code></pre>
+<p>A variable that the resolution pass gave a slot (the pads of <a href="/book/the-speed-campaign/">Chapter 41</a>) is read by index; one it did not is found by name, walking the parent chain. The <code>Proxy</code> check is placed so that the common case is one comparison. Names with a twigil — <code>$*dyn</code>, <code>$?FILE</code>, <code>$^a</code>, <code>$/</code> — never reach the by-name branch; each has its own lookup rule in <code>evalVarExpr</code>, and the fast paths in <a href="/book/node-specialization/">Chapter 19</a> exclude them by testing the second character of the name.</p>
 <p><strong><code>Binary</code></strong> dispatches through <code>applyArith</code>, but first consults two decided-once fields on the node: <code>simpleOp</code>, which records whether this operator needs special handling at all, and <code>fastShape</code>, which records the syntactic shape of the operands. <a href="/book/node-specialization/">Chapter 19</a> is entirely about those. A third, <code>specialArm</code>, names which special-cased arm handles the operator, so <code>~~</code> or <code>|</code> goes straight there instead of past a hundred tests for other spellings; <code>Unary</code> has the same thing as <code>evalPath</code>.</p>
 <p><strong><code>Index</code></strong> reads a container element, and has a matching <code>fastShape</code>.</p>
 <p><strong><code>Call</code></strong> and <strong><code>MethodCall</code></strong> are <a href="/book/calls/">Chapters 14</a> and <a href="/book/dispatch/">16</a>.</p>
@@ -81,7 +96,8 @@ Value execBlock(Block* b, std::shared_ptr&lt;Env&gt; scope, <span class="kt">boo
 <p>Both are guarded by a decided-once flag so the walk happens once per block rather than once per entry:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
 <span class="kt">void</span> hoistExprDecls(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts, Env* env,
-                    DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt;* cache = <span class="kc">nullptr</span>);</code></pre>
+                    DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt;* cache = <span class="kc">nullptr</span>,
+                    <span class="kt">bool</span> everyDecl = <span class="kc">false</span>);</code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Ast.h — Block</span>
 DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; hoistNeed{-<span class="mi">1</span>};  <span class="c1">// -1 undecided, 0 no, 1 yes</span></code></pre>
 <p>For a block with nothing to hoist — the overwhelming majority — the cost after the first entry is reading one byte.</p>
@@ -95,33 +111,43 @@ DecidedOnce&lt;<span class="kt">signed</span> <span class="kt">char</span>&gt; h
 <tr><td><code>LAST</code></td><td>once after a loop's final iteration</td></tr>
 <tr><td><code>CATCH</code>, <code>CONTROL</code></td><td>as handlers around the block</td></tr></table></div>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-<span class="kt">void</span> runEnterPhasers(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts);
-<span class="kt">void</span> runLeavePhasers(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts, <span class="kt">bool</span> ok = <span class="kc">true</span>);
+<span class="kt">void</span> runEnterPhasers(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts,
+                     Callable* firstOnce = <span class="kc">nullptr</span>);
+<span class="kt">void</span> runLeavePhasers(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts, <span class="kt">bool</span> ok = <span class="kc">true</span>,
+                     <span class="kt">size_t</span> tempMark = <span class="mi">0</span>, <span class="kt">int</span> postOk = -<span class="mi">1</span>);
 <span class="kt">void</span> runNextPhasers(<span class="k">const</span> std::vector&lt;StmtPtr&gt;&amp; stmts,
-                    std::shared_ptr&lt;Env&gt;&amp; scope);</code></pre>
+                    <span class="k">const</span> std::shared_ptr&lt;Env&gt;&amp; scope);</code></pre>
 <p>The program-level phasers — <code>BEGIN</code>, <code>CHECK</code>, <code>INIT</code>, <code>END</code> — are scheduled by <code>run()</code> rather than by a block: <code>BEGIN</code> in source order after the parse, <code>CHECK</code> reversed, <code>INIT</code> immediately before the mainline, <code>END</code> at process exit. This is where <a href="/book/parser/">Chapter 5</a>'s compile-time decision becomes visible: a <code>BEGIN</code> block runs <em>after</em> the whole file has been parsed, so it cannot influence how later source is read.</p>
 <h2 id="loop-bodies">Loop bodies</h2>
 <p>Every loop form funnels through one function:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-<span class="kt">bool</span> runLoopBody(Block* b, std::shared_ptr&lt;Env&gt; scope,
+<span class="kt">bool</span> runLoopBody(Block* b, <span class="k">const</span> std::shared_ptr&lt;Env&gt;&amp; scope,
                  <span class="k">const</span> std::string&amp; label = <span class="s2">""</span>,
                  <span class="kt">bool</span> isFirst = <span class="kc">true</span>, <span class="kt">bool</span> isLast = <span class="kc">true</span>,
                  ValueList* collect = <span class="kc">nullptr</span>,
                  <span class="k">const</span> std::function&lt;<span class="kt">void</span>()&gt;&amp; rebind = <span class="kc">nullptr</span>);</code></pre>
 <p>It runs one iteration and handles <code>redo</code>, <code>next</code> and <code>last</code> — returning <code>false</code> when the loop should stop — plus the <code>FIRST</code>/<code>NEXT</code>/<code>LAST</code> phasers. The <code>collect</code> parameter is how a loop used in <strong>value context</strong> works: <code>my @x = do for @y { … }</code> appends each iteration's value rather than discarding it. The <code>rebind</code> callback re-binds the loop variable for a <code>redo</code>.</p>
 <p>Concentrating this in one function is what makes <code>for</code>, <code>while</code>, <code>until</code>, <code>loop</code> and <code>repeat</code> agree about control flow, which they historically did not.</p>
+<p>One kind of loop is tried another way first. A <code>for</code> over a Range of machine integers, a <code>while</code>, or a C-style <code>loop</code> whose body reads and writes only <code>$</code> variables holding a plain Int, Num, Str or Bool is offered to <code>tryLoopKernel</code> (<code>src/IntKernel.cpp</code>). A <strong>loop kernel</strong> runs the body on a frame of machine values: copies of those variables, written back when the whole loop is done. A kernel that meets anything it cannot answer exactly, such as a result that needs a BigInt or a variable whose type changed, bails, and the loop runs the ordinary way from the start, through <code>runLoopBody</code>. Kernels are on by default; <code>RAKUPP_NO_KERNELS=1</code> turns them off. They are not the tier-up of <a href="/book/tier-up/">Chapter 44</a>, which emits machine code and is off by default.</p>
 <h2 id="aliasing-loops">Aliasing loops</h2>
 <p><code>for @a { $_ = … }</code> must write <strong>into</strong> <code>@a</code>, so the topic has to alias the element rather than copy it. That requires knowing what the loop source <em>expression</em> is, not just its value, so the interpreter has a small family of functions that peer at the source expression:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-std::shared_ptr&lt;std::map&lt;std::string, Value&gt;&gt; valuesAliasSource(Expr*);
-std::shared_ptr&lt;ValueList&gt; derefArrayAlias(Expr*);
-<span class="kt">bool</span> scalarListAlias(Expr*, std::vector&lt;Value*&gt;&amp; slots);
-Value* topicAliasSlot(Expr* topic, <span class="kt">bool</span> skip);
+PRef&lt;ValueMap&gt; valuesAliasSource(Expr* listExpr);
+PRef&lt;ValueList&gt; derefArrayAlias(Expr* listExpr);
+<span class="kt">bool</span> scalarListAlias(Expr* listExpr, std::vector&lt;Value*&gt;&amp; slots,
+                     std::vector&lt;Value&gt;* guards = <span class="kc">nullptr</span>);
+Value* topicAliasSlot(Expr* topic, <span class="kt">bool</span> skip, <span class="kt">bool</span> allowObject = <span class="kc">false</span>);
 Expr* peelGrepFilter(Expr* listExpr, Expr*&amp; pred);</code></pre>
 <p>The last one is the sort of detail that only shows up against a real test suite: <code>for %h.values.grep(…) { $_ = … }</code> must <em>still</em> alias, because Rakudo's <code>grep</code> is <code>is raw</code>. So the loop peels a trailing <code>.grep(PRED)</code> off the source expression, aliases the underlying container, and applies the predicate as a filter during iteration.</p>
 <h2 id="sink-context-and-it-does-not-matter-what-this-returns">Sink context and <code>it does not matter what this returns</code></h2>
 <p>Statement values matter in Raku — the last statement of a block is its value — so <code>exec</code> returns one. But most statements' values are discarded, and building them can be expensive.</p>
 <p>The <code>sink</code> flag threads that knowledge down. Its most valuable use is assignment: in sink context, <code>evalAssign</code> does not need to produce the assigned value as a result, so <code>@big = @other</code> does not build a second copy to throw away. Combined with <code>rtCatAssign</code>'s in-place append (<a href="/book/optimizer/">Chapter 27</a>), this is what makes string building in a loop linear.</p>
+<p>When the value <em>is</em> wanted, the assignment paths hand it out through one helper:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+Value slotOut(<span class="k">const</span> Value* p, <span class="kt">bool</span> sink) <span class="k">const</span> {
+    <span class="k">return</span> sink ? Value::any() : slotRead(p);
+}</code></pre>
+<p><code>slotRead</code> copies the slot under its stripe lock (<a href="/book/concurrency/">Chapter 38</a>). The store has let the stripe go by then, and a plain <code>*p</code> after it counted a body that a second thread's store could already have freed.</p>
 <h2 id="recursion-and-the-stack-it-needs">Recursion, and the stack it needs</h2>
 <p>Because the C++ stack is the Raku stack, recursion depth is bounded by the thread's stack size. The default for a non-main thread on macOS is 512 KB, which a recursive Raku sub overflows within about a hundred frames.</p>
 <p>So every entry point runs the program on a thread with a very large stack:</p>

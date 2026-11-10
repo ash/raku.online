@@ -23,9 +23,9 @@
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 10</p><h1>Interning and Comparison: <code>IStr</code> and <code>MName</code></h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#mname-the-method-name-as-the-dispatcher-sees-it"><code>MName</code>: the method name as the dispatcher sees it</a></li><li><a href="#istr-the-storable-counterpart"><code>IStr</code>: the storable counterpart</a></li><li><a href="#why-they-are-separate-types">Why they are separate types</a></li></ul></nav>
-<p>Two small headers, ninety lines each, both solving the same shape of problem: <strong>a string that is compared far more often than it is created</strong>. They arrived from different directions and ended up with almost the same interface, which is itself the point.</p>
+<p>Two small headers, both solving the same shape of problem: <strong>a string that is compared far more often than it is created</strong>. They arrived from different directions and ended up with almost the same interface, which is itself the point.</p>
 <h2 id="mname-the-method-name-as-the-dispatcher-sees-it"><code>MName</code>: the method name as the dispatcher sees it</h2>
-<p>Method dispatch on a built-in value is a long ladder of name comparisons in <code>Builtins.cpp</code> and the five <code>MethodCallPart*.cpp</code> files that continue it — roughly 1,640 of them. So the comparison itself is hot.</p>
+<p>Method dispatch on a built-in value is a long ladder of name comparisons in <code>Builtins.cpp</code> and the <code>MethodCall*.cpp</code> files that continue it — roughly 1,640 of them when this was measured. So the comparison itself is hot.</p>
 <p>The path to this fix is worth following, because two plausible diagnoses were ruled out by measurement before the real one was found.</p>
 <p>A profile of <code>for ^3000000 { "ab".chars }</code> put <strong>60% of the time in string comparison</strong>: <code>_platform_strlen</code> 19%, an out-of-line <code>std::operator==(const string&amp;, const char*)</code> 19%, <code>DYLD-STUB$$strlen</code> 14%, <code>memcmp</code> 8%.</p>
 <p>That looks like the ladder's length. Earlier measurement had seemed to exonerate it: <code>.chars</code> sits 177 comparisons into the file and <code>.uc</code> 812, yet they cost the same. <strong>Both facts are true.</strong> Position <em>in the file</em> is not the number of comparisons <em>executed</em>, because the arms are guarded by invocant type — a <code>Str</code> invocant only ever runs the <code>Str</code> arms, and <code>.chars</code>, <code>.uc</code> and <code>.uniname</code> are all in that same group.</p>
@@ -64,34 +64,42 @@
 <p>Measured on that parse:</p>
 <ul><li><code>Value</code>'s implicit constructor, destructor and copy were <strong>12.8% of self time</strong>, the top line of the profile;</li><li><code>std::string == const char*</code> — which calls <code>strlen</code>, then <code>memcmp</code> — plus its helpers was about <strong>10% more</strong>, and <code>hashKind</code> is compared against a literal on paths that run per parameter per call.</li></ul>
 <p>The strings that ever reach these fields are a small closed set in practice: container kinds and type names. So intern them.</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/IStr.h</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/IStr.h — abridged</span>
 <span class="k">struct</span> IStr {
-    <span class="k">struct</span> Entry { std::string s; std::<span class="kt">size_t</span> n; std::<span class="kt">uint64_t</span> pre; };
-    <span class="k">const</span> Entry* e = <span class="kc">nullptr</span>;      <span class="c1">// null IS the empty string</span>
+    <span class="k">struct</span> Entry { std::string s; std::<span class="kt">size_t</span> n = <span class="mi">0</span>; std::<span class="kt">uint64_t</span> pre = <span class="mi">0</span>; };
+    std::<span class="kt">uint32_t</span> id = <span class="mi">0</span>;          <span class="c1">// zero IS the empty string</span>
 
-    <span class="k">static</span> <span class="k">const</span> Entry* intern(<span class="k">const</span> <span class="kt">char</span>* p, std::<span class="kt">size_t</span> k) {
-        <span class="k">if</span> (!k) <span class="k">return</span> <span class="kc">nullptr</span>;
-        <span class="k">static</span> std::deque&lt;Entry&gt; storage;   <span class="c1">// stable addresses</span>
-        <span class="k">static</span> std::unordered_map&lt;std::string, <span class="k">const</span> Entry*&gt; index;
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">unsigned</span> kChunkBits = <span class="mi">10</span>;
+    <span class="k">static</span> <span class="k">constexpr</span> std::<span class="kt">uint32_t</span> kChunk = <span class="mi">1u</span> &lt;&lt; kChunkBits;
+    <span class="k">static</span> Entry** chunks();       <span class="c1">// a fixed array of chunk pointers</span>
+    <span class="k">static</span> <span class="k">const</span> Entry&amp; entryOf(std::<span class="kt">uint32_t</span> i) {
+        <span class="k">return</span> chunks()[i &gt;&gt; kChunkBits][i &amp; (kChunk - <span class="mi">1</span>)];
+    }
+
+    <span class="k">static</span> std::<span class="kt">uint32_t</span> intern(<span class="k">const</span> <span class="kt">char</span>* p, std::<span class="kt">size_t</span> k) {
+        <span class="k">if</span> (!k) <span class="k">return</span> <span class="mi">0</span>;
+        <span class="k">static</span> std::unordered_map&lt;std::string, std::<span class="kt">uint32_t</span>&gt; index;
+        <span class="k">static</span> std::<span class="kt">uint32_t</span> next = <span class="mi">1</span>;
         <span class="k">static</span> std::shared_mutex mu;
         std::string key(p, k);
         { std::shared_lock&lt;std::shared_mutex&gt; rd(mu);
           <span class="k">auto</span> it = index.find(key);
           <span class="k">if</span> (it != index.end()) <span class="k">return</span> it-&gt;second; }
         std::unique_lock&lt;std::shared_mutex&gt; wr(mu);
-        <span class="c1">// … re-check, then append and index …</span>
+        <span class="c1">// … re-check, write the entry into its chunk, then index it …</span>
     }
 
     <span class="c1">// interned, so identity IS equality</span>
-    <span class="kt">bool</span> <span class="k">operator</span>==(<span class="k">const</span> IStr&amp; o) <span class="k">const</span> { <span class="k">return</span> e == o.e; }
+    <span class="kt">bool</span> <span class="k">operator</span>==(<span class="k">const</span> IStr&amp; o) <span class="k">const</span> { <span class="k">return</span> id == o.id; }
 };</code></pre>
-<p>Eight bytes, trivially copyable, trivially destructible. A default-constructed <code>IStr</code> costs a zeroed pointer where a <code>std::string</code> cost a constructor call. Comparing two <code>IStr</code>s is a pointer comparison, because interning makes identity equality. Comparing against a literal uses the same packed-prefix trick as <code>MName</code>.</p>
+<p>Four bytes, trivially copyable, trivially destructible. A default-constructed <code>IStr</code> costs a zeroed word where a <code>std::string</code> cost a constructor call. Comparing two <code>IStr</code>s is an integer comparison, because interning makes identity equality. Comparing against a literal uses the same packed-prefix trick as <code>MName</code>.</p>
+<p>The handle was an 8-byte pointer to its entry until 2026-10-01. It became a 32-bit index into a table of fixed-size chunks, 1,024 entries each, that never move once made. An entry's address is therefore stable, and a lookup is two dependent loads with no lock. Nothing else about the type changed, and no site that uses one did. The index bought 12 bytes of a <code>Value</code> that then held three of these names. Today <code>hashKind</code> is the one name left inline; <code>enumName</code> and <code>enumType</code> are in the cold block (<a href="/book/value/">Chapter 8</a>).</p>
 <p><strong>Interning takes a lock, but only on assignment from text.</strong> Copies and comparisons — the operations <code>Value</code> does millions of times — never reach it. Readers share the lock; only a miss serialises.</p>
 <p>The operator surface is deliberately the same shape as <code>MName</code>'s, so the roughly 1,300 existing <code>.hashKind == "Buf"</code> and <code>.ofType.empty()</code> sites compiled unchanged.</p>
 <h3>The intern table is never freed</h3>
-<p>That is deliberate. Entries are type names and kind tags, bounded by the program's own vocabulary, and a stable address is what makes the handle comparable by pointer.</p>
+<p>That is deliberate. Entries are type names and kind tags, bounded by the program's own vocabulary, and an entry that never moves is what lets a handle be read without a lock. The table has room for about four million names and the process aborts past that.</p>
 <p>It also imposes a rule, and there is one field that breaks it. <code>ofType</code> is <strong>not</strong> interned, and must stay that way until one site moves:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ValueContExt</span>
 <span class="c1">// `IO::Path`'s `:CWD` rides in `ofType` because a path value has no other</span>
 <span class="c1">// use for it, so this field can hold a runtime DIRECTORY NAME rather than</span>
 <span class="c1">// a type name. The intern table is append-only by design, so a program</span>

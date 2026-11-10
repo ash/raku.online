@@ -25,44 +25,61 @@
 <p class="ch-label">Chapter 2</p><h1>The Shape of the Source</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#the-numbers">The numbers</a></li><li><a href="#the-library-boundary">The library boundary</a></li><li><a href="#what-each-file-is-for">What each file is for</a></li><li><a href="#reading-conventions-in-the-source">Reading conventions in the source</a></li><li><a href="#building-it">Building it</a></li><li><a href="#the-test-surface">The test surface</a></li></ul></nav>
 <p>Before the mechanisms, the map. This chapter is the one to come back to when a later chapter names a file and you want to know what else lives near it.</p>
 <h2 id="the-numbers">The numbers</h2>
-<p><code>src/</code> holds about <strong>274,000 lines</strong> of C++. That figure is misleading on its own, because <strong>93,000 of them are generated</strong>: the Unicode tables — character names, properties, collation weights, normalization data, emitted from the pinned UCD and UCA 18.0 files in <code>tools/ucd/</code> — and the JavaScript runtime, which is written as JavaScript in <code>src/js-rt/</code> and baked into one C++ file so a binary carries the runtime it was built with. Nobody reads those, and nobody edits them where they land.</p>
-<p>The hand-written implementation is about <strong>182,000 lines</strong>, and it is very unevenly distributed:</p>
-<div class="tablewrap"><table><tr><th>File</th><th>Lines</th><th>What it is</th></tr><tr><td><code>InterpreterCore.cpp</code></td><td>28,737</td><td>the hot paths of the tree walk: <code>eval</code>, <code>exec</code>, operators, assignment, calls</td></tr>
-<tr><td><code>Parser.cpp</code></td><td>16,741</td><td>statements, expressions, declarations, interpolation</td></tr>
-<tr><td><code>MethodCallPart2.cpp</code></td><td>10,222</td><td>the method chain, continued</td></tr>
-<tr><td><code>Builtins.cpp</code></td><td>8,964</td><td>the built-ins' helpers, <code>methodCall</code>, the head of the method chain</td></tr>
-<tr><td><code>Interpreter.cpp</code></td><td>7,559</td><td>construction, the mainline run, the precompiled-module cache</td></tr>
-<tr><td><code>InterpreterModules.cpp</code></td><td>7,034</td><td>module loading, <code>EVAL</code>, declarations</td></tr>
-<tr><td><code>MethodCallPart3.cpp</code></td><td>6,671</td><td>the method chain, continued</td></tr>
-<tr><td><code>InterpreterBinding.cpp</code></td><td>5,642</td><td>closures, signatures and binding, NativeCall</td></tr>
-<tr><td><code>Regex.cpp</code></td><td>5,428</td><td>the regex and grammar engine</td></tr>
-<tr><td><code>Lexer.cpp</code></td><td>5,017</td><td>tokenizer</td></tr>
-<tr><td><code>MethodCallTail.cpp</code></td><td>4,999</td><td>the method chain, the end of it</td></tr>
-<tr><td><code>Codegen.cpp</code></td><td>4,652</td><td>the <code>--exe</code> transpiler</td></tr>
-<tr><td><code>Interpreter.h</code></td><td>4,003</td><td>the interpreter's own interface, plus the <code>rt*</code> helpers</td></tr>
-<tr><td><code>main.cpp</code></td><td>3,670</td><td>the CLI, the compile drivers and the tooling subcommands</td></tr></table></div>
+<p><code>src/</code> holds about <strong>348,000 lines</strong> of C++. That figure is misleading on its own, because <strong>102,000 of them are generated</strong>. Most of that, 89,000 lines, is the Unicode tables — character names, properties, collation weights, normalization data, emitted from the pinned UCD and UCA 18.0 files in <code>tools/ucd/</code>. The rest is the JavaScript runtime, which is written as JavaScript in <code>src/js-rt/</code> and baked into one C++ file so a binary carries the runtime it was built with; the index of docs.raku.org pages that <code>--doc-links</code> resolves names against; and three small tables read off Rakudo — the ancestry of the <code>X::</code> exceptions, the <code>RakuAST</code> class names, and the grammar service's Raku half. Nobody reads those, and nobody edits them where they land.</p>
+<p>The hand-written implementation is about <strong>247,000 lines</strong>, and it is very unevenly distributed:</p>
+<div class="tablewrap"><table><tr><th>File</th><th>Lines</th><th>What it is</th></tr><tr><td><code>InterpreterCore.cpp</code></td><td>33,040</td><td>the hot paths of the tree walk: <code>eval</code>, <code>exec</code>, operators, assignment, calls</td></tr>
+<tr><td><code>Parser.cpp</code></td><td>18,459</td><td>statements, expressions, declarations, interpolation</td></tr>
+<tr><td><code>MethodCallPart2.cpp</code></td><td>11,198</td><td>the method chain, continued</td></tr>
+<tr><td><code>Codegen.cpp</code></td><td>10,620</td><td>the <code>--exe</code> transpiler</td></tr>
+<tr><td><code>Builtins.cpp</code></td><td>10,491</td><td>the built-ins' helpers, <code>methodCall</code>, the head of the method chain</td></tr>
+<tr><td><code>InterpreterModules.cpp</code></td><td>9,945</td><td>module loading, <code>EVAL</code>, declarations</td></tr>
+<tr><td><code>InterpreterBinding.cpp</code></td><td>9,768</td><td>closures, signatures and binding, multi dispatch, NativeCall</td></tr>
+<tr><td><code>Interpreter.cpp</code></td><td>9,624</td><td>construction, the mainline run, the precompiled-module cache</td></tr>
+<tr><td><code>MethodCallPart3.cpp</code></td><td>7,918</td><td>the method chain, continued</td></tr>
+<tr><td><code>InterpreterCalls.cpp</code></td><td>6,917</td><td>calls, method invocation, lvalues and the assignment helpers</td></tr>
+<tr><td><code>Interpreter.h</code></td><td>6,639</td><td>the interpreter's own interface, plus the <code>rt*</code> helpers</td></tr>
+<tr><td><code>Regex.cpp</code></td><td>6,100</td><td>the regex and grammar engine</td></tr>
+<tr><td><code>MethodCallTail.cpp</code></td><td>5,834</td><td>the method chain, the end of it</td></tr>
+<tr><td><code>Lexer.cpp</code></td><td>5,735</td><td>tokenizer</td></tr>
+<tr><td><code>main.cpp</code></td><td>4,838</td><td>the CLI, the compile drivers and the tooling subcommands</td></tr></table></div>
 <p>Two shapes stand out and both are deliberate.</p>
 <p><strong>The interpreter is one class in seven files.</strong> The tree walk touches everything — scopes, calls, operators, assignment, control flow, module loading, the FFI marshaller, the concurrency runtime — and the pieces share the interpreter's private state rather than a clean interface, so the files are cut for compile time, not by concept. <code>InterpreterCore.cpp</code> holds every function the <code>perf-guard</code> kernels spend their time in, whatever it does, and the per-thread execution state behind <code>tctx()</code>. The hot functions have to share a file: in separate files they no longer inline into each other, and the state was then a <code>thread_local</code> with a destructor, which a file that does not define it reaches through a call on every access — measured, that cost 14–35% on the kernels. (The state is reached through a constant-initialized pointer now, which costs the same from any file.) The other six files (<code>Interpreter</code>, <code>…Modules</code>, <code>…Binding</code>, <code>…Calls</code>, <code>…Regex</code>, <code>…Operators</code>) hold the rest in source order, and <code>InterpreterParts.h</code> declares what they share. <code>tools/source-helpers/</code> holds the scripts that made the cut, and the plan they followed; <code>budget.raku</code> there fails <code>t/run.raku</code> when a source file, a function or a widely included header grows past its recorded ceiling, so the next 59,000-line file is noticed long before it is one.</p>
-<p><strong>The method dispatcher is split across six files for the same reason.</strong> It used to be a single 9,138-line function, <code>methodCallInner</code>, and that stopped being compilable in a reasonable time. It is now six ordered <em>segments</em> — <code>Builtins.cpp</code> holds the head, then <code>MethodCallPart1b</code>, <code>MethodCallPart1c</code>, <code>MethodCallPart2</code>, <code>MethodCallPart3</code>, <code>MethodCallTail</code> — each returning <code>std::optional&lt;Value&gt;</code>, where <code>nullopt</code> means "not handled here, try the next segment". <code>registerBuiltins</code>, which fills the built-in routine table, is cut the same way: five pieces in the <code>BuiltinsRegister*.cpp</code> files, each calling the next, so the registrations still run in one order.</p>
+<p><strong>The method dispatcher is split across six files for the same reason.</strong> It used to be a single 9,138-line function, <code>methodCallInner</code>, and that stopped being compilable in a reasonable time. It is now six ordered <em>segments</em> — <code>Builtins.cpp</code> holds the head, then <code>MethodCallPart1b</code>, <code>MethodCallPart1c</code>, <code>MethodCallPart2</code>, <code>MethodCallPart3</code>, <code>MethodCallTail</code> — each returning <code>std::optional&lt;Value&gt;</code>, where <code>nullopt</code> means "not handled here, try the next segment". <code>MethodCallEntry.cpp</code> is not a seventh segment: it answers the commonest questions about a plain core value before the chain is entered, each answer the one the chain's own arm would give. <code>registerBuiltins</code>, which fills the built-in routine table, is cut the same way: five pieces in the <code>BuiltinsRegister*.cpp</code> files, each calling the next, so the registrations still run in one order.</p>
 <p>The critical property, stated in the source and worth repeating: <strong>these are segments, not categories.</strong> The chain is order-sensitive. Later arms deliberately catch what earlier ones decline. An arm belongs where its priority is, not where it reads nicely. <code>MethodCallSegment.h</code> gives <code>MethodCallPart2</code>, <code>MethodCallPart3</code> and <code>MethodCallTail</code> one include prologue, so they cannot drift apart; <code>MethodCallPart1b</code> and <code>1c</code> share <code>BuiltinsParts.h</code> with the head.</p>
 <h2 id="the-library-boundary">The library boundary</h2>
 <pre class="native-code grid"><code>  src/main.cpp        the rakupp CLI          ─┐
                                                ├─► both link librakupp_rt.a
   generated stub.cpp  a --exe/--aot binary    ─┘</code></pre>
-<p>Everything except <code>main.cpp</code> and <code>Repl.cpp</code> compiles into <code>librakupp_rt.a</code>. The REPL lives in the executable rather than the library on purpose: nothing about an interactive session should be linked into the standalone binaries the compiling modes produce.</p>
+<p>Nearly everything compiles into <code>librakupp_rt.a</code>. What does not falls into two groups.</p>
+<p>The first is what only the command line can reach, and it is linked into the <code>rakupp</code> executable alone:</p>
+<pre class="native-code grid"><code>main.cpp             Repl.cpp              Codegen.cpp
+codegen/Js.cpp       JsRuntimeSrc.cpp      codegen/Arduino.cpp
+DocLinks.cpp         raku_docs_index_gen.cpp</code></pre>
+<p>plus one generated file, <code>EmbeddedTools.cpp</code>, which holds the Raku programs behind <code>rakupp install</code>, <code>doc</code> and <code>upgrade</code> as byte arrays. The reason is the same for each: nothing about an interactive session, a transpiler or an installer should be linked into the standalone binaries the compiling modes produce. <code>Codegen.cpp</code> was in the runtime until the tier-up JIT stopped calling it by name; it is the biggest object in the tree, and no <code>--exe</code> binary transpiles.</p>
+<p>The second is four archives of their own, which the CLI and an ordinary <code>--exe</code> binary link whole and a <code>--slim</code> binary may replace with a throwing stub (<a href="/book/slim/">Chapter 29</a>):</p>
+<div class="tablewrap"><table><tr><th>Archive</th><th>Holds</th></tr><tr><td><code>rakupp_ucd_names</code></td><td>character names and sequences</td></tr>
+<tr><td><code>rakupp_ucd_coll</code></td><td>the collation table</td></tr>
+<tr><td><code>rakupp_ucd_props</code></td><td>scripts, blocks, bidi and the property tables</td></tr>
+<tr><td><code>rakupp_parse</code></td><td>the lexer, the parser, the <code>RakuAST</code> view and <code>--fmt</code></td></tr></table></div>
+<p>An optional build of the same sources, <code>librakupp</code>, is the shared library an embedding host loads; it always carries all four.</p>
 <h2 id="what-each-file-is-for">What each file is for</h2>
 <p><strong>Front end</strong></p>
 <div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Token.h</code></td><td>the token struct: kind, text, position, <code>spaceBefore</code></td></tr>
 <tr><td><code>Lexer.{h,cpp}</code></td><td>source text to a flat <code>vector&lt;Token&gt;</code></td></tr>
 <tr><td><code>Ast.h</code></td><td>every node type, and the <code>NK</code> tag enum</td></tr>
 <tr><td><code>Parser.{h,cpp}</code></td><td>tokens to a <code>Program</code>; the live user-operator tables</td></tr>
+<tr><td><code>Parser*.cpp</code></td><td>three pieces split out of <code>Parser.cpp</code> for its size</td></tr>
+<tr><td><code>Slang.h</code></td><td>what an activated slang hands the lexer and the parser</td></tr>
 <tr><td><code>Pod.{h,cpp}</code></td><td>the <code>$=pod</code> DOM</td></tr></table></div>
 <p><strong>Values</strong></p>
 <div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Value.{h,cpp}</code></td><td>the fat tagged struct, <code>CowStr</code>, <code>ClassInfo</code>, <code>Callable</code></td></tr>
 <tr><td><code>IStr.h</code></td><td>the interned-string field</td></tr>
 <tr><td><code>MethodName.h</code></td><td><code>MName</code>, the packed method name used by the dispatch chain</td></tr>
 <tr><td><code>BigInt.{h,cpp}</code></td><td>arbitrary-precision integers, base 10^9</td></tr>
-<tr><td><code>IntOps.h</code></td><td>portable overflow-checked arithmetic and bit intrinsics</td></tr></table></div>
+<tr><td><code>IntOps.h</code></td><td>portable overflow-checked arithmetic and bit intrinsics</td></tr>
+<tr><td><code>Ref.h</code>, <code>BodyPool.h</code></td><td>the intrusive reference count, and where a <code>Value</code>'s out-of-line blocks live</td></tr>
+<tr><td><code>ValueVec.h</code>, <code>ValueHash.h</code></td><td>the array and the hash behind a <code>Value</code></td></tr>
+<tr><td><code>Cycle.{h,cpp}</code></td><td>the backup cycle collector</td></tr></table></div>
 <p><strong>Execution</strong></p>
 <div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Interpreter.h</code>, <code>Interpreter*.cpp</code></td><td>the tree walk and nearly everything it reaches; <code>InterpreterCore.cpp</code> is its hot half</td></tr>
 <tr><td><code>InterpreterParts.h</code></td><td>what the <code>Interpreter*.cpp</code> files share</td></tr>
@@ -70,7 +87,11 @@
 <tr><td><code>BuiltinsRegister*.cpp</code></td><td>the built-in routine table, filled in five pieces</td></tr>
 <tr><td><code>BuiltinsSupply.cpp</code>, <code>BuiltinsNqp.cpp</code></td><td>supplies and the <code>--exe</code> built-in natives; the <code>nqp::</code> ops</td></tr>
 <tr><td><code>BuiltinsParts.h</code></td><td>what the <code>Builtins*.cpp</code> and <code>MethodCallPart1b/1c.cpp</code> files share</td></tr>
-<tr><td><code>MethodCall*.cpp</code></td><td>the rest of the method chain</td></tr>
+<tr><td><code>MethodCall*.cpp</code></td><td>the rest of the method chain, and the answers given before it</td></tr>
+<tr><td><code>IntKernel.cpp</code></td><td>the kernels: subs over integers and loops over plain scalars, run on machine values instead of <code>Value</code>s</td></tr>
+<tr><td><code>Jit.{h,cpp}</code>, <code>Cnp.{h,cpp}</code>, <code>cnp/</code></td><td>the two tier-up back ends, <code>--jit</code> and <code>--cnp</code></td></tr>
+<tr><td><code>Coro.{h,cpp}</code></td><td>stackful coroutines, which <code>gather</code> is built on</td></tr>
+<tr><td><code>DeclCheck.{h,cpp}</code>, <code>CallCheck.{h,cpp}</code></td><td>the two whole-unit checks run before a program starts</td></tr>
 <tr><td><code>BuiltinsShared.h</code></td><td>helpers the split forced out of file scope</td></tr>
 <tr><td><code>Runtime.{h,cpp}</code></td><td>the shared entry points, and the big-stack thread</td></tr>
 <tr><td><code>IOSpec.cpp</code></td><td><code>IO::Spec::*</code> path algorithms</td></tr></table></div>
@@ -82,7 +103,11 @@
 <tr><td><code>unicode_names.cpp</code></td><td>character names — the single largest file in the tree</td></tr></table></div>
 <p><strong>Back ends and tooling</strong></p>
 <div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Codegen.{h,cpp}</code></td><td><code>--exe</code>: AST to C++</td></tr>
-<tr><td><code>AstEmit.cpp</code></td><td><code>--aot</code>: C++ that rebuilds the AST</td></tr>
+<tr><td><code>codegen/Js.{h,cpp}</code></td><td><code>--target=js</code>: AST to JavaScript</td></tr>
+<tr><td><code>codegen/Arduino.{h,cpp}</code></td><td><code>--target=arduino</code>: a subset of Raku to one sketch</td></tr>
+<tr><td><code>AstEmit.cpp</code></td><td><code>--aot</code>: C++ that carries the serialised AST</td></tr>
+<tr><td><code>CompileTime.{h,cpp}</code></td><td>the build-time run that gives a binary its constants</td></tr>
+<tr><td><code>AotModules.{h,cpp}</code></td><td>native routine bodies for the modules an <code>--exe</code> binary embeds</td></tr>
 <tr><td><code>AstSerial.{h,cpp}</code></td><td>the binary AST format behind the precompiled parse</td></tr>
 <tr><td><code>AstDump.cpp</code></td><td><code>--dump-ast</code></td></tr>
 <tr><td><code>SlimScan.{h,cpp}</code></td><td><code>--slim</code>: the feature scan over a parsed program</td></tr>
@@ -92,11 +117,21 @@
 <tr><td><code>Lint.{h,cpp}</code></td><td><code>--lint</code>, static analysis over the parsed tree</td></tr>
 <tr><td><code>Highlight.{h,cpp}</code></td><td><code>--highlight</code>, parse-aware syntax colouring</td></tr>
 <tr><td><code>Profiler.{h,cpp}</code></td><td><code>--profile</code>, the routine-level wall-time profiler</td></tr>
+<tr><td><code>Fmt.{h,cpp}</code></td><td><code>--fmt</code>, the source formatter</td></tr>
+<tr><td><code>DocLinks.{h,cpp}</code></td><td><code>--doc-links</code>, each construct linked to its docs.raku.org page</td></tr>
+<tr><td><code>Lsp.{h,cpp}</code>, <code>LspIndex.{h,cpp}</code></td><td><code>--lsp</code>, the language server</td></tr>
+<tr><td><code>JupyterKernel.{h,cpp}</code></td><td><code>--jupyter</code>, the interpreter as a Jupyter kernel</td></tr>
+<tr><td><code>McpServer.{h,cpp}</code></td><td><code>--mcp</code>, the interpreter over the Model Context Protocol</td></tr>
+<tr><td><code>RaceDetector.{h,cpp}</code></td><td><code>--detect-races</code>, a happens-before race detector</td></tr>
+<tr><td><code>Sandbox.{h,cpp}</code>, <code>SandboxOs.{h,cpp}</code></td><td><code>--sandbox</code>: the policy, and the OS confinement under it</td></tr>
+<tr><td><code>RakuAst*.cpp</code></td><td>the <code>RakuAST</code> classes, and the view built over the parsed tree</td></tr>
 <tr><td><code>Repl.{h,cpp}</code></td><td>the interactive session</td></tr></table></div>
 <p><strong>Boundaries</strong></p>
 <div class="tablewrap"><table><tr><th>File</th><th>Role</th></tr><tr><td><code>Ffi.{h,cpp}</code></td><td>the libffi backend: loader, ABI probe, type registry</td></tr>
-<tr><td><code>rakupp_ext.h</code></td><td>the C ABI extension modules compile against</td></tr>
+<tr><td><code>include/rakupp/rakupp_ext.h</code></td><td>the C ABI extension modules compile against</td></tr>
 <tr><td><code>ExtApi.cpp</code></td><td>the host side of that ABI</td></tr>
+<tr><td><code>include/rakupp/rakupp.h</code></td><td>the C API a host embeds the interpreter through</td></tr>
+<tr><td><code>EmbedApi.cpp</code></td><td>the host side of that one</td></tr>
 <tr><td><code>Platform.h</code></td><td>the Windows/POSIX split, in one place</td></tr></table></div>
 <h2 id="reading-conventions-in-the-source">Reading conventions in the source</h2>
 <p>Three habits recur, and knowing them saves a lot of confusion.</p>
@@ -122,7 +157,7 @@
 <h2 id="building-it">Building it</h2>
 <pre class="native-code"><code class="lang-sh">cmake -S . -B build
 cmake --build build -j</code></pre>
-<p><code>CMakeLists.txt</code> builds <code>librakupp_rt</code> from all of <code>src/</code> except <code>main.cpp</code>, then the <code>rakupp</code> executable. The glob is <code>CONFIGURE_DEPENDS</code>, but CMake caches it, so re-run the configure step after adding a source file.</p>
+<p><code>CMakeLists.txt</code> builds <code>librakupp_rt</code> and the four feature archives from <code>src/</code>, then the <code>rakupp</code> executable from the CLI-only files and all five. The install step gives <code>rakupp</code> a second name, <code>raku++</code>, a symbolic link to the same binary (on Windows the installers make it). The glob is <code>CONFIGURE_DEPENDS</code>, but CMake caches it, so re-run the configure step after adding a source file.</p>
 <p>The compiler matters more than usual here. Clang produces a binary between 1.2 and 2 times faster than GCC's on this codebase — the method dispatch chain and the tree walk are both inlining-sensitive in ways GCC handles less well — so Clang is what ships and GCC is kept as a portability gate. Link-time optimisation and <code>-mcpu=native</code> were both measured and both did nothing.</p>
 <h2 id="the-test-surface">The test surface</h2>
 <div class="tablewrap"><table><tr><th>Where</th><th>What</th></tr><tr><td>Roast</td><td>the Raku specification suite, run by <code>tools/run-roast.raku</code></td></tr>
@@ -130,7 +165,7 @@ cmake --build build -j</code></pre>
 <tr><td><code>t/regression/</code></td><td>one file per fixed bug</td></tr>
 <tr><td><code>t/stress/</code></td><td>concurrency and memory stress, also run under TSan and ASan</td></tr>
 <tr><td><code>tools/perf-guard.raku</code></td><td>the performance gate, compared against a recorded baseline</td></tr>
-<tr><td>the showcase interpreters</td><td>JavaScript, Perl, Python and Lisp, written in Raku</td></tr></table></div>
+<tr><td>the showcase interpreters</td><td>JavaScript, Perl, Python, Lisp and Forth, written in Raku</td></tr></table></div>
 <p>The release checklist in <code>docs/dev/RELEASING.md</code> gates on all of them. <a href="/book/measuring/">Chapter 40</a> is about why the performance gate is there and what happens when it is skipped.</p><nav class="ch-nav"><a class="prev" href="/book/what-it-is/"><span>Previous</span>What Raku++ Is</a><a class="next" href="/book/classification/"><span>Next</span>Where It Sits in the Taxonomy</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>

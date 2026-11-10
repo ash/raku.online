@@ -38,9 +38,13 @@
     std::string text2;   <span class="c1">// s/// replacement; regex adverb flags</span>
     <span class="kt">long</span> <span class="kt">long</span> ival; <span class="kt">double</span> nval;
     <span class="kt">int</span> line, col;
+    <span class="kt">size_t</span> off = <span class="mi">0</span>;      <span class="c1">// byte offset just past the token, in the source</span>
     <span class="kt">bool</span> spaceBefore = <span class="kc">false</span>;
     <span class="kt">bool</span> flag = <span class="kc">false</span>;   <span class="c1">// S/// — the non-mutating substitution</span>
+    <span class="kt">int</span> outerScopes = <span class="mi">0</span>; <span class="c1">// a heredoc whose marker line closed blocks</span>
+    <span class="kt">bool</span> heredoc = <span class="kc">false</span>;
 };</code></pre>
+<p><code>off</code> is the newest field and the one the tooling leans on. It is what lets a <code>use</code> re-lex the rest of the file from the byte just past itself (<a href="/book/classification/">Chapter 3</a>), and what the formatter and the language server map a token back to its source with.</p>
 <p>Two absences are as informative as the contents.</p>
 <p><strong>There is no keyword kind.</strong> <code>if</code>, <code>sub</code>, <code>class</code>, <code>given</code> all arrive as <code>Tok::Ident</code>. The parser decides, from position, whether a given identifier is acting as a keyword. That is why Raku has no reserved-word list and why <code>my $if = 1</code> is legal.</p>
 <p><strong>There is no operator identity.</strong> Every operator arrives as <code>Tok::Op</code> carrying only its spelling. The lexer knows nothing about precedence, associativity, or which operators exist beyond a fixed vocabulary of spellings. All of that is the parser's problem, which is precisely what makes user-declared operators possible (<a href="/book/user-operators/">Chapter 6</a>).</p>
@@ -59,17 +63,22 @@ t.spaceBefore = spaced;</code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — regexContext(), the Tok::Op case</span>
 <span class="k">case</span> Tok::Op:
     <span class="k">return</span> pv.text != <span class="s2">"++"</span> &amp;&amp; pv.text != <span class="s2">"--"</span> &amp;&amp;
-           pv.text != <span class="s2">"&gt;"</span>  &amp;&amp; pv.text != <span class="s2">"&lt;"</span>  &amp;&amp;
+           pv.text != <span class="s2">"&gt;"</span> &amp;&amp; pv.text != <span class="s2">"&lt;"</span> &amp;&amp;
            pv.text != <span class="s2">"&gt;&gt;"</span> &amp;&amp; pv.text != <span class="s2">"&lt;&lt;"</span> &amp;&amp;
-           pv.text != <span class="s2">"&gt;="</span> &amp;&amp; pv.text != <span class="s2">"&lt;="</span>;</code></pre>
-<p>After most operators a term is expected, so <code>/</code> opens a regex. After a value — a number, a variable, a closing bracket — or after a postfix <code>++</code>/<code>--</code>, division follows. After an identifier it is a regex only when the word is in a small set of keywords that take an expression (<code>if</code>, <code>while</code>, <code>say</code>, <code>grep</code>, <code>split</code>, and friends). <code>//</code> and <code>/=</code> are matched earlier so they lex as operators.</p>
+           pv.text != <span class="s2">"&gt;="</span> &amp;&amp; pv.text != <span class="s2">"&lt;="</span> &amp;&amp;
+           pv.text != <span class="s2">"*"</span> &amp;&amp;    <span class="c1">// Whatever term: `* / 2` is a DIVISION</span>
+           pv.text != <span class="s2">"\xE2\x88\x9E"</span> &amp;&amp;     <span class="c1">// U+221E, infinity: a TERM</span>
+           pv.text != <span class="s2">"\xC2\xAB"</span> &amp;&amp; pv.text != <span class="s2">"\xC2\xBB"</span>;  <span class="c1">// guillemets</span></code></pre>
+<p>After most operators a term is expected, so <code>/</code> opens a regex. After a value — a number, a variable, a closing bracket — or after a postfix <code>++</code>/<code>--</code>, division follows. After an identifier it is a regex when the word is in a small set of keywords that take an expression (<code>if</code>, <code>while</code>, <code>say</code>, <code>grep</code>, <code>split</code>, and friends). It is also a regex after any other lower-case bare name followed by a space, read as a listop with the regex as its first argument — unless the name is a method name, a term such as <code>pi</code>, or a constant the file declares, and only if a closing <code>/</code> stands on the same line. <code>//</code> and <code>/=</code> are matched earlier so they lex as operators.</p>
 <p>This is a heuristic in the honest sense: it implements Raku's actual rule for the cases the rule covers, and a sufficiently perverse program can still be surprised.</p>
 <h2 id="quote-forms-and-heredocs">Quote forms and heredocs</h2>
 <p><code>tryQuoteForm</code> handles the whole <code>q</code>/<code>qq</code>/<code>Q</code> family plus <code>m</code>, <code>rx</code>, <code>s</code>, <code>tr</code> and <code>qw</code>, with adverbs (<code>:w</code>, <code>:to</code>, <code>:!c</code>, …) and <strong>arbitrary delimiters</strong> — any bracket pair, or any non-bracket character. Whether the result interpolates is decided here and encoded in the token kind: <code>qq</code> produces <code>Tok::StrInterp</code>, <code>q</code> produces <code>Tok::StrLit</code>. Adverbs that flip a <code>Q</code> into interpolating emit a feature sentinel the parser reads later.</p>
 <p>Heredocs cannot be captured inline, because the body is on <em>later</em> lines. The lexer emits an empty-bodied token immediately and defers:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — tryQuoteForm, on a :to adverb</span>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — tryQuoteForm, on a :to adverb, abridged</span>
 heredocMarker_ = raw;                <span class="c1">// the terminator, e.g. END</span>
+heredocPending_ = <span class="kc">true</span>;
 heredocInterp_ = (w == <span class="s2">"qq"</span>);
+<span class="c1">// … `qq:!c:to` takes a feature away, `q:s:to` adds one …</span>
 out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</span>);</code></pre>
 <p>The pending heredoc — marker, token index, interpolation flag — is queued. When the lexer reaches the newline that ends the current line, <code>processHeredocs</code> reads lines until the marker, dedents them, and <strong>back-patches the token's text</strong>. Because interpolation was already fixed by the token kind, the patched body needs no further decision.</p>
 <p>Several heredocs can be opened on one line; the queue keeps them in order, each with its own interpolation-feature string.</p>
@@ -78,7 +87,7 @@ out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</s
 <p>The rule about <code>-</code> and <code>'</code> inside a name is small and was a genuine bug, so it lives in the header where everyone who needs it can see it:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.h</span>
 <span class="k">inline</span> <span class="kt">bool</span> rakuIdentStart(<span class="kt">char</span> c) {
-    <span class="k">return</span> std::isalpha((<span class="kt">unsigned</span> <span class="kt">char</span>)c) || c == <span class="s1">'_'</span>;
+    <span class="k">return</span> ascii::isalpha((<span class="kt">unsigned</span> <span class="kt">char</span>)c) || c == <span class="s1">'_'</span>;
 }
 <span class="k">inline</span> <span class="kt">bool</span> rakuIdentJoins(<span class="kt">char</span> sep, <span class="kt">char</span> next) {
     <span class="k">return</span> (sep == <span class="s1">'-'</span> || sep == <span class="s1">'\''</span>) &amp;&amp; rakuIdentStart(next);
@@ -87,21 +96,22 @@ out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</s
 <p>That rule has to be answered in two places: the lexer, and the string interpolation scanner in the parser. They disagreed. The interpolation scanner tested <code>isalnum</code>, glued the digit into the name, and handed <code>"$x-1"</code> to the expression parser — which re-split it correctly and then interpolated the <em>arithmetic result</em>. So <code>my $x = 5; say "$x-1"</code> printed <code>4</code> where Rakudo prints <code>5-1</code>. Six sites implemented the rule three different ways; the fix was to write it once, in a header, and delete the other five.</p>
 <p>Superscripts are folded here too: a run like <code>x³</code> emits a synthetic tight <code>**</code> operator and an <code>IntLit 3</code>, so it parses as <code>x ** 3</code>.</p>
 <h2 id="operators-are-a-fixed-hand-ordered-vocabulary">Operators are a fixed, hand-ordered vocabulary</h2>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — lexOperator</span>
-<span class="k">for</span> (<span class="k">const</span> <span class="kt">char</span>* op : ops) {
-    std::string s(op);
-    <span class="kt">bool</span> ok = <span class="kc">true</span>;
-    <span class="k">for</span> (<span class="kt">size_t</span> k = <span class="mi">0</span>; k &lt; s.size(); k++)
-        <span class="k">if</span> (peek(k) != s[k]) { ok = <span class="kc">false</span>; <span class="k">break</span>; }
-    <span class="k">if</span> (ok) { <span class="cm">/* consume s, return Tok::Op */</span> }
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — lexOperator, abridged</span>
+<span class="k">for</span> (<span class="k">const</span> <span class="k">auto</span>&amp; e : lexOpIndex().byFirst[(<span class="kt">unsigned</span> <span class="kt">char</span>)peek()]) {
+    <span class="k">const</span> <span class="kt">char</span>* op = e.op;
+    <span class="kt">size_t</span> n = <span class="mi">0</span>;
+    <span class="k">while</span> (op[n] &amp;&amp; pos_ + n &lt; src_.size() &amp;&amp; src_[pos_ + n] == op[n]) n++;
+    <span class="k">if</span> (!op[n]) { <span class="cm">/* consume it, return Tok::Op */</span> }
 }
-<span class="c1">// unmatched: a single-character Op</span></code></pre>
-<p>This is not a longest-match scanner. It is a manually ordered table where longer entries are placed before their prefixes, and the first full match wins. Adding a built-in operator means inserting it at the right position — a real maintenance hazard, and named as one.</p>
+<span class="kt">char</span> c = advance();                  <span class="c1">// unmatched: a single-character Op</span>
+<span class="k">return</span> make(Tok::Op, std::string(<span class="mi">1</span>, c));</code></pre>
+<p>This is not a longest-match scanner. It is a manually ordered table, <code>kLexOps</code>, where longer entries are placed before their prefixes, and the first full match wins. The index only buckets the table by first byte, each bucket in the table's own order, so a token start that begins no operator costs one lookup. Adding a built-in operator means inserting it at the right position — a real maintenance hazard, and named as one.</p>
 <p>The fall-through matters: anything unmatched becomes a <strong>single-character <code>Tok::Op</code></strong>, so a novel user-defined operator arrives as <em>something</em> the parser can pick up.</p>
-<p>For a while that was the whole answer, and it was not enough. A spelling like <code>sub infix:&lt;%%%&gt;</code> gets lexed a character at a time, and the built-in table swallows a prefix of it first — <code>%%%</code> came out as <code>%%</code> then <code>%</code>, so <code>5 %%% 2</code> divided by an empty hash. So the lexer's constructor now pre-scans the file for its own symbolic operator declarations and tries them, longest first, ahead of the table:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — the constructor</span>
-<span class="k">for</span> (<span class="k">const</span> <span class="kt">char</span>* cat : {<span class="s2">"infix:&lt;"</span>, <span class="s2">"prefix:&lt;"</span>, <span class="s2">"postfix:&lt;"</span>}) { … }</code></pre>
-<p>Only <em>this</em> file's declarations are visible that way; an imported symbolic operator still needs its module's own parse, which is a real limitation and one worth knowing before writing a module that exports one.</p>
+<p>For a while that was the whole answer, and it was not enough. A spelling like <code>sub infix:&lt;%%%&gt;</code> gets lexed a character at a time, and the built-in table swallows a prefix of it first — <code>%%%</code> came out as <code>%%</code> then <code>%</code>, so <code>5 %%% 2</code> divided by an empty hash. So the lexer's constructor now pre-scans the file for its own operator and term declarations and tries them, longest first, ahead of the table:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Lexer.cpp — scanUserOps, called by the constructor</span>
+<span class="k">for</span> (<span class="k">const</span> <span class="kt">char</span>* cat : {<span class="s2">"infix:"</span>, <span class="s2">"prefix:"</span>, <span class="s2">"postfix:"</span>, <span class="s2">"term:"</span>}) { … }</code></pre>
+<p>A declared spelling loses only to a <em>longer</em> built-in one written at the same place: with <code>..</code> declared, <code>..^</code> is still <code>..^</code>.</p>
+<p>Only <em>this</em> file's declarations are visible to that scan. An imported operator reaches the lexer the other way round: when the parser's scan of a <code>use</code>d module (<a href="/book/user-operators/">Chapter 6</a>) finds an exported operator or term whose spelling the built-in rules would split, it hands every spelling in scope to a fresh lexer through <code>noteUserOp</code> and re-lexes the rest of the file. That closed what used to be a real limitation — an imported <code>⨁⨁</code> lexed as two <code>⨁</code>s.</p>
 <p>The vocabulary also covers Unicode aliases (<code>≤</code> for <code>&lt;=</code>), hyper metaoperators (<code>»op«</code>), and the set operators (<code>(elem)</code>, <code>∈</code>). That part is static — but "the lexer tracks no user declarations" is no longer true of it as a whole.</p>
 <h2 id="rule-bodies-are-not-tokenized">Rule bodies are not tokenized</h2>
 <p>One construct is deliberately opaque. A <code>token</code>/<code>rule</code>/<code>regex NAME { … }</code> declaration is not lexed as Raku:</p>
@@ -123,6 +133,7 @@ out = make(heredocInterp_ ? Tok::StrInterp : Tok::StrLit, <span class="s2">""</s
 [[noreturn]] <span class="kt">void</span> runawayTerm(<span class="k">const</span> std::string&amp; close,
                               <span class="k">const</span> std::string&amp; open, <span class="kt">int</span> startLine) <span class="k">const</span>;</code></pre>
 <p>Two spellings, because Rakudo has two: the bare quote forms name the <em>construct</em>, the bracketed <code>q</code>/<code>rx</code>/comment forms name the <em>terminator</em>. Both quote the line the construct <em>started</em> on, which is the only coordinate still meaningful once the scan has eaten the rest of the file.</p>
+<p>The lexer that reads a whole program is run <em>tolerant</em>: a lexical error does not throw out of <code>tokenize()</code>. It is stored, and the token stream ends there with an <code>End</code> token that carries its index; the parser rethrows it only if it arrives at that token. A <code>use</code> further up may activate a slang or import an operator that re-lexes the tail, and the text the first lex could not read may then be perfectly good.</p>
 <p>An <code>atEof</code> flag rides along on the resulting error. Only the REPL reads it, to tell "give me a continuation line" from "this is a syntax error" — which is how a half-typed string literal at an interactive prompt asks for more input instead of failing (<a href="/book/tooling/">Chapter 39</a>).</p><nav class="ch-nav"><a class="prev" href="/book/classification/"><span>Previous</span>Where It Sits in the Taxonomy</a><a class="next" href="/book/parser/"><span>Next</span>The Parser</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>

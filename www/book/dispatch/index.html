@@ -28,47 +28,74 @@
 <h2 id="named-calls">Named calls</h2>
 <p><code>evalCall</code> resolves every named call the same way:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — evalCall, abridged</span>
-<span class="k">if</span> (Value* f = tctx().cur-&gt;find(<span class="s2">"&amp;"</span> + c-&gt;name))
-    <span class="k">return</span> callCallable(*f, std::move(args), &amp;c-&gt;args, <span class="kc">false</span>, …);
+<span class="k">if</span> (Value* f = tctx().cur-&gt;find(callAmpName(c))) {    <span class="c1">// "&amp;" + the name</span>
+    …
+    <span class="k">return</span> callCallable(*f, std::move(args), &amp;c-&gt;args,
+                        <span class="cm">/*ownFrame=*/</span><span class="kc">false</span>, <span class="cm">/*arityCheck=*/</span><span class="kc">true</span>);
+}
 …
 <span class="k">auto</span> it = builtins_.find(c-&gt;name);        <span class="c1">// built-in fallback</span></code></pre>
 <p>The environment first, walking the parent chain; the builtin table second. That order is the whole rule, and it has three consequences worth spelling out.</p>
 <p><strong>A lexical <code>my sub</code> shadows a builtin.</strong> That is Raku's semantics and it comes for free.</p>
-<p><strong>A module's exported sub also shadows a builtin</strong>, because the loader copies it into the global environment, which is the last link of the chain (<a href="/book/modules/">Chapter 33</a>).</p>
+<p><strong>A module's exported sub also shadows a builtin</strong>, because the loader copies it into the importing scope. For a <code>use</code> at the mainline that is the global environment, the last link of the chain; for a <code>use</code> inside a block it is the block's own scope, and nothing is left behind after it (<a href="/book/modules/">Chapter 33</a>).</p>
 <p><strong>A compiled program must reproduce this order</strong>, which it cannot do by resolving names against the builtin table at compile time. That is a real bug that happened — <code>--exe</code> printed the built-in <code>val</code>'s answer where the interpreter called a module's exported <code>val</code> — and <a href="/book/dispatch-compiled/">Chapter 28</a> describes the fix.</p>
 <p>The argument <em>expressions</em> are passed alongside the values (<code>&amp;c-&gt;args</code>) so that <code>is rw</code> write-back can re-resolve them.</p>
 <h2 id="multiple-dispatch">Multiple dispatch</h2>
 <p>A <code>multi sub</code> or <code>multi method</code> is one <code>Callable</code> with <code>isMultiDispatcher</code> set and a <code>candidates</code> vector; each <code>multi</code> declaration pushes its <code>Code</code> onto it. A <code>proto</code> declares the group without being a candidate.</p>
-<p>At call time, <code>scoreCandidate</code> scores every candidate against the actual arguments, returning <code>-1</code> for "does not apply" or a non-negative <strong>specificity</strong>:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — scoreCandidate, per positional parameter</span>
+<p>At call time, <code>scoreCandidate</code> scores a candidate against the actual arguments, returning <code>-1</code> for "does not apply" or a non-negative <strong>specificity</strong>. It also fills a vector with one score per parameter:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
+<span class="kt">int</span> scoreCandidate(<span class="k">const</span> Value&amp; cand, <span class="k">const</span> ValueList&amp; args,
+                   std::vector&lt;<span class="kt">int</span>&gt;* perParam = <span class="kc">nullptr</span>,
+                   <span class="k">const</span> Value* selfForWhere = <span class="kc">nullptr</span>,
+                   WhereAssume* assume = <span class="kc">nullptr</span>);</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — scoreCandidate, a typed positional, abridged</span>
 <span class="k">if</span> (subsets_.count(p-&gt;type)) {
     <span class="k">if</span> (!subsetMatches(p-&gt;type, pos[i])) <span class="k">return</span> -<span class="mi">1</span>;
-    score += <span class="mi">2</span>;
-} <span class="k">else</span> <span class="k">if</span> (!typeMatchesArg(pos[i], p-&gt;type)) <span class="k">return</span> -<span class="mi">1</span>;
-<span class="k">if</span> (p-&gt;defConstraint == <span class="mi">1</span> &amp;&amp; !isDefined(pos[i])) <span class="k">return</span> -<span class="mi">1</span>;   <span class="c1">// :D</span>
-<span class="k">if</span> (p-&gt;defConstraint == <span class="mi">2</span> &amp;&amp;  isDefined(pos[i])) <span class="k">return</span> -<span class="mi">1</span>;   <span class="c1">// :U</span>
-<span class="k">if</span> (p-&gt;defConstraint) score++;
-<span class="k">if</span> (!p-&gt;type.empty() &amp;&amp; p-&gt;type != <span class="s2">"Any"</span> &amp;&amp; p-&gt;type != <span class="s2">"Mu"</span>) {
-    score++;                                    <span class="c1">// constrained beats not</span>
-    <span class="k">if</span> (p-&gt;type == pos[i].typeName()) score++;  <span class="c1">// exact beats supertype</span>
-}</code></pre>
-<p>Arity gates run first — too few required arguments, or too many for a non-slurpy signature, is an immediate <code>-1</code>. Literal parameters (<code>multi fact(0)</code>) and sub-signature destructuring are treated as very specific. A required named parameter that was not supplied is <code>-1</code>.</p>
-<p>The winner is the highest score:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="k">const</span> Value* best = <span class="kc">nullptr</span>; <span class="kt">int</span> bestScore = -<span class="mi">1</span>;
-<span class="k">for</span> (<span class="k">auto</span>&amp; cand : c.candidates) {
-    <span class="kt">int</span> s = scoreCandidate(cand, args);
-    <span class="k">if</span> (s &gt; bestScore) { bestScore = s; best = &amp;cand; }   <span class="c1">// strict &gt;</span>
+    score += <span class="mi">12</span>; <span class="c1">// a satisfied subset is narrower than its base nominal</span>
 }
-<span class="k">if</span> (!best || bestScore &lt; <span class="mi">0</span>) <span class="k">throw</span> <span class="cm">/* X::Multi::NoMatch */</span>;</code></pre>
-<p><strong>Two honest notes.</strong> The comparison is a strict <code>&gt;</code>, so on equal scores the <em>first-declared</em> candidate wins and there is no <code>X::Multi::Ambiguous</code> diagnostic. And a genuine no-match does throw <code>X::Multi::NoMatch</code>, with the candidate list in the message.</p>
+…
+<span class="k">else</span> <span class="k">if</span> (!typeMatchesArg(pos[i], <span class="cm">/* p-&gt;type, through its alias */</span>)) <span class="k">return</span> -<span class="mi">1</span>;
+…
+<span class="k">if</span> (p-&gt;defConstraint == <span class="mi">1</span> &amp;&amp; !isDefinite(pos[i])) <span class="k">return</span> -<span class="mi">1</span>;   <span class="c1">// :D</span>
+<span class="k">if</span> (p-&gt;defConstraint == <span class="mi">2</span> &amp;&amp; isDefinite(pos[i])) <span class="k">return</span> -<span class="mi">1</span>;    <span class="c1">// :U</span>
+<span class="k">if</span> (p-&gt;defConstraint) { score += <span class="mi">2</span>; … }   <span class="c1">// a smiley is more specific</span>
+…
+<span class="k">else</span> <span class="k">if</span> (!p-&gt;type.empty() &amp;&amp; p-&gt;type != <span class="s2">"Any"</span> &amp;&amp; p-&gt;type != <span class="s2">"Mu"</span>) {
+    score += <span class="mi">8</span>;              <span class="c1">// a NOMINAL type outranks a bare @/% sigil</span>
+    <span class="k">if</span> (<span class="cm">/* the type is the argument's own */</span>)
+        score += <span class="mi">2</span>;          <span class="c1">// exact type beats a supertype</span>
+}
+…
+score += <span class="mi">4</span>; <span class="c1">// a satisfied where-constraint is more specific</span></code></pre>
+<p>Arity gates run first — too few required arguments, or too many for a non-slurpy signature, is an immediate <code>-1</code>. Literal parameters (<code>multi fact(0)</code>) score 16, the narrowest thing there is, and sub-signature destructuring is treated as specific too. A required named parameter that was not supplied is <code>-1</code>.</p>
+<p>The sum alone does not pick the winner. Rakudo compares candidates <strong>per parameter</strong>: one is preferred only when it is no wider anywhere and narrower somewhere, and a sum cannot say that — two <code>Str:D</code> parameters outscored one literal. So the loop asks <code>candidateBeats</code>:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — the dispatcher arm of callCallableRaw, abridged</span>
+<span class="k">for</span> (<span class="k">auto</span>&amp; cand : c.cold().candidates) {
+    <span class="k">if</span> (<span class="cm">/* cand is the proto */</span>) <span class="k">continue</span>;
+    …
+    <span class="kt">int</span> s = scoreCandidate(cand, as, &amp;vec, <span class="kc">nullptr</span>, …);
+    …
+    <span class="k">if</span> (candidateBeats(*<span class="k">this</span>, cand, vec, s, candRw,
+                       best, bestVec, bestScore, bestRw))
+        { bestScore = s; best = &amp;cand; bestVec = vec; bestRw = candRw; }
+    <span class="k">if</span> (s &gt;= <span class="mi">0</span> &amp;&amp; nMatched &lt; <span class="mi">8</span>) matched[nMatched++] = &amp;cand;
+}
+<span class="k">if</span> (!cached &amp;&amp; best &amp;&amp; visited.empty() &amp;&amp; nMatched &gt; <span class="mi">1</span>)
+    throwIfAmbiguous(c, best, matched, nMatched, as);</code></pre>
+<p><code>candidateBeats</code> ranks by type first, as Rakudo sorts its candidates: for two candidates of the same positional arity and no slurpy, a strictly narrower nominal type wins over a wider one that carries a <code>where</code> or a smiley. Then the per-parameter vectors are compared, then <code>is default</code> and an <code>is rw</code> binding break a tie. Two candidates that each win a different parameter sit in the same band, and declaration order settles it.</p>
+<p><strong>Two honest notes, both changed since this chapter was first written.</strong> Equal candidates used to resolve silently to the first declared. Two candidates that nothing separates are now <code>X::Multi::Ambiguous</code>, with the tied signatures in the message; <code>throwIfAmbiguous</code> judges only signatures of plain typed <code>$</code> positionals, so a pair it cannot judge still falls to declaration order. And a genuine no-match throws <code>X::Multi::NoMatch</code>, with the candidate list in the message, unless the name is a built-in's: a user <code>multi infix:&lt;+&gt;</code> or <code>multi sub is-prime</code> <em>adds</em> candidates to the built-in, which still answers a call none of them takes.</p>
+<h3>The dispatch cache</h3>
+<p>Scoring every candidate at every call is the cost that made <code>multi</code> slow, so a dispatcher remembers. <code>Callable::dispatchCache</code> holds, for one argument shape, the candidate that won it, and a later call with the same shape goes straight there. It is sound only where the winner cannot depend on anything but the shape, so both sides are narrow. The arguments must each be a plain Int, Num or Str or an instance of a class, keyed by kind and <code>ClassInfo</code>. The candidates must have only <code>$</code> positionals typed by a name whose match depends on that key alone — no literal, coercion, capture, sub-signature, default, <code>is rw</code> or native type. An entry is good while the candidate count and the symbol generation are what they were when it was published.</p>
+<p>A <code>where</code> on a positional does not rule the cache out. The winner then depends on the values, but only through the outcomes of the <code>where</code>s, so a where-aware entry keeps a table from those outcomes to the winner. A call evaluates the <code>where</code>s, and an outcome pattern the table has not seen runs the full dispatch once and fills the slot. Such an entry covers at most 8 candidates and 6 <code>where</code>s. When the cache landed, the <code>multimeth</code> kernel ran 52% faster and <code>multiwhere</code> 46% (<code>docs/dev/plans/INTERP-SPEED-PLAN.md</code>, task 6).</p>
 <h3>Subsets</h3>
 <p>A <code>subset</code> is a refinement type that participates in dispatch:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-<span class="k">struct</span> SubsetInfo { std::string base; <span class="k">const</span> Expr* where = <span class="kc">nullptr</span>; };
-std::unordered_map&lt;std::string, SubsetInfo&gt; subsets_;
+<span class="k">struct</span> SubsetInfo { std::string base; <span class="k">const</span> Expr* where = <span class="kc">nullptr</span>; <span class="cm">/* … */</span>
+                    std::shared_ptr&lt;Env&gt; declEnv; };
+StrMap&lt;SubsetInfo&gt; subsets_;
 <span class="kt">bool</span> subsetMatches(<span class="k">const</span> std::string&amp; name, <span class="k">const</span> Value&amp; v, <span class="kt">int</span> depth = <span class="mi">0</span>);</code></pre>
 <p><code>subsetMatches</code> checks the base type and then evaluates the <code>where</code> expression with the value as the topic. The <code>depth</code> parameter is a recursion guard, because a subset can be defined in terms of another subset and nothing prevents a cycle.</p>
-<p>A subset match scores <code>+2</code>, above a plain nominal match, which is what makes <code>multi f(Even $n)</code> beat <code>multi f(Int $n)</code>.</p>
+<p>A subset match scores 12, above a plain nominal match's 8, or 10 for the argument's exact type, which is what makes <code>multi f(Even $n)</code> beat <code>multi f(Int $n)</code>. The <code>where</code> closes over the scope the subset was declared in, which is what <code>declEnv</code> keeps.</p>
 <h2 id="method-dispatch-two-worlds">Method dispatch: two worlds</h2>
 <p>An <code>Int</code>, a <code>Str</code> or an <code>Array</code> is a native <code>Value</code> — it has no <code>ClassInfo</code> and no method table. A user class instance is a <code>VT::Object</code> with both. So there are two dispatch worlds.</p>
 <p><strong>User objects</strong> go through <code>ClassInfo::findMethod</code>, which <em>is</em> the method resolution order:</p>
@@ -82,27 +109,26 @@ Value* findMethod(<span class="k">const</span> std::string&amp; m, ClassInfo** o
     <span class="k">if</span> (owner) *owner = <span class="kc">nullptr</span>;
     <span class="k">return</span> <span class="kc">nullptr</span>;
 }</code></pre>
-<p>Own methods, then the first parent recursively, then each extra parent. It is a depth-first walk, <strong>not C3 linearisation</strong>, and for the diamond hierarchies where the two differ it can pick a different method than Rakudo. The <code>owner</code> out-parameter reports which class the method was found in, so re-dispatch can resume from that class's parent.</p>
+<p>Own methods, then the first parent recursively, then each extra parent. It is a depth-first walk, <strong>not C3 linearisation</strong>, and for the diamond hierarchies where the two differ it can pick a different method than Rakudo. <code>.^mro</code> does answer the C3 order, so on such a diamond the two disagree: with <code>B is A</code>, <code>C is A</code> overriding <code>m</code>, and <code>D is B is C</code>, <code>D.^mro</code> lists <code>C</code> before <code>A</code> and <code>D.new.m</code> still runs <code>A</code>'s. The <code>owner</code> out-parameter reports which class the method was found in, so re-dispatch can resume from that class's parent.</p>
 <p><strong>Built-in values</strong> go through <code>methodCall</code>, a very long cascade of branches keyed on the method name and, inside each branch, on the invocant's tag:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="k">if</span> (m == <span class="s2">"uc"</span>)       <span class="k">return</span> Value::str(mapCase(inv.toStr(), <span class="kc">true</span>, <span class="mi">0</span>));
-<span class="k">if</span> (m == <span class="s2">"chars"</span>)    <span class="k">return</span> Value::integer(graphemeCount(inv.toStr()));
-<span class="k">if</span> (m == <span class="s2">"is-prime"</span>) { <span class="cm">/* Miller–Rabin on inv.toInt() */</span> }
-<span class="c1">// … some 1,640 more …</span></code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="k">if</span> (m == <span class="s2">"uc"</span>) <span class="k">return</span> Value::str(mapCase(inv.toStr(), <span class="mi">1</span>, <span class="mi">0</span>));
+<span class="k">if</span> (m == <span class="s2">"codes"</span>) <span class="k">return</span> Value::integer(cpCount(inv.toStr()));
+<span class="k">if</span> (m == <span class="s2">"is-prime"</span>) { <span class="cm">/* … */</span> }
+<span class="c1">// … some 1,640 more, when they were counted for Chapter 10 …</span></code></pre>
 <p>The C++ <code>if</code>-ladder <em>is</em> the built-in method set. That is the pragmatic counterpart to the fat <code>Value</code>: since every native value is the same struct, its methods are one dispatch function rather than per-type classes.</p>
-<p>The ladder is split across four files as ordered segments (<a href="/book/shape-of-source/">Chapter 2</a>), each returning <code>std::optional&lt;Value&gt;</code>. The name is wrapped in an <code>MName</code> at the top so the comparisons are integer compares (<a href="/book/interning/">Chapter 10</a>).</p>
+<p>The ladder is split across files as ordered segments (<a href="/book/shape-of-source/">Chapter 2</a>) — six <code>src/MethodCall*.cpp</code> files and the tail of <code>src/Builtins.cpp</code> — each returning <code>std::optional&lt;Value&gt;</code>. The name is wrapped in an <code>MName</code> at the top so the comparisons are integer compares (<a href="/book/interning/">Chapter 10</a>).</p>
 <h3>What runs before the ladder</h3>
 <p>Two things are consulted first, and both are bridges between the two worlds.</p>
 <p><strong>Junction autothreading.</strong> If the invocant is a junction, a small allow-list of methods (<code>Bool</code>, <code>gist</code>, <code>new</code>, …) act on the whole junction; everything else autothreads, returning a junction of the per-eigenstate results.</p>
 <p><strong><code>augment</code> on a built-in type.</strong> Methods a program adds to a built-in with <code>augment class Int { … }</code> are parked in a map of maps and consulted before the native branches, so they can override built-ins:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — before the native branches</span>
-<span class="k">if</span> (!builtinExt_.empty() &amp;&amp; inv.t != VT::Object) {
-    std::string tn = inv.t == VT::Type ? inv.s : inv.typeName();
-    <span class="k">if</span> (Value* f = lookup(tn))
-        <span class="k">return</span> invokeMethod(*f, inv, std::move(args), rwArgs);
-    <span class="k">for</span> (<span class="k">const</span> std::string&amp; anc : typeAncestry(tn))
-        <span class="k">if</span> (anc != tn) <span class="k">if</span> (Value* f = lookup(anc))
-            <span class="k">return</span> invokeMethod(*f, inv, …);
-}</code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Builtins.cpp — builtinExtMethod, asked before the native branches</span>
+<span class="k">if</span> (builtinExt_.empty() || inv.t == VT::Object) <span class="k">return</span> <span class="kc">nullptr</span>;
+std::string tn = inv.t == VT::Type ? inv.s.copyText() : inv.typeName();
+…
+<span class="k">if</span> (Value* f = lookup(tn)) <span class="k">return</span> f;
+<span class="k">for</span> (<span class="k">const</span> std::string&amp; anc : typeAncestry(tn))
+    <span class="k">if</span> (anc != tn) <span class="k">if</span> (Value* f = lookup(anc)) <span class="k">return</span> f;
+<span class="k">return</span> <span class="kc">nullptr</span>;</code></pre>
 <p>The ancestry walk is what makes <code>augment class Cool { … }</code> reach an <code>Int</code> and a <code>Str</code>. The guard on <code>builtinExt_.empty()</code> is why a program that never augments anything pays one branch.</p>
 <p>This is also why two of the inline built-in fast paths in <a href="/book/dispatch-compiled/">Chapter 28</a> are <code>builtinExt_</code>-guarded: an inlined <code>abs</code> must stop inlining the moment a program augments <code>Int</code>.</p>
 <h2 id="re-dispatch">Re-dispatch</h2>
@@ -113,6 +139,7 @@ Value* findMethod(<span class="k">const</span> std::string&amp; m, ClassInfo** o
     std::function&lt;Value(ValueList)&gt; restart;   <span class="c1">// samewith</span>
     ValueList sameArgs;
     <span class="kt">bool</span> lastcall = <span class="kc">false</span>; <span class="kt">bool</span> fromChain = <span class="kc">false</span>;
+    …
 };
 <span class="k">static</span> std::vector&lt;RedispatchCtx&gt;&amp; redispatchStack();   <span class="c1">// this thread's chain</span></code></pre>
 <p>Each dispatch site that can be re-entered pushes a context knowing how to invoke the next thing, and the original arguments for the <code>*same</code> variants. <code>invokeMethodChain</code> is the method version: it invokes a method found from a given class and pushes a context that resumes from that class's parent, recursively.</p>
@@ -120,11 +147,13 @@ Value* findMethod(<span class="k">const</span> std::string&amp; m, ClassInfo** o
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h — ExecContext</span>
 <span class="kt">size_t</span> redispatchFloor = <span class="mi">0</span>;   <span class="c1">// frames below this are another routine's</span></code></pre>
 <p>Without it, a <code>callsame</code> inside a routine could reach a re-dispatch context belonging to a <em>caller</em>, and dispatch into something unrelated.</p>
-<p>The stack is <code>static thread_local</code> for the reason given in <a href="/book/calls/">Chapter 14</a>: as a plain member it was written by every dispatching call on every thread.</p>
+<p>The stack is per thread for the reason given in <a href="/book/calls/">Chapter 14</a>: as a plain member it was written by every dispatching call on every thread. It is read on every call, so it is reached the way <code>tctx()</code> is, through a constant-initialized <code>thread_local</code> pointer to the thread's own vector.</p>
+<p>One case pushes no context at all. A user method that overrides a built-in — <code>method clone { … callsame … }</code> — has no user candidate under it, and pushing a frame for every such call would cost each one a pair of closures and a copy of its arguments when almost none redispatch. The activation leaves a breadcrumb instead, <code>ExecContext::builtinFallback</code>: three borrowed pointers to the name, the invocant and the arguments, read only when no visible frame answers.</p>
 <h2 id="private-methods-qualified-calls-indirect-calls">Private methods, qualified calls, indirect calls</h2>
 <p>The <code>MethodCall</code> node carries the variants as flags:</p>
 <div class="tablewrap"><table><tr><th>Written</th><th>Flag</th><th>Meaning</th></tr><tr><td><code>$o.m</code></td><td>—</td><td>ordinary dispatch</td></tr>
 <tr><td><code>$o.?m</code></td><td><code>maybe</code></td><td>return <code>Nil</code> rather than dying when absent</td></tr>
+<tr><td><code>$o.+m</code>, <code>$o.*m</code></td><td><code>allMode</code></td><td>every candidate's result, as a List</td></tr>
 <tr><td><code>$o!m</code></td><td><code>bang</code></td><td>private method, reachable only through <code>self!m</code></td></tr>
 <tr><td><code>$o.Class::m</code></td><td><code>methodQual</code></td><td>dispatch to a specific class's method, past overrides</td></tr>
 <tr><td><code>$o."$name"()</code></td><td><code>methodExpr</code></td><td>the name is computed at run time</td></tr>
@@ -134,7 +163,7 @@ Value* findMethod(<span class="k">const</span> std::string&amp; m, ClassInfo** o
 <p>The flags combine: <code>self!"$name"()</code> is <code>bang</code> <em>and</em> <code>methodExpr</code>, and the name is not known until the expression has been evaluated — so the check that a private call is lexically inside its class runs after that, not before the invocant. The private branch used to take the interpolation's raw source text as the name and dispatch to a method spelled <code>!$name</code> (issue #43).</p>
 <p><code>.^</code> calls go to the meta-object. Most are answered directly — <code>.^name</code>, <code>.^methods</code>, <code>.^attributes</code>, <code>.^parents</code>, <code>.^roles</code> — but <code>.HOW</code> must return a <em>persistent</em> object, because <code>T.HOW does SomeRole</code> mixins have to stick. So <code>ClassInfo</code> carries its meta-object rather than building one per call:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — ClassInfo</span>
-Value howObj;   <span class="c1">// the persistent .HOW metaobject</span></code></pre>
+Value howObj;   <span class="c1">// persistent .HOW metaobject</span></code></pre>
 <h2 id="builtin-as-a-value"><code>&amp;builtin</code> as a value</h2>
 <p><code>&amp;say</code> must be a <code>Callable</code> value, and <code>&amp;dir.wrap({…})</code> must mutate <em>the</em> <code>Callable</code> the call path consults — that is exactly how <code>File::Find</code>'s test suite mocks <code>dir</code>. So a reference to a builtin is memoised:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
@@ -147,10 +176,10 @@ std::map&lt;std::string, Value&gt; builtinRefs_;</code></pre>
 <tr><td>method-name comparison</td><td>8.5%</td></tr>
 <tr><td>the dispatch function's own body</td><td>6.1%</td></tr></table></div>
 <p>The 42% in allocation and value churn was the remaining target when this profile was taken, and it had a known shape: both <code>methodCall</code> and <code>methodCallInner</code> take their invocant and argument list <strong>by value</strong>, so every call copies a <code>Value</code> and allocates a <code>ValueList</code>.</p>
-<p>Two of the three costs in that sentence have since shrunk without the by-value signatures changing at all. A <code>Value</code> carried eleven <code>shared_ptr</code> members then and carries two now (<a href="/book/the-speed-campaign/">Chapter 41</a>), so the copy is a fraction of what it was; and the <code>ValueList</code> for a short argument list no longer reaches the allocator, because small blocks come off a free list (<a href="/book/containers/">Chapter 12</a>). What is left is the copy itself, which is smaller, on a path that is otherwise unchanged.</p>
-<p>Switching both to <code>const&amp;</code> is mechanically small: eighteen compile errors, each either "make a local copy here" or "let this helper take <code>const&amp;</code>". It has not been done because it trades away the accidental safety that copying provides against a callee mutating the container its own invocant lives in. That wants an aliasing audit of 178 call sites, not a quick pass — and the case for spending that audit is weaker now than when it was written, because the cost it would recover has been reduced twice by changes that needed no audit at all.</p>
+<p>All three costs in that sentence have since shrunk. The invocant is no longer copied: both functions take <code>const Value&amp; inv</code> (commit d880fe9c, 2026-07-29). Four arms out of 352 rewrote their invocant, and each now takes its own copy; the compiler enforces the rest, since an arm that quietly mutates the invocant no longer compiles. On a 3M-method-call workload that measured −3.4%. A <code>Value</code> carried eleven <code>shared_ptr</code> members then; <a href="/book/the-speed-campaign/">Chapter 41</a> took that to two, and since 2026-11-10 the whole struct is 32 bytes on 64-bit macOS and Linux (<code>docs/dev/plans/VALUE32-PLAN.md</code>), so the copies that remain are a fraction of what they were. And the <code>ValueList</code> for a short argument list no longer reaches the allocator, because small blocks come off a free list (<a href="/book/containers/">Chapter 12</a>).</p>
+<p>The argument list is still passed by value. Changing that trades away the accidental safety that copying provides against a callee mutating the container its own arguments live in, and the cost it would recover has been reduced by changes that needed no aliasing audit at all.</p>
 <h2 id="honest-limitations">Honest limitations</h2>
-<ul><li><strong>The method resolution order is depth-first, not C3.</strong> Diamond hierarchies can resolve differently from Rakudo.</li><li><strong>No <code>X::Multi::Ambiguous</code>.</strong> Equal-specificity candidates resolve silently to the first declared.</li><li><strong>Role conflicts are diagnosed</strong>, so this is no longer a limitation: composing two roles that define the same method raises <code>X::Role::Unresolved::Method</code> unless the class resolves it, as in Rakudo. Only the order the roles are listed in inside the message differs.</li><li><strong>The ladder's order is load-bearing and undocumented in the code beyond a warning.</strong> An arm moved for readability is a behaviour change.</li></ul><nav class="ch-nav"><a class="prev" href="/book/control-flow/"><span>Previous</span>Cooperative Control Flow</a><a class="next" href="/book/objects/"><span>Next</span>The Object System</a></nav>
+<ul><li><strong>The method resolution order is depth-first, not C3.</strong> Diamond hierarchies can resolve differently from Rakudo.</li><li><strong><code>X::Multi::Ambiguous</code> is raised only where the tie can be judged</strong>: two signatures of plain typed <code>$</code> positionals that nothing separates. Other equal candidates still resolve to the first declared.</li><li><strong>Role conflicts are diagnosed</strong>, so this is no longer a limitation: composing two roles that define the same method raises <code>X::Role::Unresolved::Method</code> unless the class resolves it, as in Rakudo.</li><li><strong>The ladder's order is load-bearing and undocumented in the code beyond a warning.</strong> An arm moved for readability is a behaviour change.</li></ul><nav class="ch-nav"><a class="prev" href="/book/control-flow/"><span>Previous</span>Cooperative Control Flow</a><a class="next" href="/book/objects/"><span>Next</span>The Object System</a></nav>
 <footer>
 <span>The book is written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository, under <code>docs/book</code>, and built from the same sources as the PDF.</span>
 <span><a href="/rakupp/">About Raku++</a>.</span>

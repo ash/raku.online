@@ -22,10 +22,11 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Appendix A</p><h1>The Tag Sets</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#vt-runtime-value-tags"><code>VT</code> — runtime value tags</a></li><li><a href="#nk-ast-node-kinds"><code>NK</code> — AST node kinds</a></li><li><a href="#k-regex-node-kinds"><code>K</code> — regex node kinds</a></li><li><a href="#nqpopc-the-use-nqp-subset"><code>NqpOpc</code> — the <code>use nqp</code> subset</a></li><li><a href="#exception-and-control-structs">Exception and control structs</a></li></ul></nav>
-<p>The three closed enumerations everything else switches on.</p>
+<p class="ch-label">Appendix A</p><h1>The Tag Sets</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#vt-runtime-value-tags"><code>VT</code> — runtime value tags</a></li><li><a href="#pk-payload-kinds"><code>PK</code> — payload kinds</a></li><li><a href="#nk-ast-node-kinds"><code>NK</code> — AST node kinds</a></li><li><a href="#k-regex-node-kinds"><code>K</code> — regex node kinds</a></li><li><a href="#nqpopc-the-use-nqp-subset"><code>NqpOpc</code> — the <code>use nqp</code> subset</a></li><li><a href="#exception-and-control-structs">Exception and control structs</a></li></ul></nav>
+<p>The closed enumerations everything else switches on.</p>
 <h2 id="vt-runtime-value-tags"><code>VT</code> — runtime value tags</h2>
 <p><code>src/Value.h</code>. Eighteen tags. Several Raku types are an existing tag plus a marker rather than a tag of their own; those are listed in the second table.</p>
+<p>The field names are the original struct's. In the 32-byte <code>Value</code> only <code>i</code>, <code>n</code>, <code>s</code>, <code>hashKind</code> and the flags are members; every other name in the table is an accessor of the same spelling — <code>v.arr()</code>, <code>v.ratN()</code>, <code>v.rFrom()</code> — over the payload slot or the cold block (<a href="/book/value/">Chapter 8</a>).</p>
 <div class="tablewrap"><table><tr><th>Tag</th><th>Live fields</th><th>Notes</th></tr><tr><td><code>Nil</code></td><td>—</td><td>the absent value</td></tr>
 <tr><td><code>Any</code></td><td>—</td><td>the default undefined value</td></tr>
 <tr><td><code>Bool</code></td><td><code>b</code></td><td></td></tr>
@@ -60,7 +61,20 @@
 <tr><td>an enum value</td><td><code>Int</code> with <code>enumName</code> and <code>enumType</code></td></tr>
 <tr><td><code>FatRat</code></td><td><code>Rat</code> with <code>fatRat</code></td></tr>
 <tr><td>a native integer container</td><td>any numeric tag with <code>natBits</code> and <code>natSigned</code></td></tr>
+<tr><td><code>my int @a</code>, <code>my num @a</code></td><td><code>Array</code> whose payload is the elements as machine words (<code>PK::Packed</code>); it unpacks itself into an ordinary list when something asks for one</td></tr>
 <tr><td><code>Promise</code>, <code>Channel</code>, <code>Supply</code>, <code>Tap</code>, <code>Lock</code></td><td>a tag plus state in <code>ext</code></td></tr></table></div>
+<h2 id="pk-payload-kinds"><code>PK</code> — payload kinds</h2>
+<p><code>src/Value.h</code>. Ten kinds. A <code>Value</code> has one payload slot, and this byte says what is in it. It is distinct from <code>VT</code> on purpose: a handful of sites convert a value in place, tag first and payload after, and a slot that describes itself keeps that legal.</p>
+<div class="tablewrap"><table><tr><th>Kind</th><th>The slot holds</th></tr><tr><td><code>None</code></td><td>nothing</td></tr>
+<tr><td><code>List</code></td><td>a <code>ValueList</code>: an Array, List or Seq</td></tr>
+<tr><td><code>Hash</code></td><td>a <code>ValueHash</code></td></tr>
+<tr><td><code>Code</code></td><td>a <code>Callable</code></td></tr>
+<tr><td><code>PairV</code></td><td>a Pair's value</td></tr>
+<tr><td><code>Obj</code></td><td>an <code>ObjectData</code></td></tr>
+<tr><td><code>Match</code></td><td>a <code>MatchData</code>: positional captures, named captures and <code>.made</code> at once</td></tr>
+<tr><td><code>Cell</code></td><td>a shared container: the one <code>Value</code> every name bound to a variable holds. Only a scope's storage holds one</td></tr>
+<tr><td><code>Packed</code></td><td>a native int or num array's elements as machine words</td></tr>
+<tr><td><code>Rat</code></td><td>a Rat's numerator and denominator</td></tr></table></div>
 <h2 id="nk-ast-node-kinds"><code>NK</code> — AST node kinds</h2>
 <p><code>src/Ast.h</code>. Forty-nine kinds.</p>
 <p><strong>Expressions.</strong> <code>IntLit</code>, <code>NumLit</code>, <code>StrLit</code>, <code>InterpStr</code>, <code>BoolLit</code>, <code>VarExpr</code>, <code>ListExpr</code>, <code>Assign</code>, <code>Binary</code>, <code>Unary</code>, <code>Call</code>, <code>MethodCall</code>, <code>Index</code>, <code>Ternary</code>, <code>Range</code>, <code>Pair</code>, <code>BlockExpr</code>, <code>ArrayLit</code>, <code>HashLit</code>, <code>NameTerm</code>, <code>RegexLit</code>, <code>SubstLit</code>, <code>ChainExpr</code>, <code>SymbolicRef</code>, <code>AllomorphLit</code>, <code>NqpOp</code>, <code>Whatever</code>, <code>SelfTerm</code>.</p>
@@ -86,9 +100,9 @@
 <tr><td><code>CapStart</code>, <code>CapEnd</code></td><td><code>&lt;(</code> and <code>)&gt;</code></td></tr>
 <tr><td><code>CondRef</code></td><td><code>(?(N)yes|no)</code> under <code>:P5</code> — branch on group N's state</td></tr></table></div>
 <h2 id="nqpopc-the-use-nqp-subset"><code>NqpOpc</code> — the <code>use nqp</code> subset</h2>
-<p><code>src/Ast.h</code>. About fifty operation codes in seven groups: lazy control forms, 64-bit integer operations, codepoint-indexed string operations, list and hash primitives, object and attribute helpers, buffer read and write, and folded constants. The full list is in <a href="/book/nqp/">Chapter 35</a>.</p>
+<p><code>src/Ast.h</code>. 176 operation codes. The first groups are the ones the subset began with: lazy control forms, 64-bit integer operations, codepoint-indexed string operations, list and hash primitives, object and attribute helpers, and buffer read and write. The enum is append-only, because the AST cache stores the codes, and what has been appended since is whatever a real module was found reaching for: the big-integer <code>_I</code> family, file handles, <code>stat</code> and directory walks, the Unicode property lookups, and exception objects. <a href="/book/nqp/">Chapter 35</a> has the mechanism.</p>
 <h2 id="exception-and-control-structs">Exception and control structs</h2>
-<p><code>src/Interpreter.h</code>.</p>
+<p><code>src/Interpreter.h</code> for the control structs; the last six are declared beside the component that throws them.</p>
 <div class="tablewrap"><table><tr><th>Struct</th><th>Meaning</th></tr><tr><td><code>RakuError</code></td><td>every user-visible Raku exception: payload plus message</td></tr>
 <tr><td><code>ReturnEx</code></td><td><code>return</code> across a callable boundary</td></tr>
 <tr><td><code>LastEx</code>, <code>NextEx</code>, <code>RedoEx</code></td><td>labelled or cross-frame loop control</td></tr>
@@ -98,6 +112,8 @@
 <tr><td><code>ResumeEx</code></td><td><code>.resume</code> inside a <code>CATCH</code></td></tr>
 <tr><td><code>DoneEx</code></td><td><code>done</code> in a supply, whenever or react body</td></tr>
 <tr><td><code>StopGatherEx</code></td><td>a lazy <code>gather</code> has produced enough</td></tr>
+<tr><td><code>ControlHandledEx</code></td><td>a <code>CONTROL</code> phaser handled a warning and did not resume; its block is left</td></tr>
+<tr><td><code>BuildFailureEx</code></td><td>a <code>BUILD</code> or <code>TWEAK</code> answered a Failure, which <code>.new</code> then returns</td></tr>
 <tr><td><code>ExitEx</code></td><td><code>exit</code></td></tr>
 <tr><td><code>WorkerAbortEx</code></td><td>unwind a background worker at shutdown — deliberately <strong>not</strong> a <code>RakuError</code></td></tr>
 <tr><td><code>ParseError</code></td><td>a compile-time diagnostic, optionally typed</td></tr>

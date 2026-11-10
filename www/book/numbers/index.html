@@ -42,24 +42,25 @@
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.h</span>
 <span class="k">struct</span> BigInt {
     <span class="kt">int</span> sign = <span class="mi">0</span>;                  <span class="c1">// -1, 0, +1</span>
-    std::vector&lt;<span class="kt">uint32_t</span>&gt; mag;     <span class="c1">// little-endian limbs, base 1e9</span>
+    LimbVec mag;                   <span class="c1">// little-endian limbs, base 1e9</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">uint32_t</span> BASE = <span class="mi">1000000000u</span>;
 };</code></pre>
+<p><code>LimbVec</code> is the part of <code>std::vector&lt;uint32_t&gt;</code> the arithmetic uses, with the first four limbs inline. It is the same 24 bytes as the vector, and storage moves to the heap only past four limbs. A <code>Rat</code> is two <code>BigInt</code>s, and nearly every <code>Rat</code> a program makes has parts under 10^36, so each one used to cost two heap blocks for a limb apiece.</p>
 <p>Base 10^9 rather than a power of two. That choice trades some arithmetic density for the thing a language runtime does constantly: <strong>decimal conversion is free</strong>. <code>toString</code> walks the limbs and prints nine digits each; <code>fromString</code> parses in nine-digit chunks from the right. A binary base would make printing a repeated division by 10, which for a language where every integer is eventually stringified is the wrong trade.</p>
-<p>Multiplication is schoolbook, O(n·m). There is no Karatsuba and no FFT: the sizes that appear in practice are small, and the workloads where they are not are dominated by other costs.</p>
+<p>Multiplication is schoolbook below 96 limbs and Karatsuba above, with the longer operand taken in slices when the two differ in length. Where the compiler has a 128-bit integer, two magnitudes that each fit 64 bits skip both and multiply in one hardware product. It was schoolbook alone for a long time, on the argument that the sizes that appear in practice are small. They are, until a program writes <code>2 ** 1_000_000</code>: that went from 1.46 s to 0.04 s, measured on an M3 when the Karatsuba path was added. There is no FFT.</p>
 <p>Division is base-10^9 long division — Knuth's algorithm D. The per-limb quotient digit is <strong>estimated</strong> from the leading limbs and then corrected, which is what normalising the divisor so its top limb is at least <code>BASE/2</code> buys: it bounds the estimate's error to 2, where without it a small leading limb can make the estimate wrong by a factor of <code>BASE</code>.</p>
-<p>It did not always work that way, and the reason it changed is a good example of a wart that was only theoretical until it was not. The quotient digit used to be found by <strong>binary search</strong> over <code>[0, BASE)</code>, at about thirty <code>BigInt</code> multiplications per limb. That made <code>gcd</code> — Euclid over <code>divmod</code>, which every <code>Rat</code> construction calls — take 865 ms on a 1,437-digit over 812-digit pair where Rakudo takes 3. And it was not a corner case: <code>Math::NumberTheory</code>'s <code>FatRat</code> digit expansions reduce <code>Rat</code>s with ~600-digit parts on every step, so that file simply never finished.</p>
+<p>It did not always work that way, and the reason it changed is a good example of a wart that was only theoretical until it was not. The quotient digit used to be found by <strong>binary search</strong> over <code>[0, BASE)</code>, at about thirty <code>BigInt</code> multiplications per limb. That made <code>gcd</code> — then Euclid over <code>divmod</code>, which every <code>Rat</code> construction calls — take 865 ms on a 1,437-digit over 812-digit pair where Rakudo takes 3. And it was not a corner case: <code>Math::NumberTheory</code>'s <code>FatRat</code> digit expansions reduce <code>Rat</code>s with ~600-digit parts on every step, so that file simply never finished.</p>
 <h3>The 64-bit fast path</h3>
 <p>Almost every bignum operation in real Raku code is on values that are not, in fact, big. They arrive as <code>BigInt</code> because a <code>Rat</code> stores its numerator and denominator as <code>BigInt</code>s unconditionally — and <em>every</em> <code>Rat</code> construction calls <code>gcd</code> and then two <code>divmod</code>s.</p>
 <p>Measured on values that fit in 64 bits, <code>divmod</code> cost 2.1 microseconds and <code>gcd</code> — which is Euclid over <code>divmod</code> — cost 15.8 microseconds. So every decimal literal and every <code>p/q</code> in a program cost roughly 10 microseconds to build.</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.cpp — divmod, the fast path</span>
-<span class="c1">// One hardware divide instead of the base-1e9 long division below, whose</span>
-<span class="c1">// per-limb BINARY SEARCH costs ~30 BigInt multiplications.</span>
+<span class="c1">// Fast path: one hardware divide instead of the base-1e9 long division</span>
+<span class="c1">// below.</span>
 <span class="k">if</span> (a.fitsU64() &amp;&amp; b.fitsU64()) { <span class="cm">/* two 64-bit divides, rebuild */</span> }</code></pre>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.cpp — gcd</span>
-<span class="c1">// Euclid entirely in registers when both fit — the general loop below</span>
-<span class="c1">// builds two BigInts per step and calls divmod, and Value::rat() calls</span>
-<span class="c1">// this on EVERY Rat it constructs.</span></code></pre>
+<span class="c1">// Euclid entirely in registers when both fit — Value::rat() calls this on</span>
+<span class="c1">// EVERY Rat it constructs.</span></code></pre>
+<p>Both have grown a second band since. Where the compiler has a 128-bit integer, <code>divmod</code> of two magnitudes that fit 128 bits is two hardware divides as well: <code>($x * $x + $c) % $n</code> with a modulus near 10^17 has a dividend near 10^34 on every step of a Pollard rho. And past 64 bits <code>gcd</code> is no longer Euclid over <code>divmod</code>. It converts both magnitudes to binary words, takes out the factors of two, and runs Lehmer's algorithm on the rest.</p>
 <p>The guard is <code>fitsU64()</code>, which is a three-limb comparison against the base-10^9 digits of 2^64 − 1:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/BigInt.h</span>
 <span class="kt">bool</span> fitsU64() <span class="k">const</span> {
@@ -85,27 +86,41 @@
     <span class="k">if</span> (d.sign &lt; <span class="mi">0</span>) { n = -n; d = -d; }          <span class="c1">// sign lives in the numerator</span>
     BigInt g = BigInt::gcd(n, d);
     <span class="k">if</span> (!g.isZero()) { <span class="cm">/* divide both by g */</span> }
-    v.ratN = std::make_shared&lt;BigInt&gt;(n);
-    v.ratD = std::make_shared&lt;BigInt&gt;(d);
+    v.setRatParts(std::move(n), std::move(d));
     <span class="k">return</span> v;
 }</code></pre>
+<p>The pair is a payload body of its own, <code>PK::Rat</code>:</p>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
+<span class="k">struct</span> RatBody {
+    BigInt num, den;
+    RatBody(BigInt n, BigInt d) : num(std::move(n)), den(std::move(d)) {}
+    RatBody(<span class="k">const</span> RatBody&amp;) = <span class="k">default</span>;
+};</code></pre>
+<p>Every copy of the <code>Value</code> shares the body, and only its sole holder changes it in place. Until 2026-11-05 the parts were two <code>shared_ptr&lt;BigInt&gt;</code> in the cold block: three allocations a <code>Rat</code>. They are one 80-byte block now, with the two <code>BigInt</code>s by value and the <code>FatRat</code> flag in the block's header. A million kept <code>Rat</code>s went from 437 to 163 bytes an element with that change, against Rakudo's 211. <code>v.ratN()</code> and <code>v.ratD()</code> still answer a pointer to each part, null on anything that is not a <code>Rat</code>.</p>
 <p>Normalisation is eager: the denominator is positive and the pair is reduced at construction. That is what makes <code>==</code> on <code>Rat</code>s a component-wise comparison rather than a cross-multiplication, and it is why <code>gcd</code>'s speed matters.</p>
 <p>A decimal literal is a <code>Rat</code>, built by the parser as a numerator and denominator pair (<code>NumLit::ratNum</code>, <code>ratDen</code>, with decimal-string fields for the cases that overflow <code>long long</code>). The node caches the constructed <code>BigInt</code> parts, because a literal in a hot loop would otherwise re-allocate and re-reduce on every evaluation.</p>
 <h3>The spill, and the type that is exempt</h3>
 <p>Raku caps a plain <code>Rat</code>'s denominator at 64 bits. Arithmetic that would produce a larger one degrades to <code>Num</code>:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/InterpreterCore.cpp — applyArith, the Rat result</span>
-<span class="kt">bool</span> fat = (l.t == VT::Rat &amp;&amp; l.fatRat) || (r.t == VT::Rat &amp;&amp; r.fatRat);
-Value v = Value::rat(std::move(n), std::move(d)); v.fatRat = fat;
-<span class="k">if</span> (!fat &amp;&amp; v.ratD &amp;&amp; !v.ratD-&gt;fitsU64()) <span class="k">return</span> Value::number(v.toNum());
-<span class="k">return</span> v;</code></pre>
+<span class="kt">bool</span> fat = (l.t == VT::Rat &amp;&amp; l.fatRat()) ||
+           (r.t == VT::Rat &amp;&amp; r.fatRat());
+<span class="k">auto</span> mkRat = [&amp;](BigInt n, BigInt d) {
+    Value v = Value::rat(std::move(n), std::move(d)); v.setFatRat(fat);
+    <span class="k">if</span> (!fat &amp;&amp; v.ratD() &amp;&amp; !v.ratD()-&gt;fitsU64())
+        <span class="k">return</span> Value::number(v.toNum());
+    <span class="k">return</span> v;
+};</code></pre>
 <p><code>FatRat</code> is the same storage with a flag, and the flag does two things: it carries the type identity, and it exempts the value from the spill so a <code>FatRat</code> stays an arbitrary-precision rational forever. The flag is <strong>contagious</strong> — one <code>FatRat</code> operand makes the result a <code>FatRat</code> — which is the semantics Raku specifies and also the only way a chain of operations can stay exact.</p>
 <p><code>Rat.new</code> is subtly different from the <code>/</code> operator: a zero denominator must be <em>preserved</em> rather than treated as an error, normalised to ±1/0 with 0/0 kept as 0/0. That is <code>ratZ</code>, and taking <code>Str</code> or <code>Num</code> of such a value throws.</p>
 <h2 id="native-integer-containers">Native integer containers</h2>
 <p><code>my int8 $x</code> is not a different type at runtime; it is a <code>Value</code> carrying a width:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
-<span class="kt">int</span> natBits = <span class="mi">0</span>;       <span class="c1">// 0 = not native</span>
-<span class="kt">bool</span> natSigned = <span class="kc">false</span>;
-<span class="kt">bool</span> natFloat = <span class="kc">false</span>; <span class="c1">// num32: truncate to float32 on assignment</span></code></pre>
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h — abridged</span>
+<span class="kt">bool</span> natSigned : <span class="mi">1</span>;
+<span class="kt">bool</span> natFloat : <span class="mi">1</span>;     <span class="c1">// num32: truncates to float32 on assignment</span>
+<span class="kt">unsigned</span> natBytes_ : <span class="mi">4</span>;
+<span class="kt">int</span> natBits() <span class="k">const</span> { <span class="k">return</span> (<span class="kt">int</span>)natBytes_ * <span class="mi">8</span>; }   <span class="c1">// 0 = not native</span>
+<span class="kt">void</span> setNatBits(<span class="kt">int</span> bits) { natBytes_ = (<span class="kt">unsigned</span>)bits &gt;&gt; <span class="mi">3</span>; }</code></pre>
+<p>The width is only ever 0, 8, 16, 32 or 64 bits, so it is kept in bytes and fits four bits of the tag block.</p>
 <p>Every assignment masks to the declared width, so <code>my uint8 $b = 300</code> stores 44. The width is derived from the declared type name once and cached, because deriving it involved a <code>substr</code> and therefore an allocation per typed parameter per call:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.h</span>
 <span class="k">static</span> <span class="kt">int</span> natWidthOfType(<span class="k">const</span> std::string&amp; ofType, <span class="kt">bool</span>&amp; sign);</code></pre>
@@ -113,7 +128,7 @@ Value v = Value::rat(std::move(n), std::move(d)); v.fatRat = fat;
 <span class="k">mutable</span> DecidedOnce&lt;<span class="kt">int</span>&gt; natSpec{-<span class="mi">1</span>};   <span class="c1">// bits&lt;&lt;1 | signed, decided once</span></code></pre>
 <p>Typed arrays and hashes use the same table through <code>ofType</code>, so <code>my uint32 @a</code> stores masked elements.</p>
 <h2 id="complex">Complex</h2>
-<p><code>VT::Complex</code> reuses <code>n</code> for the real part and <code>im</code> for the imaginary one — the only tag that uses <code>im</code> at all, apart from a fractional <code>Range</code>'s upper bound. Coercing a <code>Complex</code> back to a real checks the imaginary part against <code>$*TOLERANCE</code>, which defaults to 1e-15 and is looked up dynamically first, then lexically.</p>
+<p><code>VT::Complex</code> reuses <code>n</code> for the real part and <code>im</code> for the imaginary one — the only tag that uses <code>im</code> at all, apart from a fractional <code>Range</code>'s upper bound. <code>im</code> is a field of the cold block, read as <code>v.im()</code>, so a <code>Complex</code> carries one. Coercing a <code>Complex</code> back to a real checks the imaginary part against <code>$*TOLERANCE</code>, which defaults to 1e-15 and is looked up dynamically first, then lexically.</p>
 <p>The language revision matters here: under <code>use v6.e.PREVIEW</code>, <code>sqrt(-1)</code> is a <code>Complex</code> rather than <code>NaN</code> — and so is <code>log(-1)</code>, and <code>log10</code>/<code>log2</code> of a negative, all of which come through one <code>rtLogReal</code> so the branch is written once. <code>Interpreter::langRev_</code> carries the revision <em>of the code currently running</em>: each compilation unit records the revision it was compiled under, every routine is stamped with its unit's, and the call path switches to the callee's for the duration of the call. That is what lets a module compiled under 6.e keep <code>Complex</code> results when a 6.d program calls into it, without the 6.d program's own <code>sqrt</code> changing meaning.</p>
 <h2 id="where-the-arithmetic-actually-happens">Where the arithmetic actually happens</h2>
 <p>One function, <code>applyArith(op, l, r)</code>, implements every binary operator for every combination of numeric types, plus string operators, set operators, junction autothreading and <code>Whatever</code> currying. It is shared by the interpreter and the compiled backend, which is why the two agree byte for byte.</p>
@@ -122,13 +137,14 @@ Value v = Value::rat(std::move(n), std::move(d)); v.fatRat = fat;
 <p><code>Value::toNum()</code> numified a <code>Str</code> with <code>std::stod</code>, which <strong>throws <code>std::invalid_argument</code></strong> when the string does not begin with a number. The result was caught and turned into <code>0.0</code> — the right answer, arrived at by raising, unwinding and catching a C++ exception.</p>
 <p>Speculatively numifying a string that turns out not to be one is completely routine in an interpreter; the invocant of every <code>"ab".method</code> call reached that code. So the language's slowest control-transfer mechanism sat on its hottest path, at roughly 7 microseconds per method call.</p>
 <p><code>std::strtod</code> reports the same failure by leaving its end pointer at the start of the input, and costs nothing:</p>
-<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.cpp</span>
-<span class="k">static</span> <span class="kt">double</span> strToNumOr0(<span class="k">const</span> std::string&amp; s) {
-    <span class="k">if</span> (s.empty()) <span class="k">return</span> <span class="mf">0.0</span>;
-    <span class="k">const</span> <span class="kt">char</span>* p = s.c_str(); <span class="kt">char</span>* end = <span class="kc">nullptr</span>;
+<pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Value.cpp — abridged</span>
+<span class="k">static</span> <span class="kt">double</span> strToNumOr0(<span class="k">const</span> <span class="kt">char</span>* p, <span class="kt">size_t</span> n) {
+    <span class="k">if</span> (n == <span class="mi">0</span>) <span class="k">return</span> <span class="mf">0.0</span>;
+    <span class="c1">// … a leading U+2212 MINUS SIGN is turned into '-' first …</span>
+    <span class="kt">char</span>* end = <span class="kc">nullptr</span>;
     errno = <span class="mi">0</span>;
     <span class="kt">double</span> d = cnum::strtod(p, &amp;end);
-    <span class="k">if</span> (end == p) <span class="k">return</span> <span class="mf">0.0</span>;   <span class="c1">// nothing numeric at the front — stod would throw</span>
+    <span class="k">if</span> (end == p) <span class="k">return</span> <span class="mf">0.0</span>;   <span class="c1">// nothing numeric at the front</span>
     <span class="k">return</span> d;
 }</code></pre>
 <p>Measured over 300,000 iterations:</p>

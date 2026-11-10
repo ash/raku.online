@@ -22,7 +22,7 @@
 <main>
 <div class="content book">
 <p class="crumb"><a href="/book/">← Contents</a></p>
-<p class="ch-label">Chapter 36</p><h1>NativeCall and the libffi Backend</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#libffi-is-loaded-at-run-time-and-its-abi-is-restated-by-hand">libffi is loaded at run time, and its ABI is restated by hand</a></li><li><a href="#what-happens-with-no-libffi">What happens with no libffi</a></li><li><a href="#how-a-call-is-made">How a call is made</a></li><li><a href="#variadics">Variadics</a></li><li><a href="#the-type-map">The type map</a></li><li><a href="#callbacks">Callbacks</a></li><li><a href="#your-declaration-is-a-promise-nothing-can-check">Your declaration is a promise nothing can check</a></li><li><a href="#tracing">Tracing</a></li><li><a href="#in-compiled-code">In compiled code</a></li><li><a href="#not-supported">Not supported</a></li></ul></nav>
+<p class="ch-label">Chapter 36</p><h1>NativeCall and the libffi Backend</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#libffi-is-loaded-at-run-time-and-its-abi-is-restated-by-hand">libffi is loaded at run time, and its ABI is restated by hand</a></li><li><a href="#what-happens-with-no-libffi">What happens with no libffi</a></li><li><a href="#how-a-call-is-made">How a call is made</a></li><li><a href="#variadics">Variadics</a></li><li><a href="#the-type-map">The type map</a></li><li><a href="#three-helper-modules-the-engine-answers-itself">Three helper modules the engine answers itself</a></li><li><a href="#callbacks">Callbacks</a></li><li><a href="#your-declaration-is-a-promise-nothing-can-check">Your declaration is a promise nothing can check</a></li><li><a href="#tracing">Tracing</a></li><li><a href="#in-compiled-code">In compiled code</a></li><li><a href="#not-supported">Not supported</a></li></ul></nav>
 <p>Sooner or later a program needs something the language does not have: a system call, a compression library, a database client. Raku's answer is to let a program declare the C function's signature in Raku and then call it as if it were an ordinary sub.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> NativeCall;
 <span class="k">sub</span> strlen(Str --&gt; size_t) <span class="k">is</span> native {*}
@@ -60,6 +60,7 @@ say hypot(<span class="mi">3e0</span>, <span class="mi">4e0</span>);     <span c
     <span class="kt">int</span> (*prep_var)(<span class="kt">void</span>*, <span class="kt">int</span>, <span class="kt">unsigned</span>, <span class="kt">unsigned</span>, Type*, Type**);
     <span class="kt">void</span> (*call)(<span class="kt">void</span>*, <span class="kt">void</span> (*)(<span class="kt">void</span>), <span class="kt">void</span>*, <span class="kt">void</span>**);
     <span class="kt">void</span>* (*closure_alloc)(<span class="kt">size_t</span>, <span class="kt">void</span>**);
+    <span class="kt">void</span> (*closure_free)(<span class="kt">void</span>*);
     <span class="kt">int</span> (*prep_closure_loc)(<span class="kt">void</span>*, <span class="kt">void</span>*,
                             <span class="kt">void</span> (*)(<span class="kt">void</span>*, <span class="kt">void</span>*, <span class="kt">void</span>**, <span class="kt">void</span>*),
                             <span class="kt">void</span>*, <span class="kt">void</span>*);
@@ -70,12 +71,13 @@ say hypot(<span class="mi">3e0</span>, <span class="mi">4e0</span>);     <span c
 <pre class="native-code"><code class="lang-sh">rakupp --ffi-info      # libffi: libffi.dylib (abi 1)</code></pre>
 <h2 id="what-happens-with-no-libffi">What happens with no libffi</h2>
 <p>Not everything keeps working, and being clear-eyed about that is part of the design. The fallback is a <strong>narrower</strong> FFI, not a transparent substitute.</p>
-<p>Calls go through a fixed prototype that hands eight integer and eight floating-point arguments to the platform ABI and lets it place them. That is correct for a large majority of real C signatures: pointers, <code>Str</code>, integers of every width, <code>num64</code>, <code>CArray</code>, struct and union handles, <code>is rw</code> out-parameters, <code>nativecast</code>, <code>cglobal</code> and synchronous callbacks all behave exactly as they do with libffi.</p>
+<p>Calls go through a fixed prototype that hands sixteen integer and eight floating-point arguments to the platform ABI and lets it place them. (Sixteen integers, not eight, because the Win32 API routinely goes past eight — <code>CreateWindowExW</code> takes twelve — and Windows is where libffi is usually absent.) That is correct for a large majority of real C signatures: pointers, <code>Str</code>, integers of every width, <code>num64</code>, <code>CArray</code>, struct and union handles, <code>is rw</code> out-parameters, <code>nativecast</code>, <code>cglobal</code> and synchronous callbacks all behave exactly as they do with libffi.</p>
 <p>Four things it cannot do, and each <strong>throws at the point of the call</strong> rather than computing a wrong answer:</p>
 <div class="tablewrap"><table><tr><th></th><th></th></tr><tr><td>a <code>num32</code> argument or return</td><td>a real C <code>float</code> cannot be placed by the fixed prototype</td></tr>
 <tr><td>a variadic signature</td><td>needs <code>ffi_prep_cif_var</code> to say where <code>...</code> begins</td></tr>
-<tr><td>more than 8 integer or 8 float arguments</td><td>the prototype is that wide and no wider</td></tr>
+<tr><td>more than 16 integer or 8 float arguments</td><td>the prototype is that wide and no wider</td></tr>
 <tr><td>more than 64 distinct callbacks</td><td>the trampoline pool holds 64</td></tr></table></div>
+<p>Two targets differ. Windows x64 assigns argument registers by position, not by bank, so there the prototype cannot place a floating-point argument at all, and one throws like the rest. And a 32-bit x86 build, where every argument goes on the stack, lays the arguments out in 32 stack words as cdecl would: that places <code>num32</code> and variadic arguments too, and its limit is 128 bytes of arguments.</p>
 <p><code>RAKUPP_FFI=0</code> forces this path, and the fallback is tested through it: the regression test <code>t/regression/nativecall-libffi.raku</code> re-runs the cases only libffi can do in a child process with the backend switched off, and checks each one throws rather than answering. WebAssembly takes the fallback by construction — there is no shared library to open.</p>
 <h2 id="how-a-call-is-made">How a call is made</h2>
 <ol><li><strong>Resolve.</strong> The library is <code>dlopen</code>ed — the name as written, then the  platform-decorated forms — and the symbol <code>dlsym</code>ed.</li><li><strong>Marshal.</strong> Each argument is converted once, at its <em>declared</em> width, into a  slot libffi reads directly.</li><li><strong>Describe.</strong> The signature becomes a call interface, prepared once per sub —  with the variadic form when the signature is variadic.</li><li><strong>Call</strong>, then box the return: a pointer becomes a live <code>Pointer</code> or  <code>CArray</code>, a <code>Str</code> return is read as a C string, a narrow integer is truncated  and sign-extended, and <code>is rw</code> out-parameters and mutated buffers are copied  back.</li></ol>
@@ -93,7 +95,7 @@ CifSlot nativeCifCache;           <span class="c1">// ffi_prep_cif is ~80 ns —
                                   <span class="c1">// copied Value starts with no cif rather</span>
                                   <span class="c1">// than a second owner of the same one.</span></code></pre>
 <p>The cost of going through libffi rather than calling blind is about <strong>20 nanoseconds per crossing</strong> — 106 milliseconds against 100 for 300,000 calls of <code>abs</code>, where the bare loop is 24. On a crossing that costs about 275 nanoseconds end to end, that is under a tenth, which is why there is one code path rather than a fast one and a general one.</p>
-<p><code>nativeLibExpr</code> handles a genuinely awkward case: <code>is native(EXPR)</code> where the expression could not be evaluated at declaration time. It is retried once at the first call, and the raw <code>Expr*</code> is safe to keep because the AST outlives the interpreter.</p>
+<p><code>nativeLibExpr</code> handles a genuinely awkward case: <code>is native(EXPR)</code> where the expression could not be evaluated at declaration time. It is retried once at the first call, and the raw <code>Expr*</code> is safe to keep because the AST outlives the interpreter. A sibling field, <code>nativeSymExpr</code>, does the same for a C symbol name computed by <code>is symbol(EXPR)</code>.</p>
 <h2 id="variadics">Variadics</h2>
 <p>Variadic C functions are the easiest thing in an FFI to get quietly wrong.</p>
 <p>C's <code>...</code> is not a formality. On the SysV AMD64 ABI a variadic argument goes in a register but the callee is told how many; on the Apple ARM64 ABI it goes on the <strong>stack</strong>, while a fixed argument in the same position would go in a register. A caller that does not know which arguments are variadic cannot place them, and the failure is silent — you get a number, it is just the wrong one.</p>
@@ -116,7 +118,8 @@ say <span class="nv">$buf</span>.decode(<span class="s1">'latin-1'</span>).subst
 <tr><td><code>bool</code></td><td><code>bool</code></td><td>1</td></tr>
 <tr><td><code>int16</code> <code>uint16</code></td><td><code>int16_t</code> <code>uint16_t</code></td><td>2</td></tr>
 <tr><td><code>int32</code> <code>uint32</code></td><td><code>int32_t</code> <code>uint32_t</code></td><td>4</td></tr>
-<tr><td><code>int</code> <code>int64</code> <code>long</code> <code>size_t</code></td><td>64-bit integer</td><td>8</td></tr>
+<tr><td><code>int</code> <code>int64</code> <code>longlong</code></td><td>64-bit integer</td><td>8</td></tr>
+<tr><td><code>long</code> <code>size_t</code></td><td>C's own <code>long</code> and <code>size_t</code></td><td>8 (4 on a 32-bit target)</td></tr>
 <tr><td><code>num32</code></td><td><code>float</code></td><td>4</td></tr>
 <tr><td><code>num</code> <code>num64</code></td><td><code>double</code></td><td>8</td></tr>
 <tr><td><code>Str</code></td><td><code>char*</code></td><td>pointer</td></tr>
@@ -136,11 +139,14 @@ Value ncMakeLiveCArray(<span class="k">const</span> std::string&amp; type, <span
                                std::string&amp; type);
 <span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructSize(ClassInfo* ci);
 <span class="k">static</span> <span class="kt">long</span> <span class="kt">long</span> ncStructAlign(ClassInfo* ci);</code></pre>
+<h2 id="three-helper-modules-the-engine-answers-itself">Three helper modules the engine answers itself</h2>
+<p>The ecosystem's <code>NativeHelpers::Blob</code>, <code>NativeHelpers::CStruct</code> and <code>NativeHelpers::Pointer</code> are built on MoarVM's own memory layout and on <code>nqp::</code> operations, and cannot run here. Raku++ carries its own versions under <code>rakulib/</code>, written in ordinary Raku over the same <code>Pointer</code> and <code>CArray</code> and keeping the same exported surface, and the build compiles their text into the binary. A <code>use</code> of one of these three names resolves to that copy ahead of any <code>-I</code> path or installed distribution — <code>isShadowedModule</code> in <code>InterpreterBinding.cpp</code> is the list — so a module that depends on them, DBIish's MySQL driver for one, loads with nothing more installed.</p>
 <h2 id="callbacks">Callbacks</h2>
 <p>A <code>Callable</code> handed to C becomes a real C function pointer built with an <code>ffi_closure</code>. Parameters are typed from the block's own signature:</p>
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/Interpreter.h</span>
-<span class="kt">long</span> runCallback(<span class="kt">int</span> slot, <span class="kt">long</span> a0, <span class="kt">long</span> a1, <span class="kt">long</span> a2,
-                 <span class="kt">long</span> a3, <span class="kt">long</span> a4, <span class="kt">long</span> a5);
+<span class="kt">long</span> <span class="kt">long</span> runCallback(<span class="kt">int</span> slot, <span class="kt">long</span> <span class="kt">long</span> a0, <span class="kt">long</span> <span class="kt">long</span> a1,
+                      <span class="kt">long</span> <span class="kt">long</span> a2, <span class="kt">long</span> <span class="kt">long</span> a3, <span class="kt">long</span> <span class="kt">long</span> a4,
+                      <span class="kt">long</span> <span class="kt">long</span> a5);
 <span class="kt">void</span> runFfiClosure(<span class="kt">void</span>* closure, <span class="kt">void</span>* ret, <span class="kt">void</span>** args);
 <span class="kt">bool</span> onRakuThread() <span class="k">const</span> { <span class="k">return</span> (<span class="kt">bool</span>)tctx().cur; }</code></pre>
 <p>The last one is the guard that matters. A callback must fire <strong>during</strong> the native call — <code>qsort</code>, <code>bsearch</code>, an iteration callback. A callback that C stores and fires later from a thread of its own has no Raku scope to run in, so <code>onRakuThread()</code> detects it and the callback is ignored with a warning rather than run against a thread the interpreter never entered.</p>
@@ -161,7 +167,7 @@ say abs(-<span class="mf">99.5e0</span>);   <span class="c1"># -99.5</span></cod
 <p>An external tracer cannot do this job. <code>lldb</code>, <code>ltrace</code> and <code>dtrace</code> see C symbols, and the interpreter's own C++ calls <code>strlen</code> and <code>malloc</code> constantly, so a breakpoint on <code>strlen</code> cannot distinguish a crossing the program asked for from one the runtime made for itself. Only this layer knows which call came from Raku.</p>
 <h2 id="in-compiled-code">In compiled code</h2>
 <p><code>--exe</code> emits the same <code>callNative</code>, so <code>is native</code> behaves identically interpreted and compiled — and a compiled binary looks for libffi at <em>its</em> run time, not at build time.</p>
-<p>A few shapes make <code>--exe</code> fall back to bundling: <code>is native(&amp;lib-sub)</code>, a library name computed by an expression, <code>is rw</code> out-parameters, and buffer or <code>CArray</code> parameters needing copy-back. The compiler says so and produces a bundled binary instead.</p>
+<p>A few shapes make <code>--exe</code> fall back to bundling: <code>is native(&amp;lib-sub)</code>, a library name computed by an expression, a <code>multi</code> native sub, <code>is rw</code> out-parameters, and buffer or <code>CArray</code> parameters needing copy-back. The compiler says so and produces a bundled binary instead.</p>
 <h2 id="not-supported">Not supported</h2>
 <ul><li><strong>C structs passed or returned by value.</strong> Rakudo cannot express this either — its NativeCall maps a struct to one type code with no by-value variant — so adding it here would mean inventing syntax rather than matching an existing spelling. A return of up to 8 bytes can be declared <code>int64</code> and unpacked by hand.</li><li><strong>Callbacks fired from a thread the C library owns</strong>, as above.</li></ul><nav class="ch-nav"><a class="prev" href="/book/nqp/"><span>Previous</span><code>use nqp</code>: a Compatibility Subset</a><a class="next" href="/book/extension-abi/"><span>Next</span>The Extension ABI</a></nav>
 <footer>
