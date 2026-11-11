@@ -63,7 +63,12 @@ sub MAIN(
     Str :$typedoc = 'src/data/typedoc.raku',
     Str :$out = 'src/data/typerun.raku',
     Int :$limit = 0,
+    # `--only=Unicode,Str`: rerun just these types and keep every other row of
+    # $out as it stands, so refreshing one page after a fix does not also churn
+    # the run-to-run noise of the other 350 types into the diff.
+    Str :$only = '',
 ) {
+    my %only = $only.split(',', :skip-empty).map(* => True);
     my %td = EVAL slurp $typedoc;
 
     # A scratch directory for the examples to scribble in.
@@ -72,6 +77,7 @@ sub MAIN(
 
     my @jobs;
     for @(%td<types>) -> %t {
+        next if %only && !%only{%t<name>};
         for @(%t<examples>).kv -> $idx, %e {
             next unless %e<expect>.chars;
             # `:lang<text>` is not Raku; `:skip-test` is the doc authors telling
@@ -112,6 +118,23 @@ sub MAIN(
         @recs.push([ $type, $idx, $verdict, $ku, $ra,
                      (%a<err>.lines[0] // ''), (%b<err>.lines[0] // '') ]);
         note "  {$i + 1}/{@jobs.elems}" if ($i + 1) %% 100;
+    }
+
+    # Merge: every kept row stays where it was, and the rerun type's rows go
+    # where that type's old rows were (or at the end, for a type new to $out).
+    if %only && $out.IO.e {
+        my @old = @((EVAL slurp $out)<runs>);
+        my @merged;
+        my %placed;
+        for @old -> @r {
+            if %only{@r[0]} {
+                next if %placed{@r[0]}++;
+                @merged.append: @recs.grep(*[0] eq @r[0]);
+            }
+            else { @merged.push(@r) }
+        }
+        @merged.append: @recs.grep({ !%placed{.[0]} });
+        @recs = @merged;
     }
 
     my @l;

@@ -6509,12 +6509,15 @@ ok 1 - The object is-a \'Numeric\'
     [ 'Thread', '7', 'all-differ', 'Thread<1>(calc thread)
 ', 'Thread<4>(calc thread)
 ', '', '' ],
-    [ 'Unicode', '1', 'all-differ', '', 'v17.0
-', 'No such method \'version\' for invocant of type \'Unicode\'', '' ],
-    [ 'Unicode', '2', 'rakupp-differs', '', 'True
-', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
-    [ 'Unicode', '3', 'all-differ', '', 'True
-', 'No such method \'NFG\' for invocant of type \'Unicode\'', '' ],
+    [ 'Unicode', '1', 'all-differ', 'v18.0
+', 'v17.0
+', '', '' ],
+    [ 'Unicode', '2', 'ok', 'True
+', 'True
+', '', '' ],
+    [ 'Unicode', '3', 'doc-drift', 'True
+', 'True
+', '', '' ],
     [ 'ValueObjAt', '1', 'all-differ', '"Hash|0x1062dea78"
 ', 'ObjAt.new("Hash|6268686548528")
 ', '', '' ],

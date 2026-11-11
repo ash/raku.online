@@ -6,11 +6,11 @@ answers compared.
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| `ok` | 1006 | documentation, Rakudo and Raku++ all agree |
-| `doc-drift` | 158 | both engines agree; **the documentation is stale** |
+| `ok` | 1007 | documentation, Rakudo and Raku++ all agree |
+| `doc-drift` | 159 | both engines agree; **the documentation is stale** |
 | `not-runnable` | 101 | neither engine runs it standalone (needs surrounding context) |
-| `all-differ` | 98 | three different answers — needs a human |
-| `rakupp-differs` | 65 | documentation and Rakudo agree; **Raku++ is wrong** |
+| `all-differ` | 97 | three different answers — needs a human |
+| `rakupp-differs` | 64 | documentation and Rakudo agree; **Raku++ is wrong** |
 | `rakudo-differs` | 23 | doc and Raku++ agree; **Rakudo does not** — usually a stale doc that Raku++ was built from |
 
 ## Where Raku++ fails, by type
@@ -58,7 +58,7 @@ answers compared.
 | `Seq` | 1 |
 | `Signal` | 1 |
 
-## Missing routines (14 examples, 13 distinct)
+## Missing routines (13 examples, 12 distinct)
 
 Raku++ produced no output and reported a dispatch failure. Each line is one
 routine to implement.
@@ -74,7 +74,6 @@ routine to implement.
 | No such method 'pretending_to_be' for invocant of type 'Metamodel::ParametricRoleGroupHOW' | 1 | `Metamodel::TypePretense` |
 | ===SORRY!=== Parse error at line 3: Couldn't find terminator ; (corresponding ; was at lin… | 1 | `Pair` |
 | No such method 'sub_signature' for invocant of type 'Parameter' | 1 | `Parameter` |
-| No such method 'NFG' for invocant of type 'Unicode' | 1 | `Unicode` |
 | No such method 'payload' for invocant of type 'X::Method::NotFound' | 1 | `X::AdHoc` |
 | last without loop construct | 1 | `X::ControlFlow` |
 | Undefined routine 'an-ast' | 1 | `X::TypeCheck::Splice` |
@@ -139,7 +138,7 @@ produces. These are the substantive defects.
 | `routines` | `I ♥ Raku⏎` | `I ♥  Rak⏎` |
 
 
-## Documentation drift (158)
+## Documentation drift (159)
 
 Both engines agree with each other and disagree with the documentation, so the
 documentation is the thing that is wrong. Worth reporting upstream — and worth
@@ -188,7 +187,7 @@ documentation is the thing that is wrong. Worth reporting upstream — and worth
 | `Cool` | `0⏎0.7853981633974484⏎` |
 | `Cool` | `2.2990327315089707⏎2.2990327315089707⏎` |
 
-…and 118 more.
+…and 119 more.
 
 ## Raku++ agrees with the docs, Rakudo does not (23)
 
