@@ -575,6 +575,73 @@
                     optScale, drawOpt);
         drawOpt();
       }
+
+      // ---- peak RSS small multiples ---------------------------------------
+      // The same programs as the two timing sections, measured for memory: the
+      // process's peak resident set, read from /usr/bin/time. Only the M4 has
+      // measured it, from the 2026-11-11 sitting on, so the x axis is just the
+      // points that carry an rss_m4 block rather than the whole history, where
+      // these lines would be a few dots crammed against the right edge.
+      function drawRss(hostId, suite, order, lanes, dir) {
+        var host = document.getElementById(hostId);
+        if (!host) return;
+        var pts = rel.filter(function (r) { return r.rss_m4 && r.rss_m4[suite]; });
+        if (!pts.length) { host.textContent = 'Not measured yet.'; return; }
+        var present = {};
+        pts.forEach(function (r) { Object.keys(r.rss_m4[suite]).forEach(function (k) { present[k] = true; }); });
+        var progs = order.filter(function (k) { return present[k]; });
+        Object.keys(present).sort().forEach(function (k) { if (progs.indexOf(k) < 0) progs.push(k); });
+        var state = { log: false };
+        var draw = function () {
+          host.textContent = '';
+          progs.forEach(function (prog) {
+            // KiB in the data, MB on the axis: the Raku++ lines sit at a few
+            // MB and Rakudo's at a hundred and more.
+            var cols = lanes.map(function (l) {
+              return pts.map(function (r) {
+                var b = r.rss_m4[suite][prog];
+                return b && b[l[0]] != null ? Math.round(b[l[0]] / 1024 * 10) / 10 : null;
+              });
+            });
+            var all = [].concat.apply([], cols).filter(function (v) { return v != null; });
+            if (!all.length) return;
+            var card = div('dash-bench-card', host);
+            benchTitle(card, prog, dir);
+            var ch = div('dash-chart', card);
+            var refAt = lanes.length - 1;   // Rakudo is the last lane
+            lineChart(ch, {
+              labels: pts.map(fullLabel),
+              tickLabels: pts.map(function (r) { return r.tag; }),
+              series: lanes.map(function (l, i) {
+                return { name: l[1], cls: l[2], dash: !!l[3], values: cols[i] };
+              }),
+              log: state.log,
+              dataMin: Math.min.apply(null, all.filter(function (v) { return v > 0; })),
+              yMax: state.log ? Math.max.apply(null, all) : niceMax(Math.max.apply(null, all)),
+              yFmt: function (v) { return v < 10 ? String(v) : fmt(Math.round(v)); },
+              width: 380, height: 230, maxXLabels: 4,
+              tipRow: function (si, i) {
+                var v = cols[si][i];
+                if (v == null) return lanes[si][1] + ': not measured';
+                var row = lanes[si][1] + ': ' + v + ' MB';
+                var ref = cols[refAt][i];
+                if (si !== refAt && ref) row += v < ref ? ' \u00b7 ' + (ref / v).toFixed(1) + '\u00d7 less than Rakudo'
+                                              : ' \u00b7 ' + (v / ref).toFixed(1) + '\u00d7 Rakudo\u2019s';
+                return row;
+              }
+            });
+          });
+        };
+        scaleSwitch(host.parentNode.insertBefore(document.createElement('div'), host), state, draw);
+        draw();
+      }
+      drawRss('dash-rss', 'kernels', KERNEL_ORDER,
+              [['interp', 'interpreter', 's1'], ['native', 'native --exe', 's2'],
+               ['rakudo', 'Rakudo', 'sref', true]], 'bench/');
+      drawRss('dash-optrss', 'optbench', ['sieve', 'powmod', 'intsum', 'fibcalls',
+              'arrayidx', 'nummath', 'methodcalls', 'stringbuild'],
+              [['exe', '--exe', 's2'], ['opt', '--exe -O', 's1'],
+               ['rakudo', 'Rakudo', 'sref', true]], 'optbench/');
     })
     .catch(function (e) {
       document.getElementById('dash-roast').textContent = 'Could not load dashboard data (' + e + ').';

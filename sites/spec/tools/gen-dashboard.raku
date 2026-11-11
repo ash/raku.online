@@ -635,6 +635,43 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         }
     }
 
+    # Peak RSS on the M4, src/data/memory-m4.tsv (label, suite, program, lane,
+    # KiB): `kernels` are tools/bench/ with lanes interp|native|rakudo,
+    # `optbench` is tools/optbench/ with exe|opt|rakudo. Rakudo is one
+    # reading of one bottle, filed under the label `rakudo` and carried onto
+    # every entry that has rows of that suite, as the timing eras carry it.
+    # An entry's block is "rss_m4":{"kernels":{...},"optbench":{...}}.
+    my %rss-m4;
+    my %rss-rakudo;
+    my $mm4 = 'src/data/memory-m4.tsv'.IO;
+    if $mm4.e {
+        for $mm4.lines -> $line {
+            next if $line.starts-with('#') || !$line.trim;
+            my @p = $line.words;
+            next unless @p.elems == 5 && @p[1] eq any(<kernels optbench>)
+                     && @p[3] eq any(<interp native exe opt rakudo>);
+            if @p[0] eq 'rakudo' { %rss-rakudo{@p[1]}{@p[2]} = @p[4].Int }
+            else                 { %rss-m4{@p[0]}{@p[1]}{@p[2]}{@p[3]} = @p[4].Int }
+        }
+    }
+    my sub rss-json(Str $label --> Str) {
+        my @s;
+        for <kernels optbench> -> $suite {
+            next unless %rss-m4{$label}{$suite}:exists;
+            my @lanes = $suite eq 'kernels' ?? <interp native rakudo> !! <exe opt rakudo>;
+            my %b = %rss-m4{$label}{$suite};
+            my @k;
+            for %b.keys.sort -> $prog {
+                my %l = %b{$prog};
+                %l<rakudo> //= %rss-rakudo{$suite}{$prog} if %rss-rakudo{$suite}{$prog}:exists;
+                @k.push(json-esc($prog) ~ ':{' ~
+                    @lanes.grep({ %l{$_}:exists }).map({ json-esc($_) ~ ':' ~ %l{$_} }).join(',') ~ '}');
+            }
+            @s.push(json-esc($suite) ~ ':{' ~ @k.join(',') ~ '}');
+        }
+        '{' ~ @s.join(',') ~ '}'
+    }
+
     # One M4 bench block: the sitting's rows for $label, with the M4 Rakudo
     # assigned by date exactly as the M3 one is. Empty when the M4 has no rows
     # for that label, and the entry then carries no block at all.
@@ -741,6 +778,7 @@ sub MAIN(Str :$rakupp-repo = '../raku++', Str :$battery = '../raku-module-batter
         }
         @f.push('"optbench_m4":' ~ optbench-json(%opt-m4{$label}))
             if %opt-m4{$label}:exists;
+        @f.push('"rss_m4":' ~ rss-json($label)) if %rss-m4{$label}:exists;
         @entries.push('{' ~ @f.join(',') ~ '}');
         # the same entry, labelled by its date, is what the log keeps once
         # `main` has moved on to a newer commit

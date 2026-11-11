@@ -613,7 +613,7 @@ sub render-conformance(%site, %by-cat --> Str) {
 # The dashboard — Raku++ by the numbers over releases, rendered client-side by
 # dashboard.js from the committed src/data/dashboard.json snapshot (mined from
 # the repos' own docs by tools/gen-dashboard.raku; re-run it at each release).
-# Its five section headings carry an id and the `#` link base.css shows on hover,
+# Its section headings carry an id and the `#` link base.css shows on hover,
 # the same markup the tour, the FAQ, the cookbook and the spec's own pages emit —
 # a chart is a thing people link someone else to. `optbench` keeps the id it has
 # always had, so links already written to it still resolve.
@@ -761,6 +761,22 @@ sub render-dashboard(%site, %by-cat --> Str) {
     begin, ratios within one machine. They start on v5.3.0's release binary,
     the M3's last <code>-O</code> point, so the step there is the machine.</p>
     <div class="dash-bench" id="dash-optbench"></div>
+
+    <h2 class="conf-areas-title" id="memory">Memory <span>— peak RSS of the benchmark kernels in MB, lower is better</span> <a class="anchor" href="#memory" aria-label="link">#</a></h2>
+    <p class="dash-note">The programs of the two sections above, measured for
+    memory instead of time: the peak resident set of the whole process, as
+    <code>/usr/bin/time -l</code> reports it, the minimum of three runs, taken
+    in a pass of its own after the timing. It counts everything the process
+    holds — for the interpreter its own startup, for Rakudo MoarVM and its
+    core setting — so it is what running that program costs on each engine,
+    not the size of the program's data alone. Unlike milliseconds, peak RSS
+    does not move with the machine's load. Measured on the Apple M4 only, in a
+    sitting on 2026-11-11 that ran every release binary from v5.3.0 on, so
+    these charts start there. Rakudo is the 2026.09 bottle the timings use,
+    measured once and drawn across every point.</p>
+    <div class="dash-bench" id="dash-rss"></div>
+    <h2 class="conf-areas-title" id="memory-optbench">Memory under <code>-O</code> <span>— peak RSS of the optimizer programs in MB</span> <a class="anchor" href="#memory-optbench" aria-label="link">#</a></h2>
+    <div class="dash-bench" id="dash-optrss"></div>
     BODY
     # The DATA's own cache tag, not the theme's. dashboard.js used to reuse the
     # `?v=` on its own <script src>, which is $VERSION — the theme hash — so a
