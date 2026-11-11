@@ -114,7 +114,7 @@ engine. The links follow edits a quarter-second after typing stops; a request
 made while a program runs waits for it.
 
 The checkbox shows only when the engine has `rakupp_doc_links`: one built from
-rakupp after the v5.6.3 tag, as `www/rakujs.*` is now. With an older engine it
+rakupp after the v5.6.3 tag, as `www/rakujs.*` is (v5.7.0's). With an older engine it
 stays hidden and the page is as it was. `&docs=1` in a link turns it on for
 that visit; the setting is remembered in `localStorage` (`raku-play-docs`).
 
