@@ -78,14 +78,17 @@ sub link-target(Str $t --> Str) {
     # repo, so ../LINT.md is docs/guide/LINT.md and ../../status/ROAST.md is
     # docs/status/ROAST.md. The whole ../ chain has to be resolved here:
     # GitHub serves a blob URL literally and does not normalise a '..' in it.
+    # (resolved from the repo ROOT, not from docs/: mobile.md's
+    # ../../../rakujs/INTERNALS.md climbs out of docs/ to rakujs/, and clamped
+    # at docs/ it became docs/rakujs/INTERNALS.md, a 404)
     if $t.starts-with('../') {
-        my @dirs = @HOME-DIR;
+        my @dirs = 'docs', |@HOME-DIR;
         my $rest = $t;
         while $rest.starts-with('../') {
             $rest = $rest.substr(3);
             @dirs.pop if @dirs;
         }
-        return %SITE<docs-base> ~ (|@dirs, $rest).join('/');
+        return %SITE<docs-base>.subst(/ 'docs/' $ /, '') ~ (|@dirs, $rest).join('/');
     }
     # A #fragment rides along to the rewritten URL: a deep link into another
     # article is `other.md#some-heading`, which does not END with .md and so
