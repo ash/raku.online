@@ -71,16 +71,16 @@ the               4
 a                 2
 dog               2
 quick             2</code></pre>
-<p>Four pieces of the signature are doing work that would otherwise be code. <code>Str $file = '-'</code> makes the argument optional with a default. <code>Int :$top</code> rejects <code>--top=abc</code> before the body runs. <code>Bool :$json</code> makes <code>--json</code> a flag rather than something that takes a value. And every <code>#=</code> becomes a line of the usage message.</p>
+<p>Four pieces of the signature are doing work that would otherwise be code. <code>Str $file = '-'</code> makes the argument optional with a default. <code>Int :$top</code> rejects <code>--top=abc</code> before the body runs. <code>Bool :$json</code> makes <code>--json</code> a flag that needs no value — though a caller may still spell one out, as <code>--json=True</code> or <code>--json=False</code>. And every <code>#=</code> becomes a line of the usage message.</p>
 <h2 id="the-usage-message-is-free">The usage message is free <a class="anchor" href="#the-usage-message-is-free" aria-label="link">#</a></h2>
 <p>Nothing in the program prints it. Run it with <code>--help</code>, or with arguments that do not fit the signature, and Raku assembles it from the signature and the declarator comments:</p>
 <pre class="native-code"><code class="lang-sh">rakupp wordfreq.raku --help</code></pre>
 <pre class="native-code"><code class="lang-output">Usage:
-  wordfreq.raku [--top=&lt;Int&gt;] [--min-length=&lt;Int&gt;] [--json] [&lt;file&gt;] -- Count the commonest words in a text.
+  wordfreq.raku [--top[=Int]] [--min-length[=Int]] [--json] [&lt;file&gt;] -- Count the commonest words in a text.
   
     [&lt;file&gt;]              file to read, or "-" for standard input [default: '-']
-    --top=&lt;Int&gt;           how many words to show [default: 10]
-    --min-length=&lt;Int&gt;    ignore words shorter than this [default: 1]
+    --top[=Int]           how many words to show [default: 10]
+    --min-length[=Int]    ignore words shorter than this [default: 1]
     --json                print JSON instead of a table [default: False]</code></pre>
 <p><code>--help</code> exits 0. A command line that does not match exits <strong>2</strong>, with the same text — so a shell script calling this can tell "I asked for help" from "I got the call wrong".</p>
 <p>To write the message yourself, declare a <code>sub USAGE</code>; Raku calls it instead of generating one, and the exit code is unchanged:</p>
@@ -175,7 +175,7 @@ exit=2</code></pre>
 <p>For a script this size the startup difference is under half a millisecond — the reason to build the binary is that it runs on a machine with no interpreter and no module store, not that it is faster. The binary is also where the size goes: 9.9 MB of runtime for 30 lines of program.</p>
 <p>One thing does change. The usage message of a compiled program names the source file it was built from, with the path it had at build time, and drops the <code>#|</code> description:</p>
 <pre class="native-code"><code class="lang-output">Usage:
-  /path/to/wordfreq.raku [--top=&lt;Int&gt;] [--min-length=&lt;Int&gt;] [--json] [&lt;file&gt;]</code></pre>
+  /path/to/wordfreq.raku [--top[=Int]] [--min-length[=Int]] [--json] [&lt;file&gt;]</code></pre>
 <p>If the usage text matters in the shipped tool — and for a tool it does — write <code>sub USAGE</code> and print exactly what you want, which is unaffected.</p>
 <h2 id="four-things-that-bite">Four things that bite <a class="anchor" href="#four-things-that-bite" aria-label="link">#</a></h2>
 <p><strong>A named option after a positional argument is not seen.</strong> This is the first one everybody hits:</p>
@@ -185,7 +185,7 @@ rakupp wordfreq.raku --top=3 words.txt     # works</code></pre>
 <pre class="native-code"><code class="lang-raku"><span class="k">my</span> <span class="nv">%*SUB-MAIN-OPTS</span> = :<span class="n">named-anywhere</span>;</code></pre>
 <p><strong><code>--top 3</code> is not <code>--top=3</code>.</strong> With a space, <code>--top</code> is a flag and <code>3</code> is a positional argument. The value has to be attached with <code>=</code>. This is the same failure as the last one and looks identical — a usage message and exit 2 — which is why both are worth knowing at once.</p>
 <p><strong>A wrong type is a usage message, not an error.</strong> <code>--top=abc</code> does not reach the body and does not produce a message about <code>abc</code>; the candidate simply does not match, and the reader sees the usage text. The type constraint is the validation, and the usage text is the error message, so <code>#=</code> comments are worth writing for that reason alone.</p>
-<p><strong><code>#|</code> has to touch the routine.</strong> A declarator block comment documents the declaration that follows it <em>immediately</em>. At the top of a file, above a <code>my</code> or a blank line, it attaches to nothing and the usage message silently loses the description. Put it on the line above <code>sub MAIN</code>.</p>
+<p><strong><code>#|</code> goes to the first declaration after it.</strong> A declarator block comment waits for the next thing that declares something, so blank lines, a <code>use</code> or a <code>my</code> between it and <code>sub MAIN</code> do not matter. A helper <code>sub</code> does: the description documents the helper instead. So does any block, even an <code>if</code>'s, and either way the usage message silently loses the description. Put it on the line above <code>sub MAIN</code>.</p>
 <h2 id="what-to-reach-for-next">What to reach for next <a class="anchor" href="#what-to-reach-for-next" aria-label="link">#</a></h2>
 <ul><li>Inside <code>sub USAGE</code>, <code>$*USAGE</code> holds the message Raku would have generated, so a custom usage can print your own header and then the generated option list rather than restating it.</li><li>A parameter can have a short alias: <code>Int :t(:$top)</code> accepts <code>--top=3</code> and <code>-t=3</code>.</li><li><code>MAIN</code> can take <code>*%named</code> or <code>*@positionals</code> to accept what the signature did not name, which is how a wrapper passes arguments through to another program.</li></ul>
 <footer>

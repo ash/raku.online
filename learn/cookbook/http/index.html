@@ -160,18 +160,21 @@ nothing listening
 <p><code>Cro::HTTP::Client</code> speaks TLS, through <code>IO::Socket::SSL</code>:</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">use</span> <span class="n">Cro::HTTP::Client</span>;
 
-<span class="k">my</span> <span class="nv">$resp</span> = <span class="nb">await</span> <span class="n">Cro::HTTP::Client</span>.<span class="n">get</span>(<span class="nv">$url</span>, <span class="n">http</span> =&gt; <span class="s">'1.1'</span>);
+<span class="k">my</span> <span class="nv">$url</span>  = <span class="nv">@*ARGS</span>[<span class="mi">0</span>] // <span class="s">'https://raku.online'</span>;
+<span class="k">my</span> <span class="nv">$resp</span> = <span class="nb">await</span> <span class="n">Cro::HTTP::Client</span>.<span class="n">get</span>(<span class="nv">$url</span>);
 <span class="nb">say</span> <span class="s">'status : '</span>, <span class="nv">$resp</span>.<span class="n">status</span>;
 <span class="nb">say</span> <span class="s">'type   : '</span>, <span class="nv">$resp</span>.<span class="n">header</span>(<span class="s">'Content-Type'</span>);
 <span class="nb">say</span> <span class="s">'bytes  : '</span>, (<span class="nb">await</span> <span class="nv">$resp</span>.<span class="n">body-text</span>).<span class="nb">chars</span>;</code></pre>
-<pre class="native-code"><code class="lang-sh">rakupp tls.raku</code></pre>
+<pre class="native-code"><code class="lang-sh">rakupp tls.raku                        # https://raku.online
+rakupp tls.raku https://example.com    # or any URL you give it</code></pre>
 <pre class="native-code"><code class="lang-output">status : 200
 type   : text/html; charset=utf-8
-bytes  : 67813</code></pre>
-<p>The program is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/tls.raku">tls.raku</a>. Two notes for Raku++ 3.27, both of which a first attempt runs straight into:</p>
-<ul><li><strong><code>http =&gt; '1.1'</code> is not optional here.</strong> Left to itself the client offers HTTP/2 in the TLS handshake, and against a server that accepts it the request then hangs rather than answering.</li><li><p><strong><code>HTTP::Tiny</code> will not do HTTPS under Raku++</strong>, whatever is installed. It decides by asking the module repository for candidates of <code>IO::Socket::SSL:ver&lt;0.0.2+&gt;</code>, and Raku++'s installation repository does not answer that question yet, so the check concludes the module is missing:</p><pre class="native-code"><code class="lang-output">599 Internal Exception
+bytes  : 76130</code></pre>
+<p>The program is <a href="https://github.com/ash/rakupp/blob/main/docs/cookbook/http/tls.raku">tls.raku</a>. The client offers HTTP/2 in the TLS handshake and falls back to HTTP/1.1 when the server does not take it; <code>$resp.http-version</code> says which one it got. Older Raku++ releases hung on an HTTP/2 answer, so programs written for them pass <code>http =&gt; '1.1'</code>. That still works, and is no longer needed.</p>
+<p><strong><code>HTTP::Tiny</code> will not do HTTPS under Raku++</strong>, whatever is installed. It decides by asking the module repository for candidates of <code>IO::Socket::SSL:ver&lt;0.0.2+&gt;</code>, and Raku++'s installation repository does not answer that question yet, so the check concludes the module is missing:</p>
+<pre class="native-code"><code class="lang-output">599 Internal Exception
 HTTPS requests not supported: IO::Socket::SSL:ver&lt;0.0.2+&gt; must be installed</code></pre>
-<p>The module is installed and TLS itself works — <code>IO::Socket::SSL</code> used directly connects and returns <code>HTTP/1.1 200 OK</code>. Use <code>Cro::HTTP::Client</code> for TLS until the repository answers.</p></li></ul>
+<p>The module is installed and TLS itself works — <code>IO::Socket::SSL</code> used directly connects and returns <code>HTTP/1.1 200 OK</code>. Use <code>Cro::HTTP::Client</code> for TLS until the repository answers.</p>
 <h2 id="three-things-that-bite">Three things that bite <a class="anchor" href="#three-things-that-bite" aria-label="link">#</a></h2>
 <p><strong>599 is not a status the server sent.</strong> <code>HTTP::Tiny</code> reports transport failures — DNS, connection refused, a socket that dies mid-response — as a response with status 599 and the reason in the body. It is a useful convention, and it means <code>%resp&lt;status&gt; &gt;= 500</code> quietly includes "there was no server at all" unless you separate them.</p>
 <p><strong><code>HTTP::Tiny.new(:timeout(1))</code> does nothing.</strong> There is no such attribute, and Raku does not complain about a named argument a class has no use for. The call runs to completion at whatever pace the far end chooses:</p>

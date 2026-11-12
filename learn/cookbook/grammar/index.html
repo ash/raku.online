@@ -50,15 +50,15 @@ server {
     <span class="k">token</span> ws {<span class="sr"> &lt;!ww&gt; \h* [ [ '#' \N* ]? \n \s* ]* </span>}
 
     <span class="k">proto</span> <span class="k">rule</span> statement {<span class="sr">*</span>}
-    <span class="k">rule</span>  <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;block&gt;</span>   { <span class="s">&lt;name&gt;</span> <span class="s">&lt;arg&gt;</span>? <span class="s">'{'</span> <span class="s">&lt;statement&gt;</span>* <span class="s">'}'</span> }
-    <span class="k">token</span> <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;setting&gt;</span> { <span class="s">&lt;name&gt;</span> \<span class="n">h</span>+ [ <span class="s">&lt;value&gt;</span>+ % \<span class="n">h</span>+ ] \<span class="n">h</span>* <span class="s">';'</span> &lt;.<span class="n">ws</span>&gt; }
+    <span class="k">rule</span>  statement:sym&lt;block&gt;   {<span class="sr"> &lt;name&gt; &lt;arg&gt;? '{' &lt;statement&gt;* '}' </span>}
+    <span class="k">token</span> statement:sym&lt;setting&gt; {<span class="sr"> &lt;name&gt; \h+ [ &lt;value&gt;+ % \h+ ] \h* ';' &lt;.ws&gt; </span>}
 
     <span class="k">token</span> name {<span class="sr"> &lt;[\w\-]&gt;+ </span>}
     <span class="k">token</span> arg  {<span class="sr"> &lt;[\w/\.\-]&gt;+ </span>}
 
     <span class="k">proto</span> <span class="k">token</span> value {<span class="sr">*</span>}
-    <span class="k">token</span> <span class="n">value</span>:<span class="n">sym</span><span class="s">&lt;string&gt;</span> { <span class="s">'&quot;'</span> ~ <span class="s">'&quot;'</span> <span class="nv">$&lt;text&gt;</span>=<span class="s">&lt;-[&quot;]&gt;</span>* }
-    <span class="k">token</span> <span class="n">value</span>:<span class="n">sym</span><span class="s">&lt;bare&gt;</span>   { <span class="s">&lt;[\w/:\.\-]&gt;</span>+ }
+    <span class="k">token</span> value:sym&lt;string&gt; {<span class="sr"> '&quot;' ~ '&quot;' $&lt;text&gt;=&lt;-[&quot;]&gt;* </span>}
+    <span class="k">token</span> value:sym&lt;bare&gt;   {<span class="sr"> &lt;[\w/:\.\-]&gt;+ </span>}
 }</code></pre>
 <p>Four decisions in it are worth naming.</p>
 <p><strong><code>rule</code> versus <code>token</code>.</strong> Both are patterns that do not backtrack. A <code>rule</code> additionally treats whitespace in the pattern as "and here <code>&lt;ws&gt;</code> may appear", which is what lets the block rule be written as if the file were a sentence. A <code>token</code> matches exactly what is written, which is why a setting — where the whitespace rules are strict, everything on one line — is a token.</p>
@@ -141,10 +141,10 @@ furthest rule reached: line 7, column 5
         ^</code></pre>
 <p>Neither is the mistake. The prefix parse blames line 3, because the <code>server</code> block is the whole of what failed; the high-water mark blames line 7, two lines past the missing semicolon, because <code>&lt;value&gt;+</code> cheerfully read <code>location</code> and <code>/api</code> as two more values of the <code>root</code> setting and only stopped at the <code>{</code>. The mark is where the parser <em>died</em>, not where the file went wrong, and for a nested format the distance between those is the size of a block.</p>
 <p><strong>Level three: panic where the grammar is committed.</strong> Once a rule has read enough to know what it is looking at, there is no alternative left to try, and failing loudly beats failing quietly:</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">rule</span> <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;block&gt;</span> {
-    <span class="s">&lt;name&gt;</span> <span class="s">&lt;arg&gt;</span>? <span class="s">'{'</span> <span class="s">&lt;statement&gt;</span>*
-    [ <span class="s">'}'</span> || <span class="s">&lt;.panic(&quot;expected '}' to close this block&quot;)&gt;</span> ]
-}
+<pre class="native-code"><code class="lang-raku"><span class="k">rule</span> statement:sym&lt;block&gt; {<span class="sr">
+    &lt;name&gt; &lt;arg&gt;? '{' &lt;statement&gt;*
+    [ '}' || &lt;.panic(&quot;expected '}' to close this block&quot;)&gt; ]
+</span>}
 
 <span class="k">method</span> <span class="n">panic</span>(<span class="nv">$reason</span>) {
     <span class="k">my</span> <span class="nv">$before</span> = <span class="nb">self</span>.<span class="n">orig</span>.<span class="nb">substr</span>(<span class="mi">0</span>, <span class="nb">self</span>.<span class="n">pos</span>);
@@ -160,11 +160,11 @@ broken.conf: line 5, column 26: expected ';' at the end of the setting</code></p
 <h2 id="four-things-that-bite">Four things that bite <a class="anchor" href="#four-things-that-bite" aria-label="link">#</a></h2>
 <p><strong>A <code>rule</code> does not skip what comes before it.</strong> Sigspace inserts <code>&lt;ws&gt;</code> <em>after</em> each atom, never before the first one, so a file that opens with a comment or a blank line does not parse and the grammar looks broken. <code>rule TOP { &lt;.ws&gt; &lt;statement&gt;* }</code> — the explicit <code>&lt;.ws&gt;</code> at the front — is the fix, and it is needed only there.</p>
 <p><strong>A panic in a candidate that was only being tried kills a valid parse.</strong> The first version of the setting rule ended with <code>[ ';' || &lt;.panic(...)&gt; ]</code> and nothing else. It reported an error on <code>sample.conf</code>, a file that is perfectly good: <code>location /api {</code> is offered to the setting candidate too, which reads <code>location</code> as a name and <code>/api</code> as a value, finds no <code>;</code>, and panics — before the block candidate ever gets its turn. A panic is a promise that no other rule could match here, so it belongs after something that makes the choice unambiguous. One negative lookahead was enough:</p>
-<pre class="native-code"><code class="lang-raku"><span class="k">token</span> <span class="n">statement</span>:<span class="n">sym</span><span class="s">&lt;setting&gt;</span> {
-    <span class="s">&lt;name&gt;</span> \<span class="n">h</span>+ [ <span class="s">&lt;value&gt;</span>+ % \<span class="n">h</span>+ ] \<span class="n">h</span>* <span class="s">&lt;!before '{'&gt;</span>
-    [ <span class="s">';'</span> || <span class="s">&lt;.panic(&quot;expected ';' at the end of the setting&quot;)&gt;</span> ]
-    &lt;.<span class="n">ws</span>&gt;
-}</code></pre>
+<pre class="native-code"><code class="lang-raku"><span class="k">token</span> statement:sym&lt;setting&gt; {<span class="sr">
+    &lt;name&gt; \h+ [ &lt;value&gt;+ % \h+ ] \h* &lt;!before '{'&gt;
+    [ ';' || &lt;.panic(&quot;expected ';' at the end of the setting&quot;)&gt; ]
+    &lt;.ws&gt;
+</span>}</code></pre>
 <p><strong><code>|</code> and <code>||</code> are different alternations.</strong> <code>|</code> is longest-token matching: all branches are considered and the longest match wins. <code>||</code> is sequential: the first branch that matches wins, even if a later one would have matched more.</p>
 <pre class="native-code"><code class="lang-raku"><span class="k">token</span> word {<span class="sr"> 'foo' | 'foobar' </span>}    <span class="c1"># on &quot;foobar&quot;: matches foobar</span>
 <span class="k">token</span> word {<span class="sr"> 'foo' || 'foobar' </span>}   <span class="c1"># on &quot;foobar&quot;: matches foo, so TOP fails</span></code></pre>
