@@ -48,11 +48,17 @@ rakupp --bundle prog.raku -o prog     # embed source + interpreter — always wo
 <p>No. <code>--exe</code>, <code>--aot</code> and <code>--bundle</code> all produce a self-contained executable. Copy it to a machine with no Raku++ and no Raku and it runs.</p>
 <p>It is not cross-platform, though: a macOS build runs on macOS. Build on the target, or in CI for each target.</p>
 <h2 id="will-my-program-behave-the-same-compiled">Will my program behave the same compiled? <a class="anchor" href="#will-my-program-behave-the-same-compiled" aria-label="link">#</a></h2>
-<p>That is the intent, and it is tested — <code>tools/run-optbench.raku</code> checks that the interpreter, <code>--exe</code>, <code>--exe -O</code> and Rakudo all produce identical output, and fails if any row diverges.</p>
+<p>That is the intent, and it is tested: <code>t/exe/parity.raku</code> compiles every program in the test suite and the examples — about 1,570 — and fails if any binary's output or exit status differs from the interpreted run. Where the compiled code cannot mean what the interpreter means, <code>--exe</code> bundles the interpreter instead (it says so in a <code>note:</code>), which costs speed, not meaning.</p>
 <p>It is not a guarantee. The code generator is a second implementation of the language, and a divergence there is a bug we want reported: run your program both ways and compare.</p>
 <pre class="native-code"><code class="lang-bash">rakupp prog.raku &gt; a.txt
 rakupp --exe prog.raku -o prog &amp;&amp; ./prog &gt; b.txt
 diff a.txt b.txt</code></pre>
+<p>If they differ and the program uses modules, <code>RAKUPP_NO_AOT=1 ./prog</code> runs the modules' routines interpreted: if that fixes it, a native body is at fault, and <code>RAKUPP_AOT_RANGE</code> finds which one — see the next answer.</p>
+<h2 id="which-parts-of-my-program-were-compiled-natively">Which parts of my program were compiled natively? <a class="anchor" href="#which-parts-of-my-program-were-compiled-natively" aria-label="link">#</a></h2>
+<p>The last line of the compile says whether the program itself was: <code>Compiled (native) …</code>, or a <code>note:</code> naming what made it bundle. For each routine, set <code>RAKUPP_AOT_REPORT</code> when you compile:</p>
+<pre class="native-code"><code class="lang-bash">RAKUPP_AOT_REPORT=report.tsv rakupp --exe prog.raku -o prog
+grep -P '\tinterpreted\t' report.tsv | cut -f6 | sort | uniq -c | sort -rn</code></pre>
+<p>Each row is <code>routine MODULE LINE NAME native</code>, or <code>… interpreted REASON</code>, or <code>delegated MODULE LINE NAME</code> for a statement a native body hands to the interpreter. <code>RAKUPP_AOT_VERBOSE=1</code> prints the same reasons as it compiles. The row format and the run-time switches (<code>RAKUPP_AOT_RUNLOG</code>, <code>RAKUPP_NO_AOT</code>, <code>RAKUPP_AOT_RANGE</code>, <code>RAKUPP_AOT_TRACE</code>) are in <a href="https://github.com/ash/rakupp/blob/main/docs/guide/NATIVE.md#what-compiled-natively-and-what-did-not">NATIVE.md</a>.</p>
 <h2 id="startup-time">Startup time <a class="anchor" href="#startup-time" aria-label="link">#</a></h2>
 <p>A compiled binary starts in about 2ms. The interpreter is about the same, since it does not have a runtime to boot. If you are comparing against another Raku implementation, startup is one of the larger differences.</p>
 <hr>
