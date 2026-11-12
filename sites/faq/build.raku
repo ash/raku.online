@@ -88,7 +88,11 @@ sub link-target(Str $t --> Str) {
             $rest = $rest.substr(3);
             @dirs.pop if @dirs;
         }
-        return %SITE<docs-base>.subst(/ 'docs/' $ /, '') ~ (|@dirs, $rest).join('/');
+        my $path = (|@dirs, $rest).join('/');
+        # a cookbook recipe is published: send the reader to its page there
+        return "https://learn.raku.online/cookbook/$0/" ~ ($1 // '')
+            if $path ~~ / ^ 'docs/cookbook/' (<-[/#]>+) '.md' ('#' .*)? $ /;
+        return %SITE<docs-base>.subst(/ 'docs/' $ /, '') ~ $path;
     }
     # A #fragment rides along to the rewritten URL: a deep link into another
     # article is `other.md#some-heading`, which does not END with .md and so
