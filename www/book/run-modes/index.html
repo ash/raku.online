@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Four Ways to Run a Program — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=fe5aea53"></script>
-<link rel="stylesheet" href="/theme/base.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/shell.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/book.css?v=fe5aea53">
+<script src="/theme/boot.js?v=b61f1619"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/shell.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/book.css?v=b61f1619">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -24,7 +24,7 @@
 <p class="crumb"><a href="/book/">← Contents</a></p>
 <p class="ch-label">Chapter 25</p><h1>Four Ways to Run a Program</h1><nav class="ch-toc"><p>On this page</p><ul><li><a href="#mode-1-interpret">Mode 1 — interpret</a></li><li><a href="#mode-2-bundle">Mode 2 — <code>--bundle</code></a></li><li><a href="#mode-3-aot">Mode 3 — <code>--aot</code></a></li><li><a href="#mode-4-exe">Mode 4 — <code>--exe</code></a></li><li><a href="#comparing-them">Comparing them</a></li><li><a href="#the-fallback-that-makes-exe-total">The fallback that makes <code>--exe</code> total</a></li><li><a href="#what-every-mode-shares">What every mode shares</a></li><li><a href="#carrying-modules-inside-a-binary">Carrying modules inside a binary</a></li><li><a href="#native-bodies-for-module-routines">Native bodies for module routines</a></li><li><a href="#a-sketch-instead-of-a-binary">A sketch instead of a binary</a></li><li><a href="#mode-1-in-a-browser">Mode 1 in a browser</a></li></ul></nav>
 <p>The same binary will run the same Raku source four different ways, and the choice is not academic: one mode is for editing and re-running, one for handing someone a program that needs no interpreter installed, one for cutting start-up time, one for throughput. They share the entire front end and diverge completely after it.</p>
-<p>One front end, six back ends. This chapter takes one small program through the four that share the runtime library — interpret, <code>--bundle</code>, <code>--aot</code> and <code>--exe</code> — and shows exactly what each produces. The other two give up the shared-runtime principle everything here rests on, because their targets have no room for it: <code>--target=js</code>, which has its own chapter, and <code>--target=arduino</code>, which has a section at the end of this one.</p>
+<p>One front end, seven back ends. This chapter takes one small program through the four that share the runtime library — interpret, <code>--bundle</code>, <code>--aot</code> and <code>--exe</code> — and shows exactly what each produces. The other three give up the shared-runtime principle everything here rests on, because their targets have no room for it: <code>--target=js</code>, which has its own chapter, and the two board targets, <code>--target=arduino</code> and <code>--target=microbit</code>, which have a section at the end of this one.</p>
 <pre class="native-code"><code class="lang-raku"><span class="c1"># demo.raku</span>
 <span class="k">sub</span> square(<span class="nv">$n</span>) { <span class="nv">$n</span> * <span class="nv">$n</span> }
 <span class="k">my</span> <span class="nv">$total</span> = <span class="mi">0</span>;
@@ -195,7 +195,8 @@ rakupp --target=arduino --sim blink.raku -o sim   # built for this computer</cod
 <pre class="native-code"><code class="lang-cpp"><span class="c1">// src/codegen/Arduino.h</span>
 std::string transpileToArduino(Program&amp; prog, <span class="k">const</span> ArduinoOptions&amp; opt);</code></pre>
 <p>A board has no interpreter to fall back on, so there is no fallback: every construct either becomes plain C++ or is refused with its line before anything is built. The subset is native scalars, shaped native arrays, subs with native signatures, constants, <code>say</code> and <code>print</code> as serial writes, and the <code>Arduino</code> module's routines as the core's own names. The mainline before the top-level <code>loop { }</code> becomes <code>setup()</code> and one iteration of that loop is one call of <code>loop()</code>. <code>BEGIN</code> blocks and every constant run while building, by the compile-time pass above, so the board gets values and no code that computed them.</p>
-<p>The same program runs without a board two ways: under the interpreter, where <code>use Arduino</code> is a simulated board, and with <code>--sim</code>, which compiles the sketch itself for this computer against a host core embedded in <code>rakupp</code>. The gate, <code>t/arduino/run.raku</code>, holds the second to the first byte for byte, so the interpreter is the oracle for the generated C++. What has not been tried, by the guide's own account, is a program running on real hardware.</p>
+<p>The same program runs without a board two ways: under the interpreter, where <code>use Arduino</code> is a simulated board, and with <code>--sim</code>, which compiles the sketch itself for this computer against a host core embedded in <code>rakupp</code>. The gate, <code>t/arduino/run.raku</code>, holds the second to the first byte for byte, so the interpreter is the oracle for the generated C++. The sketches have also run on a real board, an Uno R4 WiFi.</p>
+<p><code>--target=microbit</code> is the same emitter with a second board. The walk over the AST, the subset and its refusals live in <code>src/codegen/BoardEmitter.h</code>; <code>Arduino.cpp</code> and <code>MicroBit.cpp</code> are its two subclasses, each adding its module's names, where <code>say</code> writes, and the program's shape. For a BBC micro:bit V2 that is C++ for CODAL, the board's own runtime: the mainline runs in <code>main()</code> after <code>uBit.init()</code>, the top-level loop is a C loop there, and <code>use MicroBit</code> names the board by MicroPython's names spelt as Raku. CODAL's build turns the file into the <code>.hex</code> copied onto the board. Its gate, <code>t/microbit/run.raku</code>, holds the <code>--sim</code> build to the interpreter in the same way, and with <code>--codal=DIR</code> builds every program with CODAL's own toolchain.</p>
 <h2 id="mode-1-in-a-browser">Mode 1 in a browser</h2>
 <p>The same runtime compiled to <strong>WebAssembly</strong> is Raku.js: the interpreter running in a browser tab, with the same <code>Value</code> semantics and no server. It is mode 1 with a different host — but the host removes the filesystem, the threads and the dynamic loader, which changes enough to be worth its own chapter. That is <a href="/book/wasm/">Chapter 32</a>, at the end of this part.</p><nav class="ch-nav"><a class="prev" href="/book/unicode/"><span>Previous</span>Graphemes, Normalization, Collation</a><a class="next" href="/book/codegen/"><span>Next</span>The Code Generator</a></nav>
 <footer>
@@ -204,6 +205,6 @@ std::string transpileToArduino(Program&amp; prog, <span class="k">const</span> A
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=fe5aea53" defer></script>
+<script src="/theme/shell.js?v=b61f1619" defer></script>
 </body>
 </html>

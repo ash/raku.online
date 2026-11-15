@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Extension ABI — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=fe5aea53"></script>
-<link rel="stylesheet" href="/theme/base.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/shell.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/book.css?v=fe5aea53">
+<script src="/theme/boot.js?v=b61f1619"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/shell.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/book.css?v=b61f1619">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -133,7 +133,7 @@ RkValue rk_call_value(RkCtx c, RkValue code,
 <h2 id="lifetime-handles-belong-to-the-call">Lifetime: handles belong to the call</h2>
 <p>Everything an extension creates is allocated in the context's <strong>arena</strong> and released when the sub returns; the single value it returns is copied out first.</p>
 <p>So an extension never frees anything, cannot leak, and — the rule that has to be stated because it is invisible until it bites — <strong>a handle stored in a global and used on the next call is dangling.</strong> There is no reference counting to save you. State that must persist across calls belongs in C, not in handles.</p>
-<p>Borrowed pointers from <code>rk_str_get</code> and <code>rk_key_at</code> are valid until the call returns, which is long enough to copy out of them and no longer. <code>rk_at_pos</code> is sharper than that: its handle points into the array's own storage, so a later <code>rk_push</code> on the same array can move it <em>within a single call</em>. Read it before you grow the array, or copy the value out. (<code>rk_val_at</code>'s handle is stable, because the hash keeps node addresses.)</p>
+<p>Borrowed pointers from <code>rk_str_get</code> and <code>rk_key_at</code> are valid until the call returns, which is long enough to copy out of them and no longer. The handles from <code>rk_at_pos</code> and <code>rk_val_at</code> are not borrowed: each is an arena copy of the element, so a later <code>rk_push</code> on the same array, or a change to the hash, leaves it intact for the rest of the call.</p>
 <p>The arena is what makes the boundary safe in both directions: the host cannot be made to leak by a careless extension, and an extension cannot hold a reference into a value model that is free to change underneath it.</p>
 <h2 id="errors">Errors</h2>
 <pre class="native-code"><code class="lang-c"><span class="kt">void</span> rk_die(RkCtx c, <span class="k">const</span> <span class="kt">char</span>* message);</code></pre>
@@ -251,6 +251,6 @@ Value extLoadModule(<span class="k">const</span> std::string&amp; path, std::str
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=fe5aea53" defer></script>
+<script src="/theme/shell.js?v=b61f1619" defer></script>
 </body>
 </html>

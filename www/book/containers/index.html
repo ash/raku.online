@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Containers, Binding, and Copy Semantics — Raku++ Internals</title>
 <script>window.__SITE_BASE='/book';</script>
-<script src="/theme/boot.js?v=fe5aea53"></script>
-<link rel="stylesheet" href="/theme/base.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/shell.css?v=fe5aea53">
-<link rel="stylesheet" href="/theme/book.css?v=fe5aea53">
+<script src="/theme/boot.js?v=b61f1619"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/shell.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/book.css?v=b61f1619">
 </head>
 <body class="home">
 <span class="theme-switch">
@@ -183,6 +183,7 @@ std::string ofType;                              <span class="c1">// Array[Int],
 <p>Measured as each batch landed, when a <code>Value</code> was 80 bytes: a million-element <code>my int @a = ^N</code> read back by index went from 83 to 9 bytes an element, and a million-element <code>@a[$i] += 1</code> loop from 0.16 to 0.04 s. A declaration makes an empty packed body, so an array grown by <code>push</code> packs too.</p>
 <p><strong>An untyped Array of Nums packs itself.</strong> Since 2026-11-07 a <code>my @a = LIST</code> of 8 or more plain <code>Num</code>s, on an Array with no type, default, shape or bound element, stores their bits in the same body with <code>selfPacked</code> set, and <code>my @v = @u</code> copies the words. JavaScriptCore keeps an array of doubles the same way. The interpreter's loop kernels and the unboxed loop lanes of <code>--exe -O</code> then run on the words, checking each array once on entry. On the three untyped kernels the change was measured against, the interpreter went from 100 to 4.9 ns per operation on a dot product, 216 to 9.3 on a matrix multiply and 272 to 7.1 on a stencil.</p>
 <p>The costs are stated with it. Peak memory is not lower, because the words are built beside the <code>Value</code>s they came from. Where no kernel takes the loop, the tree-walker alone ran the matrix multiply 16% slower. And an array that unpacks keeps both forms. <code>RAKUPP_NO_SELFPACK=1</code> turns self-packing off, and <code>RAKUPP_SELFPACK_MIN</code> sets the fewest elements packed.</p>
+<p><strong>So does one of machine Ints, in the interpreter.</strong> Since 2026-11-10 the same holds for 8 or more plain Ints that fit 64 bits, and <code>my @a = LO .. HI</code> fills the words from the Range without building a <code>Value</code>. The words are a <code>my int @a</code>'s, but its rules are not: a Bool stored stays a Bool, a result past 64 bits is a big Int, and a gap is holes; each of those unpacks the array. The loop kernels read, store and step the words, and one compiled kernel takes the array in either form. A sieve to two million went from 2,396M to 1,395M instructions and from 198 to 107 MB, and a two-million-element <code>1..N</code> summed by index from 72 to 24 MB. An array that is packed and then asked for its elements, by <code>.sort</code> or <code>.map</code>, costs 2.5% more instructions and 5–8% more memory than it did. An Array keeps its <code>.WHICH</code> when its storage changes form. Compiled code packs Nums only: it has no lane for an Int word yet. <code>RAKUPP_NO_SELFPACK_INT=1</code> turns the Int kind off alone.</p>
 <p>An untyped Array of plain <code>Int</code>s does not pack itself. That is the next question the measurements point at, and it is not started.</p>
 <h2 id="is-rw-and-writing-back-to-the-caller"><code>is rw</code>, and writing back to the caller</h2>
 <p>Because arguments are passed as <code>Value</code> copies, a mutated <code>is rw</code> parameter has to be written back into the caller's variable. The call site passes the argument <em>expressions</em> alongside the values, and the binder records the link:</p>
@@ -242,6 +243,6 @@ std::set&lt;std::string&gt; rwDead;</code></pre>
 </footer>
 </div>
 </main>
-<script src="/theme/shell.js?v=fe5aea53" defer></script>
+<script src="/theme/shell.js?v=b61f1619" defer></script>
 </body>
 </html>

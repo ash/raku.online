@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — writing Raku for a micro:bit</title>
+<script>window.__SITE_BASE='/faq';</script>
+<script src="/theme/boot.js?v=b61f1619"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/shell.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/faq.css?v=b61f1619">
+</head>
+<body class="home">
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+<main>
+<div class="content">
+<p class="crumb"><a href="/faq/">← All questions</a></p>
+<h1>Writing Raku for a micro:bit</h1>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#the-short-answer">The short answer</a></li><li><a href="#what-do-i-do-with-the-cpp-file">What do I do with the <code>.cpp</code> file?</a></li><li><a href="#i-know-micropython-what-changes">I know MicroPython. What changes?</a></li><li><a href="#why-pause-and-not-sleep">Why <code>pause</code> and not <code>sleep</code>?</a></li><li><a href="#which-number-type-do-i-want">Which number type do I want?</a></li><li><a href="#how-do-i-show-a-number-or-text-with-a-number-in-it">How do I show a number, or text with a number in it?</a></li><li><a href="#how-do-i-make-my-own-picture">How do I make my own picture?</a></li><li><a href="#how-do-i-animate">How do I animate?</a></li><li><a href="#why-did-my-button-press-go-missing">Why did my button press go missing?</a></li><li><a href="#how-do-i-react-to-a-shake">How do I react to a shake?</a></li><li><a href="#how-do-i-check-a-program-without-a-board">How do I check a program without a board?</a></li><li><a href="#what-is-not-there-yet">What is not there yet?</a></li><li><a href="#does-it-run-on-a-micro-bit-v1-or-in-the-python-editor">Does it run on a micro:bit V1, or in the Python editor?</a></li><li><a href="#does-it-run-under-rakudo">Does it run under Rakudo?</a></li></ul></nav>
+<p><code>rakupp --target=microbit</code> compiles a Raku program into C++ for the BBC micro:bit V2's own runtime, CODAL. The board has no interpreter, so it takes the same subset of Raku as an Arduino: the parts that become plain C++ with no runtime behind them. This page answers what a MicroPython or MakeCode user asks first. The full reference is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MICROBIT.md">MICROBIT.md</a>; a walk from a scrolled greeting to a die you shake is in <a href="https://github.com/ash/rakupp/tree/main/examples/microbit">examples/microbit</a>; the subset itself is in <a href="/faq/arduino/">the Arduino FAQ</a>, which holds for the micro:bit too.</p>
+<h2 id="the-short-answer">The short answer <a class="anchor" href="#the-short-answer" aria-label="link">#</a></h2>
+<ul><li>Start with <code>use MicroBit</code>. The names are MicroPython's, spelt as Raku: <code>button_a.is_pressed()</code> is <code>button-a.is-pressed</code>.</li><li>Give every variable a native type: <code>my int $count</code>, not <code>my $count</code>.</li><li><code>while True:</code> is <code>loop { }</code>, and <code>sleep(100)</code> is <code>pause 100</code>.</li><li>Text is for the display and the serial port: put it together in the call, <code>display.scroll("T: {temperature}")</code>, and do not keep it in a variable.</li><li>Make pictures while building: <code>constant SMILE = image '…'</code>, or one of <code>Image</code>'s.</li><li>Everything the board cannot do is refused when you build, with the line, and never fails later on the board.</li><li><code>--target=microbit</code> writes C++, not the <code>.hex</code> the board takes: CODAL's build project turns the one into the other (below).</li></ul>
+<h2 id="what-do-i-do-with-the-cpp-file">What do I do with the <code>.cpp</code> file? <a class="anchor" href="#what-do-i-do-with-the-cpp-file" aria-label="link">#</a></h2>
+<p>Make it into the <code>.hex</code> file the board takes, with CODAL's own build project, microbit-v2-samples. The <code>.cpp</code> is your whole program; the <code>.hex</code> is that program compiled together with CODAL, the board's runtime, for its ARM processor. Once you have the project and an ARM compiler (set up once: <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MICROBIT.md#once-a-compiler-and-codals-build-project">the guide's steps</a>), each program is three commands:</p>
+<pre class="native-code"><code class="lang-bash">rakupp --target=microbit prog.raku -o ~/microbit-v2-samples/source/main.cpp
+cd ~/microbit-v2-samples &amp;&amp; python3 build.py
+cp ~/microbit-v2-samples/MICROBIT.hex /Volumes/MICROBIT/</code></pre>
+<p>The first puts your program in the project as its <code>source/main.cpp</code>, in place of the demo that is there; you don't edit it. The second compiles it into <code>MICROBIT.hex</code>, in the project's top folder. The third copies that onto the board, which shows up as a drive called <code>MICROBIT</code> when plugged in over USB (<code>/media/$USER/MICROBIT</code> on Linux; on Windows, drag it to the drive). The board restarts and runs the program.</p>
+<h2 id="i-know-micropython-what-changes">I know MicroPython. What changes? <a class="anchor" href="#i-know-micropython-what-changes" aria-label="link">#</a></h2>
+<div class="tablewrap"><table><tr><th>MicroPython</th><th>Raku</th></tr><tr><td><code>from microbit import *</code></td><td><code>use MicroBit;</code></td></tr>
+<tr><td><code>while True:</code></td><td><code>loop { … }</code></td></tr>
+<tr><td><code>sleep(100)</code></td><td><code>pause 100</code> (or Raku's own <code>sleep 0.1</code>, in seconds)</td></tr>
+<tr><td><code>x = accelerometer.get_x()</code></td><td><code>my int $x = accelerometer.x;</code></td></tr>
+<tr><td><code>print(x)</code></td><td><code>say $x;</code></td></tr>
+<tr><td><code>display.show(Image.ARROW_E)</code></td><td><code>display.show(Image.ARROW-E);</code></td></tr>
+<tr><td><code>display.scroll("Hi " + str(n))</code></td><td><code>display.scroll("Hi $n");</code></td></tr>
+<tr><td><code>if button_a.was_pressed():</code></td><td><code>if button-a.was-pressed { … }</code></td></tr>
+<tr><td><code>random.randint(1, 6)</code></td><td><code>randint(1, 6)</code></td></tr>
+<tr><td><code>Image("09090:99999:99999:09990:00900")</code></td><td><code>image '09090:99999:99999:09990:00900'</code>, in a constant</td></tr>
+<tr><td><code>pin0.write_digital(1)</code></td><td><code>pin0.write-digital(1);</code></td></tr></table></div>
+<p>A method with no arguments needs no parentheses: <code>accelerometer.x</code>, <code>display.clear</code>. A variable is declared once, with <code>my</code> and a type. Blocks are in braces, not indentation.</p>
+<h2 id="why-pause-and-not-sleep">Why <code>pause</code> and not <code>sleep</code>? <a class="anchor" href="#why-pause-and-not-sleep" aria-label="link">#</a></h2>
+<p>Raku has its own <code>sleep</code>, and it takes seconds: <code>sleep 2</code> waits two seconds, <code>sleep 0.25</code> a quarter of one. On a micro:bit that still works, on the board's clock. MicroPython's <code>sleep</code> takes milliseconds, so <code>sleep(100)</code> from a Python program would wait 100 seconds here. <code>pause</code>, MakeCode's name for the same block, takes milliseconds: <code>pause 100</code>.</p>
+<h2 id="which-number-type-do-i-want">Which number type do I want? <a class="anchor" href="#which-number-type-do-i-want" aria-label="link">#</a></h2>
+<p><code>int</code> for counting is fine: it is 64 bits, as in Raku, and a micro:bit computes it in two steps. For readings and pixels, <code>int16</code> or <code>int32</code>: the accelerometer is about −2000 to 2000, a pixel 0 to 4, a brightness 0 to 9. A native type wraps when a value does not fit: <code>my int8 $t = 127; $t++</code> is −128, on the board and in the interpreter alike.</p>
+<h2 id="how-do-i-show-a-number-or-text-with-a-number-in-it">How do I show a number, or text with a number in it? <a class="anchor" href="#how-do-i-show-a-number-or-text-with-a-number-in-it" aria-label="link">#</a></h2>
+<pre class="native-code"><code class="lang-raku"><span class="n">display</span>.<span class="n">show</span>(<span class="nv">$count</span>);                       <span class="c1"># a number</span>
+<span class="n">display</span>.<span class="n">scroll</span>(<span class="s">&quot;Score: $score&quot;</span>);            <span class="c1"># text with a number in it</span>
+<span class="n">display</span>.<span class="n">scroll</span>(<span class="s">&quot;{accelerometer.x} mg&quot;</span>);     <span class="c1"># a reading, in braces</span>
+<span class="n">display</span>.<span class="n">show</span>(<span class="nv">$won</span> ?? <span class="s">&quot;Y&quot;</span> !! <span class="s">&quot;N&quot;</span>);           <span class="c1"># one text or another</span></code></pre>
+<p>The text is put together as the board runs, from literals, integers and <code>True</code>/<code>False</code>. What it cannot do is keep text in a variable (<code>my Str $name</code>) or join texts with <code>~</code>: put the whole text in the call instead. A <code>num</code> is refused on the display, as in <code>say</code>; show <code>.round</code> of it.</p>
+<h2 id="how-do-i-make-my-own-picture">How do I make my own picture? <a class="anchor" href="#how-do-i-make-my-own-picture" aria-label="link">#</a></h2>
+<p>With <code>image</code>, in a constant. It takes MicroPython's text form, a brightness 0 to 9 for each LED, five rows of five, by lines or separated by <code>:</code>; or <code>#</code> for lit and <code>.</code> for dark:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">constant</span> <span class="n">BOAT</span> = <span class="n">image</span> <span class="s">q:to/END/</span>;
+<span class="s">    05050
+    05050
+    05050
+    99999
+    09990
+    END
+</span><span class="k">constant</span> <span class="nv">@CROSS</span> = <span class="n">image</span> <span class="s">'#...#:.#.#.:..#..:.#.#.:#...#'</span>;
+<span class="n">display</span>.<span class="n">show</span>(<span class="n">BOAT</span>);</code></pre>
+<p><code>image</code> runs while building, on your computer: a picture with a mistake stops the build and says which row. A picture the program works out as it runs is a shaped array of 25: <code>my uint8 @p[25]</code>, filled with levels and shown with <code>display.show(@p)</code>. One LED at a time is <code>display.set-pixel(X, Y, BRIGHTNESS)</code>.</p>
+<h2 id="how-do-i-animate">How do I animate? <a class="anchor" href="#how-do-i-animate" aria-label="link">#</a></h2>
+<p>Keep the frames in one constant, and copy each into a picture as you show it:</p>
+<pre class="native-code"><code class="lang-raku"><span class="k">constant</span> <span class="nv">@FRAMES</span> = <span class="nb">flat</span> <span class="n">image</span>(<span class="s">'..#..:..#..:..#..:.....:.....'</span>),
+                        <span class="n">image</span>(<span class="s">'.....:.....:..###:.....:.....'</span>),
+                        <span class="n">image</span>(<span class="s">'.....:.....:..#..:..#..:..#..'</span>);
+<span class="k">my</span> <span class="nb">uint8</span> <span class="nv">@picture</span>[<span class="mi">25</span>];
+<span class="k">loop</span> {
+    <span class="k">for</span> ^<span class="mi">3</span> -&gt; <span class="nv">$f</span> {
+        <span class="k">for</span> ^<span class="mi">25</span> -&gt; <span class="nv">$i</span> { <span class="nv">@picture</span>[<span class="nv">$i</span>] = <span class="nv">@FRAMES</span>[<span class="nv">$f</span> * <span class="mi">25</span> + <span class="nv">$i</span>] }
+        <span class="n">display</span>.<span class="n">show</span>(<span class="nv">@picture</span>);
+        <span class="n">pause</span> <span class="mi">200</span>;
+    }
+}</code></pre>
+<p>The three pictures are 75 bytes in flash; the copy is 25 at a time.</p>
+<h2 id="why-did-my-button-press-go-missing">Why did my button press go missing? <a class="anchor" href="#why-did-my-button-press-go-missing" aria-label="link">#</a></h2>
+<p><code>button-a.is-pressed</code> is whether the button is down now. While the board scrolls text, the program waits for the scroll, so a press that starts and ends meanwhile is not down when it next looks. <code>button-a.was-pressed</code> (and <code>get-presses</code>) counts presses as they begin, whatever the program is doing: use it when a press must not be missed. The touch logo has only <code>is-touched</code>, so a quick touch during a scroll is missed, on the board too.</p>
+<h2 id="how-do-i-react-to-a-shake">How do I react to a shake? <a class="anchor" href="#how-do-i-react-to-a-shake" aria-label="link">#</a></h2>
+<pre class="native-code"><code class="lang-raku"><span class="k">if</span> <span class="n">accelerometer</span>.<span class="n">was-gesture</span>(<span class="s">'shake'</span>) { … }</code></pre>
+<p><code>was-gesture</code> is whether the gesture happened since you last asked about it; <code>is-gesture</code> whether it is happening now. The board listens for gestures from the start, so a shake is seen even in a loop that never pauses.</p>
+<h2 id="how-do-i-check-a-program-without-a-board">How do I check a program without a board? <a class="anchor" href="#how-do-i-check-a-program-without-a-board" aria-label="link">#</a></h2>
+<p>Run it: <code>rakupp prog.raku</code> runs it on a simulated micro:bit, which writes the serial port on stdout and the LEDs on stderr. <code>RAKUPP_MICROBIT_STOP=5000</code> runs five seconds of board time at once, and the other <code>RAKUPP_MICROBIT_*</code> variables press buttons, tilt the board and set the temperature (<a href="https://github.com/ash/rakupp/blob/main/docs/guide/MICROBIT.md#the-inputs">the list</a>). <code>rakupp --target=microbit --sim prog.raku -o prog</code> builds the C++ for this computer, against a simulated CODAL, and writes the same.</p>
+<h2 id="what-is-not-there-yet">What is not there yet? <a class="anchor" href="#what-is-not-there-yet" aria-label="link">#</a></h2>
+<p>The radio between micro:bits, the speaker and microphone, <code>react</code> / <code>whenever</code> over the board's events, and text kept in variables. They are in <a href="https://github.com/ash/rakupp/blob/main/docs/dev/plans/MICROBIT-PLAN.md">MICROBIT-PLAN.md</a>, in order.</p>
+<h2 id="does-it-run-on-a-micro-bit-v1-or-in-the-python-editor">Does it run on a micro:bit V1, or in the Python editor? <a class="anchor" href="#does-it-run-on-a-micro-bit-v1-or-in-the-python-editor" aria-label="link">#</a></h2>
+<p>The target is the micro:bit V2 (2020 and later: it has a speaker and a touch logo). The V1's runtime is an older one with less memory, and is not supported yet. The Python editor and MakeCode run their own languages; a Raku program goes onto the board as the <code>.hex</code> file CODAL's build makes, copied to the <code>MICROBIT</code> drive.</p>
+<h2 id="does-it-run-under-rakudo">Does it run under Rakudo? <a class="anchor" href="#does-it-run-under-rakudo" aria-label="link">#</a></h2>
+<p><code>use MicroBit</code> is built into rakupp. On Rakudo a stub module of the name, <code>MicroBit</code> (<code>zef:ash</code>, to be published with the rakupp release that ships <code>--target=microbit</code>), stops the program at the <code>use</code> line and says it needs Raku++, with the two commands to run it; without the stub, Rakudo says <code>Could not find MicroBit</code>.</p>
+<footer>
+<span>Every snippet here is run on both Raku++ and Rakudo and produces identical output; where they differ, the page says so.</span>
+<span>Written in the <a href="https://github.com/ash/rakupp">rakupp</a> repository. <a href="/rakupp/">About Raku++</a>.</span>
+</footer>
+</div>
+</main>
+<script src="/theme/shell.js?v=b61f1619" defer></script>
+</body>
+</html>

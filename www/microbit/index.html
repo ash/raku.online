@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>micro:bit — Raku on the BBC micro:bit, with Raku++</title>
+<meta name="description" content="Write a BBC micro:bit program in Raku, with the names MicroPython uses: watch it run on a simulated micro:bit, then build it into the .hex file you copy onto the board. Pictures, buttons, the accelerometer, gestures and the pins.">
+<script src="/theme/boot.js?v=b61f1619"></script>
+<link rel="stylesheet" href="/theme/base.css?v=b61f1619">
+<link rel="stylesheet" href="/theme/shell.css?v=b61f1619">
+<style>
+  /* The 5×5 display: a picture of the board, the same in both themes. */
+  .display-figure { margin: 1.2rem 0 1.4rem; text-align: center; }
+  .display-figure svg { width: 100%; max-width: 180px; height: auto; }
+  .display-figure figcaption { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
+  .names td:first-child, .names td:nth-child(2) { white-space: nowrap; }
+</style>
+</head>
+<body class="home">
+
+<span class="theme-switch">
+  <button class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">◐</button>
+  <ul class="theme-menu" hidden>
+    <li><button data-theme-set="system"><span class="ti">◐</span> System</button></li>
+    <li><button data-theme-set="light"><span class="ti">☀</span> Light</button></li>
+    <li><button data-theme-set="dark"><span class="ti">☾</span> Dark</button></li>
+  </ul>
+</span>
+
+<main>
+<div class="content">
+
+<h1>micro:bit</h1>
+<p class="tagline">
+  Write a BBC micro:bit program in Raku, with the names you know from
+  MicroPython. Watch it run on a simulated micro:bit, then build it into the
+  <code>.hex</code> file you copy onto the board. You need no board to start.
+</p>
+
+<table class="opts">
+  <tr><td><a href="#without-a-board">Without a board</a></td><td>The tilt, as an arrow: what the simulated micro:bit shows.</td></tr>
+  <tr><td><a href="#pictures">Pictures</a></td><td>MicroPython's 64 built-in pictures, and your own, made while building.</td></tr>
+  <tr><td><a href="#buttons-and-sensors">Buttons and sensors</a></td><td>Buttons, the touch logo, gestures, and pressing them with no board.</td></tr>
+  <tr><td><a href="#onto-a-board">Onto a board</a></td><td>From the C++ rakupp writes to the <code>.hex</code> on the board, step by step.</td></tr>
+  <tr><td><a href="#what-it-can-use">What a program can use</a></td><td>Native types, Raku's arithmetic, and every name of <code>use MicroBit</code>.</td></tr>
+  <tr><td><a href="#under-rakudo">Under Rakudo</a></td><td>What other Raku implementations say about <code>use MicroBit</code>.</td></tr>
+</table>
+
+<h2 id="without-a-board">Without a board <a class="anchor" href="#without-a-board" aria-label="link">#</a></h2>
+<pre class="native-code"><code>use MicroBit;
+
+loop {
+    my int16 $acc = accelerometer.x;
+    say $acc;
+    display.show: $acc &gt; 0 ?? Image.ARROW-E !! Image.ARROW-W;
+    pause 100;
+}</code></pre>
+<p>
+  This is the first program of the accelerometer chapter at
+  <a href="https://python-online.ch/robotik/mb/sensor/">python-online.ch</a>,
+  in Raku. The names are MicroPython's, spelt the Raku way:
+  <code>accelerometer.get_x()</code> is <code>accelerometer.x</code>,
+  <code>Image.ARROW_E</code> is <code>Image.ARROW-E</code>, and
+  <code>sleep(100)</code> is <code>pause 100</code>.
+</p>
+<p>
+  <code>rakupp tilt.raku</code> runs it on the simulated micro:bit in real
+  time. With <code>RAKUPP_MICROBIT_STOP</code> the clock is virtual, and with
+  <code>RAKUPP_MICROBIT_ACCEL</code> you tilt the board, here left and then
+  right:
+</p>
+<pre class="output"><code>$ RAKUPP_MICROBIT_STOP=600 RAKUPP_MICROBIT_ACCEL="0:-200,0,-1000;300:250,0,-950" rakupp tilt.raku
+-200
+[0 ms] display 00900:09000:99999:09000:00900
+-200
+-200
+250
+[300 ms] display 00900:00090:99999:00090:00900
+250
+250
+[600 ms] stop</code></pre>
+<p>
+  stdout is the serial port, and stderr is the board: one line each time the
+  LEDs change, written as MicroPython writes a picture, five rows of five
+  brightnesses from 0 to 9.
+</p>
+<p class="hero-links">
+  <a class="btn-start" href="/install/">Install rakupp</a>
+  &nbsp; <a href="https://github.com/ash/rakupp/tree/main/examples/microbit">The walkthrough, with every program →</a>
+</p>
+
+<h2 id="pictures">Pictures <a class="anchor" href="#pictures" aria-label="link">#</a></h2>
+<p>
+  <code>Image</code> has MicroPython's 64 pictures, by their names spelt as
+  Raku: <code>Image.HEART</code>, <code>Image.ARROW-NE</code>,
+  <code>Image.MUSIC-QUAVER</code>. <code>image</code> makes your own, from five
+  rows of brightnesses or from <code>#</code> and <code>.</code>:
+</p>
+<pre class="native-code"><code>use MicroBit;
+
+constant GLOW = image q:to/END/;
+    03030
+    39993
+    39993
+    03930
+    00300
+    END
+
+loop {
+    display.show(Image.HEART);
+    pause 300;
+    display.show(GLOW);
+    pause 500;
+}</code></pre>
+<figure class="display-figure">
+<!-- Image.HEART, LED for LED: 09090:99999:99999:09990:00900 -->
+<svg viewBox="0 0 150 150" role="img" aria-label="The micro:bit's 5×5 display showing Image.HEART">
+  <rect width="150" height="150" rx="14" fill="#1b1b1f"/>
+  <g fill="#3a2a2a">
+    <rect x="31" y="31" width="10" height="10" rx="2"/> <rect x="53" y="31" width="10" height="10" rx="2"/> <rect x="75" y="31" width="10" height="10" rx="2"/> <rect x="97" y="31" width="10" height="10" rx="2"/> <rect x="119" y="31" width="10" height="10" rx="2"/>
+    <rect x="31" y="53" width="10" height="10" rx="2"/> <rect x="53" y="53" width="10" height="10" rx="2"/> <rect x="75" y="53" width="10" height="10" rx="2"/> <rect x="97" y="53" width="10" height="10" rx="2"/> <rect x="119" y="53" width="10" height="10" rx="2"/>
+    <rect x="31" y="75" width="10" height="10" rx="2"/> <rect x="53" y="75" width="10" height="10" rx="2"/> <rect x="75" y="75" width="10" height="10" rx="2"/> <rect x="97" y="75" width="10" height="10" rx="2"/> <rect x="119" y="75" width="10" height="10" rx="2"/>
+    <rect x="31" y="97" width="10" height="10" rx="2"/> <rect x="53" y="97" width="10" height="10" rx="2"/> <rect x="75" y="97" width="10" height="10" rx="2"/> <rect x="97" y="97" width="10" height="10" rx="2"/> <rect x="119" y="97" width="10" height="10" rx="2"/>
+    <rect x="31" y="119" width="10" height="10" rx="2"/> <rect x="53" y="119" width="10" height="10" rx="2"/> <rect x="75" y="119" width="10" height="10" rx="2"/> <rect x="97" y="119" width="10" height="10" rx="2"/> <rect x="119" y="119" width="10" height="10" rx="2"/>
+  </g>
+  <g fill="#ff3b30">
+    <rect x="53" y="31" width="10" height="10" rx="2"/> <rect x="97" y="31" width="10" height="10" rx="2"/> <rect x="31" y="53" width="10" height="10" rx="2"/> <rect x="53" y="53" width="10" height="10" rx="2"/> <rect x="75" y="53" width="10" height="10" rx="2"/> <rect x="97" y="53" width="10" height="10" rx="2"/>
+    <rect x="119" y="53" width="10" height="10" rx="2"/> <rect x="31" y="75" width="10" height="10" rx="2"/> <rect x="53" y="75" width="10" height="10" rx="2"/> <rect x="75" y="75" width="10" height="10" rx="2"/> <rect x="97" y="75" width="10" height="10" rx="2"/> <rect x="119" y="75" width="10" height="10" rx="2"/>
+    <rect x="53" y="97" width="10" height="10" rx="2"/> <rect x="75" y="97" width="10" height="10" rx="2"/> <rect x="97" y="97" width="10" height="10" rx="2"/> <rect x="75" y="119" width="10" height="10" rx="2"/>
+  </g>
+</svg>
+<figcaption><code>Image.HEART</code>: 09090:99999:99999:09990:00900.</figcaption>
+</figure>
+<p>
+  <code>image</code> runs while building, on your computer, so the board gets
+  25 bytes in flash. <code>display.scroll</code> and <code>display.show</code>
+  also take text put together as the board runs, such as
+  <code>"T: {temperature}C"</code>, and <code>display.set-pixel</code> lights
+  one LED.
+</p>
+
+<h2 id="buttons-and-sensors">Buttons and sensors <a class="anchor" href="#buttons-and-sensors" aria-label="link">#</a></h2>
+<pre class="native-code"><code>my int $count = 0;
+display.show($count);
+loop {
+    my int $was = $count;
+    $count += button-a.get-presses;
+    if button-b.was-pressed &amp;&amp; $count &gt; 0 { $count-- }
+    if pin-logo.is-touched { $count = 0 }
+    display.show($count) if $count != $was;
+    pause 50;
+}</code></pre>
+<p>
+  A counter: button A counts up, B counts down, and touching the logo starts
+  again from 0. On the simulated board the buttons are pressed by
+  <code>RAKUPP_MICROBIT_BUTTONS="A@200,A@600,B@1500,logo@2500"</code>, and
+  the tilt, gestures, compass heading, temperature, light level and pins come
+  from the environment too, so a run gives the same transcript every time.
+  <code>accelerometer.was-gesture('shake')</code> and
+  <code>randint(1, 6)</code> make a die.
+</p>
+
+<h2 id="onto-a-board">Onto a board <a class="anchor" href="#onto-a-board" aria-label="link">#</a></h2>
+<p>
+  <code>--target=microbit</code> writes the program as one C++ file for the
+  board's own runtime, CODAL, the one MakeCode runs on. CODAL's build project
+  turns it into <code>MICROBIT.hex</code>, and a micro:bit plugged in over USB
+  is a drive called <code>MICROBIT</code>: copying the file onto it is all
+  flashing takes. Once, an ARM compiler and the build project:
+</p>
+<pre class="native-code"><code>git clone https://github.com/lancaster-university/microbit-v2-samples ~/microbit-v2-samples
+cd ~/microbit-v2-samples &amp;&amp; python3 build.py</code></pre>
+<p>Then, for each program:</p>
+<pre class="native-code"><code>rakupp --target=microbit tilt.raku -o ~/microbit-v2-samples/source/main.cpp
+cd ~/microbit-v2-samples &amp;&amp; python3 build.py
+cp MICROBIT.hex /Volumes/MICROBIT/</code></pre>
+<p>
+  The build needs <code>arm-none-eabi-gcc</code> on the PATH before its first
+  run; on a Mac with the Arduino IDE and its Uno R4 core, one is installed
+  already.
+  <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MICROBIT.md#from-the-c-file-to-the-board">The guide's step-by-step section</a>
+  has every system, and what to do when a step goes wrong.
+</p>
+
+<h2 id="what-it-can-use">What a program can use <a class="anchor" href="#what-it-can-use" aria-label="link">#</a></h2>
+<div class="table-wrap">
+<table class="names">
+  <tr><th>Raku</th><th>MicroPython</th><th>What it does</th></tr>
+  <tr><td><code>display.show</code>, <code>.scroll</code>, <code>.clear</code></td><td><code>display.show()</code> …</td><td>a picture, a number or text on the LEDs</td></tr>
+  <tr><td><code>display.set-pixel(x, y, b)</code></td><td><code>display.set_pixel()</code></td><td>one LED, brightness 0 to 9</td></tr>
+  <tr><td><code>button-a.is-pressed</code>, <code>.was-pressed</code>, <code>.get-presses</code></td><td><code>button_a.is_pressed()</code> …</td><td>the buttons</td></tr>
+  <tr><td><code>pin-logo.is-touched</code></td><td><code>pin_logo.is_touched()</code></td><td>the touch logo</td></tr>
+  <tr><td><code>accelerometer.x</code>, <code>.was-gesture('shake')</code></td><td><code>accelerometer.get_x()</code> …</td><td>the tilt, and gestures</td></tr>
+  <tr><td><code>compass.heading</code>, <code>temperature</code></td><td><code>compass.heading()</code>, <code>temperature()</code></td><td>the compass, the temperature</td></tr>
+  <tr><td><code>pin0.read-analog</code> … <code>pin20</code></td><td><code>pin0.read_analog()</code> …</td><td>the edge connector</td></tr>
+  <tr><td><code>pause</code>, <code>running-time</code>, <code>randint</code></td><td><code>sleep()</code>, <code>running_time()</code>, <code>random.randint()</code></td><td>time and chance</td></tr>
+</table>
+</div>
+<p>
+  The rest is the board subset shared with the Arduino: native types such as
+  <code>int16</code> and <code>uint8</code>, shaped arrays, Raku's
+  arithmetic, <code>if</code>, <code>loop</code>, <code>for</code>, and subs
+  with native signatures. Anything else stops the build, with the line it is
+  on:
+</p>
+<pre class="output"><code>$ rakupp --target=microbit -e 'use MicroBit; my $x = 5; say $x'
+rakupp --target=microbit: -e, line 1: the untyped variable $x — give it a native type, as in `my int16 $x`</code></pre>
+<p>
+  <a href="/faq/microbit/">The micro:bit FAQ</a> answers what a MicroPython or
+  MakeCode user asks first: what changes from MicroPython, <code>pause</code>
+  and Raku's own <code>sleep</code>, showing a number, making a picture and
+  animating it, and why a button press went missing.
+</p>
+
+<h2 id="under-rakudo">Under Rakudo <a class="anchor" href="#under-rakudo" aria-label="link">#</a></h2>
+<p>
+  <code>use MicroBit</code> is built into rakupp; <code>rakupp install</code>
+  skips the name and says so. Other Raku implementations can install a stub
+  module of the same name, which stops the program at the <code>use</code>
+  line and names the command to run it with:
+</p>
+<pre class="native-code"><code>zef install MicroBit</code></pre>
+<pre class="output"><code>$ rakudo hello.raku
+===SORRY!=== Error while compiling hello.raku
+This program needs Raku++: `use MicroBit` is built into rakupp
+(https://github.com/ash/rakupp), which runs it on a simulated micro:bit
+and compiles it for a real one:
+    rakupp hello.raku
+    rakupp --target=microbit hello.raku</code></pre>
+
+<footer>
+  <span>The walkthrough and its programs are in <a href="https://github.com/ash/rakupp/tree/main/examples/microbit">examples/microbit</a>; the full reference is <a href="https://github.com/ash/rakupp/blob/main/docs/guide/MICROBIT.md">the micro:bit guide</a>, and the questions are in <a href="/faq/microbit/">the micro:bit FAQ</a>. The stub module: <a href="https://raku.land/zef:ash/MicroBit">MicroBit</a>.</span>
+  <span>Made by <a href="https://andrewshitov.com">Andrew Shitov</a>. <a href="https://github.com/ash/raku.online">Source</a>.</span>
+</footer>
+
+</div>
+</main>
+
+<script src="/theme/shell.js?v=b61f1619" defer></script>
+</body>
+</html>
