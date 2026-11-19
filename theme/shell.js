@@ -42,7 +42,8 @@
       { href: '/webraku/',         label: 'Webraku',  hue: 'inuse', note: 'Web apps in one Raku program, live' },
       { href: '/in-use/blog/',     label: 'Blog',     hue: 'inuse', note: 'Posts on andrewshitov.com and dev.to' },
       { href: '/in-use/mentions/', label: 'Mentions', hue: 'inuse', note: 'What other people wrote about it' },
-      { href: '/in-use/talks/',    label: 'Talks',    hue: 'inuse', note: 'Conference talks, and the deck' }
+      { href: '/in-use/talks/',    label: 'Talks',    hue: 'inuse', note: 'Conference talks' },
+      { href: '/slides/',          label: 'Slides',   hue: 'inuse', note: 'Raku++ in seventeen slides, and the PDF' }
     ] },
     // Raku inside something else: your editor, software you use rather than
     // write (a web page, a WordPress blog, a spreadsheet), another language's
