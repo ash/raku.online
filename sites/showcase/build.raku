@@ -101,6 +101,11 @@ sub link-target(Str $t --> Str) {
     return '/slides/' if $path eq 'presentation' | 'presentation/index.html';
     return '/slides/rakupp-presentation.pdf' if $path eq 'presentation/rakupp-presentation.pdf';
     return %SITE<repo> if $path eq '';    # the top README, from TALKS.md
+    # A showcase's book (web/<name>.html) is served whole at /showcase/<name>/book/.
+    if @path.elems == 4 && @path[0] eq 'showcase' && @path[2] eq 'web'
+            && @path[3] eq @path[1] ~ '.html' && has-book(@path[1]) {
+        return $BASE ~ '/' ~ @path[1] ~ '/book/';
+    }
     if @path.elems == 2 && @path[0] eq 'showcase' && @path[1] eq any(@PROJECTS) {
         return $BASE ~ '/' ~ @path[1] ~ '/';
     }
@@ -344,8 +349,13 @@ sub parse-index(Str $md) {
 
 # ---- pages -----------------------------------------------------------------
 
+sub has-book(Str $slug --> Bool) { "src/books/$slug.html".IO.e }
+
 sub actions-html(Str $slug --> Str) {
     my @a;
+    if has-book($slug) {
+        @a.push('<a class="sc-btn" href="' ~ $BASE ~ '/' ~ $slug ~ '/book/">Open the book</a>');
+    }
     if %SITE<play>{$slug} -> $play {
         @a.push('<a class="sc-btn" href="' ~ $play ~ '">Run it in the playground ↗</a>');
     }
@@ -838,6 +848,10 @@ sub MAIN(Bool :$clean = False) {
     for @PROJECTS -> $slug {
         mkdir("out/showcase/$slug");
         spurt("out/showcase/$slug/index.html", project-page($slug));
+        if has-book($slug) {
+            mkdir("out/showcase/$slug/book");
+            copy("src/books/$slug.html", "out/showcase/$slug/book/index.html");
+        }
     }
     spurt('out/showcase/index.html', index-page(@projects));
 

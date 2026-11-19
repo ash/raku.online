@@ -147,7 +147,9 @@ rule it uses everywhere else rather than looking the number up.
 
 ## The book
 
-`web/` is the same engine as an interactive textbook:
+`web/` is the same engine as an interactive textbook —
+**[open it in the browser](https://raku.online/showcase/fourier/book/)**.
+Build it with:
 
 ```sh
 build/rakupp showcase/fourier/tools/build.raku

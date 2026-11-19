@@ -28,6 +28,20 @@ for d in "$ROOT/showcase"/*/; do
     [ -f "$d/README.md" ] && cp "$d/README.md" "$DEST/showcase/$name.md"
 done
 
+# The interactive books: showcase/<name>/web/<name>.html is one self-contained
+# page (the engine transpiled by --target=js and inlined), served as
+# /showcase/<name>/book/. GitHub shows a committed .html file as source, so
+# rakupp's READMEs link here for the rendered page.
+mkdir -p "$DEST/books"
+rm -f "$DEST/books"/*.html
+for f in "$ROOT"/showcase/*/web/*.html; do
+    name="$(basename "$(dirname "$(dirname "$f")")")"
+    case "$name" in
+        raytracer) continue ;;
+    esac
+    [ "$(basename "$f")" = "$name.html" ] && cp "$f" "$DEST/books/$name.html"
+done
+
 cp "$ROOT/live/README.md" "$DEST/live/README.md"
 for d in "$ROOT/live"/*/; do
     name="$(basename "$d")"
