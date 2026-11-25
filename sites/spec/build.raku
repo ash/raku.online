@@ -684,62 +684,20 @@ sub render-dashboard(%site, %by-cat --> Str) {
     comparable with one after it, so the line breaks where the grid grew.</p>
     <div class="dash-chart" id="dash-grid"></div>
     <h2 class="conf-areas-title" id="benchmarks">Benchmarks <span>— kernel wall time in ms, lower is better</span> <a class="anchor" href="#benchmarks" aria-label="link">#</a></h2>
-    <p class="dash-note">Three ways to run the same program: the Raku++
-    interpreter, the same source compiled to a native binary with
-    <code>--exe</code>, and Rakudo as the reference — plus, on
-    <code>hashfill</code> alone, the same program in Perl 5 as a second
-    dashed reference. From the 2026.08 release a <em>second Rakudo lane</em>
-    joins them: the same Rakudo compiled through <strong>RakuAST</strong>, the
-    new frontend that Rakudo 2026.09 makes the default and that earlier
-    releases reach with <code>RAKUDO_RAKUAST=1</code>. It is not another engine
-    — it is the same binary in the same sitting with one environment variable
-    set, and every kernel is checked to print the same in both lanes before
-    either is timed — so the distance between the two dashed Rakudo lines is
-    the frontend swap and nothing else. And it is a swap of the
-    <em>frontend</em>, not of the runtime: timed with <code>raku -c</code>,
-    which compiles without running, the two lanes compile these kernels in the
-    same time to within a few percent (RakuAST is a shade
-    <em>faster</em> on several). The whole of each gap is in the run — 94–106%
-    of it on every kernel — which is to say it is the code the new frontend
-    emits, executed on the same unchanged MoarVM. On <code>objects</code>, the
-    widest, the compile is 1.09× and the run 2.79×.
-    All ten kernels of the BENCHMARKS.md tables, ordered as
-    that file orders them — string building first, where the gap is widest,
-    down to the closest-run kernels — plus <code>startup</code>, the eleventh
-    program in <code>tools/bench/</code>, last. (<code>startup</code> was a row
-    in the tables early on, left them for a long stretch, and returned as its
-    own section on 2026-08-22, so its series has a real gap in the middle.)
-    Use the <em>log</em> scale when you want to read the distance between the
-    interpreter and <code>--exe</code>: on a linear axis every chart is bounded
-    by its Rakudo line, which squeezes both Raku++ series onto the baseline —
-    worst on exactly the kernels where the lead is largest. Absolute times as
-    committed at each release; the measuring machine changed at v3.6.0 (the
-    file's own note records it), so read ratios across that boundary, not
-    milliseconds. A point labelled by <em>date</em> rather than a version is a
-    re-measure of <code>main</code> between releases: every sitting is kept as
-    its own point, so a fresh measurement adds to the series instead of
-    overwriting the last reading. A kernel is missing from a point only when that release's
-    table did not carry it — except <code>hashfill</code>, whose tagged points
-    are <em>retrospective</em>: every tagged release binary from GitHub,
-    re-run on one machine in one sitting (2026-08-21), with that day's Rakudo
-    and perl as fixed references — the one series here that is comparable in
-    milliseconds end to end. (Its <code>main</code> point comes from the
-    committed tables like every other kernel's, so the last step carries
-    ordinary sitting-to-sitting noise.)</p>
-    <p class="dash-note"><strong>From 2026-10-21, a second machine.</strong>
-    Every point up to 2026-10-13 was measured on one Apple M3. That machine is
-    out of reach for now, so an Apple M4 stands in, and its readings are drawn
-    as lines of their own: the same colours, <em>hollow</em> markers, and a
-    dotted mark where they begin. They are never joined to the M3's, because
-    the two machines differ by a factor that is not the same on every kernel:
-    on builds both timed, the M4 takes 0.75–1.03× of the M3's time, about 0.9×
-    at the median. The M4 lines begin on two points the M3 also measured, the
-    v5.3.0 release binary and the build of v5.4.0 the M3 timed on 2026-10-13,
-    so the step between the two lines there is the machine and nothing else.
-    Each machine has its own Rakudo lines, and the tooltips state every ratio
-    against the Rakudo of the same machine. Read those ratios across the
-    change, not milliseconds. The methodology is in
-    <code>bench-backfill.tsv</code> and <code>rakudo-eras.tsv</code>.</p>
+    <p class="dash-note">Each chart is one small program, timed three ways:
+    the Raku++ interpreter, the same program compiled to a native binary with
+    <code>--exe</code>, and Rakudo (dashed) for comparison. A second dashed
+    Rakudo line shows Rakudo with its new RakuAST frontend, so you can see what
+    the switch to it costs. On <code>hashfill</code>, Perl 5 is drawn too.</p>
+    <p class="dash-note">A few tips for reading them. Switch to the
+    <em>log</em> scale to see how far apart the interpreter and
+    <code>--exe</code> are; on the linear scale Rakudo's line squeezes both
+    down to the bottom. Points named by a date rather than a version are extra
+    measurements of <code>main</code> between releases. Hollow markers are
+    from a newer machine (an Apple M4, from 2026-10-21) and start a line of
+    their own, because the two machines are not equally fast. When comparing
+    over time, compare the ratios to Rakudo shown in the tooltips, not the
+    milliseconds.</p>
     <div class="dash-bench" id="dash-bench"></div>
 
     <h2 id="optbench">The <code>-O</code> optimizer <a class="anchor" href="#optbench" aria-label="link">#</a></h2>
